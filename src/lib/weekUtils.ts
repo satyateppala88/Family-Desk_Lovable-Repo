@@ -18,14 +18,17 @@ export const getWeekDays = (weekStart: Date): Date[] => {
 
 export const getRemainingDaysOfWeek = (weekStartDay: WeekStartDay): number => {
   const today = new Date();
-  const weekEnd = getWeekEndDate(today, weekStartDay);
-  const weekStart = getWeekStartDate(today, weekStartDay);
+  today.setHours(0, 0, 0, 0); // Normalize to start of day
   
-  let remainingDays = 0;
+  const weekStart = getWeekStartDate(today, weekStartDay);
   const days = getWeekDays(weekStart);
   
+  let remainingDays = 0;
   for (const day of days) {
-    if (day >= today) {
+    const normalizedDay = new Date(day);
+    normalizedDay.setHours(0, 0, 0, 0); // Normalize each day
+    
+    if (normalizedDay >= today) {
       remainingDays++;
     }
   }

@@ -8,7 +8,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { Home, Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
+import logoImg from "@/assets/logo-family-hub-v4.png";
 
 const Auth = () => {
   const [email, setEmail] = useState("");
@@ -111,9 +112,11 @@ const Auth = () => {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
-            <div className="p-3 rounded-full bg-primary/10">
-              <Home className="w-8 h-8 text-primary" />
-            </div>
+            <img 
+              src={logoImg} 
+              alt="HomeMate Logo" 
+              className="h-16 w-16 object-contain"
+            />
           </div>
           <CardTitle className="text-3xl">HomeMate</CardTitle>
           <CardDescription>

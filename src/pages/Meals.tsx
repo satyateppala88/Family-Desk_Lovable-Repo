@@ -54,7 +54,7 @@ const Meals = () => {
           userId: user.id,
           numDays,
           weekStartDate: format(currentWeekStart, "yyyy-MM-dd"),
-          generateFrom: daysToGenerate === "remaining" ? "today" : "week_start",
+          generateFrom: daysToGenerate === "remaining" ? "today" : "start",
         },
       });
 
