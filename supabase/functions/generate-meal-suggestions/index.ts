@@ -12,7 +12,11 @@ serve(async (req) => {
   }
 
   try {
-    const { householdId, numDays = 7, weekStartDate, generateFrom } = await req.json();
+    const { householdId, userId, numDays = 7, weekStartDate, generateFrom } = await req.json();
+    
+    if (!householdId || !userId) {
+      throw new Error("householdId and userId are required");
+    }
     
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
@@ -253,7 +257,7 @@ Requirements:
       .insert({
         household_id: householdId,
         week_start_date: weekStartDate || new Date().toISOString().split('T')[0],
-        created_by: householdId,
+        created_by: userId,
       })
       .select()
       .single();
@@ -287,7 +291,7 @@ Requirements:
             nutritional_info: meal.recipe.nutritional_info || null,
             tags: meal.recipe.tags || [],
             household_id: householdId,
-            created_by: householdId,
+            created_by: userId,
             source: 'ai_generated',
             is_favorite: false,
           })

@@ -40,7 +40,7 @@ const Meals = () => {
   const currentWeekPlan = mealPlans[0] || null;
 
   const handleGeneratePlan = async (daysToGenerate: "full" | "remaining") => {
-    if (!householdId) return;
+    if (!householdId || !user) return;
 
     const numDays = daysToGenerate === "full" ? 7 : getRemainingDaysOfWeek("sunday");
     
@@ -49,6 +49,7 @@ const Meals = () => {
       const { data, error } = await supabase.functions.invoke("generate-meal-suggestions", {
         body: {
           householdId,
+          userId: user.id,
           numDays,
           weekStartDate: format(currentWeekStart, "yyyy-MM-dd"),
           generateFrom: daysToGenerate === "remaining" ? "today" : "week_start",
