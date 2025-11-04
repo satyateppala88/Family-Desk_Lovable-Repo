@@ -56,13 +56,13 @@ export const Header = ({ onStartOnboarding }: HeaderProps) => {
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>
+            <DropdownMenuItem onClick={() => navigate("/account-settings")}>
               <User className="mr-2 h-4 w-4" />
-              Profile
+              Account Settings
             </DropdownMenuItem>
-            <DropdownMenuItem>
+            <DropdownMenuItem onClick={() => navigate("/settings")}>
               <Settings className="mr-2 h-4 w-4" />
-              Settings
+              Household Settings
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={onStartOnboarding}>

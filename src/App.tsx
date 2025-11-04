@@ -10,6 +10,7 @@ import Auth from "./pages/Auth";
 import HouseholdSetup from "./pages/HouseholdSetup";
 import { UserPreferencesOnboarding } from "./components/onboarding/UserPreferencesOnboarding";
 import { Settings } from "./pages/Settings";
+import AccountSettings from "./pages/AccountSettings";
 import Tasks from "./pages/Tasks";
 import Meals from "./pages/Meals";
 import Grocery from "./pages/Grocery";
@@ -42,6 +43,11 @@ const App = () => (
             <Route path="/settings" element={
               <ProtectedRoute>
                 <Settings />
+              </ProtectedRoute>
+            } />
+            <Route path="/account-settings" element={
+              <ProtectedRoute>
+                <AccountSettings />
               </ProtectedRoute>
             } />
             <Route path="/" element={
