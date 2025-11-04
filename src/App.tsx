@@ -8,6 +8,8 @@ import { ProtectedRoute } from "@/components/layout/ProtectedRoute";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import HouseholdSetup from "./pages/HouseholdSetup";
+import { UserPreferencesOnboarding } from "./components/onboarding/UserPreferencesOnboarding";
+import { Settings } from "./pages/Settings";
 import Tasks from "./pages/Tasks";
 import Meals from "./pages/Meals";
 import Grocery from "./pages/Grocery";
@@ -30,6 +32,16 @@ const App = () => (
             <Route path="/household-setup" element={
               <ProtectedRoute>
                 <HouseholdSetup />
+              </ProtectedRoute>
+            } />
+            <Route path="/onboarding/preferences" element={
+              <ProtectedRoute>
+                <UserPreferencesOnboarding />
+              </ProtectedRoute>
+            } />
+            <Route path="/settings" element={
+              <ProtectedRoute>
+                <Settings />
               </ProtectedRoute>
             } />
             <Route path="/" element={

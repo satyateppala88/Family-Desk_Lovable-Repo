@@ -64,18 +64,56 @@ export default function TermsOfService() {
                 <li>Not upload or transmit any harmful code, viruses, or malicious software</li>
                 <li>Respect the intellectual property rights of others</li>
               </ul>
+              
+              <h3 className="text-lg font-medium mb-2 mt-4">4.1 User-Provided Household Data</h3>
+              <p className="text-muted-foreground mb-2">
+                When you complete the onboarding process, you provide household information including:
+              </p>
+              <ul className="list-disc pl-6 space-y-2 text-muted-foreground">
+                <li>Family composition and size</li>
+                <li>Dietary preferences, restrictions, and food allergies</li>
+                <li>Cooking habits and skill levels</li>
+                <li>Budget and shopping preferences</li>
+                <li>Household routines and priorities</li>
+              </ul>
+              <p className="text-muted-foreground mt-2">You acknowledge that:</p>
+              <ul className="list-disc pl-6 space-y-2 text-muted-foreground">
+                <li>This information is used to personalize AI suggestions</li>
+                <li>You are responsible for keeping this information accurate and up-to-date</li>
+                <li>Inaccurate information may result in unsuitable meal suggestions</li>
+                <li>You can update your preferences at any time through Settings</li>
+                <li>You must report allergies accurately to prevent health risks</li>
+              </ul>
             </section>
 
             <section>
               <h2 className="text-xl font-semibold mb-3">5. Data Usage and AI Features</h2>
+              
+              <h3 className="text-lg font-medium mb-2">5.1 Personalization Data</h3>
               <p className="text-muted-foreground mb-2">
-                Our AI-powered meal planning feature processes your dietary preferences and household data to generate personalized Indian recipe suggestions. By using this feature:
+                Our AI-powered features use your household profile data to generate personalized suggestions:
               </p>
               <ul className="list-disc pl-6 space-y-2 text-muted-foreground">
-                <li>You consent to the processing of your input data for AI meal generation</li>
-                <li>AI suggestions are provided for informational purposes only</li>
-                <li>We are not responsible for any dietary issues arising from following AI suggestions</li>
-                <li>You should verify all nutritional information and ingredient suitability</li>
+                <li>Meal plans are customized based on dietary restrictions, allergies, and preferences</li>
+                <li>Task suggestions consider your household size and priorities</li>
+                <li>Grocery recommendations reflect your budget and shopping preferences</li>
+                <li>All personalization data is stored securely and used only for your benefit</li>
+              </ul>
+              
+              <h3 className="text-lg font-medium mb-2 mt-4">5.2 Data Quality and Accuracy</h3>
+              <ul className="list-disc pl-6 space-y-2 text-muted-foreground">
+                <li>You are responsible for providing accurate household information</li>
+                <li>We recommend reviewing and updating your preferences periodically</li>
+                <li>The AI suggestions are only as good as the data you provide</li>
+                <li>We are not liable for suggestions based on incomplete or inaccurate user data</li>
+              </ul>
+              
+              <h3 className="text-lg font-medium mb-2 mt-4">5.3 AI Limitations</h3>
+              <ul className="list-disc pl-6 space-y-2 text-muted-foreground">
+                <li>AI suggestions are generated based on patterns and may not always be perfect</li>
+                <li>Always verify ingredient safety, especially for allergies and dietary restrictions</li>
+                <li>Consult healthcare professionals for specific dietary needs</li>
+                <li>We do not guarantee the accuracy of nutritional information</li>
               </ul>
             </section>
 

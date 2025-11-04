@@ -48,6 +48,26 @@ export default function PrivacyPolicy() {
                 <li>Household information and member details</li>
                 <li>Region and language preferences</li>
               </ul>
+              
+              <h3 className="text-lg font-medium mb-2 mt-4">2.1.1 Household Preferences Information</h3>
+              <p className="text-muted-foreground mb-2">During onboarding, we collect:</p>
+              <ul className="list-disc pl-6 space-y-2 text-muted-foreground">
+                <li>Family size and composition (adults and children)</li>
+                <li>Household type (nuclear, joint, single)</li>
+                <li>Dietary preferences and restrictions (vegetarian, vegan, etc.)</li>
+                <li>Food allergies and intolerances</li>
+                <li>Religious dietary requirements</li>
+                <li>Spice level preferences</li>
+                <li>Regional cuisine preferences</li>
+                <li>Cooking skill level and available cooking time</li>
+                <li>Preferred meal types and pantry size</li>
+                <li>Shopping frequency and locations</li>
+                <li>Household concerns and priorities</li>
+                <li>Work schedule and preferred task times</li>
+                <li>Festival celebration importance</li>
+                <li>Monthly grocery budget and budget consciousness</li>
+                <li>Organic/premium product preferences</li>
+              </ul>
 
               <h3 className="text-lg font-medium mb-2 mt-4">2.2 Usage Information</h3>
               <ul className="list-disc pl-6 space-y-2 text-muted-foreground">
@@ -79,19 +99,41 @@ export default function PrivacyPolicy() {
                 <li>To ensure security and prevent fraud</li>
                 <li>To comply with legal obligations</li>
               </ul>
+              
+              <h3 className="text-lg font-medium mb-2 mt-4">3.1 How We Use Household Preferences</h3>
+              <p className="text-muted-foreground mb-2">We use your household preferences data to:</p>
+              <ul className="list-disc pl-6 space-y-2 text-muted-foreground">
+                <li>Generate customized Indian meal plans that respect your dietary restrictions</li>
+                <li>Suggest recipes matching your cooking skill level and available time</li>
+                <li>Recommend budget-appropriate grocery items</li>
+                <li>Tailor task suggestions to your household size and priorities</li>
+                <li>Respect your religious and cultural dietary requirements</li>
+                <li>Provide region-specific cuisine recommendations</li>
+                <li>Avoid suggesting recipes with allergens you've reported</li>
+              </ul>
+              
+              <p className="text-muted-foreground mt-2">This data is:</p>
+              <ul className="list-disc pl-6 space-y-2 text-muted-foreground">
+                <li>Stored securely in encrypted format</li>
+                <li>Never shared with third parties for marketing</li>
+                <li>Used exclusively to improve your user experience</li>
+                <li>Accessible and modifiable by you at any time</li>
+                <li>Deleted upon account deletion (within 90 days)</li>
+              </ul>
             </section>
 
             <section>
               <h2 className="text-xl font-semibold mb-3">4. AI-Powered Features</h2>
               <p className="text-muted-foreground mb-2">
-                Our AI meal planning feature processes your data to provide personalized Indian recipe suggestions:
+                Our AI meal planning feature processes your household preferences to provide personalized Indian recipe suggestions:
               </p>
               <ul className="list-disc pl-6 space-y-2 text-muted-foreground">
-                <li>Your dietary preferences and restrictions are used to generate suitable meal plans</li>
+                <li>Your complete household profile (diet, allergies, skill, budget) is used to generate suitable meal plans</li>
                 <li>Pantry items and cuisine preferences help customize recommendations</li>
-                <li>AI processing is done securely through our backend infrastructure</li>
-                <li>We do not share your meal planning data with third-party AI providers</li>
+                <li>AI processing is done securely through Lovable AI Gateway</li>
+                <li>We do not share your personal meal planning data with third-party AI providers</li>
                 <li>Generated meal plans are stored in your household account</li>
+                <li>Allergy information is given highest priority in AI processing to ensure safety</li>
               </ul>
             </section>
 
@@ -117,6 +159,7 @@ export default function PrivacyPolicy() {
               <ul className="list-disc pl-6 space-y-2 text-muted-foreground">
                 <li><strong>Household Members:</strong> Data you add to a household is visible to other household members</li>
                 <li><strong>Service Providers:</strong> We use trusted third-party services for hosting and infrastructure</li>
+                <li><strong>AI Processing:</strong> Your household preferences are processed by our AI system (powered by Lovable AI Gateway) to generate personalized suggestions. This processing happens on secure servers. We do not sell or share your preferences data with external AI providers or advertisers.</li>
                 <li><strong>Legal Requirements:</strong> When required by law or to protect our rights</li>
                 <li><strong>Business Transfers:</strong> In connection with any merger, sale, or acquisition</li>
               </ul>
@@ -180,7 +223,27 @@ export default function PrivacyPolicy() {
             </section>
 
             <section>
-              <h2 className="text-xl font-semibold mb-3">14. Contact Us</h2>
+              <h2 className="text-xl font-semibold mb-3">14. Data Accuracy and User Responsibility</h2>
+              <p className="text-muted-foreground mb-2">You are responsible for:</p>
+              <ul className="list-disc pl-6 space-y-2 text-muted-foreground">
+                <li>Providing accurate household and dietary preference information</li>
+                <li>Updating your preferences when your household situation changes</li>
+                <li>Reviewing AI-generated suggestions for suitability</li>
+                <li>Verifying ingredient safety, especially for allergies</li>
+                <li>Not relying solely on AI suggestions for medical dietary needs</li>
+              </ul>
+              
+              <p className="text-muted-foreground mt-2 mb-2">We recommend:</p>
+              <ul className="list-disc pl-6 space-y-2 text-muted-foreground">
+                <li>Reviewing your preferences quarterly</li>
+                <li>Consulting healthcare professionals for specific dietary requirements</li>
+                <li>Double-checking allergen information in suggested recipes</li>
+                <li>Updating family size when household composition changes</li>
+              </ul>
+            </section>
+
+            <section>
+              <h2 className="text-xl font-semibold mb-3">15. Contact Us</h2>
               <p className="text-muted-foreground">
                 For any questions, concerns, or requests regarding your privacy or this policy, please contact:
                 <br /><br />

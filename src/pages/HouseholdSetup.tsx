@@ -60,10 +60,10 @@ const HouseholdSetup = () => {
 
       toast({
         title: "Household created!",
-        description: `Welcome to ${householdName}`,
+        description: `Welcome to ${householdName}. Let's set up your preferences.`,
       });
 
-      navigate("/");
+      navigate("/onboarding/preferences");
     } catch (error: any) {
       toast({
         title: "Error",

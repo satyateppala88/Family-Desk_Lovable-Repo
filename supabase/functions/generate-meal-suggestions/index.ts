@@ -15,22 +15,94 @@ serve(async (req) => {
     const { householdId, preferences, pantryItems, numDays = 7 } = await req.json();
     
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
-
-    // Build context about household preferences and pantry
-    const preferencesText = preferences?.preferences 
-      ? `Dietary restrictions: ${JSON.stringify(preferences.preferences)}`
-      : "No specific dietary restrictions";
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+    const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
     
-    const cuisineText = preferences?.cuisine_preferences?.length 
-      ? `Preferred cuisines: ${preferences.cuisine_preferences.join(", ")}`
-      : "Open to all cuisines";
+    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
+    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) throw new Error("Supabase credentials not configured");
+
+    // Fetch household preferences from database
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const { data: householdPrefs, error: prefsError } = await supabase
+      .from("household_preferences")
+      .select("*")
+      .eq("household_id", householdId)
+      .single();
+
+    // Build enhanced context from household preferences
+    let familyContext = "Family of 2 adults";
+    let dietContext = "No specific dietary restrictions";
+    let cuisineContext = "Open to all Indian cuisines";
+    let skillContext = "Intermediate cooking skill";
+    let timeContext = "30-60 minutes available for cooking";
+    let budgetContext = "Moderate budget consciousness";
+    let allergyContext = "No known food allergies";
+    
+    if (householdPrefs) {
+      const adults = householdPrefs.family_size_adults || 2;
+      const children = householdPrefs.family_size_children || 0;
+      familyContext = `Family of ${adults} adults${children > 0 ? ` and ${children} children` : ""}`;
+      
+      if (householdPrefs.diet_type) {
+        dietContext = `Diet type: ${householdPrefs.diet_type.replace("_", " ")}`;
+      }
+      
+      if (householdPrefs.food_allergies?.length) {
+        allergyContext = `CRITICAL ALLERGIES - MUST AVOID: ${householdPrefs.food_allergies.join(", ")}`;
+      }
+      
+      if (householdPrefs.religious_restrictions && householdPrefs.religious_restrictions !== "none") {
+        dietContext += ` with ${householdPrefs.religious_restrictions} dietary restrictions`;
+      }
+      
+      if (householdPrefs.regional_cuisines?.length) {
+        cuisineContext = `Preferred cuisines: ${householdPrefs.regional_cuisines.join(", ")}`;
+      }
+      
+      if (householdPrefs.cooking_skill_level) {
+        skillContext = `Cooking skill: ${householdPrefs.cooking_skill_level}`;
+      }
+      
+      if (householdPrefs.weekday_cooking_time) {
+        const timeMap: any = {
+          "less_than_30": "Less than 30 minutes",
+          "30_to_60": "30-60 minutes",
+          "more_than_60": "More than 60 minutes"
+        };
+        timeContext = `Available cooking time: ${timeMap[householdPrefs.weekday_cooking_time] || "flexible"}`;
+      }
+      
+      if (householdPrefs.budget_consciousness) {
+        budgetContext = `Budget: ${householdPrefs.budget_consciousness.replace("_", " ")} conscious`;
+      }
+    }
+    
+    // Legacy preferences support
+    const legacyPrefsText = preferences?.preferences 
+      ? `Additional preferences: ${JSON.stringify(preferences.preferences)}`
+      : "";
+    
+    const legacyCuisineText = preferences?.cuisine_preferences?.length 
+      ? `Also prefers: ${preferences.cuisine_preferences.join(", ")}`
+      : "";
     
     const pantryText = pantryItems?.length
       ? `Available pantry items: ${pantryItems.map((item: any) => item.name).join(", ")}`
       : "Pantry inventory not tracked";
 
     const systemPrompt = `You are a professional Indian meal planning assistant. Generate a ${numDays}-day meal plan featuring authentic Indian cuisine with breakfast, lunch, and dinner for each day.
+
+HOUSEHOLD PROFILE:
+- ${familyContext}
+- ${dietContext}
+- ${allergyContext}
+- ${cuisineContext}
+- ${skillContext}
+- ${timeContext}
+- ${budgetContext}
+${legacyPrefsText ? `- ${legacyPrefsText}` : ""}
+${legacyCuisineText ? `- ${legacyCuisineText}` : ""}
+- ${pantryText}
 
 Regional Context for India:
 - Focus exclusively on Indian recipes and cooking styles
@@ -39,9 +111,6 @@ Regional Context for India:
 - Include popular regional cuisines: North Indian, South Indian, Bengali, Maharashtrian, Gujarati, Punjabi, Rajasthani, etc.
 - Use metric measurements (grams, kilograms, milliliters, liters, cups, tablespoons, teaspoons)
 - Consider seasonal availability of ingredients in India
-- ${preferencesText}
-- ${cuisineText}
-- ${pantryText}
 
 Common Indian Pantry Staples to Consider:
 - Spices: turmeric (haldi), cumin (jeera), coriander (dhania), garam masala, red chili powder, black pepper, cardamom, cloves, cinnamon

@@ -131,3 +131,41 @@ export interface PantryItem {
   created_at: string;
   updated_at: string;
 }
+
+export interface HouseholdPreferences {
+  id: string;
+  household_id: string;
+  family_size_adults: number;
+  family_size_children: number;
+  household_type: 'joint' | 'nuclear' | 'single' | null;
+  diet_type: 'vegetarian' | 'non_vegetarian' | 'eggetarian' | 'vegan' | 'jain' | null;
+  food_allergies: string[] | null;
+  religious_restrictions: 'hindu' | 'muslim' | 'jain' | 'none' | null;
+  spice_level: 'mild' | 'medium' | 'spicy' | 'very_spicy' | null;
+  regional_cuisines: string[] | null;
+  cooking_skill_level: 'beginner' | 'intermediate' | 'expert' | null;
+  weekday_cooking_time: 'less_than_30' | '30_to_60' | 'more_than_60' | null;
+  preferred_meal_types: string[] | null;
+  pantry_size: 'small' | 'medium' | 'large' | null;
+  shopping_frequency: 'daily' | '2_3_per_week' | 'weekly' | 'bi_weekly' | null;
+  household_concerns: string[] | null;
+  work_schedule: 'both_working' | 'one_working' | 'retired' | 'students' | null;
+  preferred_task_time: 'morning' | 'afternoon' | 'evening' | 'flexible' | null;
+  festival_importance: 'very_important' | 'somewhat' | 'not_important' | null;
+  monthly_grocery_budget: 'under_5000' | '5000_to_10000' | '10000_to_20000' | 'above_20000' | null;
+  shopping_locations: string[] | null;
+  organic_preference: 'always' | 'sometimes' | 'rarely' | 'never' | null;
+  budget_consciousness: 'very_conscious' | 'somewhat' | 'not_much' | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface UserOnboardingProgress {
+  id: string;
+  user_id: string;
+  current_step: number;
+  completed_steps: string[];
+  preferences_completed: boolean;
+  started_at: string;
+  completed_at: string | null;
+}
