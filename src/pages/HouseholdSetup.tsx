@@ -30,6 +30,15 @@ const HouseholdSetup = () => {
         throw new Error("You must be logged in to create a household");
       }
 
+      console.log("Session retrieved:", {
+        userId: session.user.id,
+        hasAccessToken: !!session.access_token,
+        tokenPrefix: session.access_token?.substring(0, 10) + "...",
+      });
+
+      // CRITICAL: Wait to ensure auth headers are set in the Supabase client
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
       console.log("Creating household with user:", session.user.id);
 
       // Create household using session.user.id
