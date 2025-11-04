@@ -63,3 +63,67 @@ export interface TaskComment {
   content: string;
   created_at: string;
 }
+
+export interface DietaryPreference {
+  id: string;
+  household_id: string;
+  preferences: any;
+  cuisine_preferences: string[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Recipe {
+  id: string;
+  household_id: string;
+  title: string;
+  description: string | null;
+  image_url: string | null;
+  prep_time: number | null;
+  cook_time: number | null;
+  servings: number;
+  difficulty: 'easy' | 'medium' | 'hard';
+  cuisine_type: string | null;
+  ingredients: any[];
+  instructions: any[];
+  nutritional_info: any;
+  tags: string[];
+  source: string;
+  created_by: string;
+  is_favorite: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MealPlan {
+  id: string;
+  household_id: string;
+  week_start_date: string;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MealPlanItem {
+  id: string;
+  meal_plan_id: string;
+  recipe_id: string | null;
+  day_of_week: number;
+  meal_type: 'breakfast' | 'lunch' | 'dinner';
+  notes: string | null;
+  created_at: string;
+}
+
+export interface PantryItem {
+  id: string;
+  household_id: string;
+  name: string;
+  category: string | null;
+  quantity: number | null;
+  unit: string | null;
+  expiry_date: string | null;
+  location: string | null;
+  added_by: string;
+  created_at: string;
+  updated_at: string;
+}
