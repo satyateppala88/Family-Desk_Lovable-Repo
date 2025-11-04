@@ -12,7 +12,7 @@ serve(async (req) => {
   }
 
   try {
-    const { householdId, preferences, pantryItems, numDays = 7 } = await req.json();
+    const { householdId, numDays = 7, weekStartDate, generateFrom } = await req.json();
     
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
@@ -21,13 +21,19 @@ serve(async (req) => {
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
     if (!SUPABASE_URL || !SUPABASE_ANON_KEY) throw new Error("Supabase credentials not configured");
 
-    // Fetch household preferences from database
+    // Fetch household preferences and hidden recipes from database
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    const { data: householdPrefs, error: prefsError } = await supabase
+    const { data: householdPrefs } = await supabase
       .from("household_preferences")
       .select("*")
       .eq("household_id", householdId)
-      .single();
+      .maybeSingle();
+    
+    const { data: hiddenRecipes } = await supabase
+      .from("recipes")
+      .select("title")
+      .eq("household_id", householdId)
+      .eq("hidden", true);
 
     // Build enhanced context from household preferences
     let familyContext = "Family of 2 adults";
@@ -77,18 +83,10 @@ serve(async (req) => {
       }
     }
     
-    // Legacy preferences support
-    const legacyPrefsText = preferences?.preferences 
-      ? `Additional preferences: ${JSON.stringify(preferences.preferences)}`
+    const hiddenRecipeNames = hiddenRecipes?.map(r => r.title) || [];
+    const hiddenRecipeText = hiddenRecipeNames.length > 0 
+      ? `NEVER suggest these recipes (user has hidden them): ${hiddenRecipeNames.join(", ")}`
       : "";
-    
-    const legacyCuisineText = preferences?.cuisine_preferences?.length 
-      ? `Also prefers: ${preferences.cuisine_preferences.join(", ")}`
-      : "";
-    
-    const pantryText = pantryItems?.length
-      ? `Available pantry items: ${pantryItems.map((item: any) => item.name).join(", ")}`
-      : "Pantry inventory not tracked";
 
     const systemPrompt = `You are a professional Indian meal planning assistant. Generate a ${numDays}-day meal plan featuring authentic Indian cuisine with breakfast, lunch, and dinner for each day.
 
@@ -100,9 +98,7 @@ HOUSEHOLD PROFILE:
 - ${skillContext}
 - ${timeContext}
 - ${budgetContext}
-${legacyPrefsText ? `- ${legacyPrefsText}` : ""}
-${legacyCuisineText ? `- ${legacyCuisineText}` : ""}
-- ${pantryText}
+${hiddenRecipeText ? `\n${hiddenRecipeText}` : ""}
 
 Regional Context for India:
 - Focus exclusively on Indian recipes and cooking styles
@@ -251,7 +247,90 @@ Requirements:
 
     const mealPlan = JSON.parse(toolCall.function.arguments);
     
-    return new Response(JSON.stringify(mealPlan), {
+    // Create meal plan entry in database
+    const { data: createdPlan, error: planError } = await supabase
+      .from("meal_plans")
+      .insert({
+        household_id: householdId,
+        week_start_date: weekStartDate || new Date().toISOString().split('T')[0],
+        created_by: householdId,
+      })
+      .select()
+      .single();
+
+    if (planError) {
+      console.error("Error creating meal plan:", planError);
+      throw new Error("Failed to create meal plan in database");
+    }
+
+    console.log("Created meal plan:", createdPlan.id);
+
+    // Create recipes and meal plan items
+    const createdRecipes = [];
+    for (let i = 0; i < mealPlan.meals.length; i++) {
+      const meal = mealPlan.meals[i];
+      
+      try {
+        // Insert recipe
+        const { data: recipe, error: recipeError } = await supabase
+          .from("recipes")
+          .insert({
+            title: meal.recipe.title,
+            description: meal.recipe.description || null,
+            prep_time: meal.recipe.prep_time || null,
+            cook_time: meal.recipe.cook_time || null,
+            servings: meal.recipe.servings || 4,
+            difficulty: meal.recipe.difficulty || 'medium',
+            cuisine_type: meal.recipe.cuisine_type || 'Indian',
+            ingredients: meal.recipe.ingredients || [],
+            instructions: meal.recipe.instructions || [],
+            nutritional_info: meal.recipe.nutritional_info || null,
+            tags: meal.recipe.tags || [],
+            household_id: householdId,
+            created_by: householdId,
+            source: 'ai_generated',
+            is_favorite: false,
+          })
+          .select()
+          .single();
+
+        if (recipeError) {
+          console.error(`Error creating recipe ${i}:`, recipeError);
+          continue;
+        }
+
+        createdRecipes.push(recipe);
+
+        // Insert meal plan item
+        const dayIndex = meal.day;
+        const mealType = meal.meal_type;
+
+        const { error: itemError } = await supabase
+          .from("meal_plan_items")
+          .insert({
+            meal_plan_id: createdPlan.id,
+            recipe_id: recipe.id,
+            day_of_week: dayIndex,
+            meal_type: mealType,
+            scheduled_date: weekStartDate || new Date().toISOString().split('T')[0],
+          });
+
+        if (itemError) {
+          console.error(`Error creating meal plan item ${i}:`, itemError);
+        }
+      } catch (err) {
+        console.error(`Error processing meal ${i}:`, err);
+        continue;
+      }
+    }
+
+    console.log(`Successfully created ${createdRecipes.length} recipes and meal plan items`);
+    
+    return new Response(JSON.stringify({ 
+      mealPlanId: createdPlan.id,
+      meals: mealPlan.meals,
+      recipesCreated: createdRecipes.length 
+    }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
 
