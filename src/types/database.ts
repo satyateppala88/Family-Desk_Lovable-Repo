@@ -95,6 +95,10 @@ export interface Recipe {
   source: string;
   created_by: string;
   is_favorite: boolean;
+  rating: number | null;
+  rating_count: number;
+  hidden: boolean;
+  youtube_url: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -115,6 +119,7 @@ export interface MealPlanItem {
   day_of_week: number;
   meal_type: 'breakfast' | 'lunch' | 'dinner';
   notes: string | null;
+  scheduled_date: string | null;
   created_at: string;
 }
 
@@ -156,6 +161,7 @@ export interface HouseholdPreferences {
   shopping_locations: string[] | null;
   organic_preference: 'always' | 'sometimes' | 'rarely' | 'never' | null;
   budget_consciousness: 'very_conscious' | 'somewhat' | 'not_much' | null;
+  week_start_day: 'sunday' | 'monday' | null;
   created_at: string;
   updated_at: string;
 }

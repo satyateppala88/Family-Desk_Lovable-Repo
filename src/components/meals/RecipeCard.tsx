@@ -2,7 +2,7 @@ import { Recipe } from "@/types/database";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Clock, Users, Star, Trash2 } from "lucide-react";
+import { Clock, Users, Star, Trash2, Youtube } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface RecipeCardProps {
@@ -10,9 +10,10 @@ interface RecipeCardProps {
   onToggleFavorite: (id: string, isFavorite: boolean) => void;
   onDelete: (id: string) => void;
   onClick: (recipe: Recipe) => void;
+  onRate?: (recipe: Recipe) => void;
 }
 
-export const RecipeCard = ({ recipe, onToggleFavorite, onDelete, onClick }: RecipeCardProps) => {
+export const RecipeCard = ({ recipe, onToggleFavorite, onDelete, onClick, onRate }: RecipeCardProps) => {
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty) {
       case "easy":
@@ -22,6 +23,10 @@ export const RecipeCard = ({ recipe, onToggleFavorite, onDelete, onClick }: Reci
       default:
         return "bg-yellow-500";
     }
+  };
+
+  const getYouTubeSearchUrl = (recipeName: string) => {
+    return `https://www.youtube.com/results?search_query=${encodeURIComponent(recipeName + " recipe")}`;
   };
 
   const totalTime = (recipe.prep_time || 0) + (recipe.cook_time || 0);
@@ -39,7 +44,7 @@ export const RecipeCard = ({ recipe, onToggleFavorite, onDelete, onClick }: Reci
               <p className="text-sm text-muted-foreground mt-1">{recipe.cuisine_type}</p>
             )}
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-1">
             <Button
               size="icon"
               variant="ghost"
@@ -50,6 +55,30 @@ export const RecipeCard = ({ recipe, onToggleFavorite, onDelete, onClick }: Reci
               className="h-8 w-8"
             >
               <Star className={cn("w-4 h-4", recipe.is_favorite && "fill-yellow-500 text-yellow-500")} />
+            </Button>
+            {onRate && (
+              <Button
+                size="icon"
+                variant="ghost"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onRate(recipe);
+                }}
+                className="h-8 w-8"
+              >
+                <Star className={cn("w-4 h-4", recipe.rating && "fill-yellow-400 text-yellow-400")} />
+              </Button>
+            )}
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={(e) => {
+                e.stopPropagation();
+                window.open(getYouTubeSearchUrl(recipe.title), "_blank");
+              }}
+              className="h-8 w-8"
+            >
+              <Youtube className="w-4 h-4" />
             </Button>
             <Button
               size="icon"
@@ -87,6 +116,13 @@ export const RecipeCard = ({ recipe, onToggleFavorite, onDelete, onClick }: Reci
           <Badge variant="outline" className={cn("text-xs", getDifficultyColor(recipe.difficulty))}>
             {recipe.difficulty}
           </Badge>
+
+          {recipe.rating && (
+            <Badge variant="outline" className="text-xs">
+              <Star className="w-3 h-3 mr-1 fill-yellow-400 text-yellow-400" />
+              {recipe.rating.toFixed(1)} ({recipe.rating_count})
+            </Badge>
+          )}
 
           {recipe.source === "ai_generated" && (
             <Badge variant="outline" className="text-xs bg-purple-500/10">

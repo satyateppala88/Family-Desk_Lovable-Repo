@@ -6,22 +6,29 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Clock, Users, ChefHat } from "lucide-react";
+import { Clock, Users, ChefHat, Star, Youtube } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface RecipeDetailDialogProps {
   recipe: Recipe | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onRate?: (recipe: Recipe) => void;
 }
 
 export const RecipeDetailDialog = ({
   recipe,
   open,
   onOpenChange,
+  onRate,
 }: RecipeDetailDialogProps) => {
   if (!recipe) return null;
+
+  const getYouTubeSearchUrl = (recipeName: string) => {
+    return `https://www.youtube.com/results?search_query=${encodeURIComponent(recipeName + " recipe")}`;
+  };
 
   const totalTime = (recipe.prep_time || 0) + (recipe.cook_time || 0);
 
@@ -29,13 +36,47 @@ export const RecipeDetailDialog = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh]">
         <DialogHeader>
-          <DialogTitle className="text-2xl">{recipe.title}</DialogTitle>
+          <div className="flex items-start justify-between gap-4">
+            <DialogTitle className="text-2xl flex-1">{recipe.title}</DialogTitle>
+            <div className="flex gap-2">
+              {onRate && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onRate(recipe)}
+                >
+                  <Star className={`w-4 h-4 mr-2 ${recipe.rating ? "fill-yellow-400 text-yellow-400" : ""}`} />
+                  Rate
+                </Button>
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => window.open(getYouTubeSearchUrl(recipe.title), "_blank")}
+              >
+                <Youtube className="w-4 h-4 mr-2" />
+                Watch
+              </Button>
+            </div>
+          </div>
         </DialogHeader>
 
         <ScrollArea className="max-h-[70vh] pr-4">
           <div className="space-y-6">
             {recipe.description && (
               <p className="text-muted-foreground">{recipe.description}</p>
+            )}
+
+            {recipe.rating && (
+              <div className="flex items-center gap-2 p-3 bg-secondary/20 rounded-lg">
+                <div className="flex items-center gap-1">
+                  <Star className="w-5 h-5 fill-yellow-400 text-yellow-400" />
+                  <span className="font-semibold text-lg">{recipe.rating.toFixed(1)}</span>
+                </div>
+                <span className="text-sm text-muted-foreground">
+                  ({recipe.rating_count} rating{recipe.rating_count !== 1 ? 's' : ''})
+                </span>
+              </div>
             )}
 
             <div className="flex flex-wrap items-center gap-3">

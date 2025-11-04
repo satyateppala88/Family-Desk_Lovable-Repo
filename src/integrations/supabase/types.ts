@@ -106,6 +106,7 @@ export type Database = {
           shopping_locations: string[] | null
           spice_level: string | null
           updated_at: string | null
+          week_start_day: string | null
           weekday_cooking_time: string | null
           work_schedule: string | null
         }
@@ -133,6 +134,7 @@ export type Database = {
           shopping_locations?: string[] | null
           spice_level?: string | null
           updated_at?: string | null
+          week_start_day?: string | null
           weekday_cooking_time?: string | null
           work_schedule?: string | null
         }
@@ -160,6 +162,7 @@ export type Database = {
           shopping_locations?: string[] | null
           spice_level?: string | null
           updated_at?: string | null
+          week_start_day?: string | null
           weekday_cooking_time?: string | null
           work_schedule?: string | null
         }
@@ -206,6 +209,7 @@ export type Database = {
           meal_type: string
           notes: string | null
           recipe_id: string | null
+          scheduled_date: string | null
         }
         Insert: {
           created_at?: string
@@ -215,6 +219,7 @@ export type Database = {
           meal_type: string
           notes?: string | null
           recipe_id?: string | null
+          scheduled_date?: string | null
         }
         Update: {
           created_at?: string
@@ -224,6 +229,7 @@ export type Database = {
           meal_type?: string
           notes?: string | null
           recipe_id?: string | null
+          scheduled_date?: string | null
         }
         Relationships: [
           {
@@ -371,6 +377,7 @@ export type Database = {
           cuisine_type: string | null
           description: string | null
           difficulty: string | null
+          hidden: boolean
           household_id: string
           id: string
           image_url: string | null
@@ -379,11 +386,14 @@ export type Database = {
           is_favorite: boolean | null
           nutritional_info: Json | null
           prep_time: number | null
+          rating: number | null
+          rating_count: number
           servings: number | null
           source: string | null
           tags: string[] | null
           title: string
           updated_at: string
+          youtube_url: string | null
         }
         Insert: {
           cook_time?: number | null
@@ -392,6 +402,7 @@ export type Database = {
           cuisine_type?: string | null
           description?: string | null
           difficulty?: string | null
+          hidden?: boolean
           household_id: string
           id?: string
           image_url?: string | null
@@ -400,11 +411,14 @@ export type Database = {
           is_favorite?: boolean | null
           nutritional_info?: Json | null
           prep_time?: number | null
+          rating?: number | null
+          rating_count?: number
           servings?: number | null
           source?: string | null
           tags?: string[] | null
           title: string
           updated_at?: string
+          youtube_url?: string | null
         }
         Update: {
           cook_time?: number | null
@@ -413,6 +427,7 @@ export type Database = {
           cuisine_type?: string | null
           description?: string | null
           difficulty?: string | null
+          hidden?: boolean
           household_id?: string
           id?: string
           image_url?: string | null
@@ -421,11 +436,14 @@ export type Database = {
           is_favorite?: boolean | null
           nutritional_info?: Json | null
           prep_time?: number | null
+          rating?: number | null
+          rating_count?: number
           servings?: number | null
           source?: string | null
           tags?: string[] | null
           title?: string
           updated_at?: string
+          youtube_url?: string | null
         }
         Relationships: [
           {
