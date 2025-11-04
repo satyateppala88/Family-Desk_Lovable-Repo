@@ -36,8 +36,18 @@ const HouseholdSetup = () => {
         tokenPrefix: session.access_token?.substring(0, 10) + "...",
       });
 
-      // CRITICAL: Wait to ensure auth headers are set in the Supabase client
-      await new Promise(resolve => setTimeout(resolve, 100));
+      // CRITICAL: Explicitly set the session to force auth headers configuration
+      const { error: setSessionError } = await supabase.auth.setSession({
+        access_token: session.access_token,
+        refresh_token: session.refresh_token,
+      });
+
+      if (setSessionError) {
+        console.error("Error setting session:", setSessionError);
+        throw setSessionError;
+      }
+
+      console.log("Session explicitly set - auth headers should now be configured");
       
       console.log("Creating household with user:", session.user.id);
 
