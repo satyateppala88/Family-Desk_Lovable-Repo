@@ -18,45 +18,69 @@ const HouseholdSetup = () => {
 
   const handleCreateHousehold = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) return;
 
     setLoading(true);
 
     try {
-      // Create household
-      const { data: household, error: householdError } = await (supabase as any)
+      // Explicitly get the current session
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError) throw sessionError;
+      if (!session || !session.user) {
+        throw new Error("You must be logged in to create a household");
+      }
+
+      console.log("Creating household with user:", session.user.id);
+
+      // Create household using session.user.id
+      const { data: household, error: householdError } = await supabase
         .from("households")
         .insert({
           name: householdName,
-          created_by: user.id,
+          created_by: session.user.id,
         })
         .select()
         .single();
 
-      if (householdError) throw householdError;
+      if (householdError) {
+        console.error("Household creation error:", householdError);
+        throw householdError;
+      }
       if (!household) throw new Error("Failed to create household");
 
+      console.log("Household created:", household.id);
+
       // Add creator as admin member
-      const { error: memberError } = await (supabase as any)
+      const { error: memberError } = await supabase
         .from("household_members")
         .insert({
           household_id: household.id,
-          user_id: user.id,
+          user_id: session.user.id,
           role: "admin",
         });
 
-      if (memberError) throw memberError;
+      if (memberError) {
+        console.error("Member creation error:", memberError);
+        throw memberError;
+      }
+
+      console.log("Member added successfully");
 
       // Add admin role
-      const { error: roleError } = await (supabase as any)
+      const { error: roleError } = await supabase
         .from("user_roles")
         .insert({
-          user_id: user.id,
+          user_id: session.user.id,
           household_id: household.id,
           role: "household_admin",
         });
 
-      if (roleError) throw roleError;
+      if (roleError) {
+        console.error("Role assignment error:", roleError);
+        throw roleError;
+      }
+
+      console.log("Role assigned successfully");
 
       toast({
         title: "Household created!",
@@ -65,6 +89,7 @@ const HouseholdSetup = () => {
 
       navigate("/onboarding/preferences");
     } catch (error: any) {
+      console.error("Complete error:", error);
       toast({
         title: "Error",
         description: error.message,
