@@ -137,6 +137,8 @@ export const UserPreferencesOnboarding = () => {
           completed_steps: ["1", "2", "3", "4", "5"],
           preferences_completed: true,
           completed_at: new Date().toISOString(),
+        }, {
+          onConflict: 'user_id'
         });
 
       if (progressError) throw progressError;
