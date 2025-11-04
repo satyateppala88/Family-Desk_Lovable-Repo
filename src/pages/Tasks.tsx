@@ -87,20 +87,20 @@ const Tasks = () => {
     <div className="min-h-screen bg-background">
       <Header />
 
-      <main className="container px-4 py-6 pb-20">
+      <main className="container px-4 sm:px-6 py-6 pb-24">
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold">Tasks</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">Tasks</h1>
           <Button onClick={handleCreateTask} size="sm">
-            <Plus className="w-4 h-4 mr-2" />
-            Add Task
+            <Plus className="w-4 h-4 sm:mr-2" />
+            <span className="hidden sm:inline">Add Task</span>
           </Button>
         </div>
 
-        <div className="flex flex-wrap gap-3 mb-6">
-          <div className="flex items-center gap-2">
+        <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3 mb-6">
+          <div className="flex items-center gap-2 w-full sm:w-auto">
             <Filter className="w-4 h-4 text-muted-foreground" />
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[140px]">
+              <SelectTrigger className="flex-1 sm:w-[140px]">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
@@ -113,7 +113,7 @@ const Tasks = () => {
           </div>
 
           <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-            <SelectTrigger className="w-[140px]">
+            <SelectTrigger className="w-full sm:w-[140px]">
               <SelectValue placeholder="Priority" />
             </SelectTrigger>
             <SelectContent>

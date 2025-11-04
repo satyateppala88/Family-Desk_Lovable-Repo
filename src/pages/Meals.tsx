@@ -120,27 +120,30 @@ const Meals = () => {
     <div className="min-h-screen flex flex-col bg-background">
       <Header />
 
-      <main className="container px-4 py-6 pb-20">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold">Meal Planning</h1>
-          <div className="flex gap-2">
+      <main className="container px-4 sm:px-6 py-6 pb-24">
+        <div className="mb-6 space-y-4">
+          <h1 className="text-xl sm:text-2xl font-bold">Meal Planning</h1>
+          <div className="flex flex-wrap gap-2">
             <Button 
               onClick={() => handleGeneratePlan("remaining")} 
               size="sm"
               disabled={generatingPlan}
               variant="outline"
+              className="flex-1 sm:flex-none"
             >
-              <Sparkles className="w-4 h-4 mr-2" />
-              {generatingPlan ? "Generating..." : "Rest of Week"}
+              <Sparkles className="w-4 h-4 sm:mr-2" />
+              <span className="hidden sm:inline">{generatingPlan ? "Generating..." : "Rest of Week"}</span>
+              <span className="sm:hidden">Rest</span>
             </Button>
             <Button 
               onClick={() => handleGeneratePlan("full")} 
               size="sm"
               disabled={generatingPlan}
-              className="bg-gradient-to-r from-purple-500 to-pink-500"
+              className="bg-gradient-to-r from-purple-500 to-pink-500 flex-1 sm:flex-none"
             >
-              <Sparkles className="w-4 h-4 mr-2" />
-              {generatingPlan ? "Generating..." : "Full Week"}
+              <Sparkles className="w-4 h-4 sm:mr-2" />
+              <span className="hidden sm:inline">{generatingPlan ? "Generating..." : "Full Week"}</span>
+              <span className="sm:hidden">Full</span>
             </Button>
             <MealPlanDownload 
               mealPlan={currentWeekPlan} 
@@ -151,14 +154,16 @@ const Meals = () => {
         </div>
 
         <Tabs value={view} onValueChange={(v) => setView(v as any)} className="space-y-6">
-          <TabsList>
-            <TabsTrigger value="calendar">
-              <Calendar className="w-4 h-4 mr-2" />
-              Calendar View
+          <TabsList className="w-full grid grid-cols-2">
+            <TabsTrigger value="calendar" className="gap-2">
+              <Calendar className="w-4 h-4" />
+              <span className="hidden sm:inline">Calendar View</span>
+              <span className="sm:hidden">Calendar</span>
             </TabsTrigger>
-            <TabsTrigger value="recipes">
-              <LayoutGrid className="w-4 h-4 mr-2" />
-              All Recipes
+            <TabsTrigger value="recipes" className="gap-2">
+              <LayoutGrid className="w-4 h-4" />
+              <span className="hidden sm:inline">All Recipes</span>
+              <span className="sm:hidden">Recipes</span>
             </TabsTrigger>
           </TabsList>
 
@@ -209,7 +214,7 @@ const Meals = () => {
           </TabsContent>
 
           <TabsContent value="recipes">
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
               {recipes.map((recipe) => (
                 <RecipeCard
                   key={recipe.id}

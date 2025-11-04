@@ -101,27 +101,27 @@ const AccountSettings = () => {
   };
 
   return (
-    <div className="container max-w-4xl py-8 space-y-8">
+    <div className="container max-w-4xl px-4 sm:px-6 py-6 sm:py-8 space-y-6 sm:space-y-8 pb-24">
       <div>
-        <h1 className="text-3xl font-bold">Account Settings</h1>
-        <p className="text-muted-foreground mt-2">
+        <h1 className="text-2xl sm:text-3xl font-bold">Account Settings</h1>
+        <p className="text-muted-foreground mt-2 text-sm sm:text-base">
           Manage your account settings and preferences
         </p>
       </div>
 
       <Tabs defaultValue="profile" className="w-full">
         <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="profile">
-            <User className="w-4 h-4 mr-2" />
-            Profile
+          <TabsTrigger value="profile" className="flex-col sm:flex-row gap-1 sm:gap-2 py-2">
+            <User className="w-4 h-4" />
+            <span className="text-xs sm:text-sm">Profile</span>
           </TabsTrigger>
-          <TabsTrigger value="security">
-            <Lock className="w-4 h-4 mr-2" />
-            Security
+          <TabsTrigger value="security" className="flex-col sm:flex-row gap-1 sm:gap-2 py-2">
+            <Lock className="w-4 h-4" />
+            <span className="text-xs sm:text-sm">Security</span>
           </TabsTrigger>
-          <TabsTrigger value="preferences">
-            <Globe className="w-4 h-4 mr-2" />
-            Preferences
+          <TabsTrigger value="preferences" className="flex-col sm:flex-row gap-1 sm:gap-2 py-2">
+            <Globe className="w-4 h-4" />
+            <span className="text-xs sm:text-sm">Preferences</span>
           </TabsTrigger>
         </TabsList>
 

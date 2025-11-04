@@ -45,14 +45,14 @@ export const TaskCard = ({ task, onComplete, onDelete, onClick }: TaskCardProps)
       )}
       onClick={() => onClick(task)}
     >
-      <CardContent className="p-4">
-        <div className="flex items-start justify-between gap-3">
+      <CardContent className="p-3 sm:p-4">
+        <div className="flex items-start justify-between gap-2 sm:gap-3">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-2">
               {getStatusIcon()}
               <h3
                 className={cn(
-                  "font-semibold truncate",
+                  "font-semibold truncate text-sm sm:text-base",
                   task.status === "completed" && "line-through text-muted-foreground"
                 )}
               >
@@ -61,12 +61,12 @@ export const TaskCard = ({ task, onComplete, onDelete, onClick }: TaskCardProps)
             </div>
 
             {task.description && (
-              <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
+              <p className="text-xs sm:text-sm text-muted-foreground line-clamp-2 mb-2">
                 {task.description}
               </p>
             )}
 
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
               <Badge variant="outline" className={cn("text-xs", getPriorityColor(task.priority))}>
                 {task.priority}
               </Badge>
@@ -84,7 +84,7 @@ export const TaskCard = ({ task, onComplete, onDelete, onClick }: TaskCardProps)
             </div>
           </div>
 
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-1 sm:gap-2">
             {task.status !== "completed" && (
               <Button
                 size="icon"
@@ -93,9 +93,9 @@ export const TaskCard = ({ task, onComplete, onDelete, onClick }: TaskCardProps)
                   e.stopPropagation();
                   onComplete(task.id);
                 }}
-                className="h-8 w-8"
+                className="h-7 w-7 sm:h-8 sm:w-8"
               >
-                <CheckCircle2 className="w-4 h-4" />
+                <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               </Button>
             )}
 
@@ -106,9 +106,9 @@ export const TaskCard = ({ task, onComplete, onDelete, onClick }: TaskCardProps)
                 e.stopPropagation();
                 onDelete(task.id);
               }}
-              className="h-8 w-8 text-destructive"
+              className="h-7 w-7 sm:h-8 sm:w-8 text-destructive"
             >
-              <Trash2 className="w-4 h-4" />
+              <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </Button>
           </div>
         </div>

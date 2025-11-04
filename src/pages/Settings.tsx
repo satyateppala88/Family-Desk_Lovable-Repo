@@ -77,16 +77,17 @@ export const Settings = () => {
   return (
     <>
       <Header />
-      <main className="container mx-auto py-8 px-4 min-h-screen">
+      <main className="container mx-auto py-6 sm:py-8 px-4 sm:px-6 min-h-screen pb-24">
         <div className="max-w-4xl mx-auto space-y-6">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="flex items-center gap-3">
-              <SettingsIcon className="h-8 w-8 text-primary" />
-              <h1 className="text-3xl font-bold">Household Preferences</h1>
+              <SettingsIcon className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
+              <h1 className="text-2xl sm:text-3xl font-bold">Household Preferences</h1>
             </div>
-            <Button onClick={handleRerunOnboarding} variant="outline">
+            <Button onClick={handleRerunOnboarding} variant="outline" className="w-full sm:w-auto">
               <RefreshCw className="h-4 w-4 mr-2" />
-              Update Preferences
+              <span className="hidden sm:inline">Update Preferences</span>
+              <span className="sm:hidden">Update</span>
             </Button>
           </div>
 
@@ -112,7 +113,7 @@ export const Settings = () => {
                   <CardDescription>Basic information about your household</CardDescription>
                 </CardHeader>
                 <CardContent className="grid gap-4">
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 sm:grid-cols-2 gap-4">
                     <div>
                       <p className="text-sm font-medium text-muted-foreground">Adults</p>
                       <p className="text-lg">{preferences.family_size_adults}</p>
@@ -176,7 +177,7 @@ export const Settings = () => {
                     <p className="text-sm font-medium text-muted-foreground">Preferred Meal Types</p>
                     <p className="text-lg">{formatValue(preferences.preferred_meal_types)}</p>
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <p className="text-sm font-medium text-muted-foreground">Pantry Size</p>
                       <p className="text-lg">{formatValue(preferences.pantry_size)}</p>
@@ -228,7 +229,7 @@ export const Settings = () => {
                     <p className="text-sm font-medium text-muted-foreground">Shopping Locations</p>
                     <p className="text-lg">{formatValue(preferences.shopping_locations)}</p>
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <p className="text-sm font-medium text-muted-foreground">Organic Preference</p>
                       <p className="text-lg">{formatValue(preferences.organic_preference)}</p>
