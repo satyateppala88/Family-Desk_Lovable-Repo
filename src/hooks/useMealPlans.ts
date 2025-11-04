@@ -42,10 +42,11 @@ export const useMealPlans = (householdId: string | null, weekStartDate?: string)
           )
         `)
         .eq("household_id", householdId)
-        .order("week_start_date", { ascending: false });
+        .order("week_start_date", { ascending: false })
+        .order("created_at", { ascending: false });
 
       if (weekStartDate) {
-        query = query.eq("week_start_date", weekStartDate);
+        query = query.eq("week_start_date", weekStartDate).limit(1);
       }
 
       const { data, error } = await query;
