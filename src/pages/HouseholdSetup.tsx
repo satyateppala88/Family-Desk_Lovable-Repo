@@ -18,88 +18,27 @@ const HouseholdSetup = () => {
 
   const handleCreateHousehold = async (e: React.FormEvent) => {
     e.preventDefault();
-
     setLoading(true);
 
     try {
-      // Explicitly get the current session
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      console.log("=== Starting household creation via edge function ===");
       
-      if (sessionError) throw sessionError;
-      if (!session || !session.user) {
-        throw new Error("You must be logged in to create a household");
-      }
-
-      console.log("Session retrieved:", {
-        userId: session.user.id,
-        hasAccessToken: !!session.access_token,
-        tokenPrefix: session.access_token?.substring(0, 10) + "...",
+      // Call the edge function to create household
+      const { data, error } = await supabase.functions.invoke('create-household', {
+        body: { householdName },
       });
 
-      // CRITICAL: Explicitly set the session to force auth headers configuration
-      const { error: setSessionError } = await supabase.auth.setSession({
-        access_token: session.access_token,
-        refresh_token: session.refresh_token,
-      });
-
-      if (setSessionError) {
-        console.error("Error setting session:", setSessionError);
-        throw setSessionError;
+      if (error) {
+        console.error("Edge function error:", error);
+        throw error;
       }
 
-      console.log("Session explicitly set - auth headers should now be configured");
-      
-      console.log("Creating household with user:", session.user.id);
-
-      // Create household using session.user.id
-      const { data: household, error: householdError } = await supabase
-        .from("households")
-        .insert({
-          name: householdName,
-          created_by: session.user.id,
-        })
-        .select()
-        .single();
-
-      if (householdError) {
-        console.error("Household creation error:", householdError);
-        throw householdError;
-      }
-      if (!household) throw new Error("Failed to create household");
-
-      console.log("Household created:", household.id);
-
-      // Add creator as admin member
-      const { error: memberError } = await supabase
-        .from("household_members")
-        .insert({
-          household_id: household.id,
-          user_id: session.user.id,
-          role: "admin",
-        });
-
-      if (memberError) {
-        console.error("Member creation error:", memberError);
-        throw memberError;
+      if (!data || !data.success) {
+        console.error("Edge function returned unsuccessful:", data);
+        throw new Error(data?.error || "Failed to create household");
       }
 
-      console.log("Member added successfully");
-
-      // Add admin role
-      const { error: roleError } = await supabase
-        .from("user_roles")
-        .insert({
-          user_id: session.user.id,
-          household_id: household.id,
-          role: "household_admin",
-        });
-
-      if (roleError) {
-        console.error("Role assignment error:", roleError);
-        throw roleError;
-      }
-
-      console.log("Role assigned successfully");
+      console.log("Household created successfully via edge function:", data.household);
 
       toast({
         title: "Household created!",
@@ -111,7 +50,7 @@ const HouseholdSetup = () => {
       console.error("Complete error:", error);
       toast({
         title: "Error",
-        description: error.message,
+        description: error.message || "Failed to create household",
         variant: "destructive",
       });
     } finally {

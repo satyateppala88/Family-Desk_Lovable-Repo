@@ -2,3 +2,6 @@ project_id = "ekihgsdoscvgbgqhazru"
 
 [functions.generate-meal-suggestions]
 verify_jwt = true
+
+[functions.create-household]
+verify_jwt = true
