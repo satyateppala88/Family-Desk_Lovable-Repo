@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Header } from "@/components/layout/Header";
 import { MobileNav } from "@/components/layout/MobileNav";
+import { Footer } from "@/components/layout/Footer";
 import { RecipeCard } from "@/components/meals/RecipeCard";
 import { RecipeDetailDialog } from "@/components/meals/RecipeDetailDialog";
 import { useHousehold } from "@/hooks/useHousehold";
@@ -95,7 +96,7 @@ const Meals = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen flex flex-col bg-background">
       <Header />
 
       <main className="container px-4 py-6 pb-20">

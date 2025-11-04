@@ -12,6 +12,8 @@ import Tasks from "./pages/Tasks";
 import Meals from "./pages/Meals";
 import Grocery from "./pages/Grocery";
 import Calendar from "./pages/Calendar";
+import TermsOfService from "./pages/TermsOfService";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -55,6 +57,8 @@ const App = () => (
                 <Calendar />
               </ProtectedRoute>
             } />
+            <Route path="/terms" element={<TermsOfService />} />
+            <Route path="/privacy" element={<PrivacyPolicy />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

@@ -30,19 +30,40 @@ serve(async (req) => {
       ? `Available pantry items: ${pantryItems.map((item: any) => item.name).join(", ")}`
       : "Pantry inventory not tracked";
 
-    const systemPrompt = `You are a professional meal planning assistant. Generate a ${numDays}-day meal plan with breakfast, lunch, and dinner for each day.
+    const systemPrompt = `You are a professional Indian meal planning assistant. Generate a ${numDays}-day meal plan featuring authentic Indian cuisine with breakfast, lunch, and dinner for each day.
 
-Context:
+Regional Context for India:
+- Focus exclusively on Indian recipes and cooking styles
+- Use commonly available Indian ingredients and spices
+- Consider Indian dietary preferences (vegetarian, non-vegetarian, Jain, vegan)
+- Include popular regional cuisines: North Indian, South Indian, Bengali, Maharashtrian, Gujarati, Punjabi, Rajasthani, etc.
+- Use metric measurements (grams, kilograms, milliliters, liters, cups, tablespoons, teaspoons)
+- Consider seasonal availability of ingredients in India
 - ${preferencesText}
 - ${cuisineText}
 - ${pantryText}
 
+Common Indian Pantry Staples to Consider:
+- Spices: turmeric (haldi), cumin (jeera), coriander (dhania), garam masala, red chili powder, black pepper, cardamom, cloves, cinnamon
+- Grains: basmati rice, sona masoori rice, wheat flour (atta), maida, rava/sooji (semolina), poha, vermicelli
+- Legumes: moong dal, toor dal, chana dal, masoor dal, urad dal, rajma, chickpeas (kabuli chana), black-eyed peas
+- Staples: ghee, mustard oil, coconut oil, refined oil, yogurt/curd, paneer, milk
+- Basics: onions, tomatoes, ginger, garlic, green chilies, curry leaves, coriander leaves
+
+Indian Meal Structure:
+- Breakfast: Include options like poha, upma, dosa, idli, paratha, poori-bhaji, sandwich, uttapam, dhokla, etc.
+- Lunch: Typically includes dal, sabzi (vegetable curry), rice, roti/chapati, raita, salad
+- Dinner: Similar to lunch but can be lighter; include dal, sabzi, rice/roti combinations, sometimes one-pot meals
+
 Requirements:
-- Create balanced, nutritious meals
-- Consider variety across days
-- Include prep and cook times
-- Suggest realistic, achievable recipes
-- Take dietary restrictions seriously`;
+- Create balanced, nutritious Indian meals
+- Ensure variety across days with different regional cuisines
+- Include realistic prep time and cook time for Indian households
+- Consider cooking methods: tadka, pressure cooking, tawa cooking, steaming, deep frying
+- Provide servings suitable for Indian families (typically 4 servings)
+- Take dietary restrictions very seriously
+- Include both simple everyday meals and some special dishes
+- Balance between time-intensive and quick meals`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",

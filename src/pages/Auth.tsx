@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
@@ -13,16 +14,27 @@ const Auth = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
+  const [termsAccepted, setTermsAccepted] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!termsAccepted) {
+      toast({
+        variant: "destructive",
+        title: "Terms Required",
+        description: "Please accept the Terms of Service and Privacy Policy to continue.",
+      });
+      return;
+    }
+
     setLoading(true);
 
     try {
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -34,6 +46,18 @@ const Auth = () => {
       });
 
       if (error) throw error;
+
+      if (data.user) {
+        // Record terms acceptance
+        await supabase
+          .from("profiles")
+          .update({ 
+            terms_accepted_at: new Date().toISOString(),
+            region: 'IN',
+            preferred_language: 'en'
+          })
+          .eq("id", data.user.id);
+      }
 
       toast({
         title: "Account created!",
@@ -168,7 +192,27 @@ const Auth = () => {
                     minLength={6}
                   />
                 </div>
-                <Button type="submit" className="w-full" disabled={loading}>
+                <div className="flex items-start space-x-2">
+                  <Checkbox 
+                    id="terms" 
+                    checked={termsAccepted}
+                    onCheckedChange={(checked) => setTermsAccepted(checked as boolean)}
+                  />
+                  <label
+                    htmlFor="terms"
+                    className="text-sm text-muted-foreground leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  >
+                    I accept the{" "}
+                    <Link to="/terms" className="underline hover:text-foreground" target="_blank">
+                      Terms of Service
+                    </Link>{" "}
+                    and{" "}
+                    <Link to="/privacy" className="underline hover:text-foreground" target="_blank">
+                      Privacy Policy
+                    </Link>
+                  </label>
+                </div>
+                <Button type="submit" className="w-full" disabled={loading || !termsAccepted}>
                   {loading ? "Creating account..." : "Sign Up"}
                 </Button>
               </form>

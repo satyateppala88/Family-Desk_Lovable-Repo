@@ -1,59 +1,80 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { supabase } from "@/lib/supabase";
-import { useAuth } from "@/contexts/AuthContext";
+import { useState, useEffect } from "react";
 import { Header } from "@/components/layout/Header";
 import { MobileNav } from "@/components/layout/MobileNav";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Footer } from "@/components/layout/Footer";
+import { OnboardingTour } from "@/components/onboarding/OnboardingTour";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Link } from "react-router-dom";
+import { 
+  CheckSquare, 
+  Calendar as CalendarIcon, 
+  ShoppingCart, 
+  ChefHat 
+} from "lucide-react";
+import { useHousehold } from "@/hooks/useHousehold";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/lib/supabase";
 import { Skeleton } from "@/components/ui/skeleton";
-import { CheckSquare, UtensilsCrossed, ShoppingCart, Calendar as CalendarIcon } from "lucide-react";
+import { Household } from "@/types/database";
 
 const Index = () => {
+  const { householdId, isLoading } = useHousehold();
   const { user } = useAuth();
-  const navigate = useNavigate();
-  const [loading, setLoading] = useState(true);
-  const [hasHousehold, setHasHousehold] = useState(false);
+  const [household, setHousehold] = useState<Household | null>(null);
+  const [runOnboarding, setRunOnboarding] = useState(false);
+  const [onboardingChecked, setOnboardingChecked] = useState(false);
 
   useEffect(() => {
-    checkHousehold();
-  }, [user]);
-
-  const checkHousehold = async () => {
-    if (!user) return;
-
-    try {
-      const { data, error } = await (supabase as any)
-        .from("household_members")
-        .select("id")
-        .eq("user_id", user.id)
-        .limit(1);
-
-      if (error) throw error;
-
-      if (!data || data.length === 0) {
-        navigate("/household-setup");
-        return;
+    const fetchHousehold = async () => {
+      if (householdId) {
+        const { data } = await supabase
+          .from("households")
+          .select("*")
+          .eq("id", householdId)
+          .single();
+        
+        if (data) setHousehold(data);
       }
+    };
+    fetchHousehold();
+  }, [householdId]);
 
-      setHasHousehold(true);
-    } catch (error) {
-      console.error("Error checking household:", error);
-    } finally {
-      setLoading(false);
-    }
+  useEffect(() => {
+    const checkOnboarding = async () => {
+      if (user && !isLoading && householdId) {
+        const { data } = await supabase
+          .from("profiles")
+          .select("onboarding_completed")
+          .eq("id", user.id)
+          .single();
+        
+        if (data && !data.onboarding_completed) {
+          setTimeout(() => setRunOnboarding(true), 500);
+        }
+        setOnboardingChecked(true);
+      }
+    };
+    checkOnboarding();
+  }, [user, isLoading, householdId]);
+
+  const handleStartOnboarding = () => {
+    setRunOnboarding(true);
   };
 
-  if (loading) {
+  const handleOnboardingComplete = () => {
+    setRunOnboarding(false);
+  };
+
+  if (isLoading || !household) {
     return (
-      <div className="min-h-screen bg-background">
-        <Header />
-        <main className="container px-4 py-6 pb-20">
-          <Skeleton className="h-8 w-48 mb-6" />
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <Skeleton className="h-32" />
-            <Skeleton className="h-32" />
-            <Skeleton className="h-32" />
-            <Skeleton className="h-32" />
+      <div className="min-h-screen flex flex-col bg-background">
+        <Header onStartOnboarding={handleStartOnboarding} />
+        <main className="flex-1 container mx-auto px-4 py-8">
+          <Skeleton className="h-10 w-64 mb-6" />
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+            {[1, 2, 3, 4].map((i) => (
+              <Skeleton key={i} className="h-32" />
+            ))}
           </div>
         </main>
         <MobileNav />
@@ -61,109 +82,87 @@ const Index = () => {
     );
   }
 
-  const quickActions = [
-    {
-      title: "Tasks",
-      description: "Manage your to-dos",
-      icon: CheckSquare,
-      path: "/tasks",
-      color: "text-blue-500",
-    },
-    {
-      title: "Meals",
-      description: "Plan your menu",
-      icon: UtensilsCrossed,
-      path: "/meals",
-      color: "text-green-500",
-    },
-    {
-      title: "Grocery",
-      description: "Shopping lists",
-      icon: ShoppingCart,
-      path: "/grocery",
-      color: "text-orange-500",
-    },
-    {
-      title: "Calendar",
-      description: "Important dates",
-      icon: CalendarIcon,
-      path: "/calendar",
-      color: "text-purple-500",
-    },
-  ];
-
   return (
-    <div className="min-h-screen bg-background">
-      <Header />
-      
-      <main className="container px-4 py-6 pb-20">
-        <div className="mb-6">
-          <h2 className="text-3xl font-bold mb-2">Welcome Home</h2>
+    <div className="min-h-screen flex flex-col bg-background">
+      <Header onStartOnboarding={handleStartOnboarding} />
+      {onboardingChecked && (
+        <OnboardingTour run={runOnboarding} onComplete={handleOnboardingComplete} />
+      )}
+      <main className="flex-1 container mx-auto px-4 py-8">
+        <div className="mb-8 dashboard-overview">
+          <h1 className="text-3xl font-bold mb-2">Welcome to {household.name}</h1>
           <p className="text-muted-foreground">
-            Manage your household with ease
+            Manage your household tasks, meals, and groceries all in one place
           </p>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">
-          {quickActions.map((action) => {
-            const Icon = action.icon;
-            return (
-              <Card
-                key={action.path}
-                className="cursor-pointer hover:shadow-lg transition-shadow"
-                onClick={() => navigate(action.path)}
-              >
-                <CardHeader>
-                  <div className="flex items-center gap-3">
-                    <div className={`p-2 rounded-lg bg-muted ${action.color}`}>
-                      <Icon className="w-6 h-6" />
-                    </div>
-                    <div>
-                      <CardTitle className="text-lg">{action.title}</CardTitle>
-                      <CardDescription className="text-sm">
-                        {action.description}
-                      </CardDescription>
-                    </div>
-                  </div>
-                </CardHeader>
-              </Card>
-            );
-          })}
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 dashboard-overview">
+          <Link to="/tasks" className="block hover:scale-105 transition-transform tasks-card">
+            <Card className="h-full hover:shadow-lg transition-shadow">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <CheckSquare className="h-5 w-5" />
+                  Tasks
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">
+                  Manage and track household tasks
+                </p>
+              </CardContent>
+            </Card>
+          </Link>
+
+          <Link to="/meals" className="block hover:scale-105 transition-transform meals-card">
+            <Card className="h-full hover:shadow-lg transition-shadow">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <ChefHat className="h-5 w-5" />
+                  Meals
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">
+                  Plan meals with AI-powered Indian recipes
+                </p>
+              </CardContent>
+            </Card>
+          </Link>
+
+          <Link to="/grocery" className="block hover:scale-105 transition-transform grocery-card">
+            <Card className="h-full hover:shadow-lg transition-shadow">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <ShoppingCart className="h-5 w-5" />
+                  Grocery
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">
+                  Create and manage shopping lists
+                </p>
+              </CardContent>
+            </Card>
+          </Link>
+
+          <Link to="/calendar" className="block hover:scale-105 transition-transform calendar-card">
+            <Card className="h-full hover:shadow-lg transition-shadow">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <CalendarIcon className="h-5 w-5" />
+                  Calendar
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">
+                  View events and schedules
+                </p>
+              </CardContent>
+            </Card>
+          </Link>
         </div>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Getting Started</CardTitle>
-            <CardDescription>
-              Your household management platform is ready to use
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground mb-4">
-              HomeMate helps you manage daily household activities:
-            </p>
-            <ul className="space-y-2 text-sm">
-              <li className="flex items-center gap-2">
-                <CheckSquare className="w-4 h-4 text-primary" />
-                <span>Track and assign tasks to household members</span>
-              </li>
-              <li className="flex items-center gap-2">
-                <UtensilsCrossed className="w-4 h-4 text-primary" />
-                <span>Plan meals with AI-powered recipe suggestions</span>
-              </li>
-              <li className="flex items-center gap-2">
-                <ShoppingCart className="w-4 h-4 text-primary" />
-                <span>Generate and share grocery lists</span>
-              </li>
-              <li className="flex items-center gap-2">
-                <CalendarIcon className="w-4 h-4 text-primary" />
-                <span>Never miss important dates and bills</span>
-              </li>
-            </ul>
-          </CardContent>
-        </Card>
       </main>
-
+      <Footer />
       <MobileNav />
     </div>
   );

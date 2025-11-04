@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Header } from "@/components/layout/Header";
 import { MobileNav } from "@/components/layout/MobileNav";
+import { Footer } from "@/components/layout/Footer";
 import { TaskCard } from "@/components/tasks/TaskCard";
 import { TaskDialog } from "@/components/tasks/TaskDialog";
 import { useHousehold } from "@/hooks/useHousehold";
@@ -66,9 +67,9 @@ const Tasks = () => {
   });
 
   if (loadingHousehold || isLoading) {
-    return (
-      <div className="min-h-screen bg-background">
-        <Header />
+  return (
+    <div className="min-h-screen flex flex-col bg-background">
+      <Header />
         <main className="container px-4 py-6 pb-20">
           <Skeleton className="h-8 w-48 mb-6" />
           <div className="space-y-4">

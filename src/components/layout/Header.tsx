@@ -1,5 +1,6 @@
 import { useAuth } from "@/contexts/AuthContext";
-import { Button } from "@/components/ui/button";
+import { useNavigate } from "react-router-dom";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -8,11 +9,15 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { LogOut, Settings, User } from "lucide-react";
+import { User, Settings, LogOut, HelpCircle, FileText, Shield } from "lucide-react";
 
-export const Header = () => {
+interface HeaderProps {
+  onStartOnboarding?: () => void;
+}
+
+export const Header = ({ onStartOnboarding }: HeaderProps) => {
   const { user, signOut } = useAuth();
+  const navigate = useNavigate();
 
   const getInitials = () => {
     if (!user?.user_metadata?.display_name) return "U";
@@ -33,19 +38,21 @@ export const Header = () => {
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="relative h-10 w-10 rounded-full">
-              <Avatar>
-                <AvatarFallback>{getInitials()}</AvatarFallback>
-              </Avatar>
-            </Button>
+            <Avatar className="h-10 w-10 cursor-pointer hover:opacity-80 transition-opacity user-menu">
+              <AvatarFallback className="bg-primary text-primary-foreground">
+                {getInitials()}
+              </AvatarFallback>
+            </Avatar>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuLabel>
               <div className="flex flex-col space-y-1">
-                <p className="text-sm font-medium">
+                <p className="text-sm font-medium leading-none">
                   {user?.user_metadata?.display_name || "User"}
                 </p>
-                <p className="text-xs text-muted-foreground">{user?.email}</p>
+                <p className="text-xs leading-none text-muted-foreground">
+                  {user?.email}
+                </p>
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
@@ -58,7 +65,20 @@ export const Header = () => {
               Settings
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={signOut}>
+            <DropdownMenuItem onClick={onStartOnboarding}>
+              <HelpCircle className="mr-2 h-4 w-4" />
+              User Guide
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => navigate("/terms")}>
+              <FileText className="mr-2 h-4 w-4" />
+              Terms of Service
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => navigate("/privacy")}>
+              <Shield className="mr-2 h-4 w-4" />
+              Privacy Policy
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={signOut} className="text-destructive">
               <LogOut className="mr-2 h-4 w-4" />
               Sign Out
             </DropdownMenuItem>

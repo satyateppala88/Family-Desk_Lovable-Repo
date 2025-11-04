@@ -2,6 +2,10 @@ export interface Profile {
   id: string;
   display_name: string | null;
   avatar_url: string | null;
+  onboarding_completed?: boolean;
+  terms_accepted_at?: string;
+  preferred_language?: string;
+  region?: string;
   created_at: string;
   updated_at: string;
 }
