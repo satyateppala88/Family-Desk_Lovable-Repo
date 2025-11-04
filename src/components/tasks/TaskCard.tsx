@@ -1,111 +1,116 @@
 import { Task } from "@/types/database";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, Circle, Clock, MoreVertical } from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { CheckCircle2, Clock, AlertCircle, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 
 interface TaskCardProps {
   task: Task;
-  onStatusChange: (taskId: string, newStatus: Task['status']) => void;
-  onEdit: (task: Task) => void;
-  onDelete: (taskId: string) => void;
+  onComplete: (id: string) => void;
+  onDelete: (id: string) => void;
+  onClick: (task: Task) => void;
 }
 
-const priorityColors = {
-  low: "bg-blue-500",
-  medium: "bg-yellow-500",
-  high: "bg-orange-500",
-  urgent: "bg-red-500",
-};
+export const TaskCard = ({ task, onComplete, onDelete, onClick }: TaskCardProps) => {
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case "urgent":
+        return "bg-red-500";
+      case "high":
+        return "bg-orange-500";
+      case "medium":
+        return "bg-yellow-500";
+      default:
+        return "bg-blue-500";
+    }
+  };
 
-const statusColors = {
-  pending: "text-muted-foreground",
-  in_progress: "text-blue-500",
-  completed: "text-green-500",
-};
-
-export const TaskCard = ({ task, onStatusChange, onEdit, onDelete }: TaskCardProps) => {
-  const isCompleted = task.status === 'completed';
-
-  const handleToggleComplete = () => {
-    onStatusChange(task.id, isCompleted ? 'pending' : 'completed');
+  const getStatusIcon = () => {
+    if (task.status === "completed") {
+      return <CheckCircle2 className="w-5 h-5 text-green-500" />;
+    }
+    if (task.due_date && new Date(task.due_date) < new Date()) {
+      return <AlertCircle className="w-5 h-5 text-red-500" />;
+    }
+    return <Clock className="w-5 h-5 text-muted-foreground" />;
   };
 
   return (
-    <Card className={cn("group hover:shadow-md transition-shadow", isCompleted && "opacity-60")}>
-      <CardHeader className="pb-3">
-        <div className="flex items-start gap-3">
-          <button
-            onClick={handleToggleComplete}
-            className="mt-0.5 focus:outline-none"
-          >
-            {isCompleted ? (
-              <CheckCircle2 className="w-5 h-5 text-green-500" />
-            ) : (
-              <Circle className="w-5 h-5 text-muted-foreground hover:text-primary" />
-            )}
-          </button>
-          
+    <Card
+      className={cn(
+        "cursor-pointer transition-all hover:shadow-md",
+        task.status === "completed" && "opacity-60"
+      )}
+      onClick={() => onClick(task)}
+    >
+      <CardContent className="p-4">
+        <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
-            <h3 className={cn("font-medium", isCompleted && "line-through")}>
-              {task.title}
-            </h3>
+            <div className="flex items-center gap-2 mb-2">
+              {getStatusIcon()}
+              <h3
+                className={cn(
+                  "font-semibold truncate",
+                  task.status === "completed" && "line-through text-muted-foreground"
+                )}
+              >
+                {task.title}
+              </h3>
+            </div>
+
             {task.description && (
-              <p className="text-sm text-muted-foreground mt-1">
+              <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
                 {task.description}
               </p>
             )}
+
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant="outline" className={cn("text-xs", getPriorityColor(task.priority))}>
+                {task.priority}
+              </Badge>
+
+              {task.due_date && (
+                <Badge variant="outline" className="text-xs">
+                  <Clock className="w-3 h-3 mr-1" />
+                  {format(new Date(task.due_date), "MMM d")}
+                </Badge>
+              )}
+
+              <Badge variant="outline" className="text-xs capitalize">
+                {task.status.replace("_", " ")}
+              </Badge>
+            </div>
           </div>
 
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                <MoreVertical className="w-4 h-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => onEdit(task)}>
-                Edit
-              </DropdownMenuItem>
-              {task.status !== 'in_progress' && (
-                <DropdownMenuItem onClick={() => onStatusChange(task.id, 'in_progress')}>
-                  Mark In Progress
-                </DropdownMenuItem>
-              )}
-              <DropdownMenuItem 
-                onClick={() => onDelete(task.id)}
-                className="text-destructive"
+          <div className="flex flex-col gap-2">
+            {task.status !== "completed" && (
+              <Button
+                size="icon"
+                variant="ghost"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onComplete(task.id);
+                }}
+                className="h-8 w-8"
               >
-                Delete
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </CardHeader>
-      
-      <CardContent className="pt-0">
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="outline" className={cn("capitalize", statusColors[task.status])}>
-            {task.status.replace('_', ' ')}
-          </Badge>
-          
-          <div className={cn("w-2 h-2 rounded-full", priorityColors[task.priority])} />
-          <span className="text-xs text-muted-foreground capitalize">{task.priority}</span>
-          
-          {task.due_date && (
-            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-              <Clock className="w-3 h-3" />
-              {format(new Date(task.due_date), 'MMM d')}
-            </div>
-          )}
+                <CheckCircle2 className="w-4 h-4" />
+              </Button>
+            )}
+
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(task.id);
+              }}
+              className="h-8 w-8 text-destructive"
+            >
+              <Trash2 className="w-4 h-4" />
+            </Button>
+          </div>
         </div>
       </CardContent>
     </Card>
