@@ -63,7 +63,12 @@ export const MealPlanCalendar = ({
     }, 0);
   };
 
+  const getDaysWithMeals = () => {
+    return weekDays.filter((_, dayIndex) => getDailyCalories(dayIndex) > 0).length;
+  };
+
   const weeklyCalories = getWeeklyCalories();
+  const daysWithMeals = getDaysWithMeals();
   const totalMeals = mealPlan?.items?.length || 0;
 
   return (
@@ -78,9 +83,11 @@ export const MealPlanCalendar = ({
               <p className="text-2xl font-bold">{weeklyCalories.toLocaleString()} cal</p>
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Daily Average</p>
+              <p className="text-sm text-muted-foreground">
+                Daily Average {daysWithMeals > 0 && `(${daysWithMeals} days)`}
+              </p>
               <p className="text-2xl font-bold">
-                {Math.round(weeklyCalories / 7).toLocaleString()} cal
+                {daysWithMeals > 0 ? Math.round(weeklyCalories / daysWithMeals).toLocaleString() : 0} cal
               </p>
             </div>
             <div>
