@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Clock, Users, Star, Trash2, Youtube } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface RecipeCardProps {
   recipe: Recipe;
@@ -14,6 +15,8 @@ interface RecipeCardProps {
 }
 
 export const RecipeCard = ({ recipe, onToggleFavorite, onDelete, onClick, onRate }: RecipeCardProps) => {
+  const isMobile = useIsMobile();
+
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty) {
       case "easy":
@@ -27,6 +30,28 @@ export const RecipeCard = ({ recipe, onToggleFavorite, onDelete, onClick, onRate
 
   const getYouTubeSearchUrl = (recipeName: string) => {
     return `https://www.youtube.com/results?search_query=${encodeURIComponent(recipeName + " recipe")}`;
+  };
+
+  const handleYouTubeClick = (e: React.MouseEvent, recipeName: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const url = getYouTubeSearchUrl(recipeName);
+    const inIframe = window.self !== window.top;
+    
+    if (!isMobile) {
+      if (inIframe) {
+        try {
+          window.top?.open(url, '_blank');
+        } catch {
+          window.open(url, '_top');
+        }
+      } else {
+        window.open(url, '_blank');
+      }
+    } else {
+      window.open(url, '_top');
+    }
   };
 
   const totalTime = (recipe.prep_time || 0) + (recipe.cook_time || 0);
@@ -72,18 +97,10 @@ export const RecipeCard = ({ recipe, onToggleFavorite, onDelete, onClick, onRate
             <Button
               size="icon"
               variant="ghost"
-              asChild
-              onClick={(e) => e.stopPropagation()}
+              onClick={(e) => handleYouTubeClick(e, recipe.title)}
               className="h-8 w-8"
             >
-              <a
-                href={getYouTubeSearchUrl(recipe.title)}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="Watch recipe on YouTube"
-              >
-                <Youtube className="w-4 h-4" />
-              </a>
+              <Youtube className="w-4 h-4" />
             </Button>
             <Button
               size="icon"

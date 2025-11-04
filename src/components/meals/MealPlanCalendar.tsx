@@ -5,6 +5,7 @@ import { Clock, Star, Youtube, Trash2, Plus, Flame, RefreshCw } from "lucide-rea
 import { MealPlan } from "@/hooks/useMealPlans";
 import { getWeekDays, getShortDayName } from "@/lib/weekUtils";
 import { format } from "date-fns";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface MealPlanCalendarProps {
   mealPlan: MealPlan | null;
@@ -30,6 +31,7 @@ export const MealPlanCalendar = ({
   onRegenerateDay,
 }: MealPlanCalendarProps) => {
   const weekDays = getWeekDays(weekStart);
+  const isMobile = useIsMobile();
 
   const getMealForDayAndType = (dayIndex: number, mealType: string) => {
     return mealPlan?.items?.find(
@@ -39,6 +41,28 @@ export const MealPlanCalendar = ({
 
   const getYouTubeSearchUrl = (recipeName: string) => {
     return `https://www.youtube.com/results?search_query=${encodeURIComponent(recipeName + " recipe")}`;
+  };
+
+  const handleYouTubeClick = (e: React.MouseEvent, recipeName: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const url = getYouTubeSearchUrl(recipeName);
+    const inIframe = window.self !== window.top;
+    
+    if (!isMobile) {
+      if (inIframe) {
+        try {
+          window.top?.open(url, '_blank');
+        } catch {
+          window.open(url, '_top');
+        }
+      } else {
+        window.open(url, '_blank');
+      }
+    } else {
+      window.open(url, '_top');
+    }
   };
 
   const getCaloriesPerServing = (recipe: any) => {
@@ -213,17 +237,9 @@ export const MealPlanCalendar = ({
                         variant="ghost"
                         size="sm"
                         className="h-5 sm:h-6 px-1 sm:px-2"
-                        asChild
-                        onClick={(e) => e.stopPropagation()}
+                        onClick={(e) => handleYouTubeClick(e, recipe.title)}
                       >
-                        <a
-                          href={getYouTubeSearchUrl(recipe.title)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          aria-label="Watch recipe on YouTube"
-                        >
-                          <Youtube className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
-                        </a>
+                        <Youtube className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
                       </Button>
                       {onRegenerateMeal && (
                         <Button

@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Clock, Users, ChefHat, Star, Youtube } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface RecipeDetailDialogProps {
   recipe: Recipe | null;
@@ -26,8 +27,31 @@ export const RecipeDetailDialog = ({
 }: RecipeDetailDialogProps) => {
   if (!recipe) return null;
 
+  const isMobile = useIsMobile();
+
   const getYouTubeSearchUrl = (recipeName: string) => {
     return `https://www.youtube.com/results?search_query=${encodeURIComponent(recipeName + " recipe")}`;
+  };
+
+  const handleYouTubeClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    
+    const url = getYouTubeSearchUrl(recipe.title);
+    const inIframe = window.self !== window.top;
+    
+    if (!isMobile) {
+      if (inIframe) {
+        try {
+          window.top?.open(url, '_blank');
+        } catch {
+          window.open(url, '_top');
+        }
+      } else {
+        window.open(url, '_blank');
+      }
+    } else {
+      window.open(url, '_top');
+    }
   };
 
   const totalTime = (recipe.prep_time || 0) + (recipe.cook_time || 0);
@@ -52,16 +76,10 @@ export const RecipeDetailDialog = ({
               <Button
                 variant="outline"
                 size="sm"
-                asChild
+                onClick={handleYouTubeClick}
               >
-                <a
-                  href={getYouTubeSearchUrl(recipe.title)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <Youtube className="w-4 h-4 mr-2" />
-                  Watch
-                </a>
+                <Youtube className="w-4 h-4 mr-2" />
+                Watch
               </Button>
             </div>
           </div>
