@@ -48,7 +48,7 @@ interface PreferencesData {
 
 export const UserPreferencesOnboarding = () => {
   const { user } = useAuth();
-  const { householdId } = useHousehold();
+  const { householdId, isLoading: householdLoading } = useHousehold();
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(1);
   const [preferences, setPreferences] = useState<PreferencesData>({
@@ -79,10 +79,20 @@ export const UserPreferencesOnboarding = () => {
   const progress = (currentStep / totalSteps) * 100;
 
   useEffect(() => {
-    if (!householdId) {
+    if (!householdLoading && !householdId) {
       navigate("/household-setup");
     }
-  }, [householdId, navigate]);
+  }, [householdId, householdLoading, navigate]);
+
+  if (householdLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center">
+          <p className="text-muted-foreground">Loading your household...</p>
+        </div>
+      </div>
+    );
+  }
 
   const handleNext = () => {
     if (currentStep < totalSteps) {
