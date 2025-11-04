@@ -52,10 +52,16 @@ export const RecipeDetailDialog = ({
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => window.open(getYouTubeSearchUrl(recipe.title), "_blank")}
+                asChild
               >
-                <Youtube className="w-4 h-4 mr-2" />
-                Watch
+                <a
+                  href={getYouTubeSearchUrl(recipe.title)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <Youtube className="w-4 h-4 mr-2" />
+                  Watch
+                </a>
               </Button>
             </div>
           </div>

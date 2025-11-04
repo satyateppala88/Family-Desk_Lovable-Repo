@@ -17,6 +17,23 @@ serve(async (req) => {
     if (!householdId || !userId) {
       throw new Error("householdId and userId are required");
     }
+
+    // Calculate which day of the week to start from
+    const weekStart = new Date(weekStartDate);
+    weekStart.setHours(0, 0, 0, 0);
+    let startDayIndex = 0; // Default to Sunday (0)
+
+    if (generateFrom === "today") {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      // Calculate days difference between today and week start
+      const daysDiff = Math.floor((today.getTime() - weekStart.getTime()) / (1000 * 60 * 60 * 24));
+      startDayIndex = Math.max(0, Math.min(6, daysDiff));
+    }
+
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const startDayName = dayNames[startDayIndex];
     
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
@@ -94,6 +111,13 @@ serve(async (req) => {
 
     const systemPrompt = `You are a professional Indian meal planning assistant. Generate a ${numDays}-day meal plan featuring authentic Indian cuisine with breakfast, lunch, and dinner for each day.
 
+MEAL GENERATION INSTRUCTIONS:
+- Generate meals for ${numDays} consecutive days starting from day ${startDayIndex} (${startDayName})
+- Day 0 = Sunday, Day 1 = Monday, Day 2 = Tuesday, Day 3 = Wednesday, Day 4 = Thursday, Day 5 = Friday, Day 6 = Saturday
+- Start generating meals from day ${startDayIndex} and continue for ${numDays} days
+- Each meal MUST have the correct day_of_week number (starting from ${startDayIndex})
+- Example: If starting from day 3 (Wednesday), the first meal should be day: 3, second meal day: 3, etc., then day 4, 5, 6...
+
 HOUSEHOLD PROFILE:
 - ${familyContext}
 - ${dietContext}
@@ -132,7 +156,16 @@ Requirements:
 - Provide servings suitable for Indian families (typically 4 servings)
 - Take dietary restrictions very seriously
 - Include both simple everyday meals and some special dishes
-- Balance between time-intensive and quick meals`;
+- Balance between time-intensive and quick meals
+
+CRITICAL - NUTRITIONAL INFORMATION:
+Each recipe MUST include detailed nutritional information per serving:
+- calories (required): Total calories per serving
+- protein: Grams of protein per serving  
+- carbs: Grams of carbohydrates per serving
+- fat: Grams of fat per serving
+Calculate nutritional values based on the ingredients and their quantities.
+Example: If a recipe serves 4, calculate the nutritional info for 1/4 of the total ingredients.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -204,9 +237,32 @@ Requirements:
                                 },
                                 required: ["step", "instruction"]
                               }
+                            },
+                            nutritional_info: {
+                              type: "object",
+                              description: "Nutritional information per serving",
+                              properties: {
+                                calories: { 
+                                  type: "number",
+                                  description: "Total calories per serving"
+                                },
+                                protein: { 
+                                  type: "number",
+                                  description: "Grams of protein per serving"
+                                },
+                                carbs: { 
+                                  type: "number",
+                                  description: "Grams of carbohydrates per serving"
+                                },
+                                fat: { 
+                                  type: "number",
+                                  description: "Grams of fat per serving"
+                                }
+                              },
+                              required: ["calories"]
                             }
                           },
-                          required: ["title", "ingredients", "instructions", "prep_time", "cook_time"]
+                          required: ["title", "ingredients", "instructions", "prep_time", "cook_time", "nutritional_info"]
                         }
                       },
                       required: ["day", "meal_type", "recipe"]
@@ -309,6 +365,10 @@ Requirements:
         const dayIndex = meal.day;
         const mealType = meal.meal_type;
 
+        // Calculate the actual scheduled date for this meal
+        const scheduledDate = new Date(weekStartDate);
+        scheduledDate.setDate(scheduledDate.getDate() + dayIndex);
+
         const { error: itemError } = await supabase
           .from("meal_plan_items")
           .insert({
@@ -316,7 +376,7 @@ Requirements:
             recipe_id: recipe.id,
             day_of_week: dayIndex,
             meal_type: mealType,
-            scheduled_date: weekStartDate || new Date().toISOString().split('T')[0],
+            scheduled_date: scheduledDate.toISOString().split('T')[0],
           });
 
         if (itemError) {

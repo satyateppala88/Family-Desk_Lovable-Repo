@@ -1,7 +1,7 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Clock, Star, Youtube, Trash2, Plus } from "lucide-react";
+import { Clock, Star, Youtube, Trash2, Plus, Flame } from "lucide-react";
 import { MealPlan } from "@/hooks/useMealPlans";
 import { getWeekDays, getShortDayName } from "@/lib/weekUtils";
 import { format } from "date-fns";
@@ -37,19 +37,75 @@ export const MealPlanCalendar = ({
     return `https://www.youtube.com/results?search_query=${encodeURIComponent(recipeName + " recipe")}`;
   };
 
+  const getCaloriesPerServing = (recipe: any) => {
+    if (!recipe?.nutritional_info?.calories) return null;
+    return Math.round(recipe.nutritional_info.calories);
+  };
+
+  const getDailyCalories = (dayIndex: number) => {
+    return MEAL_TYPES.reduce((total, mealType) => {
+      const meal = getMealForDayAndType(dayIndex, mealType);
+      if (meal?.recipe) {
+        const calories = getCaloriesPerServing(meal.recipe);
+        return total + (calories || 0);
+      }
+      return total;
+    }, 0);
+  };
+
+  const getWeeklyCalories = () => {
+    return weekDays.reduce((total, _, dayIndex) => {
+      return total + getDailyCalories(dayIndex);
+    }, 0);
+  };
+
+  const weeklyCalories = getWeeklyCalories();
+  const totalMeals = mealPlan?.items?.length || 0;
+
   return (
     <div className="space-y-4">
-      {/* Day headers */}
-      <div className="grid grid-cols-7 gap-2">
-        {weekDays.map((day, index) => (
-          <div
-            key={index}
-            className="text-center p-2 bg-primary/10 rounded-lg"
-          >
-            <div className="font-semibold text-sm">{getShortDayName(day)}</div>
-            <div className="text-xs text-muted-foreground">{format(day, "MMM d")}</div>
+      {/* Weekly Summary */}
+      {weeklyCalories > 0 && (
+        <div className="p-4 bg-primary/5 rounded-lg border">
+          <h3 className="font-semibold mb-3">Weekly Summary (per person)</h3>
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <p className="text-sm text-muted-foreground">Total Week</p>
+              <p className="text-2xl font-bold">{weeklyCalories.toLocaleString()} cal</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Daily Average</p>
+              <p className="text-2xl font-bold">
+                {Math.round(weeklyCalories / 7).toLocaleString()} cal
+              </p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Meals Planned</p>
+              <p className="text-2xl font-bold">{totalMeals}</p>
+            </div>
           </div>
-        ))}
+        </div>
+      )}
+
+      {/* Day headers with calorie summary */}
+      <div className="grid grid-cols-7 gap-2">
+        {weekDays.map((day, index) => {
+          const dailyCalories = getDailyCalories(index);
+          return (
+            <div
+              key={index}
+              className="text-center p-2 bg-primary/10 rounded-lg"
+            >
+              <div className="font-semibold text-sm">{getShortDayName(day)}</div>
+              <div className="text-xs text-muted-foreground">{format(day, "MMM d")}</div>
+              {dailyCalories > 0 && (
+                <div className="text-xs font-medium mt-1 text-orange-600">
+                  {dailyCalories} cal
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
 
       {/* Meal rows */}
@@ -77,6 +133,7 @@ export const MealPlanCalendar = ({
 
               const recipe = meal.recipe;
               const totalTime = (recipe.prep_time || 0) + (recipe.cook_time || 0);
+              const calories = getCaloriesPerServing(recipe);
 
               return (
                 <Card
@@ -90,8 +147,8 @@ export const MealPlanCalendar = ({
                       {recipe.title}
                     </h4>
 
-                    {/* Time and rating */}
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    {/* Time, rating, and calories */}
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
                       <div className="flex items-center gap-1">
                         <Clock className="w-3 h-3" />
                         <span>{totalTime}m</span>
@@ -100,6 +157,12 @@ export const MealPlanCalendar = ({
                         <div className="flex items-center gap-1">
                           <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
                           <span>{recipe.rating.toFixed(1)}</span>
+                        </div>
+                      )}
+                      {calories && (
+                        <div className="flex items-center gap-1 text-orange-600">
+                          <Flame className="w-3 h-3" />
+                          <span>{calories} cal</span>
                         </div>
                       )}
                     </div>
@@ -121,12 +184,17 @@ export const MealPlanCalendar = ({
                         variant="ghost"
                         size="sm"
                         className="h-6 px-2"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          window.open(getYouTubeSearchUrl(recipe.title), "_blank");
-                        }}
+                        asChild
+                        onClick={(e) => e.stopPropagation()}
                       >
-                        <Youtube className="w-3 h-3" />
+                        <a
+                          href={getYouTubeSearchUrl(recipe.title)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          aria-label="Watch recipe on YouTube"
+                        >
+                          <Youtube className="w-3 h-3" />
+                        </a>
                       </Button>
                       <Button
                         variant="ghost"

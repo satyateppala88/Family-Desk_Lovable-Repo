@@ -72,13 +72,18 @@ export const RecipeCard = ({ recipe, onToggleFavorite, onDelete, onClick, onRate
             <Button
               size="icon"
               variant="ghost"
-              onClick={(e) => {
-                e.stopPropagation();
-                window.open(getYouTubeSearchUrl(recipe.title), "_blank");
-              }}
+              asChild
+              onClick={(e) => e.stopPropagation()}
               className="h-8 w-8"
             >
-              <Youtube className="w-4 h-4" />
+              <a
+                href={getYouTubeSearchUrl(recipe.title)}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Watch recipe on YouTube"
+              >
+                <Youtube className="w-4 h-4" />
+              </a>
             </Button>
             <Button
               size="icon"
