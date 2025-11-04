@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -15,6 +16,7 @@ const HouseholdSetup = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
+  const queryClient = useQueryClient();
 
   const handleCreateHousehold = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,12 +42,15 @@ const HouseholdSetup = () => {
 
       console.log("Household created successfully via edge function:", data.household);
 
-      toast({
-        title: "Household created!",
-        description: `Welcome to ${householdName}. Let's set up your preferences.`,
-      });
+    toast({
+      title: "Household created!",
+      description: `Welcome to ${householdName}. Let's set up your preferences.`,
+    });
 
-      navigate("/onboarding/preferences");
+    // Invalidate household query cache to ensure fresh data on next page
+    queryClient.invalidateQueries({ queryKey: ["household"] });
+
+    navigate("/onboarding/preferences");
     } catch (error: any) {
       console.error("Complete error:", error);
       toast({
