@@ -1,10 +1,19 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { z } from "https://deno.land/x/zod@v3.23.8/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+// Input validation schema
+const RegenerateMealsSchema = z.object({
+  householdId: z.string().uuid("Invalid household ID format"),
+  weekStartDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid date format (use YYYY-MM-DD)"),
+  dayOfWeek: z.number().int().min(0, "Day of week must be 0-6").max(6, "Day of week must be 0-6"),
+  mealType: z.enum(["breakfast", "lunch", "dinner"]).optional()
+});
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -12,14 +21,25 @@ serve(async (req) => {
   }
 
   try {
-    const { householdId, weekStartDate, dayOfWeek, mealType } = await req.json();
-
-    if (!householdId || !weekStartDate || dayOfWeek === undefined) {
-      return new Response(JSON.stringify({ error: "Missing required fields" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    // Parse and validate request body
+    const requestBody = await req.json();
+    const validationResult = RegenerateMealsSchema.safeParse(requestBody);
+    
+    if (!validationResult.success) {
+      console.error("Validation error:", validationResult.error.errors);
+      return new Response(
+        JSON.stringify({ 
+          error: "Invalid input",
+          details: validationResult.error.errors 
+        }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, "Content-Type": "application/json" } 
+        }
+      );
     }
+
+    const { householdId, weekStartDate, dayOfWeek, mealType } = validationResult.data;
 
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',

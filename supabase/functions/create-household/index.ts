@@ -1,10 +1,19 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.78.0";
+import { z } from "https://deno.land/x/zod@v3.23.8/mod.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+// Input validation schema
+const CreateHouseholdSchema = z.object({
+  householdName: z.string()
+    .trim()
+    .min(1, "Household name cannot be empty")
+    .max(100, "Household name must be less than 100 characters")
+});
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -41,13 +50,25 @@ serve(async (req) => {
 
     console.log("User verified successfully:", user.id);
 
-    // Parse request body
-    const { householdName } = await req.json();
+    // Parse and validate request body
+    const requestBody = await req.json();
+    const validationResult = CreateHouseholdSchema.safeParse(requestBody);
     
-    if (!householdName || typeof householdName !== 'string') {
-      throw new Error("Invalid household name");
+    if (!validationResult.success) {
+      console.error("Validation error:", validationResult.error.errors);
+      return new Response(
+        JSON.stringify({ 
+          error: "Invalid input",
+          details: validationResult.error.errors 
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 400,
+        }
+      );
     }
 
+    const { householdName } = validationResult.data;
     console.log("Creating household:", householdName, "for user:", user.id);
 
     // Create household

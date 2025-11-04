@@ -1,10 +1,20 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { z } from "https://deno.land/x/zod@v3.23.8/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+
+// Input validation schema
+const GenerateMealSuggestionsSchema = z.object({
+  householdId: z.string().uuid("Invalid household ID format"),
+  userId: z.string().uuid("Invalid user ID format"),
+  numDays: z.number().int().min(1).max(30).optional().default(7),
+  weekStartDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid date format (use YYYY-MM-DD)"),
+  generateFrom: z.enum(["start", "today"]).optional()
+});
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -12,11 +22,25 @@ serve(async (req) => {
   }
 
   try {
-    const { householdId, userId, numDays = 7, weekStartDate, generateFrom } = await req.json();
+    // Parse and validate request body
+    const requestBody = await req.json();
+    const validationResult = GenerateMealSuggestionsSchema.safeParse(requestBody);
     
-    if (!householdId || !userId) {
-      throw new Error("householdId and userId are required");
+    if (!validationResult.success) {
+      console.error("Validation error:", validationResult.error.errors);
+      return new Response(
+        JSON.stringify({ 
+          error: "Invalid input",
+          details: validationResult.error.errors 
+        }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, "Content-Type": "application/json" } 
+        }
+      );
     }
+
+    const { householdId, userId, numDays, weekStartDate, generateFrom } = validationResult.data;
 
     // Calculate which day of the week to start from
     const weekStart = new Date(weekStartDate);
