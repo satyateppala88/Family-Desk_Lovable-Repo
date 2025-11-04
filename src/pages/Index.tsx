@@ -89,19 +89,19 @@ const Index = () => {
         <OnboardingTour run={runOnboarding} onComplete={handleOnboardingComplete} />
       )}
       <main className="flex-1 container mx-auto px-4 py-8">
-        <div className="mb-8 dashboard-overview">
-          <h1 className="text-3xl font-bold mb-2">Welcome to {household.name}</h1>
-          <p className="text-muted-foreground">
+        <div className="mb-10 dashboard-overview">
+          <h1 className="text-4xl font-bold mb-3">Welcome to {household.name}</h1>
+          <p className="text-lg text-muted-foreground">
             Manage your household tasks, meals, and groceries all in one place
           </p>
         </div>
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 dashboard-overview">
-          <Link to="/tasks" className="block hover:scale-105 transition-transform tasks-card">
-            <Card className="h-full hover:shadow-lg transition-shadow">
+          <Link to="/tasks" className="block hover:scale-[1.02] transition-transform tasks-card">
+            <Card className="h-full border-l-4 border-l-primary">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <CheckSquare className="h-5 w-5" />
+                <CardTitle className="flex items-center gap-3">
+                  <CheckSquare className="h-8 w-8 text-primary" />
                   Tasks
                 </CardTitle>
               </CardHeader>
@@ -113,11 +113,11 @@ const Index = () => {
             </Card>
           </Link>
 
-          <Link to="/meals" className="block hover:scale-105 transition-transform meals-card">
-            <Card className="h-full hover:shadow-lg transition-shadow">
+          <Link to="/meals" className="block hover:scale-[1.02] transition-transform meals-card">
+            <Card className="h-full border-l-4 border-l-accent">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <ChefHat className="h-5 w-5" />
+                <CardTitle className="flex items-center gap-3">
+                  <ChefHat className="h-8 w-8 text-accent" />
                   Meals
                 </CardTitle>
               </CardHeader>
@@ -129,11 +129,11 @@ const Index = () => {
             </Card>
           </Link>
 
-          <Link to="/grocery" className="block hover:scale-105 transition-transform grocery-card">
-            <Card className="h-full hover:shadow-lg transition-shadow">
+          <Link to="/grocery" className="block hover:scale-[1.02] transition-transform grocery-card">
+            <Card className="h-full border-l-4 border-l-[hsl(145,65%,45%)]">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <ShoppingCart className="h-5 w-5" />
+                <CardTitle className="flex items-center gap-3">
+                  <ShoppingCart className="h-8 w-8" style={{ color: "hsl(145, 65%, 45%)" }} />
                   Grocery
                 </CardTitle>
               </CardHeader>
@@ -145,11 +145,11 @@ const Index = () => {
             </Card>
           </Link>
 
-          <Link to="/calendar" className="block hover:scale-105 transition-transform calendar-card">
-            <Card className="h-full hover:shadow-lg transition-shadow">
+          <Link to="/calendar" className="block hover:scale-[1.02] transition-transform calendar-card">
+            <Card className="h-full border-l-4 border-l-[hsl(215,75%,55%)]">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <CalendarIcon className="h-5 w-5" />
+                <CardTitle className="flex items-center gap-3">
+                  <CalendarIcon className="h-8 w-8" style={{ color: "hsl(215, 75%, 55%)" }} />
                   Calendar
                 </CardTitle>
               </CardHeader>
