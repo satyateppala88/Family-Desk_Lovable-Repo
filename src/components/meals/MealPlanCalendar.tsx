@@ -1,7 +1,7 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Clock, Star, Youtube, Trash2, Plus, Flame } from "lucide-react";
+import { Clock, Star, Youtube, Trash2, Plus, Flame, RefreshCw } from "lucide-react";
 import { MealPlan } from "@/hooks/useMealPlans";
 import { getWeekDays, getShortDayName } from "@/lib/weekUtils";
 import { format } from "date-fns";
@@ -13,6 +13,8 @@ interface MealPlanCalendarProps {
   onRateClick: (recipe: any) => void;
   onRemoveClick: (itemId: string) => void;
   onAddClick: (day: number, mealType: string) => void;
+  onRegenerateMeal?: (dayIndex: number, mealType: string) => void;
+  onRegenerateDay?: (dayIndex: number) => void;
 }
 
 const MEAL_TYPES = ["breakfast", "lunch", "dinner"];
@@ -24,6 +26,8 @@ export const MealPlanCalendar = ({
   onRateClick,
   onRemoveClick,
   onAddClick,
+  onRegenerateMeal,
+  onRegenerateDay,
 }: MealPlanCalendarProps) => {
   const weekDays = getWeekDays(weekStart);
 
@@ -94,14 +98,25 @@ export const MealPlanCalendar = ({
           return (
             <div
               key={index}
-              className="text-center p-2 bg-primary/10 rounded-lg"
+              className="text-center p-2 bg-primary/10 rounded-lg space-y-1"
             >
               <div className="font-semibold text-sm">{getShortDayName(day)}</div>
               <div className="text-xs text-muted-foreground">{format(day, "MMM d")}</div>
               {dailyCalories > 0 && (
-                <div className="text-xs font-medium mt-1 text-orange-600">
+                <div className="text-xs font-medium text-orange-600">
                   {dailyCalories} cal
                 </div>
+              )}
+              {onRegenerateDay && dailyCalories > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 w-full text-xs"
+                  onClick={() => onRegenerateDay(index)}
+                >
+                  <RefreshCw className="w-3 h-3 mr-1" />
+                  Regenerate
+                </Button>
               )}
             </div>
           );
@@ -196,6 +211,19 @@ export const MealPlanCalendar = ({
                           <Youtube className="w-3 h-3" />
                         </a>
                       </Button>
+                      {onRegenerateMeal && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 px-2"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onRegenerateMeal(dayIndex, mealType);
+                          }}
+                        >
+                          <RefreshCw className="w-3 h-3" />
+                        </Button>
+                      )}
                       <Button
                         variant="ghost"
                         size="sm"

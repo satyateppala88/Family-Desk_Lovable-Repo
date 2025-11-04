@@ -5,3 +5,6 @@ verify_jwt = true
 
 [functions.create-household]
 verify_jwt = true
+
+[functions.regenerate-meals]
+verify_jwt = true

@@ -20,6 +20,7 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { getWeekStartDate, getRemainingDaysOfWeek } from "@/lib/weekUtils";
 import { addWeeks, format } from "date-fns";
+import { useRegenerateMeals } from "@/hooks/useRegenerateMeals";
 import { RecipeCard } from "@/components/meals/RecipeCard";
 
 const Meals = () => {
@@ -36,6 +37,7 @@ const Meals = () => {
   const [view, setView] = useState<"calendar" | "recipes">("calendar");
   const calendarRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+  const regenerateMeals = useRegenerateMeals();
 
   const currentWeekPlan = mealPlans[0] || null;
 
@@ -175,6 +177,23 @@ const Meals = () => {
                 onRateClick={setRatingRecipe}
                 onRemoveClick={(itemId) => deleteMealPlanItem.mutate(itemId)}
                 onAddClick={() => toast({ title: "Coming soon", description: "Manual recipe addition" })}
+                onRegenerateMeal={(dayIndex, mealType) => {
+                  if (!householdId) return;
+                  regenerateMeals.mutate({
+                    householdId,
+                    weekStartDate: format(currentWeekStart, "yyyy-MM-dd"),
+                    dayOfWeek: dayIndex,
+                    mealType: mealType as "breakfast" | "lunch" | "dinner",
+                  });
+                }}
+                onRegenerateDay={(dayIndex) => {
+                  if (!householdId) return;
+                  regenerateMeals.mutate({
+                    householdId,
+                    weekStartDate: format(currentWeekStart, "yyyy-MM-dd"),
+                    dayOfWeek: dayIndex,
+                  });
+                }}
               />
             </div>
 
