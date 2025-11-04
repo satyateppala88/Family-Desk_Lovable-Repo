@@ -81,6 +81,98 @@ export type Database = {
           },
         ]
       }
+      household_preferences: {
+        Row: {
+          budget_consciousness: string | null
+          cooking_skill_level: string | null
+          created_at: string | null
+          diet_type: string | null
+          family_size_adults: number | null
+          family_size_children: number | null
+          festival_importance: string | null
+          food_allergies: string[] | null
+          household_concerns: string[] | null
+          household_id: string
+          household_type: string | null
+          id: string
+          monthly_grocery_budget: string | null
+          organic_preference: string | null
+          pantry_size: string | null
+          preferred_meal_types: string[] | null
+          preferred_task_time: string | null
+          regional_cuisines: string[] | null
+          religious_restrictions: string | null
+          shopping_frequency: string | null
+          shopping_locations: string[] | null
+          spice_level: string | null
+          updated_at: string | null
+          weekday_cooking_time: string | null
+          work_schedule: string | null
+        }
+        Insert: {
+          budget_consciousness?: string | null
+          cooking_skill_level?: string | null
+          created_at?: string | null
+          diet_type?: string | null
+          family_size_adults?: number | null
+          family_size_children?: number | null
+          festival_importance?: string | null
+          food_allergies?: string[] | null
+          household_concerns?: string[] | null
+          household_id: string
+          household_type?: string | null
+          id?: string
+          monthly_grocery_budget?: string | null
+          organic_preference?: string | null
+          pantry_size?: string | null
+          preferred_meal_types?: string[] | null
+          preferred_task_time?: string | null
+          regional_cuisines?: string[] | null
+          religious_restrictions?: string | null
+          shopping_frequency?: string | null
+          shopping_locations?: string[] | null
+          spice_level?: string | null
+          updated_at?: string | null
+          weekday_cooking_time?: string | null
+          work_schedule?: string | null
+        }
+        Update: {
+          budget_consciousness?: string | null
+          cooking_skill_level?: string | null
+          created_at?: string | null
+          diet_type?: string | null
+          family_size_adults?: number | null
+          family_size_children?: number | null
+          festival_importance?: string | null
+          food_allergies?: string[] | null
+          household_concerns?: string[] | null
+          household_id?: string
+          household_type?: string | null
+          id?: string
+          monthly_grocery_budget?: string | null
+          organic_preference?: string | null
+          pantry_size?: string | null
+          preferred_meal_types?: string[] | null
+          preferred_task_time?: string | null
+          regional_cuisines?: string[] | null
+          religious_restrictions?: string | null
+          shopping_frequency?: string | null
+          shopping_locations?: string[] | null
+          spice_level?: string | null
+          updated_at?: string | null
+          weekday_cooking_time?: string | null
+          work_schedule?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "household_preferences_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       households: {
         Row: {
           created_at: string
@@ -480,6 +572,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_onboarding_progress: {
+        Row: {
+          completed_at: string | null
+          completed_steps: string[] | null
+          current_step: number | null
+          id: string
+          preferences_completed: boolean | null
+          started_at: string | null
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          completed_steps?: string[] | null
+          current_step?: number | null
+          id?: string
+          preferences_completed?: boolean | null
+          started_at?: string | null
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          completed_steps?: string[] | null
+          current_step?: number | null
+          id?: string
+          preferences_completed?: boolean | null
+          started_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
       }
       user_roles: {
         Row: {
