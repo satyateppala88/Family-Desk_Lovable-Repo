@@ -34,7 +34,7 @@ export const Header = ({ onStartOnboarding }: HeaderProps) => {
     <header className="sticky top-0 z-40 bg-background border-b border-border">
       <div className="container flex h-16 items-center justify-between px-4">
         <div className="flex items-center gap-3">
-          <img src={logo} alt="HomeMate Logo" className="h-10 w-10" />
+          <img src={logo} alt="HomeMate Logo" className="h-12 w-12" />
           <h1 className="text-xl font-bold text-primary">HomeMate</h1>
         </div>
 
