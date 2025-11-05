@@ -49,6 +49,56 @@ export type Database = {
           },
         ]
       }
+      household_invitations: {
+        Row: {
+          created_at: string
+          household_id: string
+          id: string
+          invitee_email: string
+          invitee_name: string | null
+          invitee_user_id: string
+          requested_role: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          household_id: string
+          id?: string
+          invitee_email: string
+          invitee_name?: string | null
+          invitee_user_id: string
+          requested_role?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          household_id?: string
+          id?: string
+          invitee_email?: string
+          invitee_name?: string | null
+          invitee_user_id?: string
+          requested_role?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "household_invitations_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       household_members: {
         Row: {
           household_id: string
@@ -181,6 +231,7 @@ export type Database = {
           created_at: string
           created_by: string
           id: string
+          invite_code: string | null
           name: string
           updated_at: string
         }
@@ -188,6 +239,7 @@ export type Database = {
           created_at?: string
           created_by: string
           id?: string
+          invite_code?: string | null
           name: string
           updated_at?: string
         }
@@ -195,6 +247,7 @@ export type Database = {
           created_at?: string
           created_by?: string
           id?: string
+          invite_code?: string | null
           name?: string
           updated_at?: string
         }
@@ -655,6 +708,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      generate_invite_code: { Args: never; Returns: string }
       has_household_role: {
         Args: {
           _household_id: string
