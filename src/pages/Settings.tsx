@@ -10,8 +10,12 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useHousehold } from "@/hooks/useHousehold";
 import { toast } from "sonner";
 import { HouseholdPreferences } from "@/types/database";
-import { Settings as SettingsIcon, RefreshCw } from "lucide-react";
+import { Settings as SettingsIcon, RefreshCw, Copy, Users, UserPlus, Key } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useIsHouseholdAdmin } from "@/hooks/useIsHouseholdAdmin";
+import { usePendingInvitations } from "@/hooks/usePendingInvitations";
+import { Badge } from "@/components/ui/badge";
+import { useQuery } from "@tanstack/react-query";
 
 export const Settings = () => {
   const { user } = useAuth();
@@ -19,6 +23,29 @@ export const Settings = () => {
   const navigate = useNavigate();
   const [preferences, setPreferences] = useState<HouseholdPreferences | null>(null);
   const [loading, setLoading] = useState(true);
+  const { isAdmin } = useIsHouseholdAdmin(householdId);
+  const { data: pendingInvitations } = usePendingInvitations(householdId);
+
+  const { data: household } = useQuery({
+    queryKey: ["household-details", householdId],
+    queryFn: async () => {
+      if (!householdId) return null;
+      const { data } = await supabase
+        .from("households")
+        .select("invite_code, name")
+        .eq("id", householdId)
+        .single();
+      return data;
+    },
+    enabled: !!householdId,
+  });
+
+  const copyInviteCode = () => {
+    if (household?.invite_code) {
+      navigator.clipboard.writeText(household.invite_code);
+      toast.success("Invite code copied!");
+    }
+  };
 
   useEffect(() => {
     const fetchPreferences = async () => {
@@ -107,6 +134,81 @@ export const Settings = () => {
             </Card>
           ) : (
             <div className="grid gap-6">
+              {/* Household Management Section */}
+              <Card className="bg-gradient-to-br from-primary/5 to-secondary/5">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Key className="h-5 w-5" />
+                    Household Management
+                  </CardTitle>
+                  <CardDescription>Invite members and manage your household</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="p-4 bg-background rounded-lg border">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-muted-foreground mb-1">
+                          Household Name
+                        </p>
+                        <p className="text-lg font-semibold">{household?.name || "Your Household"}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="p-4 bg-background rounded-lg border">
+                    <div className="flex items-center justify-between mb-3">
+                      <div>
+                        <p className="text-sm font-medium text-muted-foreground mb-1">
+                          Invite Code
+                        </p>
+                        <p className="text-2xl font-mono font-bold tracking-wider">
+                          {household?.invite_code || "------"}
+                        </p>
+                      </div>
+                      <Button
+                        onClick={copyInviteCode}
+                        variant="outline"
+                        size="sm"
+                      >
+                        <Copy className="h-4 w-4 mr-2" />
+                        Copy
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Share this code with family members to invite them to your household
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {isAdmin && (
+                      <Button
+                        onClick={() => navigate("/invitations")}
+                        variant="outline"
+                        className="w-full relative"
+                      >
+                        <UserPlus className="h-4 w-4 mr-2" />
+                        Pending Invitations
+                        {pendingInvitations && pendingInvitations.length > 0 && (
+                          <Badge variant="destructive" className="ml-2 h-5 px-1.5 text-xs">
+                            {pendingInvitations.length}
+                          </Badge>
+                        )}
+                      </Button>
+                    )}
+                    {isAdmin && (
+                      <Button
+                        onClick={() => navigate("/members")}
+                        variant="outline"
+                        className="w-full"
+                      >
+                        <Users className="h-4 w-4 mr-2" />
+                        Manage Members
+                      </Button>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
               <Card>
                 <CardHeader>
                   <CardTitle>Household Basics</CardTitle>

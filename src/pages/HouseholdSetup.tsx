@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Home } from "lucide-react";
+import logoImg from "@/assets/logo-family-hub-v4.png";
 
 const HouseholdSetup = () => {
   const [householdName, setHouseholdName] = useState("");
@@ -68,9 +69,11 @@ const HouseholdSetup = () => {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
-            <div className="p-3 rounded-full bg-primary/10">
-              <Home className="w-8 h-8 text-primary" />
-            </div>
+            <img 
+              src={logoImg} 
+              alt="HomeMate Logo" 
+              className="h-16 w-16 object-contain"
+            />
           </div>
           <CardTitle className="text-2xl">Set Up Your Household</CardTitle>
           <CardDescription>

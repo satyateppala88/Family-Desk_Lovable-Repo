@@ -4,12 +4,14 @@ import { MobileNav } from "@/components/layout/MobileNav";
 import { Footer } from "@/components/layout/Footer";
 import { TaskCard } from "@/components/tasks/TaskCard";
 import { TaskDialog } from "@/components/tasks/TaskDialog";
+import { OnboardingTour } from "@/components/onboarding/OnboardingTour";
 import { useHousehold } from "@/hooks/useHousehold";
 import { useTasks } from "@/hooks/useTasks";
 import { Task } from "@/types/database";
 import { Button } from "@/components/ui/button";
 import { Plus, Filter } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Step } from "react-joyride";
 import {
   Select,
   SelectContent,
@@ -18,6 +20,20 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+const tasksTourSteps: Step[] = [
+  {
+    target: "body",
+    content: "Welcome to Tasks! Let me show you how to manage your household tasks effectively.",
+    placement: "center",
+    disableBeacon: true,
+  },
+  {
+    target: ".user-menu",
+    content: "Access settings and restart this tour anytime from the User Guide menu.",
+    placement: "bottom",
+  },
+];
+
 const Tasks = () => {
   const { householdId, isLoading: loadingHousehold } = useHousehold();
   const { tasks, isLoading, createTask, updateTask, deleteTask } = useTasks(householdId);
@@ -25,6 +41,10 @@ const Tasks = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [priorityFilter, setPriorityFilter] = useState<string>("all");
+  const [runOnboarding, setRunOnboarding] = useState(false);
+
+  const handleStartOnboarding = () => setRunOnboarding(true);
+  const handleOnboardingComplete = () => setRunOnboarding(false);
 
   const handleCreateTask = () => {
     setSelectedTask(null);
@@ -85,7 +105,7 @@ const Tasks = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header />
+      <Header onStartOnboarding={handleStartOnboarding} />
 
       <main className="container px-4 sm:px-6 py-6 pb-24">
         <div className="flex items-center justify-between mb-6">
@@ -157,6 +177,12 @@ const Tasks = () => {
         onOpenChange={setDialogOpen}
         onSave={handleSaveTask}
         householdId={householdId || ""}
+      />
+
+      <OnboardingTour
+        run={runOnboarding}
+        onComplete={handleOnboardingComplete}
+        steps={tasksTourSteps}
       />
     </div>
   );

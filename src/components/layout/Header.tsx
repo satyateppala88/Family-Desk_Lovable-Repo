@@ -10,7 +10,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { User, Settings, LogOut, HelpCircle, FileText, Shield } from "lucide-react";
-import logo from "@/assets/logo-family-hub-v1.png";
+import logoImg from "@/assets/logo-family-hub-v4.png";
 
 interface HeaderProps {
   onStartOnboarding?: () => void;
@@ -34,7 +34,7 @@ export const Header = ({ onStartOnboarding }: HeaderProps) => {
     <header className="sticky top-0 z-40 bg-background border-b border-border">
       <div className="container flex h-16 items-center justify-between px-4">
         <div className="flex items-center gap-3">
-          <img src={logo} alt="HomeMate Logo" className="h-12 w-12" />
+          <img src={logoImg} alt="HomeMate Logo" className="h-12 w-12 object-contain" />
           <h1 className="text-xl font-bold text-primary">HomeMate</h1>
         </div>
 

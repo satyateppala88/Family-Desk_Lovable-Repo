@@ -14,6 +14,126 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_conversations: {
+        Row: {
+          context: Json | null
+          created_at: string
+          household_id: string
+          id: string
+          last_message_at: string | null
+          title: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          context?: Json | null
+          created_at?: string
+          household_id: string
+          id?: string
+          last_message_at?: string | null
+          title?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          context?: Json | null
+          created_at?: string
+          household_id?: string
+          id?: string
+          last_message_at?: string | null
+          title?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_conversations_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_messages: {
+        Row: {
+          content: string
+          conversation_id: string
+          created_at: string
+          id: string
+          role: string
+          tool_calls: Json | null
+        }
+        Insert: {
+          content: string
+          conversation_id: string
+          created_at?: string
+          id?: string
+          role: string
+          tool_calls?: Json | null
+        }
+        Update: {
+          content?: string
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          role?: string
+          tool_calls?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "ai_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_suggestions: {
+        Row: {
+          content: string
+          context: Json | null
+          created_at: string
+          expires_at: string | null
+          household_id: string
+          id: string
+          is_dismissed: boolean | null
+          is_read: boolean | null
+          suggestion_type: string
+        }
+        Insert: {
+          content: string
+          context?: Json | null
+          created_at?: string
+          expires_at?: string | null
+          household_id: string
+          id?: string
+          is_dismissed?: boolean | null
+          is_read?: boolean | null
+          suggestion_type: string
+        }
+        Update: {
+          content?: string
+          context?: Json | null
+          created_at?: string
+          expires_at?: string | null
+          household_id?: string
+          id?: string
+          is_dismissed?: boolean | null
+          is_read?: boolean | null
+          suggestion_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_suggestions_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dietary_preferences: {
         Row: {
           created_at: string

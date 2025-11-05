@@ -18,6 +18,9 @@ import Calendar from "./pages/Calendar";
 import TermsOfService from "./pages/TermsOfService";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import NotFound from "./pages/NotFound";
+import HouseholdInvitations from "./pages/HouseholdInvitations";
+import HouseholdMembers from "./pages/HouseholdMembers";
+import { AIChatWidget } from "./components/ai/AIChatWidget";
 
 const queryClient = new QueryClient();
 
@@ -43,6 +46,16 @@ const App = () => (
             <Route path="/settings" element={
               <ProtectedRoute>
                 <Settings />
+              </ProtectedRoute>
+            } />
+            <Route path="/invitations" element={
+              <ProtectedRoute>
+                <HouseholdInvitations />
+              </ProtectedRoute>
+            } />
+            <Route path="/members" element={
+              <ProtectedRoute>
+                <HouseholdMembers />
               </ProtectedRoute>
             } />
             <Route path="/account-settings" element={
@@ -80,6 +93,7 @@ const App = () => (
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
+          <AIChatWidget />
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>

@@ -78,6 +78,49 @@ export const UserPreferencesOnboarding = () => {
   const totalSteps = 5;
   const progress = (currentStep / totalSteps) * 100;
 
+  // Fetch existing preferences when editing
+  useEffect(() => {
+    const fetchExistingPreferences = async () => {
+      if (!householdId) return;
+      
+      const { data, error } = await supabase
+        .from("household_preferences")
+        .select("*")
+        .eq("household_id", householdId)
+        .maybeSingle();
+      
+      if (data && !error) {
+        // Merge fetched preferences with current state
+        setPreferences(prev => ({
+          ...prev,
+          family_size_adults: data.family_size_adults ?? prev.family_size_adults,
+          family_size_children: data.family_size_children ?? prev.family_size_children,
+          household_type: data.household_type || prev.household_type,
+          diet_type: data.diet_type || prev.diet_type,
+          food_allergies: data.food_allergies || [],
+          religious_restrictions: data.religious_restrictions || prev.religious_restrictions,
+          spice_level: data.spice_level || prev.spice_level,
+          regional_cuisines: data.regional_cuisines || [],
+          cooking_skill_level: data.cooking_skill_level || prev.cooking_skill_level,
+          weekday_cooking_time: data.weekday_cooking_time || prev.weekday_cooking_time,
+          preferred_meal_types: data.preferred_meal_types || [],
+          pantry_size: data.pantry_size || prev.pantry_size,
+          shopping_frequency: data.shopping_frequency || prev.shopping_frequency,
+          household_concerns: data.household_concerns || [],
+          work_schedule: data.work_schedule || prev.work_schedule,
+          preferred_task_time: data.preferred_task_time || prev.preferred_task_time,
+          festival_importance: data.festival_importance || prev.festival_importance,
+          monthly_grocery_budget: data.monthly_grocery_budget || prev.monthly_grocery_budget,
+          shopping_locations: data.shopping_locations || [],
+          organic_preference: data.organic_preference || prev.organic_preference,
+          budget_consciousness: data.budget_consciousness || prev.budget_consciousness,
+        }));
+      }
+    };
+    
+    fetchExistingPreferences();
+  }, [householdId]);
+
   useEffect(() => {
     if (!householdLoading && !householdId) {
       navigate("/household-setup");

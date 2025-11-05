@@ -6,9 +6,10 @@ import { useAuth } from "@/contexts/AuthContext";
 interface OnboardingTourProps {
   run: boolean;
   onComplete: () => void;
+  steps?: Step[];
 }
 
-const steps: Step[] = [
+const defaultSteps: Step[] = [
   {
     target: "body",
     content: "Welcome to HomeMate! Let's take a quick tour to help you get started with managing your household in India.",
@@ -47,7 +48,8 @@ const steps: Step[] = [
   },
 ];
 
-export const OnboardingTour = ({ run, onComplete }: OnboardingTourProps) => {
+export const OnboardingTour = ({ run, onComplete, steps }: OnboardingTourProps) => {
+  const tourSteps = steps || defaultSteps;
   const { user } = useAuth();
   const [stepIndex, setStepIndex] = useState(0);
 
@@ -72,7 +74,7 @@ export const OnboardingTour = ({ run, onComplete }: OnboardingTourProps) => {
 
   return (
     <Joyride
-      steps={steps}
+      steps={tourSteps}
       run={run}
       continuous
       showProgress
