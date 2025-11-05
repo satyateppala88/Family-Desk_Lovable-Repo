@@ -48,23 +48,112 @@ export const AIChatWidget = () => {
     setInput("");
     setIsLoading(true);
 
+    let assistantContent = "";
+
     try {
-      const { data, error } = await supabase.functions.invoke('ai-chat', {
-        body: {
+      const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-chat`;
+      
+      const response = await fetch(CHAT_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify({
           messages: [...messages, userMessage].map(m => ({ role: m.role, content: m.content })),
           householdId,
           userId: user.id,
-        },
+        }),
       });
 
-      if (error) throw error;
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Failed to send message: ${errorText}`);
+      }
 
-      // For now, handle non-streaming response
-      // In production, you'd implement SSE streaming
-      if (data && typeof data === 'string') {
-        setMessages(prev => [...prev, { role: "assistant", content: data }]);
-      } else if (data?.choices?.[0]?.message) {
-        setMessages(prev => [...prev, data.choices[0].message]);
+      if (!response.body) {
+        throw new Error('No response body');
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let textBuffer = "";
+      let streamDone = false;
+
+      // Add empty assistant message that we'll update
+      setMessages(prev => [...prev, { role: "assistant", content: "" }]);
+
+      while (!streamDone) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        
+        textBuffer += decoder.decode(value, { stream: true });
+
+        // Process line-by-line
+        let newlineIndex: number;
+        while ((newlineIndex = textBuffer.indexOf("\n")) !== -1) {
+          let line = textBuffer.slice(0, newlineIndex);
+          textBuffer = textBuffer.slice(newlineIndex + 1);
+
+          if (line.endsWith("\r")) line = line.slice(0, -1);
+          if (line.startsWith(":") || line.trim() === "") continue;
+          if (!line.startsWith("data: ")) continue;
+
+          const jsonStr = line.slice(6).trim();
+          if (jsonStr === "[DONE]") {
+            streamDone = true;
+            break;
+          }
+
+          try {
+            const parsed = JSON.parse(jsonStr);
+            const content = parsed.choices?.[0]?.delta?.content as string | undefined;
+            
+            if (content) {
+              assistantContent += content;
+              // Update the last message with accumulated content
+              setMessages(prev => {
+                const newMessages = [...prev];
+                const lastMessage = newMessages[newMessages.length - 1];
+                if (lastMessage && lastMessage.role === "assistant") {
+                  lastMessage.content = assistantContent;
+                }
+                return newMessages;
+              });
+            }
+          } catch (e) {
+            // Incomplete JSON, put it back
+            textBuffer = line + "\n" + textBuffer;
+            break;
+          }
+        }
+      }
+
+      // Final flush for any remaining data
+      if (textBuffer.trim()) {
+        for (let raw of textBuffer.split("\n")) {
+          if (!raw || raw.startsWith(":") || raw.trim() === "") continue;
+          if (!raw.startsWith("data: ")) continue;
+          
+          const jsonStr = raw.slice(6).trim();
+          if (jsonStr === "[DONE]") continue;
+          
+          try {
+            const parsed = JSON.parse(jsonStr);
+            const content = parsed.choices?.[0]?.delta?.content as string | undefined;
+            if (content) {
+              assistantContent += content;
+              setMessages(prev => {
+                const newMessages = [...prev];
+                const lastMessage = newMessages[newMessages.length - 1];
+                if (lastMessage && lastMessage.role === "assistant") {
+                  lastMessage.content = assistantContent;
+                }
+                return newMessages;
+              });
+            }
+          } catch { /* ignore */ }
+        }
       }
 
     } catch (error: any) {
@@ -75,11 +164,18 @@ export const AIChatWidget = () => {
         variant: "destructive",
       });
       
-      // Add error message to chat
-      setMessages(prev => [...prev, {
-        role: "assistant",
-        content: "Oops! I'm having trouble connecting right now. Please try again in a moment. 😅",
-      }]);
+      // Remove the empty assistant message and add error message
+      setMessages(prev => {
+        const newMessages = [...prev];
+        const lastMessage = newMessages[newMessages.length - 1];
+        if (lastMessage && lastMessage.role === "assistant" && !lastMessage.content) {
+          newMessages.pop(); // Remove empty assistant message
+        }
+        return [...newMessages, {
+          role: "assistant",
+          content: "Oops! I'm having trouble connecting right now. Please try again in a moment. 😅",
+        }];
+      });
     } finally {
       setIsLoading(false);
     }
