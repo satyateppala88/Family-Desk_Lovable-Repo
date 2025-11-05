@@ -22,6 +22,8 @@ import { getWeekStartDate, getRemainingDaysOfWeek } from "@/lib/weekUtils";
 import { addWeeks, format } from "date-fns";
 import { useRegenerateMeals } from "@/hooks/useRegenerateMeals";
 import { RecipeCard } from "@/components/meals/RecipeCard";
+import { OnboardingTour } from "@/components/onboarding/OnboardingTour";
+import type { Step } from "react-joyride";
 
 const Meals = () => {
   const { user } = useAuth();
@@ -38,6 +40,28 @@ const Meals = () => {
   const calendarRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const regenerateMeals = useRegenerateMeals();
+  const [runOnboarding, setRunOnboarding] = useState(false);
+
+  const handleStartOnboarding = () => setRunOnboarding(true);
+  const handleOnboardingComplete = () => setRunOnboarding(false);
+
+  const mealsTourSteps: Step[] = [
+    {
+      target: "body",
+      content: "Welcome to Meal Planning! Let me show you how to manage your weekly meals.",
+      placement: "center",
+    },
+    {
+      target: ".bg-gradient-to-r",
+      content: "Use this button to generate a full week of AI-powered meal suggestions based on your preferences.",
+      placement: "bottom",
+    },
+    {
+      target: "[role='tablist']",
+      content: "Switch between Calendar View to see your weekly plan, or All Recipes to browse your recipe collection.",
+      placement: "bottom",
+    },
+  ];
 
   const currentWeekPlan = mealPlans[0] || null;
 
@@ -118,7 +142,7 @@ const Meals = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      <Header />
+      <Header onStartOnboarding={handleStartOnboarding} />
 
       <main className="container px-4 sm:px-6 py-6 pb-24">
         <div className="mb-6 space-y-4">
@@ -246,6 +270,12 @@ const Meals = () => {
         onRate={handleRate}
         onHide={handleHide}
         onRemoveFromWeek={handleRemoveFromWeek}
+      />
+
+      <OnboardingTour 
+        run={runOnboarding} 
+        onComplete={handleOnboardingComplete} 
+        steps={mealsTourSteps}
       />
     </div>
   );

@@ -9,7 +9,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { User, Settings, LogOut, HelpCircle, FileText, Shield } from "lucide-react";
+import { User, Settings, LogOut, HelpCircle, FileText, Shield, Bell } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { useHousehold } from "@/hooks/useHousehold";
+import { useIsHouseholdAdmin } from "@/hooks/useIsHouseholdAdmin";
+import { usePendingInvitations } from "@/hooks/usePendingInvitations";
 import logoImg from "@/assets/logo-family-hub-v4.png";
 
 interface HeaderProps {
@@ -19,6 +23,10 @@ interface HeaderProps {
 export const Header = ({ onStartOnboarding }: HeaderProps) => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
+  const { householdId } = useHousehold();
+  const { isAdmin } = useIsHouseholdAdmin(householdId);
+  const { data: pendingInvitations = [] } = usePendingInvitations(householdId);
+  const pendingCount = isAdmin ? pendingInvitations.length : 0;
 
   const getInitials = () => {
     if (!user?.user_metadata?.display_name) return "U";
@@ -40,11 +48,21 @@ export const Header = ({ onStartOnboarding }: HeaderProps) => {
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Avatar className="h-10 w-10 cursor-pointer hover:opacity-80 transition-opacity user-menu">
-              <AvatarFallback className="bg-primary text-primary-foreground">
-                {getInitials()}
-              </AvatarFallback>
-            </Avatar>
+            <div className="relative">
+              <Avatar className="h-10 w-10 cursor-pointer hover:opacity-80 transition-opacity user-menu">
+                <AvatarFallback className="bg-primary text-primary-foreground">
+                  {getInitials()}
+                </AvatarFallback>
+              </Avatar>
+              {pendingCount > 0 && (
+                <Badge 
+                  variant="destructive" 
+                  className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
+                >
+                  {pendingCount}
+                </Badge>
+              )}
+            </div>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuLabel>
@@ -66,6 +84,18 @@ export const Header = ({ onStartOnboarding }: HeaderProps) => {
               <Settings className="mr-2 h-4 w-4" />
               Household Settings
             </DropdownMenuItem>
+            {isAdmin && pendingCount > 0 && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => navigate("/household/invitations")}>
+                  <Bell className="mr-2 h-4 w-4" />
+                  Pending Invitations
+                  <Badge variant="destructive" className="ml-auto">
+                    {pendingCount}
+                  </Badge>
+                </DropdownMenuItem>
+              </>
+            )}
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={onStartOnboarding}>
               <HelpCircle className="mr-2 h-4 w-4" />
