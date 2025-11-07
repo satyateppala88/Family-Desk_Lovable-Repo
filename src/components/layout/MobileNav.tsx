@@ -3,7 +3,7 @@ import { Home, CheckSquare, UtensilsCrossed, ShoppingCart, Calendar } from "luci
 import { cn } from "@/lib/utils";
 
 const navItems = [
-  { path: "/", icon: Home, label: "Home" },
+  { path: "/dashboard", icon: Home, label: "Home" },
   { path: "/tasks", icon: CheckSquare, label: "Tasks" },
   { path: "/meals", icon: UtensilsCrossed, label: "Meals" },
   { path: "/grocery", icon: ShoppingCart, label: "Grocery" },

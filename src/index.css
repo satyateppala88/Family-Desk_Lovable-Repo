@@ -11,6 +11,15 @@ All colors MUST be HSL.
     --background: 40 20% 98%;
     --foreground: 220 20% 18%;
 
+    /* Landing page specific colors */
+    --landing-bg: 220 25% 8%;
+    --landing-bg-secondary: 220 20% 12%;
+    --landing-text: 0 0% 98%;
+    --landing-text-muted: 0 0% 70%;
+    --landing-accent: 180 65% 45%;
+    --landing-accent-glow: 180 65% 55%;
+    --landing-highlight: 15 85% 60%;
+
     --card: 0 0% 100%;
     --card-foreground: 220 20% 18%;
 
@@ -114,4 +123,79 @@ All colors MUST be HSL.
   body {
     @apply bg-background text-foreground;
   }
+
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+@layer utilities {
+  .landing-page {
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+}
+
+@keyframes gradient-shift {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-20px);
+  }
+}
+
+@keyframes float-delayed {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(20px);
+  }
+}
+
+@keyframes glow-pulse {
+  0%, 100% {
+    box-shadow: 0 0 20px hsl(var(--landing-accent) / 0.3);
+  }
+  50% {
+    box-shadow: 0 0 40px hsl(var(--landing-accent) / 0.6);
+  }
+}
+
+.animate-gradient-shift {
+  background-size: 200% 200%;
+  animation: gradient-shift 15s ease infinite;
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+.animate-float-delayed {
+  animation: float-delayed 8s ease-in-out infinite;
+}
+
+.animate-glow-pulse {
+  animation: glow-pulse 3s ease-in-out infinite;
+}
+
+.animate-fade-in {
+  animation: fade-in 0.8s ease-out;
+}
+
+.animate-fade-in-delayed {
+  animation: fade-in 0.8s ease-out 0.2s both;
+}
+
+.animate-fade-in-more-delayed {
+  animation: fade-in 0.8s ease-out 0.4s both;
 }

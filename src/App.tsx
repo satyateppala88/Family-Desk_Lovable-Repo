@@ -7,6 +7,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/layout/ProtectedRoute";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
+import Landing from "./pages/Landing";
 import HouseholdSetup from "./pages/HouseholdSetup";
 import { UserPreferencesOnboarding } from "./components/onboarding/UserPreferencesOnboarding";
 import { Settings } from "./pages/Settings";
@@ -32,6 +33,7 @@ const App = () => (
       <BrowserRouter>
         <AuthProvider>
           <Routes>
+            <Route path="/" element={<Landing />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/household-setup" element={
               <ProtectedRoute>
@@ -63,7 +65,7 @@ const App = () => (
                 <AccountSettings />
               </ProtectedRoute>
             } />
-            <Route path="/" element={
+            <Route path="/dashboard" element={
               <ProtectedRoute>
                 <Index />
               </ProtectedRoute>

@@ -68,6 +68,13 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        "landing-bg": "hsl(var(--landing-bg))",
+        "landing-bg-secondary": "hsl(var(--landing-bg-secondary))",
+        "landing-text": "hsl(var(--landing-text))",
+        "landing-text-muted": "hsl(var(--landing-text-muted))",
+        "landing-accent": "hsl(var(--landing-accent))",
+        "landing-accent-glow": "hsl(var(--landing-accent-glow))",
+        "landing-highlight": "hsl(var(--landing-highlight))",
       },
       borderRadius: {
         lg: "var(--radius)",
