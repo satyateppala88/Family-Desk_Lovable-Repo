@@ -157,7 +157,7 @@ const HouseholdSetup = () => {
           <div className="flex justify-center mb-4">
             <img 
               src={logoImg} 
-              alt="HomeMate Logo" 
+              alt="Family Desk Logo" 
               className="h-16 w-16 object-contain"
             />
           </div>

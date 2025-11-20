@@ -12,7 +12,7 @@ interface OnboardingTourProps {
 const defaultSteps: Step[] = [
   {
     target: "body",
-    content: "Welcome to HomeMate! Let's take a quick tour to help you get started with managing your household in India.",
+    content: "Welcome to Family Desk! Let's take a quick tour to help you get started with managing your household in India.",
     placement: "center",
     disableBeacon: true,
   },

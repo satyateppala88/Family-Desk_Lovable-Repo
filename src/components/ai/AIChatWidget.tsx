@@ -25,7 +25,7 @@ export const AIChatWidget = () => {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "assistant",
-      content: "Hey there! 👋 I'm your HomeMate AI assistant. I can help you manage tasks, plan meals, and organize your household. What would you like to do today?",
+      content: "Hey there! 👋 I'm your Family Desk AI assistant. I can help you manage tasks, plan meals, and organize your household. What would you like to do today?",
     },
   ]);
   const [input, setInput] = useState("");
@@ -203,7 +203,7 @@ export const AIChatWidget = () => {
           <CardHeader className="border-b bg-gradient-to-r from-primary/10 to-secondary/10">
             <CardTitle className="flex items-center gap-2">
               <Sparkles className="h-5 w-5 text-primary" />
-              HomeMate AI Assistant
+              Family Desk AI Assistant
             </CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col h-[calc(100%-80px)] p-0">

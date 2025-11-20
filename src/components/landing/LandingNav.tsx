@@ -33,8 +33,8 @@ export const LandingNav = () => {
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-20">
           <Link to="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-            <img src={logoImg} alt="HomeMate Logo" className="h-12 w-12 object-contain" />
-            <span className="text-2xl font-bold text-landing-text">HomeMate</span>
+            <img src={logoImg} alt="Family Desk Logo" className="h-12 w-12 object-contain" />
+            <span className="text-2xl font-bold text-landing-text">Family Desk</span>
           </Link>
 
           {/* Desktop Navigation */}

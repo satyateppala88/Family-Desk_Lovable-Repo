@@ -33,7 +33,7 @@ export default function PrivacyPolicy() {
             <section>
               <h2 className="text-xl font-semibold mb-3">1. Introduction</h2>
               <p className="text-muted-foreground">
-                HomeMate ("we", "our", or "us") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our household management service, in compliance with the Information Technology Act, 2000 and the Digital Personal Data Protection Act, 2023 (DPDP Act).
+                Family Desk ("we", "our", or "us") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our household management service, in compliance with the Information Technology Act, 2000 and the Digital Personal Data Protection Act, 2023 (DPDP Act).
               </p>
             </section>
 
@@ -248,8 +248,8 @@ export default function PrivacyPolicy() {
                 For any questions, concerns, or requests regarding your privacy or this policy, please contact:
                 <br /><br />
                 <strong>Data Protection Officer</strong><br />
-                Email: privacy@homemate.app<br />
-                Support: support@homemate.app<br />
+                Email: privacy@familydesk.app<br />
+                Support: support@familydesk.app<br />
                 Address: [Your registered Indian address]
               </p>
               <p className="text-muted-foreground mt-4">
