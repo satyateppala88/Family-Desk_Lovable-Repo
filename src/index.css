@@ -11,14 +11,15 @@ All colors MUST be HSL.
     --background: 40 20% 98%;
     --foreground: 220 20% 18%;
 
-    /* Landing page specific colors */
-    --landing-bg: 220 25% 8%;
-    --landing-bg-secondary: 220 20% 12%;
-    --landing-text: 0 0% 98%;
-    --landing-text-muted: 0 0% 70%;
-    --landing-accent: 180 65% 45%;
-    --landing-accent-glow: 180 65% 55%;
-    --landing-highlight: 15 85% 60%;
+    /* Landing page specific colors - Family-Friendly Theme */
+    --landing-bg: 45 60% 97%;
+    --landing-bg-secondary: 35 80% 95%;
+    --landing-text: 220 30% 20%;
+    --landing-text-muted: 220 15% 50%;
+    --landing-accent: 25 95% 60%;
+    --landing-accent-glow: 25 95% 70%;
+    --landing-highlight: 145 60% 55%;
+    --landing-secondary: 200 75% 60%;
 
     --card: 0 0% 100%;
     --card-foreground: 220 20% 18%;
@@ -164,10 +165,19 @@ All colors MUST be HSL.
 
 @keyframes glow-pulse {
   0%, 100% {
-    box-shadow: 0 0 20px hsl(var(--landing-accent) / 0.3);
+    box-shadow: 0 4px 20px hsl(var(--landing-accent) / 0.4);
   }
   50% {
-    box-shadow: 0 0 40px hsl(var(--landing-accent) / 0.6);
+    box-shadow: 0 8px 40px hsl(var(--landing-accent) / 0.7);
+  }
+}
+
+@keyframes warm-gradient {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
   }
 }
 

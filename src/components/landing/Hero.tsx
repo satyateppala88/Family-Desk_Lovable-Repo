@@ -11,18 +11,18 @@ export const Hero = () => {
   };
 
   return (
-    <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
-      {/* Animated gradient background */}
-      <div className="absolute inset-0 bg-gradient-to-br from-landing-bg via-landing-bg-secondary to-landing-bg animate-gradient-shift" />
+    <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-landing-bg">
+      {/* Warm gradient background */}
+      <div className="absolute inset-0 bg-gradient-to-br from-landing-bg via-landing-bg-secondary to-[hsl(40_70%_94%)] opacity-70" />
       
-      {/* Subtle mesh gradient overlay */}
-      <div className="absolute inset-0 opacity-30">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-landing-accent rounded-full blur-[120px] animate-float" />
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-landing-accent-glow rounded-full blur-[120px] animate-float-delayed" />
+      {/* Soft warm accents */}
+      <div className="absolute inset-0 opacity-20">
+        <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-landing-accent rounded-full blur-[150px] animate-float" />
+        <div className="absolute bottom-1/4 right-1/4 w-[500px] h-[500px] bg-landing-highlight rounded-full blur-[150px] animate-float-delayed" />
       </div>
 
       <div className="relative z-10 container mx-auto px-4 text-center">
-        <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold mb-6 tracking-tight animate-fade-in">
+        <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold mb-6 tracking-tight animate-fade-in text-landing-text">
           Manage Your Household
           <br />
           <span className="text-landing-accent">With Elegance</span>
@@ -36,7 +36,7 @@ export const Hero = () => {
           <Link to="/auth">
             <Button
               size="lg"
-              className="text-lg px-8 py-6 bg-landing-accent text-white hover:bg-landing-accent/90 shadow-2xl hover:shadow-landing-accent/50 transition-all hover:scale-105 animate-glow-pulse"
+              className="text-lg px-8 py-6 bg-landing-accent text-white hover:bg-landing-accent/90 shadow-lg hover:shadow-xl hover:shadow-landing-accent/30 transition-all hover:scale-105"
             >
               Get Started
             </Button>
@@ -44,7 +44,7 @@ export const Hero = () => {
           <Button
             size="lg"
             variant="outline"
-            className="text-lg px-8 py-6 border-landing-text-muted text-landing-text hover:bg-white/5 hover:border-landing-text transition-all"
+            className="text-lg px-8 py-6 border-2 border-landing-accent/30 text-landing-text bg-white/50 hover:bg-white hover:border-landing-accent transition-all"
             onClick={scrollToFeatures}
           >
             Learn More
@@ -53,7 +53,7 @@ export const Hero = () => {
 
         <button
           onClick={scrollToFeatures}
-          className="absolute bottom-12 left-1/2 -translate-x-1/2 text-landing-text-muted hover:text-landing-text transition-all animate-bounce"
+          className="absolute bottom-12 left-1/2 -translate-x-1/2 text-landing-accent hover:text-landing-text transition-all animate-bounce"
           aria-label="Scroll to explore"
         >
           <ChevronDown className="w-8 h-8" />

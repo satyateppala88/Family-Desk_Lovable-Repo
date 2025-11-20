@@ -16,8 +16,8 @@ const Landing = () => {
       <Benefits />
       <div className="bg-landing-highlight py-12">
         <div className="container mx-auto px-4 text-center">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4">🇮🇳 Made for Indian Households</h2>
-          <p className="text-lg opacity-90">Regional recipes • Local festivals • Indian family dynamics</p>
+          <h2 className="text-3xl md:text-4xl font-bold mb-4 text-white">🇮🇳 Made for Indian Households</h2>
+          <p className="text-lg text-white/90">Regional recipes • Local festivals • Indian family dynamics</p>
         </div>
       </div>
       <FinalCTA />
