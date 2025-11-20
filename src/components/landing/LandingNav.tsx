@@ -27,7 +27,7 @@ export const LandingNav = () => {
   return (
     <nav
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        scrolled ? "bg-landing-bg/95 backdrop-blur-lg border-b border-white/10" : "bg-transparent"
+        scrolled ? "bg-white/95 backdrop-blur-lg border-b border-landing-accent/10 shadow-sm" : "bg-white/50 backdrop-blur-sm"
       }`}
     >
       <div className="container mx-auto px-4">
@@ -41,13 +41,13 @@ export const LandingNav = () => {
           <div className="hidden md:flex items-center gap-8">
             <button
               onClick={() => scrollToSection("features")}
-              className="text-landing-text-muted hover:text-landing-text transition-colors uppercase text-sm tracking-wider"
+              className="text-landing-text-muted hover:text-landing-accent transition-colors uppercase text-sm tracking-wider"
             >
               Features
             </button>
             <button
               onClick={() => scrollToSection("how-it-works")}
-              className="text-landing-text-muted hover:text-landing-text transition-colors uppercase text-sm tracking-wider"
+              className="text-landing-text-muted hover:text-landing-accent transition-colors uppercase text-sm tracking-wider"
             >
               How It Works
             </button>
@@ -57,7 +57,7 @@ export const LandingNav = () => {
               </Button>
             </Link>
             <Link to="/auth">
-              <Button className="bg-landing-accent text-white hover:bg-landing-accent/90 shadow-lg hover:shadow-landing-accent/50 transition-all">
+              <Button className="bg-landing-accent text-white hover:bg-landing-accent/90 shadow-md hover:shadow-lg hover:shadow-landing-accent/30 transition-all">
                 Get Started
               </Button>
             </Link>
@@ -75,17 +75,17 @@ export const LandingNav = () => {
 
         {/* Mobile Menu */}
         {mobileMenuOpen && (
-          <div className="md:hidden py-6 border-t border-white/10 animate-fade-in">
+          <div className="md:hidden py-6 border-t border-landing-accent/10 animate-fade-in">
             <div className="flex flex-col gap-4">
               <button
                 onClick={() => scrollToSection("features")}
-                className="text-landing-text-muted hover:text-landing-text transition-colors uppercase text-sm tracking-wider text-left"
+                className="text-landing-text-muted hover:text-landing-accent transition-colors uppercase text-sm tracking-wider text-left"
               >
                 Features
               </button>
               <button
                 onClick={() => scrollToSection("how-it-works")}
-                className="text-landing-text-muted hover:text-landing-text transition-colors uppercase text-sm tracking-wider text-left"
+                className="text-landing-text-muted hover:text-landing-accent transition-colors uppercase text-sm tracking-wider text-left"
               >
                 How It Works
               </button>
@@ -95,7 +95,7 @@ export const LandingNav = () => {
                 </Button>
               </Link>
               <Link to="/auth" className="w-full">
-                <Button className="w-full bg-landing-accent text-white hover:bg-landing-accent/90">
+                <Button className="w-full bg-landing-accent text-white hover:bg-landing-accent/90 shadow-md">
                   Get Started
                 </Button>
               </Link>

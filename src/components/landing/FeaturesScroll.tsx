@@ -27,7 +27,7 @@ export const FeaturesScroll = () => {
   return (
     <section id="features" className="py-24 bg-landing-bg-secondary">
       <div className="container mx-auto px-4 mb-16">
-        <h2 className="text-4xl md:text-5xl font-bold text-center mb-4">
+        <h2 className="text-4xl md:text-5xl font-bold text-center mb-4 text-landing-text">
           Everything Your Household Needs
         </h2>
         <p className="text-xl text-landing-text-muted text-center max-w-2xl mx-auto">
@@ -40,19 +40,19 @@ export const FeaturesScroll = () => {
           {features.map((feature, index) => (
             <div
               key={index}
-              className="group relative w-80 md:w-96 p-8 rounded-2xl bg-landing-bg border border-white/10 hover:border-landing-accent/50 transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:shadow-landing-accent/20"
+              className="group relative w-80 md:w-96 p-8 rounded-2xl bg-white border border-landing-accent/20 hover:border-landing-accent transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-xl"
               style={{
                 animationDelay: `${index * 0.1}s`,
               }}
             >
-              <div className="absolute inset-0 bg-gradient-to-br from-landing-accent/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl" />
+              <div className="absolute inset-0 bg-gradient-to-br from-landing-accent/5 to-landing-highlight/5 opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl" />
               
               <div className="relative z-10">
-                <div className="w-16 h-16 mb-6 rounded-xl bg-landing-accent/20 flex items-center justify-center group-hover:bg-landing-accent/30 transition-colors">
+                <div className="w-16 h-16 mb-6 rounded-xl bg-landing-accent/10 flex items-center justify-center group-hover:bg-landing-accent/20 transition-colors">
                   <feature.icon className="w-8 h-8 text-landing-accent" strokeWidth={1.5} />
                 </div>
                 
-                <h3 className="text-2xl font-bold mb-4">{feature.title}</h3>
+                <h3 className="text-2xl font-bold mb-4 text-landing-text">{feature.title}</h3>
                 <p className="text-landing-text-muted leading-relaxed">{feature.description}</p>
               </div>
             </div>

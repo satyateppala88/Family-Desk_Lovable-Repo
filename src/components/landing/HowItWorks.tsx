@@ -23,9 +23,9 @@ const steps = [
 
 export const HowItWorks = () => {
   return (
-    <section id="how-it-works" className="py-24 bg-landing-bg">
+    <section id="how-it-works" className="py-24 bg-white">
       <div className="container mx-auto px-4">
-        <h2 className="text-4xl md:text-5xl font-bold text-center mb-20">
+        <h2 className="text-4xl md:text-5xl font-bold text-center mb-20 text-landing-text">
           How It Works
         </h2>
 
@@ -37,17 +37,17 @@ export const HowItWorks = () => {
             >
               <div className="flex-shrink-0">
                 <div className="relative">
-                  <span className="text-[120px] font-bold text-transparent bg-clip-text bg-gradient-to-br from-landing-accent/20 to-landing-accent/5 leading-none">
+                  <span className="text-[120px] font-bold text-landing-accent/20 leading-none">
                     {step.number}
                   </span>
-                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-20 h-20 rounded-2xl bg-landing-accent/20 flex items-center justify-center group-hover:bg-landing-accent/30 transition-all group-hover:scale-110">
-                    <step.icon className="w-10 h-10 text-landing-accent" strokeWidth={1.5} />
+                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-20 h-20 rounded-2xl bg-landing-accent text-white flex items-center justify-center group-hover:scale-110 transition-all shadow-lg group-hover:shadow-xl">
+                    <step.icon className="w-10 h-10" strokeWidth={1.5} />
                   </div>
                 </div>
               </div>
 
               <div className="flex-1 text-center md:text-left">
-                <h3 className="text-3xl font-bold mb-3">{step.title}</h3>
+                <h3 className="text-3xl font-bold mb-3 text-landing-text">{step.title}</h3>
                 <p className="text-xl text-landing-text-muted">{step.description}</p>
               </div>
             </div>
