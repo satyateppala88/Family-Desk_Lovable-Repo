@@ -33,14 +33,14 @@ export default function TermsOfService() {
             <section>
               <h2 className="text-xl font-semibold mb-3">1. Acceptance of Terms</h2>
               <p className="text-muted-foreground">
-                By accessing and using HomeMate ("the Service"), you accept and agree to be bound by the terms and provision of this agreement. If you do not agree to these Terms of Service, please do not use the Service.
+                By accessing and using Family Desk ("the Service"), you accept and agree to be bound by the terms and provision of this agreement. If you do not agree to these Terms of Service, please do not use the Service.
               </p>
             </section>
 
             <section>
               <h2 className="text-xl font-semibold mb-3">2. Description of Service</h2>
               <p className="text-muted-foreground">
-                HomeMate is a household management platform designed for Indian families, providing features including task management, AI-powered meal planning with Indian cuisine focus, grocery list management, and calendar organization.
+                Family Desk is a household management platform designed for Indian families, providing features including task management, AI-powered meal planning with Indian cuisine focus, grocery list management, and calendar organization.
               </p>
             </section>
 
@@ -171,9 +171,9 @@ export default function TermsOfService() {
               <p className="text-muted-foreground">
                 If you have any questions about these Terms, please contact us at:
                 <br />
-                Email: legal@homemate.app
+                Email: legal@familydesk.app
                 <br />
-                Support: support@homemate.app
+                Support: support@familydesk.app
               </p>
             </section>
           </CardContent>

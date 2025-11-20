@@ -63,7 +63,7 @@ const Auth = () => {
 
       toast({
         title: "Account created!",
-        description: "Welcome to HomeMate. Let's set up your household.",
+        description: "Welcome to Family Desk. Let's set up your household.",
       });
       
       navigate("/household-setup");
@@ -114,11 +114,11 @@ const Auth = () => {
           <div className="flex justify-center mb-4">
             <img 
               src={logoImg} 
-              alt="HomeMate Logo" 
+              alt="Family Desk Logo" 
               className="h-16 w-16 object-contain"
             />
           </div>
-          <CardTitle className="text-3xl">HomeMate</CardTitle>
+          <CardTitle className="text-3xl">Family Desk</CardTitle>
           <CardDescription>
             Manage your household with ease
           </CardDescription>

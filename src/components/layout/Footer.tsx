@@ -9,7 +9,7 @@ export const Footer = () => {
       <div className="container mx-auto px-4 py-6">
         <div className="flex flex-col md:flex-row justify-between items-center gap-4">
           <div className="text-sm text-muted-foreground">
-            © {currentYear} HomeMate. All rights reserved.
+            © {currentYear} Family Desk. All rights reserved.
           </div>
           
           <nav className="flex flex-wrap justify-center gap-4 text-sm">
@@ -28,7 +28,7 @@ export const Footer = () => {
             </Link>
             <Separator orientation="vertical" className="h-4" />
             <a 
-              href="mailto:support@homemate.app" 
+              href="mailto:support@familydesk.app" 
               className="text-muted-foreground hover:text-foreground transition-colors"
             >
               Contact Support
