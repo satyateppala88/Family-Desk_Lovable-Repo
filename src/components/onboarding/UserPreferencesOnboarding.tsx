@@ -193,7 +193,9 @@ export const UserPreferencesOnboarding = () => {
 
       const { error: productsError } = await supabase
         .from("household_enabled_products")
-        .upsert(productInserts);
+        .upsert(productInserts, {
+          onConflict: 'household_id,product_name'
+        });
 
       if (productsError) throw productsError;
 
