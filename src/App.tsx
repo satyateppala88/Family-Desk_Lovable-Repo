@@ -21,6 +21,7 @@ import PrivacyPolicy from "./pages/PrivacyPolicy";
 import NotFound from "./pages/NotFound";
 import HouseholdInvitations from "./pages/HouseholdInvitations";
 import HouseholdMembers from "./pages/HouseholdMembers";
+import HouseholdProductSettings from "./pages/HouseholdProductSettings";
 import { AIChatWidget } from "./components/ai/AIChatWidget";
 
 const queryClient = new QueryClient();
@@ -58,6 +59,11 @@ const App = () => (
             <Route path="/members" element={
               <ProtectedRoute>
                 <HouseholdMembers />
+              </ProtectedRoute>
+            } />
+            <Route path="/household/products" element={
+              <ProtectedRoute>
+                <HouseholdProductSettings />
               </ProtectedRoute>
             } />
             <Route path="/account-settings" element={

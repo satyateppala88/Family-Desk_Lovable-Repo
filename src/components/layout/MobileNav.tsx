@@ -1,17 +1,26 @@
 import { Link, useLocation } from "react-router-dom";
 import { Home, CheckSquare, UtensilsCrossed, ShoppingCart, Calendar } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useHousehold } from "@/hooks/useHousehold";
+import { useEnabledProducts, isProductEnabled, ProductName } from "@/hooks/useEnabledProducts";
 
-const navItems = [
-  { path: "/dashboard", icon: Home, label: "Home" },
-  { path: "/tasks", icon: CheckSquare, label: "Tasks" },
-  { path: "/meals", icon: UtensilsCrossed, label: "Meals" },
-  { path: "/grocery", icon: ShoppingCart, label: "Grocery" },
-  { path: "/calendar", icon: Calendar, label: "Calendar" },
+const allNavItems = [
+  { path: "/dashboard", icon: Home, label: "Home", product: null },
+  { path: "/tasks", icon: CheckSquare, label: "Tasks", product: "tasks" as ProductName },
+  { path: "/meals", icon: UtensilsCrossed, label: "Meals", product: "meals" as ProductName },
+  { path: "/grocery", icon: ShoppingCart, label: "Grocery", product: "grocery" as ProductName },
+  { path: "/calendar", icon: Calendar, label: "Calendar", product: "calendar" as ProductName },
 ];
 
 export const MobileNav = () => {
   const location = useLocation();
+  const { householdId } = useHousehold();
+  const { data: enabledProducts } = useEnabledProducts(householdId);
+
+  const navItems = allNavItems.filter((item) => {
+    if (!item.product) return true; // Always show Home
+    return isProductEnabled(enabledProducts, item.product);
+  });
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border z-50">

@@ -169,6 +169,38 @@ export type Database = {
           },
         ]
       }
+      household_enabled_products: {
+        Row: {
+          enabled_at: string
+          enabled_by: string | null
+          household_id: string
+          id: string
+          product_name: string
+        }
+        Insert: {
+          enabled_at?: string
+          enabled_by?: string | null
+          household_id: string
+          id?: string
+          product_name: string
+        }
+        Update: {
+          enabled_at?: string
+          enabled_by?: string | null
+          household_id?: string
+          id?: string
+          product_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "household_enabled_products_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       household_invitations: {
         Row: {
           created_at: string
@@ -353,6 +385,9 @@ export type Database = {
           id: string
           invite_code: string | null
           name: string
+          onboarding_completed: boolean | null
+          onboarding_completed_at: string | null
+          onboarding_completed_by: string | null
           updated_at: string
         }
         Insert: {
@@ -361,6 +396,9 @@ export type Database = {
           id?: string
           invite_code?: string | null
           name: string
+          onboarding_completed?: boolean | null
+          onboarding_completed_at?: string | null
+          onboarding_completed_by?: string | null
           updated_at?: string
         }
         Update: {
@@ -369,6 +407,9 @@ export type Database = {
           id?: string
           invite_code?: string | null
           name?: string
+          onboarding_completed?: boolean | null
+          onboarding_completed_at?: string | null
+          onboarding_completed_by?: string | null
           updated_at?: string
         }
         Relationships: []
