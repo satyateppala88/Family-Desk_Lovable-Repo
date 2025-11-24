@@ -12,6 +12,9 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 import { ChevronRight, ChevronLeft, Check } from "lucide-react";
+import { ProductSelectionStep } from "./ProductSelectionStep";
+import { ProductName } from "@/hooks/useEnabledProducts";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface PreferencesData {
   // Step 1
@@ -50,7 +53,14 @@ export const UserPreferencesOnboarding = () => {
   const { user } = useAuth();
   const { householdId, isLoading: householdLoading } = useHousehold();
   const navigate = useNavigate();
-  const [currentStep, setCurrentStep] = useState(1);
+  const queryClient = useQueryClient();
+  const [currentStep, setCurrentStep] = useState(0); // Start at 0 for product selection
+  const [selectedProducts, setSelectedProducts] = useState<ProductName[]>([
+    "tasks",
+    "meals",
+    "calendar",
+    "grocery",
+  ]); // All products enabled by default
   const [preferences, setPreferences] = useState<PreferencesData>({
     family_size_adults: 2,
     family_size_children: 0,
@@ -75,7 +85,7 @@ export const UserPreferencesOnboarding = () => {
     budget_consciousness: "somewhat",
   });
 
-  const totalSteps = 5;
+  const totalSteps = 6; // 1 product selection + 5 preferences
   const progress = (currentStep / totalSteps) * 100;
 
   // Fetch existing preferences when editing
@@ -138,15 +148,29 @@ export const UserPreferencesOnboarding = () => {
   }
 
   const handleNext = () => {
+    // Validate product selection on step 0
+    if (currentStep === 0 && selectedProducts.length === 0) {
+      toast.error("Please select at least one product to continue");
+      return;
+    }
+    
     if (currentStep < totalSteps) {
       setCurrentStep(currentStep + 1);
     }
   };
 
   const handleBack = () => {
-    if (currentStep > 1) {
+    if (currentStep > 0) {
       setCurrentStep(currentStep - 1);
     }
+  };
+
+  const handleProductToggle = (product: ProductName) => {
+    setSelectedProducts((prev) =>
+      prev.includes(product)
+        ? prev.filter((p) => p !== product)
+        : [...prev, product]
+    );
   };
 
   const handleCheckboxChange = (field: keyof PreferencesData, value: string) => {
@@ -161,6 +185,18 @@ export const UserPreferencesOnboarding = () => {
     if (!householdId || !user) return;
 
     try {
+      // Save enabled products
+      const productInserts = selectedProducts.map((product) => ({
+        household_id: householdId,
+        product_name: product,
+      }));
+
+      const { error: productsError } = await supabase
+        .from("household_enabled_products")
+        .upsert(productInserts);
+
+      if (productsError) throw productsError;
+
       // Save preferences
       const { error: prefsError } = await supabase
         .from("household_preferences")
@@ -171,30 +207,57 @@ export const UserPreferencesOnboarding = () => {
 
       if (prefsError) throw prefsError;
 
+      // Mark household onboarding as complete
+      const { error: householdError } = await supabase
+        .from("households")
+        .update({
+          onboarding_completed: true,
+          onboarding_completed_by: user.id,
+          onboarding_completed_at: new Date().toISOString(),
+        })
+        .eq("id", householdId);
+
+      if (householdError) throw householdError;
+
       // Update onboarding progress
       const { error: progressError } = await supabase
         .from("user_onboarding_progress")
-        .upsert({
-          user_id: user.id,
-          current_step: totalSteps,
-          completed_steps: ["1", "2", "3", "4", "5"],
-          preferences_completed: true,
-          completed_at: new Date().toISOString(),
-        }, {
-          onConflict: 'user_id'
-        });
+        .upsert(
+          {
+            user_id: user.id,
+            current_step: totalSteps,
+            completed_steps: ["0", "1", "2", "3", "4", "5"],
+            preferences_completed: true,
+            completed_at: new Date().toISOString(),
+          },
+          {
+            onConflict: "user_id",
+          }
+        );
 
       if (progressError) throw progressError;
 
-      toast.success("Preferences saved! Let's explore your dashboard.");
-      navigate("/");
+      // Invalidate queries
+      queryClient.invalidateQueries({ queryKey: ["household"] });
+      queryClient.invalidateQueries({ queryKey: ["enabled-products"] });
+
+      toast.success("Setup complete! Welcome to Family Desk.");
+      navigate("/dashboard");
     } catch (error: any) {
-      toast.error("Failed to save preferences: " + error.message);
+      toast.error("Failed to complete setup: " + error.message);
     }
   };
 
   const renderStep = () => {
     switch (currentStep) {
+      case 0:
+        return (
+          <ProductSelectionStep
+            selectedProducts={selectedProducts}
+            onProductToggle={handleProductToggle}
+          />
+        );
+      
       case 1:
         return (
           <div className="space-y-6">

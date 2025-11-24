@@ -13,6 +13,7 @@ import { DashboardTaskWidget } from "@/components/dashboard/DashboardTaskWidget"
 import { DashboardMealWidget } from "@/components/dashboard/DashboardMealWidget";
 import { DashboardGroceryWidget } from "@/components/dashboard/DashboardGroceryWidget";
 import { DashboardCalendarWidget } from "@/components/dashboard/DashboardCalendarWidget";
+import { useEnabledProducts, isProductEnabled } from "@/hooks/useEnabledProducts";
 
 const Index = () => {
   const { householdId, isLoading } = useHousehold();
@@ -21,6 +22,7 @@ const Index = () => {
   const [runOnboarding, setRunOnboarding] = useState(false);
   const [onboardingChecked, setOnboardingChecked] = useState(false);
   const { data: dashboardStats, isLoading: statsLoading } = useDashboardStats(householdId);
+  const { data: enabledProducts } = useEnabledProducts(householdId);
 
   useEffect(() => {
     const fetchHousehold = async () => {
@@ -103,13 +105,21 @@ const Index = () => {
             </>
           ) : (
             <>
-              <DashboardTaskWidget 
-                tasks={dashboardStats?.tasks || []} 
-                pendingCount={dashboardStats?.pendingTasksCount || 0}
-              />
-              <DashboardMealWidget todayMeals={dashboardStats?.todayMeals || []} />
-              <DashboardGroceryWidget pantryItemsCount={dashboardStats?.pantryItemsCount || 0} />
-              <DashboardCalendarWidget />
+              {isProductEnabled(enabledProducts, "tasks") && (
+                <DashboardTaskWidget 
+                  tasks={dashboardStats?.tasks || []} 
+                  pendingCount={dashboardStats?.pendingTasksCount || 0}
+                />
+              )}
+              {isProductEnabled(enabledProducts, "meals") && (
+                <DashboardMealWidget todayMeals={dashboardStats?.todayMeals || []} />
+              )}
+              {isProductEnabled(enabledProducts, "grocery") && (
+                <DashboardGroceryWidget pantryItemsCount={dashboardStats?.pantryItemsCount || 0} />
+              )}
+              {isProductEnabled(enabledProducts, "calendar") && (
+                <DashboardCalendarWidget />
+              )}
             </>
           )}
         </div>
