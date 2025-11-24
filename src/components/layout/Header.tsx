@@ -14,7 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { useHousehold } from "@/hooks/useHousehold";
 import { useIsHouseholdAdmin } from "@/hooks/useIsHouseholdAdmin";
 import { usePendingInvitations } from "@/hooks/usePendingInvitations";
-import logoImg from "@/assets/logo-family-hub-v4.png";
+import logoImg from "@/assets/logo-family-desk-primary.png";
 
 interface HeaderProps {
   onStartOnboarding?: () => void;

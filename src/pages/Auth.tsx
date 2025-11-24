@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { Eye, EyeOff } from "lucide-react";
-import logoImg from "@/assets/logo-family-hub-v4.png";
+import logoImg from "@/assets/logo-family-desk-primary.png";
 
 const Auth = () => {
   const [email, setEmail] = useState("");

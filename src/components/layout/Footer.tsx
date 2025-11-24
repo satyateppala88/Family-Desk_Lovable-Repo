@@ -28,7 +28,7 @@ export const Footer = () => {
             </Link>
             <Separator orientation="vertical" className="h-4" />
             <a 
-              href="mailto:support@familydesk.app" 
+              href="mailto:contactus@familydesk.in" 
               className="text-muted-foreground hover:text-foreground transition-colors"
             >
               Contact Support

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import logoImg from "@/assets/logo-family-hub-v4.png";
+import logoImg from "@/assets/logo-family-desk-primary.png";
 import { Menu, X } from "lucide-react";
 
 export const LandingNav = () => {
