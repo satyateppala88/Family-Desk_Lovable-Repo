@@ -20,6 +20,8 @@ interface PreferencesData {
   // Step 1
   family_size_adults: number;
   family_size_children: number;
+  children_ages: number[];
+  family_size_seniors: number;
   household_type: string;
   
   // Step 2
@@ -64,6 +66,8 @@ export const UserPreferencesOnboarding = () => {
   const [preferences, setPreferences] = useState<PreferencesData>({
     family_size_adults: 2,
     family_size_children: 0,
+    children_ages: [],
+    family_size_seniors: 0,
     household_type: "nuclear",
     diet_type: "vegetarian",
     food_allergies: [],
@@ -105,6 +109,8 @@ export const UserPreferencesOnboarding = () => {
           ...prev,
           family_size_adults: data.family_size_adults ?? prev.family_size_adults,
           family_size_children: data.family_size_children ?? prev.family_size_children,
+          children_ages: data.children_ages || [],
+          family_size_seniors: data.family_size_seniors ?? prev.family_size_seniors,
           household_type: data.household_type || prev.household_type,
           diet_type: data.diet_type || prev.diet_type,
           food_allergies: data.food_allergies || [],
@@ -175,6 +181,24 @@ export const UserPreferencesOnboarding = () => {
 
   const handleCheckboxChange = (field: keyof PreferencesData, value: string) => {
     const currentValues = preferences[field] as string[];
+    
+    // Special handling for food allergies with "None" option
+    if (field === "food_allergies") {
+      if (value === "None") {
+        // If "None" is selected, clear all other options
+        setPreferences({ ...preferences, [field]: ["None"] });
+        return;
+      } else {
+        // If any other option is selected, remove "None"
+        const filteredValues = currentValues.filter(v => v !== "None");
+        const newValues = filteredValues.includes(value)
+          ? filteredValues.filter((v) => v !== value)
+          : [...filteredValues, value];
+        setPreferences({ ...preferences, [field]: newValues });
+        return;
+      }
+    }
+    
     const newValues = currentValues.includes(value)
       ? currentValues.filter((v) => v !== value)
       : [...currentValues, value];
@@ -269,7 +293,7 @@ export const UserPreferencesOnboarding = () => {
                 type="number"
                 min="1"
                 value={preferences.family_size_adults}
-                onChange={(e) => setPreferences({ ...preferences, family_size_adults: parseInt(e.target.value) })}
+                onChange={(e) => setPreferences({ ...preferences, family_size_adults: parseInt(e.target.value) || 0 })}
               />
             </div>
             <div>
@@ -278,9 +302,55 @@ export const UserPreferencesOnboarding = () => {
                 type="number"
                 min="0"
                 value={preferences.family_size_children}
-                onChange={(e) => setPreferences({ ...preferences, family_size_children: parseInt(e.target.value) })}
+                onChange={(e) => {
+                  const count = parseInt(e.target.value) || 0;
+                  setPreferences({ 
+                    ...preferences, 
+                    family_size_children: count,
+                    // Initialize ages array when count changes
+                    children_ages: count > 0 
+                      ? Array(count).fill(0).map((_, i) => preferences.children_ages[i] || 0)
+                      : []
+                  });
+                }}
               />
             </div>
+            
+            {/* Dynamic Children Age Inputs */}
+            {preferences.family_size_children > 0 && (
+              <div className="space-y-3 pl-4 border-l-2 border-primary/30">
+                <Label className="text-sm text-muted-foreground">Children Ages (Optional)</Label>
+                {Array.from({ length: preferences.family_size_children }).map((_, index) => (
+                  <div key={index} className="flex items-center gap-3">
+                    <Label className="text-sm min-w-20">Child {index + 1}:</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      max="25"
+                      placeholder="Age"
+                      className="w-24"
+                      value={preferences.children_ages[index] || ""}
+                      onChange={(e) => {
+                        const newAges = [...preferences.children_ages];
+                        newAges[index] = parseInt(e.target.value) || 0;
+                        setPreferences({ ...preferences, children_ages: newAges });
+                      }}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+            
+            <div>
+              <Label>Number of Senior Citizens (Age 60+)</Label>
+              <Input
+                type="number"
+                min="0"
+                value={preferences.family_size_seniors}
+                onChange={(e) => setPreferences({ ...preferences, family_size_seniors: parseInt(e.target.value) || 0 })}
+              />
+            </div>
+            
             <div>
               <Label>Household Type</Label>
               <RadioGroup value={preferences.household_type} onValueChange={(v) => setPreferences({ ...preferences, household_type: v })}>
@@ -318,13 +388,16 @@ export const UserPreferencesOnboarding = () => {
             <div>
               <Label>Food Allergies (Select all that apply)</Label>
               <div className="space-y-2 mt-2">
-                {["Dairy", "Nuts", "Gluten", "Seafood", "Eggs", "Soy"].map((allergy) => (
+                {["None", "Dairy", "Nuts", "Gluten", "Seafood", "Eggs", "Soy", "Others"].map((allergy) => (
                   <div key={allergy} className="flex items-center space-x-2">
                     <Checkbox
                       checked={preferences.food_allergies.includes(allergy)}
                       onCheckedChange={() => handleCheckboxChange("food_allergies", allergy)}
+                      disabled={allergy !== "None" && preferences.food_allergies.includes("None")}
                     />
-                    <Label>{allergy}</Label>
+                    <Label className={allergy !== "None" && preferences.food_allergies.includes("None") ? "text-muted-foreground" : ""}>
+                      {allergy}
+                    </Label>
                   </div>
                 ))}
               </div>
@@ -592,6 +665,7 @@ export const UserPreferencesOnboarding = () => {
   };
 
   const stepTitles = [
+    "Select Products",
     "Household Basics",
     "Dietary Preferences",
     "Cooking & Meal Planning",
@@ -600,6 +674,7 @@ export const UserPreferencesOnboarding = () => {
   ];
 
   const stepDescriptions = [
+    "Choose the features you want to enable",
     "Tell us about your family",
     "Help us understand your dietary needs",
     "Share your cooking preferences",
@@ -613,13 +688,13 @@ export const UserPreferencesOnboarding = () => {
         <CardHeader>
           <div className="space-y-2">
             <div className="flex justify-between text-sm text-muted-foreground">
-              <span>Step {currentStep} of {totalSteps}</span>
+              <span>Step {currentStep + 1} of {totalSteps + 1}</span>
               <span>{Math.round(progress)}% Complete</span>
             </div>
             <Progress value={progress} className="h-2" />
           </div>
-          <CardTitle className="text-2xl">{stepTitles[currentStep - 1]}</CardTitle>
-          <CardDescription>{stepDescriptions[currentStep - 1]}</CardDescription>
+          <CardTitle className="text-2xl">{stepTitles[currentStep]}</CardTitle>
+          <CardDescription>{stepDescriptions[currentStep]}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-6">
@@ -628,7 +703,7 @@ export const UserPreferencesOnboarding = () => {
               <Button
                 variant="outline"
                 onClick={handleBack}
-                disabled={currentStep === 1}
+                disabled={currentStep === 0}
               >
                 <ChevronLeft className="h-4 w-4 mr-2" />
                 Back
