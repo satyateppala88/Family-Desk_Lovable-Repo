@@ -248,8 +248,8 @@ export default function PrivacyPolicy() {
                 For any questions, concerns, or requests regarding your privacy or this policy, please contact:
                 <br /><br />
                 <strong>Data Protection Officer</strong><br />
-                Email: privacy@familydesk.app<br />
-                Support: support@familydesk.app<br />
+                Email: contactus@familydesk.in<br />
+                Support: contactus@familydesk.in<br />
                 Address: [Your registered Indian address]
               </p>
               <p className="text-muted-foreground mt-4">

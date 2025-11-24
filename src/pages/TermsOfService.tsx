@@ -171,9 +171,9 @@ export default function TermsOfService() {
               <p className="text-muted-foreground">
                 If you have any questions about these Terms, please contact us at:
                 <br />
-                Email: legal@familydesk.app
+                Email: contactus@familydesk.in
                 <br />
-                Support: support@familydesk.app
+                Support: contactus@familydesk.in
               </p>
             </section>
           </CardContent>
