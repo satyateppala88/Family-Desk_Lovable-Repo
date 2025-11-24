@@ -1,12 +1,17 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Header } from "@/components/layout/Header";
 import { MobileNav } from "@/components/layout/MobileNav";
 import { Footer } from "@/components/layout/Footer";
 import { OnboardingTour } from "@/components/onboarding/OnboardingTour";
+import { OnboardingProgressIndicator } from "@/components/onboarding/OnboardingProgressIndicator";
 import { useHousehold } from "@/hooks/useHousehold";
+import { useOnboardingProgress } from "@/hooks/useOnboardingProgress";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Household } from "@/types/database";
 import { useDashboardStats } from "@/hooks/useDashboardStats";
 import { DashboardTaskWidget } from "@/components/dashboard/DashboardTaskWidget";
@@ -14,15 +19,18 @@ import { DashboardMealWidget } from "@/components/dashboard/DashboardMealWidget"
 import { DashboardGroceryWidget } from "@/components/dashboard/DashboardGroceryWidget";
 import { DashboardCalendarWidget } from "@/components/dashboard/DashboardCalendarWidget";
 import { useEnabledProducts, isProductEnabled } from "@/hooks/useEnabledProducts";
+import { ArrowRight } from "lucide-react";
 
 const Index = () => {
-  const { householdId, isLoading } = useHousehold();
+  const navigate = useNavigate();
+  const { householdId, isLoading, onboardingCompleted } = useHousehold();
   const { user } = useAuth();
   const [household, setHousehold] = useState<Household | null>(null);
   const [runOnboarding, setRunOnboarding] = useState(false);
   const [onboardingChecked, setOnboardingChecked] = useState(false);
   const { data: dashboardStats, isLoading: statsLoading } = useDashboardStats(householdId);
   const { data: enabledProducts } = useEnabledProducts(householdId);
+  const { data: progressData } = useOnboardingProgress(householdId);
 
   useEffect(() => {
     const fetchHousehold = async () => {
@@ -89,6 +97,34 @@ const Index = () => {
         <OnboardingTour run={runOnboarding} onComplete={handleOnboardingComplete} />
       )}
       <main className="flex-1 container mx-auto px-4 sm:px-6 py-6 sm:py-8 pb-24">
+        {/* Onboarding Progress Card - Only show if not completed */}
+        {!onboardingCompleted && progressData && progressData.percentage < 100 && (
+          <Card className="mb-6 border-warning/50 bg-gradient-to-r from-warning/5 to-accent/5">
+            <CardContent className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 sm:p-6">
+              <div className="flex items-center gap-4">
+                <OnboardingProgressIndicator 
+                  percentage={progressData.percentage} 
+                  size="small"
+                  showLabel={false}
+                />
+                <div>
+                  <h3 className="font-semibold text-base sm:text-lg">Complete Your Household Setup</h3>
+                  <p className="text-xs sm:text-sm text-muted-foreground">
+                    {progressData.percentage}% complete - Help us personalize your experience
+                  </p>
+                </div>
+              </div>
+              <Button 
+                onClick={() => navigate("/onboarding/preferences")}
+                className="w-full sm:w-auto"
+              >
+                Continue Setup
+                <ArrowRight className="h-4 w-4 ml-2" />
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+        
         <div className="mb-8 sm:mb-10 dashboard-overview">
           <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-2 sm:mb-3">Welcome to {household.name}</h1>
           <p className="text-sm sm:text-base lg:text-lg text-muted-foreground">

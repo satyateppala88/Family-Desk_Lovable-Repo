@@ -286,11 +286,13 @@ export type Database = {
       household_preferences: {
         Row: {
           budget_consciousness: string | null
+          children_ages: number[] | null
           cooking_skill_level: string | null
           created_at: string | null
           diet_type: string | null
           family_size_adults: number | null
           family_size_children: number | null
+          family_size_seniors: number | null
           festival_importance: string | null
           food_allergies: string[] | null
           household_concerns: string[] | null
@@ -314,11 +316,13 @@ export type Database = {
         }
         Insert: {
           budget_consciousness?: string | null
+          children_ages?: number[] | null
           cooking_skill_level?: string | null
           created_at?: string | null
           diet_type?: string | null
           family_size_adults?: number | null
           family_size_children?: number | null
+          family_size_seniors?: number | null
           festival_importance?: string | null
           food_allergies?: string[] | null
           household_concerns?: string[] | null
@@ -342,11 +346,13 @@ export type Database = {
         }
         Update: {
           budget_consciousness?: string | null
+          children_ages?: number[] | null
           cooking_skill_level?: string | null
           created_at?: string | null
           diet_type?: string | null
           family_size_adults?: number | null
           family_size_children?: number | null
+          family_size_seniors?: number | null
           festival_importance?: string | null
           food_allergies?: string[] | null
           household_concerns?: string[] | null
