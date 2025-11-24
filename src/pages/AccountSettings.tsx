@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { Separator } from "@/components/ui/separator";
 import { User, Lock, Globe } from "lucide-react";
+import { ResetOnboardingButton } from "@/components/development/ResetOnboardingButton";
 
 const AccountSettings = () => {
   const { user } = useAuth();
@@ -228,6 +229,10 @@ const AccountSettings = () => {
                   Delete Account (Coming Soon)
                 </Button>
               </div>
+              
+              <Separator />
+              
+              <ResetOnboardingButton />
             </CardContent>
           </Card>
         </TabsContent>
