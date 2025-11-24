@@ -5,6 +5,7 @@ import { MobileNav } from "@/components/layout/MobileNav";
 import { Footer } from "@/components/layout/Footer";
 import { OnboardingTour } from "@/components/onboarding/OnboardingTour";
 import { OnboardingProgressIndicator } from "@/components/onboarding/OnboardingProgressIndicator";
+import { ResetOnboardingButton } from "@/components/development/ResetOnboardingButton";
 import { useHousehold } from "@/hooks/useHousehold";
 import { useOnboardingProgress } from "@/hooks/useOnboardingProgress";
 import { useAuth } from "@/contexts/AuthContext";
@@ -97,6 +98,9 @@ const Index = () => {
         <OnboardingTour run={runOnboarding} onComplete={handleOnboardingComplete} />
       )}
       <main className="flex-1 container mx-auto px-4 sm:px-6 py-6 sm:py-8 pb-24">
+        {/* Development Reset Button - Only in development */}
+        <ResetOnboardingButton />
+        
         {/* Onboarding Progress Card - Only show if not completed */}
         {!onboardingCompleted && progressData && progressData.percentage < 100 && (
           <Card className="mb-6 border-warning/50 bg-gradient-to-r from-warning/5 to-accent/5">
