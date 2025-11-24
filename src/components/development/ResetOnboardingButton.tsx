@@ -34,50 +34,26 @@ export const ResetOnboardingButton = () => {
     setIsResetting(true);
 
     try {
-      // Delete household preferences
-      await supabase
-        .from("household_preferences")
-        .delete()
-        .eq("household_id", householdId);
+      // Call edge function to delete everything
+      const { data, error } = await supabase.functions.invoke('dev-reset-account');
 
-      // Delete enabled products
-      await supabase
-        .from("household_enabled_products")
-        .delete()
-        .eq("household_id", householdId);
+      if (error) {
+        console.error("Edge function error:", error);
+        throw error;
+      }
 
-      // Delete dietary preferences
-      await supabase
-        .from("dietary_preferences")
-        .delete()
-        .eq("household_id", householdId);
+      toast.success("Account deleted! Redirecting to login...");
 
-      // Delete user onboarding progress
-      await supabase
-        .from("user_onboarding_progress")
-        .delete()
-        .eq("user_id", user.id);
-
-      // Reset household onboarding_completed flag
-      await supabase
-        .from("households")
-        .update({
-          onboarding_completed: false,
-          onboarding_completed_at: null,
-          onboarding_completed_by: null,
-        })
-        .eq("id", householdId);
-
-      toast.success("Onboarding data cleared! Redirecting...");
-
-      // Redirect to onboarding
+      // Wait a moment for the user to see the success message
       setTimeout(() => {
-        navigate("/onboarding/preferences");
+        // Sign out is handled by the edge function deleting the user
+        // Just navigate to auth page
+        navigate("/auth");
         window.location.reload();
       }, 1000);
     } catch (error) {
-      console.error("Error resetting onboarding:", error);
-      toast.error("Failed to reset onboarding data");
+      console.error("Error resetting account:", error);
+      toast.error("Failed to reset account. Please try again.");
     } finally {
       setIsResetting(false);
     }
@@ -95,10 +71,10 @@ export const ResetOnboardingButton = () => {
           <AlertTriangle className="h-5 w-5 text-orange-600" />
           <div>
             <h3 className="font-semibold text-orange-900 dark:text-orange-100">
-              Development Reset
+              Development Reset (Complete)
             </h3>
             <p className="text-sm text-orange-700 dark:text-orange-300">
-              Clear all onboarding data and restart the flow
+              Delete ALL data, household, and user account permanently
             </p>
           </div>
         </div>
@@ -111,16 +87,16 @@ export const ResetOnboardingButton = () => {
               className="gap-2"
             >
               <RotateCcw className="h-4 w-4" />
-              Reset Onboarding
+              Complete Reset & Delete
             </Button>
           </AlertDialogTrigger>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Reset Onboarding Data?</AlertDialogTitle>
+              <AlertDialogTitle>Complete Account Deletion?</AlertDialogTitle>
               <AlertDialogDescription>
-                This will delete all household preferences, enabled products,
-                dietary preferences, and onboarding progress. This action cannot
-                be undone. You will be redirected to the onboarding flow.
+                This will permanently delete your user account, household, and ALL associated data including:
+                meal plans, recipes, tasks, preferences, and onboarding progress. 
+                This action CANNOT be undone. You will be redirected to the login page.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>

@@ -8,3 +8,6 @@ verify_jwt = true
 
 [functions.regenerate-meals]
 verify_jwt = true
+
+[functions.dev-reset-account]
+verify_jwt = true
