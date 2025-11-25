@@ -40,13 +40,14 @@ export const useDashboardStats = (householdId: string | null) => {
           )
         `)
         .eq("household_id", householdId)
-        .gte("week_start_date", format(todayStart, "yyyy-MM-dd"))
-        .lte("week_start_date", format(todayEnd, "yyyy-MM-dd"))
-        .single();
+        .lte("week_start_date", format(today, "yyyy-MM-dd"))
+        .order("week_start_date", { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
+      const todayFormatted = format(today, "yyyy-MM-dd");
       const todayMeals = mealPlan?.meal_plan_items?.filter((item: any) => {
-        const itemDate = new Date(item.scheduled_date);
-        return itemDate >= todayStart && itemDate <= todayEnd;
+        return item.scheduled_date === todayFormatted;
       }) || [];
 
       // Fetch pantry items count (for grocery widget)
