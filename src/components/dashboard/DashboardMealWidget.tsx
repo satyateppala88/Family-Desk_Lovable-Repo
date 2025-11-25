@@ -45,32 +45,55 @@ export const DashboardMealWidget = ({ todayMeals }: DashboardMealWidgetProps) =>
             </div>
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3">
+        <CardContent className="space-y-4">
           {todayMeals.length === 0 ? (
             <p className="text-sm text-muted-foreground">No meals planned for today</p>
           ) : (
             <>
-              {todayMeals.map((meal) => (
-                <div key={meal.id} className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <Badge 
-                      style={{ backgroundColor: getMealTypeColor(meal.meal_type) }}
-                      className="text-xs text-white"
-                    >
-                      {getMealTypeLabel(meal.meal_type)}
-                    </Badge>
-                  </div>
-                  <p className="text-sm font-medium">
-                    {meal.recipes?.title || "No recipe assigned"}
-                  </p>
-                  {meal.recipes?.cuisine_type && (
-                    <p className="text-xs text-muted-foreground">
-                      {meal.recipes.cuisine_type}
-                    </p>
-                  )}
-                </div>
-              ))}
-              <div className="flex items-center justify-end gap-1 text-sm text-accent font-medium mt-4">
+              {/* Group meals by type */}
+              {(() => {
+                const mealsByType = {
+                  breakfast: todayMeals.filter(m => m.meal_type === "breakfast"),
+                  lunch: todayMeals.filter(m => m.meal_type === "lunch"),
+                  dinner: todayMeals.filter(m => m.meal_type === "dinner"),
+                };
+
+                const mealTypes = [
+                  { key: "breakfast" as const, label: "Breakfast", icon: "☀️" },
+                  { key: "lunch" as const, label: "Lunch", icon: "🌤️" },
+                  { key: "dinner" as const, label: "Dinner", icon: "🌙" },
+                ];
+
+                return mealTypes.map(({ key, label, icon }) => {
+                  const meals = mealsByType[key];
+                  if (!meals?.length) return null;
+                  
+                  return (
+                    <div key={key} className="space-y-2">
+                      <h4 
+                        className="text-sm font-semibold flex items-center gap-1.5"
+                        style={{ color: getMealTypeColor(key) }}
+                      >
+                        <span>{icon}</span>
+                        <span>{label}</span>
+                      </h4>
+                      {meals.map(meal => (
+                        <div key={meal.id} className="ml-6 space-y-1">
+                          <p className="text-sm font-medium">
+                            {meal.recipes?.title || "No recipe assigned"}
+                          </p>
+                          {meal.recipes?.cuisine_type && (
+                            <p className="text-xs text-muted-foreground">
+                              {meal.recipes.cuisine_type}
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  );
+                });
+              })()}
+              <div className="flex items-center justify-end gap-1 text-sm text-accent font-medium mt-4 pt-2 border-t">
                 View meal plan <ArrowRight className="h-4 w-4" />
               </div>
             </>
