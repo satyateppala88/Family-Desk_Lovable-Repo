@@ -542,15 +542,96 @@ export type Database = {
           },
         ]
       }
+      pantry_categories: {
+        Row: {
+          created_at: string
+          household_id: string
+          icon: string | null
+          id: string
+          name: string
+          sort_order: number | null
+        }
+        Insert: {
+          created_at?: string
+          household_id: string
+          icon?: string | null
+          id?: string
+          name: string
+          sort_order?: number | null
+        }
+        Update: {
+          created_at?: string
+          household_id?: string
+          icon?: string | null
+          id?: string
+          name?: string
+          sort_order?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pantry_categories_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pantry_item_usage: {
+        Row: {
+          confirmed_by: string
+          id: string
+          meal_plan_item_id: string | null
+          pantry_item_id: string
+          quantity_used: number
+          used_at: string
+        }
+        Insert: {
+          confirmed_by: string
+          id?: string
+          meal_plan_item_id?: string | null
+          pantry_item_id: string
+          quantity_used: number
+          used_at?: string
+        }
+        Update: {
+          confirmed_by?: string
+          id?: string
+          meal_plan_item_id?: string | null
+          pantry_item_id?: string
+          quantity_used?: number
+          used_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pantry_item_usage_meal_plan_item_id_fkey"
+            columns: ["meal_plan_item_id"]
+            isOneToOne: false
+            referencedRelation: "meal_plan_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pantry_item_usage_pantry_item_id_fkey"
+            columns: ["pantry_item_id"]
+            isOneToOne: false
+            referencedRelation: "pantry_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pantry_items: {
         Row: {
           added_by: string
+          average_usage_days: number | null
           category: string | null
           created_at: string
           expiry_date: string | null
           household_id: string
           id: string
+          is_staple: boolean | null
+          last_purchased_at: string | null
           location: string | null
+          minimum_quantity: number | null
           name: string
           quantity: number | null
           unit: string | null
@@ -558,12 +639,16 @@ export type Database = {
         }
         Insert: {
           added_by: string
+          average_usage_days?: number | null
           category?: string | null
           created_at?: string
           expiry_date?: string | null
           household_id: string
           id?: string
+          is_staple?: boolean | null
+          last_purchased_at?: string | null
           location?: string | null
+          minimum_quantity?: number | null
           name: string
           quantity?: number | null
           unit?: string | null
@@ -571,12 +656,16 @@ export type Database = {
         }
         Update: {
           added_by?: string
+          average_usage_days?: number | null
           category?: string | null
           created_at?: string
           expiry_date?: string | null
           household_id?: string
           id?: string
+          is_staple?: boolean | null
+          last_purchased_at?: string | null
           location?: string | null
+          minimum_quantity?: number | null
           name?: string
           quantity?: number | null
           unit?: string | null
@@ -710,6 +799,117 @@ export type Database = {
             columns: ["household_id"]
             isOneToOne: false
             referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shopping_list_items: {
+        Row: {
+          category: string | null
+          checked_at: string | null
+          checked_by: string | null
+          created_at: string
+          id: string
+          is_checked: boolean | null
+          list_id: string
+          name: string
+          pantry_item_id: string | null
+          quantity: number | null
+          recipe_source: string | null
+          unit: string | null
+        }
+        Insert: {
+          category?: string | null
+          checked_at?: string | null
+          checked_by?: string | null
+          created_at?: string
+          id?: string
+          is_checked?: boolean | null
+          list_id: string
+          name: string
+          pantry_item_id?: string | null
+          quantity?: number | null
+          recipe_source?: string | null
+          unit?: string | null
+        }
+        Update: {
+          category?: string | null
+          checked_at?: string | null
+          checked_by?: string | null
+          created_at?: string
+          id?: string
+          is_checked?: boolean | null
+          list_id?: string
+          name?: string
+          pantry_item_id?: string | null
+          quantity?: number | null
+          recipe_source?: string | null
+          unit?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shopping_list_items_list_id_fkey"
+            columns: ["list_id"]
+            isOneToOne: false
+            referencedRelation: "shopping_lists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shopping_list_items_pantry_item_id_fkey"
+            columns: ["pantry_item_id"]
+            isOneToOne: false
+            referencedRelation: "pantry_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shopping_lists: {
+        Row: {
+          auto_generated: boolean | null
+          completed_at: string | null
+          created_at: string
+          created_by: string
+          household_id: string
+          id: string
+          meal_plan_id: string | null
+          name: string
+          status: string
+        }
+        Insert: {
+          auto_generated?: boolean | null
+          completed_at?: string | null
+          created_at?: string
+          created_by: string
+          household_id: string
+          id?: string
+          meal_plan_id?: string | null
+          name: string
+          status?: string
+        }
+        Update: {
+          auto_generated?: boolean | null
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string
+          household_id?: string
+          id?: string
+          meal_plan_id?: string | null
+          name?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shopping_lists_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shopping_lists_meal_plan_id_fkey"
+            columns: ["meal_plan_id"]
+            isOneToOne: false
+            referencedRelation: "meal_plans"
             referencedColumns: ["id"]
           },
         ]
