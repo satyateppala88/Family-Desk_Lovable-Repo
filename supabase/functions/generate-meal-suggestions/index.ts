@@ -80,6 +80,13 @@ serve(async (req) => {
       .eq("household_id", householdId)
       .eq("hidden", true);
 
+    // Fetch pantry inventory to consider available ingredients
+    const { data: pantryItems } = await supabase
+      .from("pantry_items")
+      .select("name, quantity, unit, category, expiry_date")
+      .eq("household_id", householdId)
+      .order("category", { ascending: true });
+
     // Build enhanced context from household preferences
     let familyContext = "Family of 2 adults";
     let dietContext = "No specific dietary restrictions";
@@ -133,6 +140,54 @@ serve(async (req) => {
       ? `NEVER suggest these recipes (user has hidden them): ${hiddenRecipeNames.join(", ")}`
       : "";
 
+    // Build pantry inventory context
+    let pantryContext = "";
+    if (pantryItems && pantryItems.length > 0) {
+      // Group items by category for better readability
+      const itemsByCategory: Record<string, any[]> = {};
+      pantryItems.forEach(item => {
+        const category = item.category || "Other";
+        if (!itemsByCategory[category]) {
+          itemsByCategory[category] = [];
+        }
+        
+        // Check if item is expiring soon (within 7 days)
+        let expiryNote = "";
+        if (item.expiry_date) {
+          const expiryDate = new Date(item.expiry_date);
+          const today = new Date();
+          const daysUntilExpiry = Math.ceil((expiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+          if (daysUntilExpiry <= 7 && daysUntilExpiry > 0) {
+            expiryNote = ` (expiring in ${daysUntilExpiry} days - PRIORITIZE)`;
+          } else if (daysUntilExpiry <= 0) {
+            expiryNote = " (expired - DO NOT USE)";
+          }
+        }
+        
+        const qtyText = item.quantity && item.unit 
+          ? `${item.quantity} ${item.unit}` 
+          : item.quantity 
+            ? `${item.quantity}` 
+            : "available";
+        
+        itemsByCategory[category].push(`${item.name} (${qtyText})${expiryNote}`);
+      });
+
+      pantryContext = "\n\nCURRENT PANTRY INVENTORY:\n";
+      pantryContext += "IMPORTANT: Prioritize using ingredients from the pantry, especially items marked as expiring soon.\n";
+      pantryContext += "Try to incorporate pantry items into recipes to reduce waste and save money.\n\n";
+      
+      Object.entries(itemsByCategory).forEach(([category, items]) => {
+        pantryContext += `${category}:\n`;
+        items.forEach(item => {
+          pantryContext += `  - ${item}\n`;
+        });
+        pantryContext += "\n";
+      });
+    } else {
+      pantryContext = "\n\nNote: No pantry inventory data available. Generate meals using commonly available Indian ingredients.";
+    }
+
     const systemPrompt = `You are a professional Indian meal planning assistant. Generate a ${numDays}-day meal plan featuring authentic Indian cuisine with breakfast, lunch, and dinner for each day.
 
 MEAL GENERATION INSTRUCTIONS:
@@ -151,6 +206,7 @@ HOUSEHOLD PROFILE:
 - ${timeContext}
 - ${budgetContext}
 ${hiddenRecipeText ? `\n${hiddenRecipeText}` : ""}
+${pantryContext}
 
 Regional Context for India:
 - Focus exclusively on Indian recipes and cooking styles
