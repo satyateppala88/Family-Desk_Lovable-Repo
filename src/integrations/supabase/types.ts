@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      access_requests: {
+        Row: {
+          created_at: string
+          email: string
+          full_name: string
+          id: string
+          reason: string | null
+          rejection_reason: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          full_name: string
+          id?: string
+          reason?: string | null
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          full_name?: string
+          id?: string
+          reason?: string | null
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ai_conversations: {
         Row: {
           context: Json | null
@@ -884,13 +923,14 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_email_approved: { Args: { user_email: string }; Returns: boolean }
       is_household_member: {
         Args: { _household_id: string; _user_id: string }
         Returns: boolean
       }
     }
     Enums: {
-      app_role: "household_admin" | "member"
+      app_role: "household_admin" | "member" | "platform_admin"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1018,7 +1058,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["household_admin", "member"],
+      app_role: ["household_admin", "member", "platform_admin"],
     },
   },
 } as const
