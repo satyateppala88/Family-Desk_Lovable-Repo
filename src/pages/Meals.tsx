@@ -6,6 +6,7 @@ import { RecipeRatingDialog } from "@/components/meals/RecipeRatingDialog";
 import { MealPlanCalendar } from "@/components/meals/MealPlanCalendar";
 import { WeekNavigator } from "@/components/meals/WeekNavigator";
 import { MealPlanDownload } from "@/components/meals/MealPlanDownload";
+import { MarkAsCookedDialog } from "@/components/meals/MarkAsCookedDialog";
 import { useHousehold } from "@/hooks/useHousehold";
 import { useRecipes } from "@/hooks/useRecipes";
 import { useMealPlans } from "@/hooks/useMealPlans";
@@ -35,6 +36,7 @@ const Meals = () => {
   
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
   const [ratingRecipe, setRatingRecipe] = useState<Recipe | null>(null);
+  const [cookingRecipe, setCookingRecipe] = useState<Recipe | null>(null);
   const [generatingPlan, setGeneratingPlan] = useState(false);
   const [view, setView] = useState<"calendar" | "recipes">("calendar");
   const calendarRef = useRef<HTMLDivElement>(null);
@@ -124,6 +126,50 @@ const Meals = () => {
   const handleDeleteRecipe = (id: string) => {
     if (confirm("Are you sure you want to delete this recipe?")) {
       deleteRecipe.mutate(id);
+    }
+  };
+
+  const handleMarkAsCooked = async () => {
+    if (!cookingRecipe || !householdId) return;
+
+    try {
+      const ingredients = cookingRecipe.ingredients || [];
+      
+      // Deduct ingredients from pantry
+      for (const ingredient of ingredients) {
+        const itemName = ingredient.name.toLowerCase().trim();
+        const qty = parseFloat(ingredient.quantity) || 0;
+
+        // Find matching pantry item
+        const { data: pantryItems } = await supabase
+          .from("pantry_items")
+          .select("id, quantity, unit")
+          .eq("household_id", householdId)
+          .ilike("name", itemName)
+          .limit(1);
+
+        if (pantryItems && pantryItems.length > 0) {
+          const pantryItem = pantryItems[0];
+          const newQty = Math.max(0, (pantryItem.quantity || 0) - qty);
+          
+          await supabase
+            .from("pantry_items")
+            .update({ quantity: newQty })
+            .eq("id", pantryItem.id);
+        }
+      }
+
+      toast({
+        title: "Meal marked as cooked",
+        description: "Pantry has been updated with ingredient usage.",
+      });
+    } catch (error: any) {
+      console.error("Error updating pantry:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update pantry. Please adjust manually.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -223,6 +269,7 @@ const Meals = () => {
                     dayOfWeek: dayIndex,
                   });
                 }}
+                onMarkAsCooked={setCookingRecipe}
               />
             </div>
 
@@ -272,7 +319,15 @@ const Meals = () => {
         onRemoveFromWeek={handleRemoveFromWeek}
       />
 
-      <OnboardingTour 
+      <MarkAsCookedDialog
+        open={!!cookingRecipe}
+        onOpenChange={(open) => !open && setCookingRecipe(null)}
+        recipeName={cookingRecipe?.title || ""}
+        ingredients={cookingRecipe?.ingredients || []}
+        onConfirm={handleMarkAsCooked}
+      />
+
+      <OnboardingTour
         run={runOnboarding} 
         onComplete={handleOnboardingComplete} 
         steps={mealsTourSteps}

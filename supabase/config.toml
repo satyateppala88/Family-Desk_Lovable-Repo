@@ -11,3 +11,13 @@ verify_jwt = true
 
 [functions.dev-reset-account]
 verify_jwt = true
+
+[functions.ai-pantry-import]
+verify_jwt = true
+
+[functions.generate-shopping-list]
+verify_jwt = true
+
+[functions.ai-chat]
+verify_jwt = true
+
