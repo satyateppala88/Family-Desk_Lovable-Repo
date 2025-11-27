@@ -1,4 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useSearchParams } from "react-router-dom";
 import { Header } from "@/components/layout/Header";
 import { MobileNav } from "@/components/layout/MobileNav";
 import { Footer } from "@/components/layout/Footer";
@@ -16,6 +18,9 @@ import { CreateShoppingListDialog } from "@/components/grocery/CreateShoppingLis
 import { PantryEducationBanner } from "@/components/grocery/PantryEducationBanner";
 import { ExpiringItemsAlert } from "@/components/grocery/ExpiringItemsAlert";
 import { LowStockAlert } from "@/components/grocery/LowStockAlert";
+import { PantryCategorySection } from "@/components/grocery/PantryCategorySection";
+import { ShoppingListDetailView } from "@/components/grocery/ShoppingListDetailView";
+import { PantryAnalytics } from "@/components/grocery/PantryAnalytics";
 import { usePantryItems } from "@/hooks/usePantryItems";
 import { usePantryCategories } from "@/hooks/usePantryCategories";
 import { usePantryStats } from "@/hooks/usePantryStats";
@@ -31,10 +36,12 @@ const Grocery = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const { householdId } = useHousehold();
+  const queryClient = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { pantryItems, isLoading, addPantryItem, updatePantryItem, deletePantryItem, bulkAddItems } = usePantryItems(householdId);
   const { categories, isLoading: categoriesLoading, initializeDefaultCategories } = usePantryCategories(householdId);
   const { stats } = usePantryStats(householdId);
-  const { shoppingLists, createShoppingList, completeShoppingList, deleteShoppingList } = useShoppingLists(householdId);
+  const { shoppingLists, createShoppingList, completeShoppingList, deleteShoppingList, toggleItemChecked, deleteItem } = useShoppingLists(householdId);
   
   const [runOnboarding, setRunOnboarding] = useState(false);
   const [showAddDialog, setShowAddDialog] = useState(false);
@@ -152,6 +159,8 @@ const Grocery = () => {
 
       if (error) throw error;
 
+      queryClient.invalidateQueries({ queryKey: ["shopping-lists", householdId] });
+      
       toast({
         title: "Shopping list created",
         description: `Generated list with ${data.itemCount} items from your meal plan.`,
@@ -229,6 +238,39 @@ const Grocery = () => {
     return minQty > 0 && qty <= minQty;
   });
 
+  // Group items by category
+  const groupedItems = useMemo(() => {
+    const groups: Record<string, PantryItem[]> = {};
+    
+    filteredItems.forEach((item) => {
+      const category = item.category || "Other";
+      if (!groups[category]) groups[category] = [];
+      groups[category].push(item);
+    });
+
+    return groups;
+  }, [filteredItems]);
+
+  // Get sorted categories
+  const sortedCategories = useMemo(() => {
+    return categories
+      .filter((cat) => groupedItems[cat.name])
+      .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+  }, [categories, groupedItems]);
+
+  // Shopping list detail view
+  const selectedListId = searchParams.get("list");
+  const selectedList = shoppingLists.find((list) => list.id === selectedListId);
+
+  const handleToggleItem = (itemId: string, isChecked: boolean) => {
+    if (!user?.id) return;
+    toggleItemChecked.mutate({ id: itemId, is_checked: isChecked, user_id: user.id });
+  };
+
+  const handleBackToLists = () => {
+    setSearchParams({});
+  };
+
   const groceryTourSteps: Step[] = [
     {
       target: "body",
@@ -289,12 +331,11 @@ const Grocery = () => {
               Pantry
             </TabsTrigger>
             <TabsTrigger value="shopping" className="gap-2">
+              <ShoppingCart className="h-4 w-4" />
               Shopping Lists
-              <span className="text-xs text-muted-foreground">(Coming Soon)</span>
             </TabsTrigger>
             <TabsTrigger value="insights" className="gap-2">
               Insights
-              <span className="text-xs text-muted-foreground">(Coming Soon)</span>
             </TabsTrigger>
           </TabsList>
 
@@ -334,83 +375,99 @@ const Grocery = () => {
                 )}
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filteredItems.map((item) => (
-                  <PantryItemCard
-                    key={item.id}
-                    item={item}
+              <div className="space-y-6">
+                {sortedCategories.map((category) => (
+                  <PantryCategorySection
+                    key={category.id}
+                    categoryName={category.name}
+                    categoryIcon={category.icon || undefined}
+                    items={groupedItems[category.name]}
                     onEdit={handleEditItem}
                     onDelete={handleDeleteItem}
                     onUpdateQuantity={handleUpdateQuantity}
                   />
                 ))}
+                {groupedItems["Other"] && (
+                  <PantryCategorySection
+                    categoryName="Other"
+                    items={groupedItems["Other"]}
+                    onEdit={handleEditItem}
+                    onDelete={handleDeleteItem}
+                    onUpdateQuantity={handleUpdateQuantity}
+                  />
+                )}
               </div>
             )}
           </TabsContent>
 
           <TabsContent value="shopping" className="space-y-6">
-            <div className="flex items-center justify-between">
-              <p className="text-sm text-muted-foreground">
-                Manage your shopping lists and generate them from your meal plans.
-              </p>
-              <Button onClick={() => setShowCreateList(true)} className="gap-2">
-                <ShoppingCart className="h-4 w-4" />
-                Create List
-              </Button>
-            </div>
-
-            {shoppingLists.length === 0 ? (
-              <div className="text-center py-12">
-                <ShoppingCart className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                <h3 className="text-lg font-semibold mb-2">No shopping lists yet</h3>
-                <p className="text-muted-foreground mb-4">
-                  Create a list manually or generate from your meal plan.
-                </p>
-                <div className="flex gap-2 justify-center">
-                  <Button variant="outline" onClick={() => setShowCreateList(true)}>
-                    Create Manual List
-                  </Button>
-                  <Button onClick={handleGenerateFromMealPlan} disabled={isGeneratingList}>
-                    {isGeneratingList ? "Generating..." : "Generate from Meal Plan"}
+            {selectedList ? (
+              <ShoppingListDetailView
+                list={selectedList}
+                onBack={handleBackToLists}
+                onToggleItem={handleToggleItem}
+                onDeleteItem={(itemId) => deleteItem.mutate(itemId)}
+                userId={user?.id || ""}
+              />
+            ) : (
+              <>
+                <div className="flex items-center justify-between">
+                  <p className="text-sm text-muted-foreground">
+                    Manage your shopping lists and generate them from your meal plans.
+                  </p>
+                  <Button onClick={() => setShowCreateList(true)} className="gap-2">
+                    <ShoppingCart className="h-4 w-4" />
+                    Create List
                   </Button>
                 </div>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {shoppingLists.map((list) => (
-                  <ShoppingListCard
-                    key={list.id}
-                    list={list}
-                    onDelete={handleDeleteList}
-                    onComplete={handleCompleteList}
-                  />
-                ))}
-              </div>
+
+                {shoppingLists.length === 0 ? (
+                  <div className="text-center py-12">
+                    <ShoppingCart className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                    <h3 className="text-lg font-semibold mb-2">No shopping lists yet</h3>
+                    <p className="text-muted-foreground mb-4">
+                      Create a list manually or generate from your meal plan.
+                    </p>
+                    <div className="flex gap-2 justify-center">
+                      <Button variant="outline" onClick={() => setShowCreateList(true)}>
+                        Create Manual List
+                      </Button>
+                      <Button onClick={handleGenerateFromMealPlan} disabled={isGeneratingList}>
+                        {isGeneratingList ? "Generating..." : "Generate from Meal Plan"}
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {shoppingLists.map((list) => (
+                      <ShoppingListCard
+                        key={list.id}
+                        list={list}
+                        onDelete={handleDeleteList}
+                        onComplete={handleCompleteList}
+                      />
+                    ))}
+                  </div>
+                )}
+              </>
             )}
           </TabsContent>
 
           <TabsContent value="insights" className="space-y-6">
             <PantryEducationBanner />
             
-            <div className="grid gap-4">
+            {expiringItems.length > 0 && (
               <ExpiringItemsAlert items={expiringItems} />
-              <LowStockAlert items={lowStockItems} />
-            </div>
+            )}
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="border rounded-lg p-4">
-                <h3 className="font-semibold mb-2">Total Items</h3>
-                <p className="text-3xl font-bold">{stats.totalItems}</p>
-              </div>
-              <div className="border rounded-lg p-4">
-                <h3 className="font-semibold mb-2">Expiring Soon</h3>
-                <p className="text-3xl font-bold text-orange-600">{stats.expiringCount}</p>
-              </div>
-              <div className="border rounded-lg p-4">
-                <h3 className="font-semibold mb-2">Low Stock</h3>
-                <p className="text-3xl font-bold text-red-600">{stats.lowStockCount}</p>
-              </div>
-            </div>
+            {lowStockItems.length > 0 && (
+              <LowStockAlert items={lowStockItems} />
+            )}
+
+            <PantryAnalytics
+              pantryItems={pantryItems}
+              shoppingLists={shoppingLists}
+            />
           </TabsContent>
         </Tabs>
       </main>
