@@ -21,6 +21,9 @@ import { LowStockAlert } from "@/components/grocery/LowStockAlert";
 import { PantryCategorySection } from "@/components/grocery/PantryCategorySection";
 import { ShoppingListDetailView } from "@/components/grocery/ShoppingListDetailView";
 import { PantryAnalytics } from "@/components/grocery/PantryAnalytics";
+import { PantryCategoryGrid } from "@/components/grocery/PantryCategoryGrid";
+import { PantryCategoryDetail } from "@/components/grocery/PantryCategoryDetail";
+import { FloatingCartButton } from "@/components/grocery/FloatingCartButton";
 import { usePantryItems } from "@/hooks/usePantryItems";
 import { usePantryCategories } from "@/hooks/usePantryCategories";
 import { usePantryStats } from "@/hooks/usePantryStats";
@@ -53,6 +56,10 @@ const Grocery = () => {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedStatus, setSelectedStatus] = useState("all");
   const [isGeneratingList, setIsGeneratingList] = useState(false);
+  
+  // New quick commerce UI state
+  const [selectedCategoryDetail, setSelectedCategoryDetail] = useState<string | null>(null);
+  const [cartItemCount, setCartItemCount] = useState(0);
 
   // Initialize default categories if none exist
   useEffect(() => {
@@ -271,6 +278,100 @@ const Grocery = () => {
     setSearchParams({});
   };
 
+  // Quick commerce UI handlers
+  const handleSelectCategory = (categoryName: string) => {
+    setSelectedCategoryDetail(categoryName);
+  };
+
+  const handleBackToCategories = () => {
+    setSelectedCategoryDetail(null);
+  };
+
+  const handleAddToCart = async (itemIds: string[]) => {
+    if (!householdId || !user?.id) return;
+    
+    // Find or create active shopping list
+    let activeList = shoppingLists.find(list => list.status === "active");
+    
+    if (!activeList) {
+      // Create a new list
+      const { data, error } = await supabase
+        .from("shopping_lists")
+        .insert([{
+          household_id: householdId,
+          name: `Shopping List - ${new Date().toLocaleDateString()}`,
+          created_by: user.id,
+          status: "active",
+        }])
+        .select()
+        .single();
+      
+      if (error) {
+        toast({
+          title: "Error",
+          description: "Failed to create shopping list.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      activeList = data as any;
+      queryClient.invalidateQueries({ queryKey: ["shopping-lists", householdId] });
+    }
+    
+    // Get items to add
+    const itemsToAdd = pantryItems.filter(item => itemIds.includes(item.id));
+    
+    // Add items to shopping list
+    const shoppingItems = itemsToAdd.map(item => ({
+      list_id: activeList!.id,
+      name: item.name,
+      quantity: item.minimum_quantity || 1,
+      unit: item.unit,
+      category: item.category,
+      is_checked: false,
+      pantry_item_id: item.id,
+      recipe_source: null,
+    }));
+    
+    const { error: itemsError } = await supabase
+      .from("shopping_list_items")
+      .insert(shoppingItems);
+    
+    if (itemsError) {
+      toast({
+        title: "Error",
+        description: "Failed to add items to shopping list.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    queryClient.invalidateQueries({ queryKey: ["shopping-lists", householdId] });
+    setCartItemCount(prev => prev + itemsToAdd.length);
+    
+    toast({
+      title: "Added to cart",
+      description: `${itemsToAdd.length} item${itemsToAdd.length !== 1 ? 's' : ''} added to shopping list.`,
+    });
+  };
+
+  const handleViewCart = () => {
+    const activeList = shoppingLists.find(list => list.status === "active");
+    if (activeList) {
+      setSearchParams({ list: activeList.id });
+    }
+  };
+
+  // Get items for selected category
+  const categoryItems = useMemo(() => {
+    if (!selectedCategoryDetail) return [];
+    return pantryItems.filter(item => 
+      item.category === selectedCategoryDetail || 
+      (selectedCategoryDetail === "Other" && !item.category)
+    );
+  }, [selectedCategoryDetail, pantryItems]);
+
   const groceryTourSteps: Step[] = [
     {
       target: "body",
@@ -340,64 +441,45 @@ const Grocery = () => {
           </TabsList>
 
           <TabsContent value="pantry" className="space-y-6">
-            <PantryFilters
-              searchQuery={searchQuery}
-              onSearchChange={setSearchQuery}
-              selectedCategory={selectedCategory}
-              onCategoryChange={setSelectedCategory}
-              selectedStatus={selectedStatus}
-              onStatusChange={setSelectedStatus}
-              categories={categories}
-            />
-
             {isLoading ? (
               <p className="text-center text-muted-foreground">Loading pantry items...</p>
-            ) : filteredItems.length === 0 ? (
+            ) : pantryItems.length === 0 ? (
               <div className="text-center py-12">
                 <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                <h3 className="text-lg font-semibold mb-2">
-                  {pantryItems.length === 0 ? "No items in your pantry yet" : "No items match your filters"}
-                </h3>
+                <h3 className="text-lg font-semibold mb-2">No items in your pantry yet</h3>
                 <p className="text-muted-foreground mb-4">
-                  {pantryItems.length === 0 
-                    ? "Start by adding items individually or use Quick Add for common items."
-                    : "Try adjusting your search or filters."}
+                  Start by adding items individually or use Quick Add for common items.
                 </p>
-                {pantryItems.length === 0 && (
-                  <div className="flex gap-2 justify-center">
-                    <Button variant="outline" onClick={() => setShowQuickAdd(true)}>
-                      Quick Add from Checklist
-                    </Button>
-                    <Button onClick={() => setShowAddDialog(true)}>
-                      Add Individual Item
-                    </Button>
-                  </div>
-                )}
+                <div className="flex gap-2 justify-center">
+                  <Button variant="outline" onClick={() => setShowQuickAdd(true)}>
+                    Quick Add from Checklist
+                  </Button>
+                  <Button onClick={() => setShowAddDialog(true)}>
+                    Add Individual Item
+                  </Button>
+                </div>
               </div>
+            ) : selectedCategoryDetail ? (
+              <PantryCategoryDetail
+                categoryName={selectedCategoryDetail}
+                categoryIcon={categories.find(c => c.name === selectedCategoryDetail)?.icon || undefined}
+                items={categoryItems}
+                onBack={handleBackToCategories}
+                onQuantityChange={handleUpdateQuantity}
+                onAddToCart={handleAddToCart}
+              />
             ) : (
-              <div className="space-y-6">
-                {sortedCategories.map((category) => (
-                  <PantryCategorySection
-                    key={category.id}
-                    categoryName={category.name}
-                    categoryIcon={category.icon || undefined}
-                    items={groupedItems[category.name]}
-                    onEdit={handleEditItem}
-                    onDelete={handleDeleteItem}
-                    onUpdateQuantity={handleUpdateQuantity}
-                  />
-                ))}
-                {groupedItems["Other"] && (
-                  <PantryCategorySection
-                    categoryName="Other"
-                    items={groupedItems["Other"]}
-                    onEdit={handleEditItem}
-                    onDelete={handleDeleteItem}
-                    onUpdateQuantity={handleUpdateQuantity}
-                  />
-                )}
-              </div>
+              <PantryCategoryGrid
+                categories={categories}
+                items={pantryItems}
+                onSelectCategory={handleSelectCategory}
+              />
             )}
+            
+            <FloatingCartButton
+              itemCount={cartItemCount}
+              onClick={handleViewCart}
+            />
           </TabsContent>
 
           <TabsContent value="shopping" className="space-y-6">
