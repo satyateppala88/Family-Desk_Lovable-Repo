@@ -33,12 +33,12 @@ export const Hero = () => {
         </p>
 
         <div className="flex flex-col sm:flex-row gap-4 justify-center items-center animate-fade-in-more-delayed">
-          <Link to="/auth">
+          <Link to="/request-access">
             <Button
               size="lg"
               className="text-lg px-8 py-6 bg-landing-accent text-white hover:bg-landing-accent/90 shadow-lg hover:shadow-xl hover:shadow-landing-accent/30 transition-all hover:scale-105"
             >
-              Get Started
+              Request Early Access
             </Button>
           </Link>
           <Button

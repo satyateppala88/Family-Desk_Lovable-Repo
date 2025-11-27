@@ -11,20 +11,23 @@ export const FinalCTA = () => {
 
       <div className="relative z-10 container mx-auto px-4 text-center">
         <h2 className="text-5xl md:text-6xl font-bold mb-8 text-landing-text">
-          Ready to Transform Your Household?
+          Join the Waitlist
         </h2>
+        <p className="text-xl text-landing-text-muted mb-8 max-w-2xl mx-auto">
+          Family Desk is currently in private beta. Request early access to be among the first to transform your household management.
+        </p>
 
-        <Link to="/auth">
+        <Link to="/request-access">
           <Button
             size="lg"
             className="text-xl px-12 py-8 bg-landing-accent text-white hover:bg-landing-accent/90 shadow-xl hover:shadow-2xl hover:shadow-landing-accent/40 transition-all hover:scale-105"
           >
-            Get Started Free
+            Request Early Access
           </Button>
         </Link>
 
         <p className="text-landing-text-muted mt-6 text-lg">
-          No credit card required
+          Limited spots available • Approval within 1-2 business days
         </p>
       </div>
     </section>

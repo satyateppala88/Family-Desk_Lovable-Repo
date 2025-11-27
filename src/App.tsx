@@ -8,6 +8,8 @@ import { ProtectedRoute } from "@/components/layout/ProtectedRoute";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Landing from "./pages/Landing";
+import RequestAccess from "./pages/RequestAccess";
+import AdminAccessRequests from "./pages/AdminAccessRequests";
 import HouseholdSetup from "./pages/HouseholdSetup";
 import { UserPreferencesOnboarding } from "./components/onboarding/UserPreferencesOnboarding";
 import { Settings } from "./pages/Settings";
@@ -36,6 +38,15 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Landing />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/request-access" element={<RequestAccess />} />
+            <Route
+              path="/admin/access-requests"
+              element={
+                <ProtectedRoute>
+                  <AdminAccessRequests />
+                </ProtectedRoute>
+              }
+            />
             <Route path="/household-setup" element={
               <ProtectedRoute>
                 <HouseholdSetup />
