@@ -20,16 +20,18 @@ export const DashboardGroceryWidget = ({ pantryItemsCount }: DashboardGroceryWid
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">Pantry items</p>
-            <Badge variant="secondary">{pantryItemsCount}</Badge>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="text-center p-2 bg-muted rounded-md">
+              <p className="text-2xl font-bold">{pantryItemsCount}</p>
+              <p className="text-xs text-muted-foreground">Pantry Items</p>
+            </div>
+            <div className="text-center p-2 bg-muted rounded-md">
+              <p className="text-2xl font-bold">0</p>
+              <p className="text-xs text-muted-foreground">Shopping Lists</p>
+            </div>
           </div>
-          <p className="text-2xl font-bold">{pantryItemsCount}</p>
-          <p className="text-xs text-muted-foreground">
-            Items currently in your pantry
-          </p>
           <div className="flex items-center justify-end gap-1 text-sm font-medium mt-4" style={{ color: "hsl(145, 65%, 45%)" }}>
-            Manage pantry <ArrowRight className="h-4 w-4" />
+            Manage grocery <ArrowRight className="h-4 w-4" />
           </div>
         </CardContent>
       </Card>
