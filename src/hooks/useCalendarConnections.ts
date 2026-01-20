@@ -47,7 +47,7 @@ export const useCalendarConnections = () => {
       const redirectUri = `${window.location.origin}/calendar`;
 
       const response = await supabase.functions.invoke("google-calendar-auth", {
-        body: { redirectUri, householdId },
+        body: { action: "init", redirectUri, householdId },
         headers: { Authorization: `Bearer ${session.access_token}` },
       });
 
@@ -67,7 +67,7 @@ export const useCalendarConnections = () => {
       const redirectUri = `${window.location.origin}/calendar`;
 
       const response = await supabase.functions.invoke("google-calendar-auth", {
-        body: { code, state, redirectUri },
+        body: { action: "callback", code, state, redirectUri },
       });
 
       if (response.error) throw response.error;
@@ -90,7 +90,7 @@ export const useCalendarConnections = () => {
       if (!session) throw new Error("Not authenticated");
 
       const response = await supabase.functions.invoke("google-calendar-auth", {
-        body: { connectionId },
+        body: { action: "disconnect", connectionId },
         headers: { Authorization: `Bearer ${session.access_token}` },
       });
 
@@ -123,7 +123,7 @@ export const useCalendarConnections = () => {
       if (!session) throw new Error("Not authenticated");
 
       const response = await supabase.functions.invoke("google-calendar-auth", {
-        body: { connectionId, displayName, color, isVisible },
+        body: { action: "update", connectionId, displayName, color, isVisible },
         headers: { Authorization: `Bearer ${session.access_token}` },
       });
 
