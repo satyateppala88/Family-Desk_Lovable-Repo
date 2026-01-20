@@ -30,6 +30,9 @@ verify_jwt = true
 [functions.google-calendar-auth]
 verify_jwt = false
 
+[functions.extract-calendar-tasks]
+verify_jwt = true
+
 [functions.fetch-calendar-events]
 verify_jwt = true
 

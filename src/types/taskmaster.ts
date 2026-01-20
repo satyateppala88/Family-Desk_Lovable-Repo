@@ -33,6 +33,7 @@ export interface TaskmasterTask {
   created_by: string;
   created_at: string;
   updated_at: string;
+  source_calendar_event_id?: string | null; // Track tasks imported from calendar
   // Joined data
   project?: Project | null;
   assignees?: TaskAssignee[];

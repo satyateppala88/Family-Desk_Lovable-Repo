@@ -1244,6 +1244,7 @@ export type Database = {
           project_id: string | null
           recurring: boolean | null
           recurring_pattern: Json | null
+          source_calendar_event_id: string | null
           started_at: string | null
           status: string
           task_category: Database["public"]["Enums"]["task_category"] | null
@@ -1266,6 +1267,7 @@ export type Database = {
           project_id?: string | null
           recurring?: boolean | null
           recurring_pattern?: Json | null
+          source_calendar_event_id?: string | null
           started_at?: string | null
           status?: string
           task_category?: Database["public"]["Enums"]["task_category"] | null
@@ -1288,6 +1290,7 @@ export type Database = {
           project_id?: string | null
           recurring?: boolean | null
           recurring_pattern?: Json | null
+          source_calendar_event_id?: string | null
           started_at?: string | null
           status?: string
           task_category?: Database["public"]["Enums"]["task_category"] | null

@@ -52,9 +52,44 @@ export const useDailyPlan = (householdId: string | null, date?: Date) => {
     enabled: !!householdId && !!user?.id,
   });
 
+  const extractCalendarTasks = useMutation({
+    mutationFn: async () => {
+      if (!session?.access_token) throw new Error("Not authenticated");
+      
+      const response = await supabase.functions.invoke("extract-calendar-tasks", {
+        body: { date: dateString, householdId },
+      });
+
+      if (response.error) throw response.error;
+      return response.data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["taskmaster-tasks"] });
+      if (data.tasksCreated > 0) {
+        toast({
+          title: "Tasks extracted",
+          description: `Found ${data.tasksCreated} tasks from your calendar.`,
+        });
+      }
+    },
+    onError: (error: any) => {
+      console.error("Calendar extraction error:", error);
+      // Silent fail - don't interrupt daily plan generation
+    },
+  });
+
   const generatePlan = useMutation({
     mutationFn: async ({ forceRegenerate = false }: { forceRegenerate?: boolean } = {}) => {
       if (!session?.access_token) throw new Error("Not authenticated");
+      
+      // First extract any calendar tasks (silent operation)
+      try {
+        await supabase.functions.invoke("extract-calendar-tasks", {
+          body: { date: dateString, householdId },
+        });
+      } catch (e) {
+        console.log("Calendar extraction skipped:", e);
+      }
       
       const response = await supabase.functions.invoke("generate-daily-plan", {
         body: { date: dateString, forceRegenerate, householdId },
@@ -65,6 +100,7 @@ export const useDailyPlan = (householdId: string | null, date?: Date) => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["daily-plan", householdId, dateString, user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["taskmaster-tasks"] });
       toast({
         title: "Plan generated",
         description: "Your daily plan has been created.",
@@ -144,5 +180,6 @@ export const useDailyPlan = (householdId: string | null, date?: Date) => {
     generatePlan,
     acceptPlan,
     removeFromPlan,
+    extractCalendarTasks,
   };
 };
