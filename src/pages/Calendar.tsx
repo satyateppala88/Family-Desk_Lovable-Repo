@@ -1,42 +1,94 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Header } from "@/components/layout/Header";
 import { MobileNav } from "@/components/layout/MobileNav";
 import { Footer } from "@/components/layout/Footer";
-import { OnboardingTour } from "@/components/onboarding/OnboardingTour";
-import type { Step } from "react-joyride";
+import { CalendarGrid } from "@/components/calendar/CalendarGrid";
+import { CalendarSidebar } from "@/components/calendar/CalendarSidebar";
+import { CalendarHeader } from "@/components/calendar/CalendarHeader";
+import { CalendarLegend } from "@/components/calendar/CalendarLegend";
+import { CalendarEventDialog } from "@/components/calendar/CalendarEventDialog";
+import { ConnectCalendarDialog } from "@/components/calendar/ConnectCalendarDialog";
+import { useCalendarEvents, type CalendarEvent } from "@/hooks/useCalendarEvents";
+import { useCalendarConnections } from "@/hooks/useCalendarConnections";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const Calendar = () => {
-  const [runOnboarding, setRunOnboarding] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
+  const [showConnectDialog, setShowConnectDialog] = useState(false);
 
-  const handleStartOnboarding = () => setRunOnboarding(true);
-  const handleOnboardingComplete = () => setRunOnboarding(false);
+  const { data: events, isLoading } = useCalendarEvents(currentDate, "month");
+  const { handleOAuthCallback, connections } = useCalendarConnections();
 
-  const calendarTourSteps: Step[] = [
-    {
-      target: "body",
-      content: "Welcome to Calendar! This feature is coming soon in Phase 5.",
-      placement: "center",
-    },
-    {
-      target: "main",
-      content: "Here you'll be able to track important dates, festivals, family events, and integrate with your tasks and meal plans.",
-      placement: "center",
-    },
-  ];
+  // Handle OAuth callback
+  useEffect(() => {
+    const code = searchParams.get("code");
+    const state = searchParams.get("state");
+
+    if (code && state) {
+      handleOAuthCallback.mutate({ code, state });
+      // Clear URL params
+      setSearchParams({});
+    }
+  }, [searchParams, handleOAuthCallback, setSearchParams]);
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      <Header onStartOnboarding={handleStartOnboarding} />
-      <main className="container px-4 py-6 pb-20">
-        <h1 className="text-2xl font-bold mb-4">Calendar</h1>
-        <p className="text-muted-foreground">Calendar and important dates coming in Phase 5</p>
+      <Header />
+      
+      <main className="flex-1 flex flex-col pb-20">
+        <CalendarHeader
+          currentDate={currentDate}
+          onDateChange={setCurrentDate}
+          onConnectCalendar={() => setShowConnectDialog(true)}
+        />
+
+        <div className="flex-1 flex">
+          {/* Sidebar - hidden on mobile */}
+          <div className="hidden md:block">
+            <CalendarSidebar
+              currentDate={currentDate}
+              onDateSelect={setCurrentDate}
+              onConnectCalendar={() => setShowConnectDialog(true)}
+            />
+          </div>
+
+          {/* Main calendar area */}
+          <div className="flex-1 flex flex-col">
+            {isLoading ? (
+              <div className="flex-1 p-4">
+                <Skeleton className="h-full w-full" />
+              </div>
+            ) : (
+              <CalendarGrid
+                currentDate={currentDate}
+                events={events || []}
+                onEventClick={setSelectedEvent}
+                onDateClick={setCurrentDate}
+              />
+            )}
+
+            <CalendarLegend />
+          </div>
+        </div>
       </main>
+
       <Footer />
       <MobileNav />
-      <OnboardingTour 
-        run={runOnboarding} 
-        onComplete={handleOnboardingComplete} 
-        steps={calendarTourSteps}
+
+      {/* Event detail dialog */}
+      <CalendarEventDialog
+        event={selectedEvent}
+        open={!!selectedEvent}
+        onOpenChange={(open) => !open && setSelectedEvent(null)}
+      />
+
+      {/* Connect calendar dialog */}
+      <ConnectCalendarDialog
+        open={showConnectDialog}
+        onOpenChange={setShowConnectDialog}
       />
     </div>
   );
