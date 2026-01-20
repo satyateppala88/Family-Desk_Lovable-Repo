@@ -1,0 +1,148 @@
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { DailyPlan, DailyPlanItem, DailyPlanWithItems } from "@/types/taskmaster";
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
+import { format } from "date-fns";
+
+export const useDailyPlan = (householdId: string | null, date?: Date) => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const { user, session } = useAuth();
+  const targetDate = date || new Date();
+  const dateString = format(targetDate, "yyyy-MM-dd");
+
+  const { data: dailyPlan, isLoading, refetch } = useQuery({
+    queryKey: ["daily-plan", householdId, dateString, user?.id],
+    queryFn: async () => {
+      if (!householdId || !user?.id) return null;
+
+      // First check if a plan exists
+      const { data: plan, error } = await supabase
+        .from("daily_plans")
+        .select("*")
+        .eq("household_id", householdId)
+        .eq("user_id", user.id)
+        .eq("date", dateString)
+        .maybeSingle();
+
+      if (error) throw error;
+      if (!plan) return null;
+
+      // Fetch plan items with task details
+      const { data: items, error: itemsError } = await supabase
+        .from("daily_plan_items")
+        .select(`
+          *,
+          task:tasks(
+            *,
+            project:projects(*)
+          )
+        `)
+        .eq("daily_plan_id", plan.id)
+        .order("position", { ascending: true });
+
+      if (itemsError) throw itemsError;
+
+      return {
+        ...plan,
+        items: items || [],
+      } as DailyPlanWithItems;
+    },
+    enabled: !!householdId && !!user?.id,
+  });
+
+  const generatePlan = useMutation({
+    mutationFn: async ({ forceRegenerate = false }: { forceRegenerate?: boolean } = {}) => {
+      if (!session?.access_token) throw new Error("Not authenticated");
+      
+      const response = await supabase.functions.invoke("generate-daily-plan", {
+        body: { date: dateString, forceRegenerate, householdId },
+      });
+
+      if (response.error) throw response.error;
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["daily-plan", householdId, dateString, user?.id] });
+      toast({
+        title: "Plan generated",
+        description: "Your daily plan has been created.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error generating plan",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const acceptPlan = useMutation({
+    mutationFn: async () => {
+      if (!dailyPlan?.id) throw new Error("No plan to accept");
+
+      const { error } = await supabase
+        .from("daily_plans")
+        .update({
+          accepted: true,
+          accepted_at: new Date().toISOString(),
+        })
+        .eq("id", dailyPlan.id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["daily-plan", householdId, dateString, user?.id] });
+      toast({
+        title: "Plan accepted",
+        description: "Your daily plan has been confirmed.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const removeFromPlan = useMutation({
+    mutationFn: async (taskId: string) => {
+      if (!dailyPlan?.id) throw new Error("No plan");
+
+      const { error } = await supabase
+        .from("daily_plan_items")
+        .delete()
+        .eq("daily_plan_id", dailyPlan.id)
+        .eq("task_id", taskId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["daily-plan", householdId, dateString, user?.id] });
+      toast({
+        title: "Task removed",
+        description: "Task removed from today's plan.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  return {
+    dailyPlan,
+    isLoading,
+    refetch,
+    generatePlan,
+    acceptPlan,
+    removeFromPlan,
+  };
+};

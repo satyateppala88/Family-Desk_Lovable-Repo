@@ -21,3 +21,6 @@ verify_jwt = true
 [functions.ai-chat]
 verify_jwt = true
 
+[functions.generate-daily-plan]
+verify_jwt = true
+
