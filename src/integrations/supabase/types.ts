@@ -1380,7 +1380,53 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      calendar_connections_safe: {
+        Row: {
+          color: string | null
+          created_at: string | null
+          display_name: string | null
+          google_account_email: string | null
+          household_id: string | null
+          id: string | null
+          is_visible: boolean | null
+          token_expires_at: string | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string | null
+          display_name?: string | null
+          google_account_email?: string | null
+          household_id?: string | null
+          id?: string | null
+          is_visible?: boolean | null
+          token_expires_at?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          color?: string | null
+          created_at?: string | null
+          display_name?: string | null
+          google_account_email?: string | null
+          household_id?: string | null
+          id?: string | null
+          is_visible?: boolean | null
+          token_expires_at?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "calendar_connections_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       generate_invite_code: { Args: never; Returns: string }

@@ -24,14 +24,16 @@ export const useCalendarConnections = () => {
     queryFn: async () => {
       if (!householdId) return [];
 
+      // Use the safe view to prevent access to sensitive OAuth tokens
+      // The view excludes access_token and refresh_token columns
       const { data, error } = await supabase
-        .from("calendar_connections")
+        .from("calendar_connections_safe" as "calendar_connections")
         .select("id, user_id, household_id, google_account_email, display_name, color, is_visible, created_at, updated_at")
         .eq("household_id", householdId)
         .order("created_at", { ascending: true });
 
       if (error) throw error;
-      return data as CalendarConnection[];
+      return (data || []) as CalendarConnection[];
     },
     enabled: !!householdId,
   });
