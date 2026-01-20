@@ -18,6 +18,8 @@ import TaskmasterToday from "./pages/TaskmasterToday";
 import TaskmasterTasks from "./pages/TaskmasterTasks";
 import TaskmasterProjects from "./pages/TaskmasterProjects";
 import TaskmasterProjectDetail from "./pages/TaskmasterProjectDetail";
+import TaskmasterMyTasks from "./pages/TaskmasterMyTasks";
+import TaskmasterDashboard from "./pages/TaskmasterDashboard";
 import Meals from "./pages/Meals";
 import Grocery from "./pages/Grocery";
 import Calendar from "./pages/Calendar";
@@ -113,6 +115,16 @@ const App = () => (
             <Route path="/taskmaster/projects/:id" element={
               <ProtectedRoute>
                 <TaskmasterProjectDetail />
+              </ProtectedRoute>
+            } />
+            <Route path="/taskmaster/my-tasks" element={
+              <ProtectedRoute>
+                <TaskmasterMyTasks />
+              </ProtectedRoute>
+            } />
+            <Route path="/taskmaster/dashboard" element={
+              <ProtectedRoute>
+                <TaskmasterDashboard />
               </ProtectedRoute>
             } />
             <Route path="/meals" element={
