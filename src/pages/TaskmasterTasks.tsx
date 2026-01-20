@@ -5,6 +5,8 @@ import { useHousehold } from "@/hooks/useHousehold";
 import { useTaskmaster } from "@/hooks/useTaskmaster";
 import { useProjects } from "@/hooks/useProjects";
 import { TaskmasterTaskDialog } from "@/components/taskmaster/TaskmasterTaskDialog";
+import { QuickTaskInput } from "@/components/taskmaster/QuickTaskInput";
+import { ParsedTask } from "@/hooks/useParseTask";
 import { TaskmasterTask, TaskStatus, TaskCategory } from "@/types/taskmaster";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -99,6 +101,17 @@ const TaskmasterTasks = () => {
     setDialogOpen(true);
   };
 
+  const handleQuickCreate = (parsed: ParsedTask) => {
+    createTask.mutate({
+      title: parsed.title,
+      description: parsed.description,
+      task_category: parsed.task_category,
+      priority_level: parsed.priority_level,
+      due_date: parsed.due_date,
+      household_id: householdId!,
+    });
+  };
+
   const handleEditTask = (task: TaskmasterTask) => {
     setSelectedTask(task);
     setDialogOpen(true);
@@ -163,6 +176,11 @@ const TaskmasterTasks = () => {
             <Plus className="w-4 h-4 sm:mr-2" />
             <span className="hidden sm:inline">Add Task</span>
           </Button>
+        </div>
+
+        {/* Quick Task Input */}
+        <div className="mb-6">
+          <QuickTaskInput onCreateTask={handleQuickCreate} />
         </div>
 
         {/* Filters */}
