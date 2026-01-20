@@ -79,6 +79,7 @@ async function fetchEventsFromGoogle(
   endDate: string
 ): Promise<any[]> {
   // First get list of calendars
+  console.log("Fetching calendar list from Google...");
   const calendarsResponse = await fetch(
     "https://www.googleapis.com/calendar/v3/users/me/calendarList",
     {
@@ -89,16 +90,35 @@ async function fetchEventsFromGoogle(
   const calendarsData = await calendarsResponse.json();
   
   if (calendarsData.error) {
-    console.error("Calendar list error:", calendarsData);
+    console.error("Calendar list error:", calendarsData.error);
     throw new Error(calendarsData.error.message);
   }
+
+  console.log(`Found ${calendarsData.items?.length || 0} calendars in Google account`);
 
   const allEvents: any[] = [];
 
   // Fetch events from primary calendar and shared calendars
-  const calendarIds = calendarsData.items
+  // Prioritize primary calendar first, then owned calendars, then others
+  const calendars = calendarsData.items
     ?.filter((cal: any) => cal.accessRole !== "freeBusyReader")
-    .map((cal: any) => cal.id) || ["primary"];
+    .sort((a: any, b: any) => {
+      // Primary calendar first
+      if (a.primary) return -1;
+      if (b.primary) return 1;
+      // Then owned calendars
+      if (a.accessRole === 'owner' && b.accessRole !== 'owner') return -1;
+      if (b.accessRole === 'owner' && a.accessRole !== 'owner') return 1;
+      return 0;
+    }) || [];
+  
+  const calendarIds = calendars.map((cal: any) => cal.id);
+  if (calendarIds.length === 0) {
+    calendarIds.push("primary");
+  }
+
+  console.log(`Fetching events from ${calendarIds.length} calendars (limited to 5)`);
+  console.log(`Calendar order: ${calendarIds.slice(0, 5).join(', ')}`);
 
   for (const calendarId of calendarIds.slice(0, 5)) { // Limit to 5 calendars
     try {
@@ -111,12 +131,20 @@ async function fetchEventsFromGoogle(
       eventsUrl.searchParams.set("orderBy", "startTime");
       eventsUrl.searchParams.set("maxResults", "100");
 
+      console.log(`Fetching events for calendar: ${calendarId}`);
       const eventsResponse = await fetch(eventsUrl.toString(), {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
 
       const eventsData = await eventsResponse.json();
+      
+      if (eventsData.error) {
+        console.error(`Error fetching calendar ${calendarId}:`, eventsData.error);
+        continue;
+      }
 
+      console.log(`Calendar ${calendarId}: found ${eventsData.items?.length || 0} events`);
+      
       if (eventsData.items) {
         allEvents.push(...eventsData.items);
       }
@@ -125,6 +153,7 @@ async function fetchEventsFromGoogle(
     }
   }
 
+  console.log(`Total events fetched from Google: ${allEvents.length}`);
   return allEvents;
 }
 
@@ -179,7 +208,10 @@ serve(async (req) => {
       });
     }
 
+    console.log(`Found ${connections?.length || 0} visible connections for household ${householdId}`);
+    
     if (!connections || connections.length === 0) {
+      console.log("No visible connections found, returning empty events");
       return new Response(JSON.stringify({ events: [] }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -190,16 +222,26 @@ serve(async (req) => {
     // Fetch events from each connected calendar
     for (const conn of connections) {
       const calConnection = conn as unknown as CalendarConnection;
+      console.log(`Processing connection for: ${calConnection.google_account_email}`);
+      console.log(`Token expires at: ${calConnection.token_expires_at}`);
+      
       try {
         let accessToken = calConnection.access_token;
 
         // Check if token needs refresh
         const expiresAt = new Date(calConnection.token_expires_at);
+        const now = new Date();
+        console.log(`Token expiry check - expires: ${expiresAt.toISOString()}, now: ${now.toISOString()}, needs refresh: ${expiresAt <= new Date(Date.now() + 60000)}`);
+        
         if (expiresAt <= new Date(Date.now() + 60000)) { // 1 minute buffer
+          console.log("Token expired or expiring soon, refreshing...");
           accessToken = await refreshAccessToken(calConnection, supabase);
+          console.log("Token refreshed successfully");
         }
 
+        console.log("Calling fetchEventsFromGoogle...");
         const googleEvents = await fetchEventsFromGoogle(accessToken, startDate, endDate);
+        console.log(`Got ${googleEvents.length} events from Google`);
 
         // Transform events
         for (const event of googleEvents) {
@@ -221,6 +263,7 @@ serve(async (req) => {
             description: event.description,
           });
         }
+        console.log(`Processed ${googleEvents.length} events for ${calConnection.google_account_email}`);
       } catch (err) {
         console.error(`Error fetching events for ${calConnection.google_account_email}:`, err);
         // Continue with other calendars even if one fails
