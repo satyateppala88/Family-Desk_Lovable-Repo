@@ -40,7 +40,7 @@ export default function TermsOfService() {
             <section>
               <h2 className="text-xl font-semibold mb-3">2. Description of Service</h2>
               <p className="text-muted-foreground">
-                Family Desk is a household management platform designed for Indian families, providing features including task management, AI-powered meal planning with Indian cuisine focus, grocery list management, and calendar organization.
+                Family Desk is a household management platform designed for Indian families, providing features including task management, AI-powered meal planning with Indian cuisine focus, grocery list management, calendar organization, and Google Calendar integration with AI-powered task extraction.
               </p>
             </section>
 
@@ -115,12 +115,64 @@ export default function TermsOfService() {
                 <li>Consult healthcare professionals for specific dietary needs</li>
                 <li>We do not guarantee the accuracy of nutritional information</li>
               </ul>
+
+              <h3 className="text-lg font-medium mb-2 mt-4">5.4 Natural Language Task Processing</h3>
+              <p className="text-muted-foreground mb-2">
+                Our AI processes natural language task inputs to extract structured information:
+              </p>
+              <ul className="list-disc pl-6 space-y-2 text-muted-foreground">
+                <li>Task titles, descriptions, priorities, and due dates are extracted from conversational input</li>
+                <li>Scheduling context (e.g., "after my meeting", "before school pickup") is interpreted</li>
+                <li>Category classification (home, work, kid-related) is automatically assigned</li>
+                <li>You can always edit or correct AI-interpreted task details</li>
+              </ul>
+
+              <h3 className="text-lg font-medium mb-2 mt-4">5.5 Calendar-Aware Task Prioritization</h3>
+              <p className="text-muted-foreground mb-2">
+                When you connect your Google Calendar, our AI uses your schedule to enhance task management:
+              </p>
+              <ul className="list-disc pl-6 space-y-2 text-muted-foreground">
+                <li>Daily task plans consider your meeting load and available time slots</li>
+                <li>On busy days, fewer tasks are recommended to avoid overwhelm</li>
+                <li>Task scheduling suggestions align with your free time windows</li>
+                <li>Work tasks are prioritized during work hours, home tasks during evenings</li>
+              </ul>
+
+              <h3 className="text-lg font-medium mb-2 mt-4">5.6 Calendar Task Extraction</h3>
+              <p className="text-muted-foreground mb-2">
+                Our AI can automatically identify actionable tasks from your calendar events:
+              </p>
+              <ul className="list-disc pl-6 space-y-2 text-muted-foreground">
+                <li>Calendar events that represent actions (e.g., "Call dentist") may be converted to tasks</li>
+                <li>Appointments and meetings (e.g., "Team standup") are not converted to tasks</li>
+                <li>You retain full control to delete or modify any extracted tasks</li>
+                <li>Duplicate task extraction is prevented through event tracking</li>
+                <li>AI-extracted tasks are marked with their calendar source for transparency</li>
+              </ul>
             </section>
 
             <section>
-              <h2 className="text-xl font-semibold mb-3">6. Household Sharing Features</h2>
+              <h2 className="text-xl font-semibold mb-3">6. Google Calendar Integration</h2>
+              <p className="text-muted-foreground mb-2">
+                When you connect your Google Calendar to Family Desk:
+              </p>
+              <ul className="list-disc pl-6 space-y-2 text-muted-foreground">
+                <li>You authorize us to read your calendar events for display and task planning purposes</li>
+                <li>We access all calendars associated with your Google account that you make visible</li>
+                <li>Calendar data is used to provide unified family calendar views and AI-powered insights</li>
+                <li>We store OAuth tokens securely to maintain your calendar connection</li>
+                <li>You can disconnect your Google Calendar at any time through Settings</li>
+                <li>Disconnecting will stop calendar synchronization but won't delete previously extracted tasks</li>
+              </ul>
+              <p className="text-muted-foreground mt-2">
+                By connecting Google Calendar, you agree to Google's Terms of Service and acknowledge that your use is also subject to Google's Privacy Policy.
+              </p>
+            </section>
+
+            <section>
+              <h2 className="text-xl font-semibold mb-3">7. Household Sharing Features</h2>
               <p className="text-muted-foreground">
-                When you create or join a household, you agree to share certain data with household members. You are responsible for managing household member access and permissions.
+                When you create or join a household, you agree to share certain data with household members. You are responsible for managing household member access and permissions. Connected calendars and extracted tasks are visible to all household members.
               </p>
             </section>
 
@@ -139,35 +191,50 @@ export default function TermsOfService() {
             </section>
 
             <section>
-              <h2 className="text-xl font-semibold mb-3">9. Compliance with Indian Laws</h2>
+              <h2 className="text-xl font-semibold mb-3">10. Compliance with Indian Laws</h2>
               <p className="text-muted-foreground">
                 This Service complies with the Information Technology Act, 2000 and the Digital Personal Data Protection Act, 2023 (DPDP Act). We are committed to protecting your personal data in accordance with Indian data protection regulations.
               </p>
             </section>
 
             <section>
-              <h2 className="text-xl font-semibold mb-3">10. Termination</h2>
+              <h2 className="text-xl font-semibold mb-3">11. Third-Party Services</h2>
+              <p className="text-muted-foreground mb-2">
+                Our Service integrates with third-party services:
+              </p>
+              <ul className="list-disc pl-6 space-y-2 text-muted-foreground">
+                <li><strong>Google Calendar:</strong> For calendar synchronization and event display</li>
+                <li><strong>Lovable AI Gateway:</strong> For AI-powered meal planning, task parsing, and calendar analysis</li>
+                <li><strong>Lovable Cloud:</strong> For database, authentication, and backend infrastructure</li>
+              </ul>
+              <p className="text-muted-foreground mt-2">
+                Each third-party service has its own terms and privacy policies. By using these integrations, you agree to comply with their respective terms.
+              </p>
+            </section>
+
+            <section>
+              <h2 className="text-xl font-semibold mb-3">12. Termination</h2>
               <p className="text-muted-foreground">
                 We may terminate or suspend your account and access to the Service immediately, without prior notice, for conduct that we believe violates these Terms or is harmful to other users, us, or third parties.
               </p>
             </section>
 
             <section>
-              <h2 className="text-xl font-semibold mb-3">11. Changes to Terms</h2>
+              <h2 className="text-xl font-semibold mb-3">13. Changes to Terms</h2>
               <p className="text-muted-foreground">
                 We reserve the right to modify these terms at any time. We will notify users of any material changes via email or through the Service. Your continued use after such modifications constitutes acceptance of the updated terms.
               </p>
             </section>
 
             <section>
-              <h2 className="text-xl font-semibold mb-3">12. Governing Law</h2>
+              <h2 className="text-xl font-semibold mb-3">14. Governing Law</h2>
               <p className="text-muted-foreground">
                 These Terms shall be governed by and construed in accordance with the laws of India, without regard to its conflict of law provisions. Any disputes shall be subject to the exclusive jurisdiction of courts in India.
               </p>
             </section>
 
             <section>
-              <h2 className="text-xl font-semibold mb-3">13. Contact Information</h2>
+              <h2 className="text-xl font-semibold mb-3">15. Contact Information</h2>
               <p className="text-muted-foreground">
                 If you have any questions about these Terms, please contact us at:
                 <br />
