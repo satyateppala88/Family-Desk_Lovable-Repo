@@ -171,6 +171,7 @@ serve(async (req) => {
             token_expires_at: expiresAt.toISOString(),
             display_name: userInfo.email.split("@")[0],
             color: colors[colorIndex],
+            is_visible: true,
           });
 
         if (insertError) {
