@@ -175,6 +175,7 @@ export type Database = {
       }
       daily_plan_items: {
         Row: {
+          ai_reasoning: string | null
           created_at: string
           daily_plan_id: string
           id: string
@@ -183,6 +184,7 @@ export type Database = {
           task_id: string
         }
         Insert: {
+          ai_reasoning?: string | null
           created_at?: string
           daily_plan_id: string
           id?: string
@@ -191,6 +193,7 @@ export type Database = {
           task_id: string
         }
         Update: {
+          ai_reasoning?: string | null
           created_at?: string
           daily_plan_id?: string
           id?: string

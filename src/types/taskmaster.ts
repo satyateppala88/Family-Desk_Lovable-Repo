@@ -67,6 +67,7 @@ export interface DailyPlanItem {
   task_id: string;
   score: number;
   position: number;
+  ai_reasoning: string | null;
   created_at: string;
   // Joined task data
   task?: TaskmasterTask;

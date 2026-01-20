@@ -4,6 +4,8 @@ import { MobileNav } from "@/components/layout/MobileNav";
 import { useHousehold } from "@/hooks/useHousehold";
 import { useDailyPlan } from "@/hooks/useDailyPlan";
 import { useTaskmaster } from "@/hooks/useTaskmaster";
+import { QuickTaskInput } from "@/components/taskmaster/QuickTaskInput";
+import { ParsedTask } from "@/hooks/useParseTask";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -17,16 +19,35 @@ import {
   Clock,
   AlertTriangle,
   CheckCircle2,
-  Folder
+  Folder,
+  Sparkles,
+  Info
 } from "lucide-react";
 import { format, differenceInDays } from "date-fns";
 import { cn } from "@/lib/utils";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 const TaskmasterToday = () => {
   const { householdId, isLoading: loadingHousehold } = useHousehold();
   const { dailyPlan, isLoading, generatePlan, acceptPlan, removeFromPlan } = useDailyPlan(householdId);
-  const { markTaskDone, startTask } = useTaskmaster(householdId);
+  const { markTaskDone, startTask, createTask } = useTaskmaster(householdId);
   const [hasGenerated, setHasGenerated] = useState(false);
+
+  const handleQuickCreate = (parsed: ParsedTask) => {
+    createTask.mutate({
+      title: parsed.title,
+      description: parsed.description,
+      task_category: parsed.task_category,
+      priority_level: parsed.priority_level,
+      due_date: parsed.due_date,
+      household_id: householdId!,
+    });
+  };
 
   // Auto-generate plan on first load if none exists
   useEffect(() => {
@@ -101,6 +122,11 @@ const TaskmasterToday = () => {
           </div>
         </div>
 
+        {/* Quick Task Input */}
+        <div className="mb-6">
+          <QuickTaskInput onCreateTask={handleQuickCreate} />
+        </div>
+
         {/* Plan Status Banner */}
         {dailyPlan && (
           <Card className={cn(
@@ -116,10 +142,11 @@ const TaskmasterToday = () => {
                     <AlertTriangle className="w-5 h-5 text-amber-600" />
                   )}
                   <span className="font-medium">
-                    {dailyPlan.accepted ? "Plan Accepted" : "Draft Plan"}
+                    {dailyPlan.accepted ? "Plan Accepted" : "AI-Generated Draft"}
                   </span>
-                  <span className="text-sm text-muted-foreground">
-                    ({dailyPlan.items?.length || 0} tasks)
+                  <span className="text-sm text-muted-foreground flex items-center gap-1">
+                    <Sparkles className="w-3 h-3" />
+                    ({dailyPlan.items?.length || 0} tasks prioritized)
                   </span>
                 </div>
                 {!dailyPlan.accepted && (
@@ -196,6 +223,21 @@ const TaskmasterToday = () => {
                             <Clock className="w-3 h-3" />
                             Open {ageDays} days
                           </span>
+                          {item.ai_reasoning && (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Badge variant="secondary" className="text-xs cursor-help">
+                                    <Sparkles className="w-3 h-3 mr-1" />
+                                    Why?
+                                  </Badge>
+                                </TooltipTrigger>
+                                <TooltipContent className="max-w-[250px]">
+                                  <p className="text-sm">{item.ai_reasoning}</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          )}
                         </div>
                       </div>
 

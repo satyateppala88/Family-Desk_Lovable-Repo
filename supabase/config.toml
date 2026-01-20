@@ -24,3 +24,6 @@ verify_jwt = true
 [functions.generate-daily-plan]
 verify_jwt = true
 
+[functions.parse-task-input]
+verify_jwt = true
+
