@@ -173,6 +173,86 @@ export type Database = {
           },
         ]
       }
+      daily_plan_items: {
+        Row: {
+          created_at: string
+          daily_plan_id: string
+          id: string
+          position: number
+          score: number
+          task_id: string
+        }
+        Insert: {
+          created_at?: string
+          daily_plan_id: string
+          id?: string
+          position: number
+          score?: number
+          task_id: string
+        }
+        Update: {
+          created_at?: string
+          daily_plan_id?: string
+          id?: string
+          position?: number
+          score?: number
+          task_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_plan_items_daily_plan_id_fkey"
+            columns: ["daily_plan_id"]
+            isOneToOne: false
+            referencedRelation: "daily_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "daily_plan_items_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      daily_plans: {
+        Row: {
+          accepted: boolean
+          accepted_at: string | null
+          date: string
+          generated_at: string
+          household_id: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          accepted?: boolean
+          accepted_at?: string | null
+          date: string
+          generated_at?: string
+          household_id: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          accepted?: boolean
+          accepted_at?: string | null
+          date?: string
+          generated_at?: string
+          household_id?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_plans_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dietary_preferences: {
         Row: {
           created_at: string
@@ -717,6 +797,53 @@ export type Database = {
         }
         Relationships: []
       }
+      projects: {
+        Row: {
+          created_at: string
+          created_by: string
+          description: string | null
+          household_id: string
+          id: string
+          name: string
+          status: Database["public"]["Enums"]["project_status"]
+          target_date: string | null
+          type: Database["public"]["Enums"]["project_type"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          description?: string | null
+          household_id: string
+          id?: string
+          name: string
+          status?: Database["public"]["Enums"]["project_status"]
+          target_date?: string | null
+          type?: Database["public"]["Enums"]["project_type"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          household_id?: string
+          id?: string
+          name?: string
+          status?: Database["public"]["Enums"]["project_status"]
+          target_date?: string | null
+          type?: Database["public"]["Enums"]["project_type"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "projects_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       recipes: {
         Row: {
           cook_time: number | null
@@ -914,6 +1041,35 @@ export type Database = {
           },
         ]
       }
+      task_assignees: {
+        Row: {
+          created_at: string
+          id: string
+          task_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          task_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          task_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_assignees_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       task_categories: {
         Row: {
           color: string | null
@@ -993,9 +1149,14 @@ export type Database = {
           household_id: string
           id: string
           priority: string
+          priority_level: number | null
+          project_id: string | null
           recurring: boolean | null
           recurring_pattern: Json | null
+          started_at: string | null
           status: string
+          task_category: Database["public"]["Enums"]["task_category"] | null
+          task_status: Database["public"]["Enums"]["task_status"] | null
           title: string
           updated_at: string
         }
@@ -1010,9 +1171,14 @@ export type Database = {
           household_id: string
           id?: string
           priority?: string
+          priority_level?: number | null
+          project_id?: string | null
           recurring?: boolean | null
           recurring_pattern?: Json | null
+          started_at?: string | null
           status?: string
+          task_category?: Database["public"]["Enums"]["task_category"] | null
+          task_status?: Database["public"]["Enums"]["task_status"] | null
           title: string
           updated_at?: string
         }
@@ -1027,9 +1193,14 @@ export type Database = {
           household_id?: string
           id?: string
           priority?: string
+          priority_level?: number | null
+          project_id?: string | null
           recurring?: boolean | null
           recurring_pattern?: Json | null
+          started_at?: string | null
           status?: string
+          task_category?: Database["public"]["Enums"]["task_category"] | null
+          task_status?: Database["public"]["Enums"]["task_status"] | null
           title?: string
           updated_at?: string
         }
@@ -1046,6 +1217,13 @@ export type Database = {
             columns: ["household_id"]
             isOneToOne: false
             referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
         ]
@@ -1131,6 +1309,10 @@ export type Database = {
     }
     Enums: {
       app_role: "household_admin" | "member" | "platform_admin"
+      project_status: "planning" | "in_progress" | "blocked" | "done"
+      project_type: "home" | "work" | "personal" | "other"
+      task_category: "home" | "work" | "kid" | "other"
+      task_status: "backlog" | "today" | "in_progress" | "blocked" | "done"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1259,6 +1441,10 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["household_admin", "member", "platform_admin"],
+      project_status: ["planning", "in_progress", "blocked", "done"],
+      project_type: ["home", "work", "personal", "other"],
+      task_category: ["home", "work", "kid", "other"],
+      task_status: ["backlog", "today", "in_progress", "blocked", "done"],
     },
   },
 } as const

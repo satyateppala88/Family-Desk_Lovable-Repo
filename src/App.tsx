@@ -14,7 +14,10 @@ import HouseholdSetup from "./pages/HouseholdSetup";
 import { UserPreferencesOnboarding } from "./components/onboarding/UserPreferencesOnboarding";
 import { Settings } from "./pages/Settings";
 import AccountSettings from "./pages/AccountSettings";
-import Tasks from "./pages/Tasks";
+import TaskmasterToday from "./pages/TaskmasterToday";
+import TaskmasterTasks from "./pages/TaskmasterTasks";
+import TaskmasterProjects from "./pages/TaskmasterProjects";
+import TaskmasterProjectDetail from "./pages/TaskmasterProjectDetail";
 import Meals from "./pages/Meals";
 import Grocery from "./pages/Grocery";
 import Calendar from "./pages/Calendar";
@@ -89,7 +92,27 @@ const App = () => (
             } />
             <Route path="/tasks" element={
               <ProtectedRoute>
-                <Tasks />
+                <TaskmasterToday />
+              </ProtectedRoute>
+            } />
+            <Route path="/taskmaster/today" element={
+              <ProtectedRoute>
+                <TaskmasterToday />
+              </ProtectedRoute>
+            } />
+            <Route path="/taskmaster/tasks" element={
+              <ProtectedRoute>
+                <TaskmasterTasks />
+              </ProtectedRoute>
+            } />
+            <Route path="/taskmaster/projects" element={
+              <ProtectedRoute>
+                <TaskmasterProjects />
+              </ProtectedRoute>
+            } />
+            <Route path="/taskmaster/projects/:id" element={
+              <ProtectedRoute>
+                <TaskmasterProjectDetail />
               </ProtectedRoute>
             } />
             <Route path="/meals" element={
