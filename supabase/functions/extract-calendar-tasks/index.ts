@@ -1,191 +1,10 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
-
-interface CalendarEvent {
-  id: string;
-  title: string;
-  start: string;
-  end: string;
-  allDay: boolean;
-  calendarName?: string;
-  calendarOwner?: string;
-}
-
-interface ExtractedTask {
-  title: string;
-  priority_level: number;
-  task_category: 'home' | 'work' | 'kid' | 'other';
-  due_date: string;
-  source_calendar_event_id: string;
-  ai_reasoning?: string;
-}
-
-async function fetchCalendarEvents(
-  supabase: any,
-  householdId: string,
-  targetDate: string
-): Promise<CalendarEvent[]> {
-  try {
-    const { data, error } = await supabase.functions.invoke('fetch-calendar-events', {
-      body: {
-        startDate: targetDate,
-        endDate: targetDate,
-        householdId: householdId
-      }
-    });
-
-    if (error) {
-      console.error('Error fetching calendar events:', error);
-      return [];
-    }
-
-    return data || [];
-  } catch (err) {
-    console.error('Failed to fetch calendar events:', err);
-    return [];
-  }
-}
-
-async function extractTasksWithAI(
-  events: CalendarEvent[],
-  apiKey: string,
-  targetDate: string
-): Promise<ExtractedTask[]> {
-  const systemPrompt = `You are an intelligent task extraction assistant. Analyze calendar events and identify which ones are actionable TASKS (things the user needs TO DO) versus just APPOINTMENTS/MEETINGS (things to attend or observe).
-
-TASK-LIKE EVENTS (extract these):
-- "Call dentist" - action to take
-- "Book flight tickets" - action to take
-- "Pick up dry cleaning" - errand to run
-- "Order groceries" - action to take
-- "Submit expense report" - work task
-- "Renew passport" - administrative task
-- "Call insurance company" - action to take
-- "Schedule plumber" - action to take
-- "Pay bills" - task to complete
-- "Review project proposal" - work task
-
-NOT TASKS (skip these):
-- "Team standup" - meeting to attend
-- "Doctor appointment" - appointment to attend
-- "Dinner with friends" - social event
-- "Birthday party" - event to attend
-- "1:1 with manager" - meeting
-- "Lunch break" - personal time
-- "Flight to NYC" - travel (not actionable)
-- "Kids soccer practice" - activity to attend
-- "Company all-hands" - meeting
-
-For each task-like event, determine:
-1. A clean task title (remove time references, clean up formatting)
-2. Priority level (1=urgent, 2=high, 3=medium, 4=low) based on the nature of the task
-3. Category: "work" for professional tasks, "home" for household/personal, "kid" for child-related, "other" for everything else
-4. Brief reasoning for why this is a task`;
-
-  const eventsList = events.map(e => `- "${e.title}" (${e.start} - ${e.end}, Calendar: ${e.calendarName || 'Primary'})`).join('\n');
-
-  const userPrompt = `Analyze these calendar events from ${targetDate} and extract any actionable tasks:
-
-${eventsList}
-
-Return ONLY the events that are actionable tasks the user needs to complete. Skip appointments, meetings, and events they just need to attend.`;
-
-  try {
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt }
-        ],
-        tools: [
-          {
-            type: "function",
-            function: {
-              name: "extract_tasks",
-              description: "Extract actionable tasks from calendar events",
-              parameters: {
-                type: "object",
-                properties: {
-                  tasks: {
-                    type: "array",
-                    items: {
-                      type: "object",
-                      properties: {
-                        original_event_title: { type: "string", description: "The original calendar event title" },
-                        title: { type: "string", description: "Clean task title" },
-                        priority_level: { type: "number", enum: [1, 2, 3, 4], description: "1=urgent, 2=high, 3=medium, 4=low" },
-                        task_category: { type: "string", enum: ["home", "work", "kid", "other"] },
-                        reasoning: { type: "string", description: "Why this is a task" }
-                      },
-                      required: ["original_event_title", "title", "priority_level", "task_category", "reasoning"]
-                    }
-                  }
-                },
-                required: ["tasks"]
-              }
-            }
-          }
-        ],
-        tool_choice: { type: "function", function: { name: "extract_tasks" } }
-      }),
-    });
-
-    if (!response.ok) {
-      console.error('AI API error:', response.status, await response.text());
-      return [];
-    }
-
-    const data = await response.json();
-    const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
-    
-    if (!toolCall) {
-      console.log('No tool call in AI response');
-      return [];
-    }
-
-    const parsed = JSON.parse(toolCall.function.arguments);
-    
-    // Map AI results back to events with their IDs
-    const extractedTasks: ExtractedTask[] = [];
-    
-    for (const task of parsed.tasks || []) {
-      // Find the matching event by title
-      const matchingEvent = events.find(e => 
-        e.title.toLowerCase().includes(task.original_event_title.toLowerCase()) ||
-        task.original_event_title.toLowerCase().includes(e.title.toLowerCase())
-      );
-      
-      if (matchingEvent) {
-        extractedTasks.push({
-          title: task.title,
-          priority_level: task.priority_level,
-          task_category: task.task_category,
-          due_date: targetDate,
-          source_calendar_event_id: matchingEvent.id,
-          ai_reasoning: task.reasoning
-        });
-      }
-    }
-
-    return extractedTasks;
-  } catch (err) {
-    console.error('AI extraction error:', err);
-    return [];
-  }
-}
+import { getCorsHeaders } from "../_shared/cors.ts";
 
 serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req.headers.get("origin"));
+  
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -240,7 +59,15 @@ serve(async (req) => {
     console.log(`Extracting tasks from calendar for ${targetDate}, household ${householdId}`);
 
     // Step 1: Fetch calendar events for the day
-    const calendarEvents = await fetchCalendarEvents(supabase, householdId, targetDate);
+    const { data, error } = await supabase.functions.invoke('fetch-calendar-events', {
+      body: {
+        startDate: targetDate,
+        endDate: targetDate,
+        householdId: householdId
+      }
+    });
+
+    const calendarEvents = data?.events || [];
     console.log(`Found ${calendarEvents.length} calendar events`);
 
     if (calendarEvents.length === 0) {
@@ -267,7 +94,7 @@ serve(async (req) => {
     );
 
     // Filter out already-imported events
-    const newEvents = calendarEvents.filter(e => !existingEventIds.has(e.id));
+    const newEvents = calendarEvents.filter((e: any) => !existingEventIds.has(e.id));
     console.log(`${newEvents.length} events not yet imported`);
 
     if (newEvents.length === 0) {
@@ -283,7 +110,143 @@ serve(async (req) => {
     }
 
     // Step 3: Use AI to identify which events are actionable tasks
-    const extractedTasks = await extractTasksWithAI(newEvents, apiKey, targetDate);
+    const systemPrompt = `You are an intelligent task extraction assistant. Analyze calendar events and identify which ones are actionable TASKS (things the user needs TO DO) versus just APPOINTMENTS/MEETINGS (things to attend or observe).
+
+TASK-LIKE EVENTS (extract these):
+- "Call dentist" - action to take
+- "Book flight tickets" - action to take
+- "Pick up dry cleaning" - errand to run
+- "Order groceries" - action to take
+- "Submit expense report" - work task
+- "Renew passport" - administrative task
+- "Call insurance company" - action to take
+- "Schedule plumber" - action to take
+- "Pay bills" - task to complete
+- "Review project proposal" - work task
+
+NOT TASKS (skip these):
+- "Team standup" - meeting to attend
+- "Doctor appointment" - appointment to attend
+- "Dinner with friends" - social event
+- "Birthday party" - event to attend
+- "1:1 with manager" - meeting
+- "Lunch break" - personal time
+- "Flight to NYC" - travel (not actionable)
+- "Kids soccer practice" - activity to attend
+- "Company all-hands" - meeting
+
+For each task-like event, determine:
+1. A clean task title (remove time references, clean up formatting)
+2. Priority level (1=urgent, 2=high, 3=medium, 4=low) based on the nature of the task
+3. Category: "work" for professional tasks, "home" for household/personal, "kid" for child-related, "other" for everything else
+4. Brief reasoning for why this is a task`;
+
+    const eventsList = newEvents.map((e: any) => 
+      `- "${e.title}" (${e.start} - ${e.end}, Calendar: ${e.calendarName || 'Primary'})`
+    ).join('\n');
+
+    const userPrompt = `Analyze these calendar events from ${targetDate} and extract any actionable tasks:
+
+${eventsList}
+
+Return ONLY the events that are actionable tasks the user needs to complete. Skip appointments, meetings, and events they just need to attend.`;
+
+    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-3-flash-preview",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt }
+        ],
+        tools: [
+          {
+            type: "function",
+            function: {
+              name: "extract_tasks",
+              description: "Extract actionable tasks from calendar events",
+              parameters: {
+                type: "object",
+                properties: {
+                  tasks: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        original_event_title: { type: "string", description: "The original calendar event title" },
+                        title: { type: "string", description: "Clean task title" },
+                        priority_level: { type: "number", enum: [1, 2, 3, 4], description: "1=urgent, 2=high, 3=medium, 4=low" },
+                        task_category: { type: "string", enum: ["home", "work", "kid", "other"] },
+                        reasoning: { type: "string", description: "Why this is a task" }
+                      },
+                      required: ["original_event_title", "title", "priority_level", "task_category", "reasoning"]
+                    }
+                  }
+                },
+                required: ["tasks"]
+              }
+            }
+          }
+        ],
+        tool_choice: { type: "function", function: { name: "extract_tasks" } }
+      }),
+    });
+
+    if (!aiResponse.ok) {
+      console.error('AI API error:', aiResponse.status, await aiResponse.text());
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          message: "AI analysis failed, no tasks extracted",
+          tasksCreated: 0,
+          tasks: []
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const aiData = await aiResponse.json();
+    const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
+    
+    if (!toolCall) {
+      console.log('No tool call in AI response');
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          message: "No actionable tasks found in calendar events",
+          tasksCreated: 0,
+          tasks: []
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const parsed = JSON.parse(toolCall.function.arguments);
+    const extractedTasks: any[] = [];
+    
+    for (const task of parsed.tasks || []) {
+      // Find the matching event by title
+      const matchingEvent = newEvents.find((e: any) => 
+        e.title.toLowerCase().includes(task.original_event_title.toLowerCase()) ||
+        task.original_event_title.toLowerCase().includes(e.title.toLowerCase())
+      );
+      
+      if (matchingEvent) {
+        extractedTasks.push({
+          title: task.title,
+          priority_level: task.priority_level,
+          task_category: task.task_category,
+          due_date: targetDate,
+          source_calendar_event_id: matchingEvent.id,
+          ai_reasoning: task.reasoning
+        });
+      }
+    }
+
     console.log(`AI identified ${extractedTasks.length} actionable tasks`);
 
     if (extractedTasks.length === 0) {
@@ -336,6 +299,7 @@ serve(async (req) => {
 
   } catch (err) {
     console.error('extract-calendar-tasks error:', err);
+    const corsHeaders = getCorsHeaders(req.headers.get("origin"));
     return new Response(
       JSON.stringify({ error: err instanceof Error ? err.message : "Unknown error" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }

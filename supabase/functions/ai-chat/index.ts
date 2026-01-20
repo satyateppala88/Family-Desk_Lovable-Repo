@@ -1,11 +1,24 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
+import { z } from "https://deno.land/x/zod@v3.23.8/mod.ts";
+import { getCorsHeaders } from "../_shared/cors.ts";
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+// Input validation schema
+const MAX_MESSAGE_LENGTH = 4000;
+const MAX_MESSAGES_PER_REQUEST = 50;
+
+const MessageSchema = z.object({
+  role: z.enum(['user', 'assistant', 'system']),
+  content: z.string().max(MAX_MESSAGE_LENGTH, 'Message too long'),
+  tool_calls: z.any().optional(),
+});
+
+const AIChatRequestSchema = z.object({
+  messages: z.array(MessageSchema)
+    .max(MAX_MESSAGES_PER_REQUEST, 'Too many messages in request'),
+  householdId: z.string().uuid('Invalid household ID'),
+});
 
 // Define tools for the AI to use
 const tools = [
@@ -76,6 +89,8 @@ const tools = [
 ];
 
 serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req.headers.get("origin"));
+  
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
   try {
@@ -88,7 +103,22 @@ serve(async (req) => {
       });
     }
 
-    const { messages, householdId } = await req.json();
+    // Parse and validate request body
+    const requestBody = await req.json();
+    const validationResult = AIChatRequestSchema.safeParse(requestBody);
+    
+    if (!validationResult.success) {
+      return new Response(JSON.stringify({ 
+        error: 'Invalid request',
+        details: validationResult.error.errors.map(e => e.message)
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const { messages, householdId } = validationResult.data;
+    
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
@@ -195,6 +225,7 @@ When using tools, always explain what you're doing in a friendly way.`;
 
   } catch (error: any) {
     console.error('AI chat error:', error);
+    const corsHeaders = getCorsHeaders(req.headers.get("origin"));
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

@@ -1,24 +1,39 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { z } from "https://deno.land/x/zod@v3.23.8/mod.ts";
+import { getCorsHeaders } from "../_shared/cors.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+// Input validation schema
+const MAX_INPUT_LENGTH = 2000;
+
+const PantryImportSchema = z.object({
+  userInput: z.string()
+    .min(1, "Input is required")
+    .max(MAX_INPUT_LENGTH, `Input must be less than ${MAX_INPUT_LENGTH} characters`),
+});
 
 serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req.headers.get("origin"));
+  
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { userInput } = await req.json();
+    // Parse and validate request body
+    const requestBody = await req.json();
+    const validationResult = PantryImportSchema.safeParse(requestBody);
     
-    if (!userInput || typeof userInput !== "string") {
+    if (!validationResult.success) {
       return new Response(
-        JSON.stringify({ error: "userInput is required and must be a string" }),
+        JSON.stringify({ 
+          error: "Invalid input",
+          details: validationResult.error.errors.map(e => e.message)
+        }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    const { userInput } = validationResult.data;
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
@@ -113,6 +128,7 @@ Guidelines:
 
   } catch (error: any) {
     console.error("Error in ai-pantry-import:", error);
+    const corsHeaders = getCorsHeaders(req.headers.get("origin"));
     return new Response(
       JSON.stringify({ error: error.message || "Failed to process pantry import" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
