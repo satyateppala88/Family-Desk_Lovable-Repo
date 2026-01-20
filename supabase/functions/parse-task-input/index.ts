@@ -52,6 +52,15 @@ Due date parsing (return ISO date format YYYY-MM-DD):
 - Specific dates -> parse them accordingly
 - No date mentioned -> null
 
+SCHEDULING CONTEXT (extract timing hints from natural language):
+- "after my meeting", "after the 2pm call" -> dependent on a calendar event
+- "before school pickup", "before 3pm" -> has a deadline constraint  
+- "during lunch", "at lunchtime" -> preferred time window
+- "in the morning", "this evening" -> preferred time of day
+- "when I have time", "whenever" -> flexible scheduling
+- "between meetings" -> needs a free slot
+- "first thing" -> morning priority
+
 Extract a clean, actionable title (remove time/priority words, keep it concise).
 If there's additional context beyond the title, put it in the description.`;
 
@@ -97,6 +106,25 @@ If there's additional context beyond the title, put it in the description.`;
                   due_date: {
                     type: "string",
                     description: "Due date in YYYY-MM-DD format, or null if not specified"
+                  },
+                  scheduling_context: {
+                    type: "object",
+                    properties: {
+                      preferred_time_window: {
+                        type: "string",
+                        description: "Preferred time like 'morning', 'afternoon', 'evening', 'during lunch', etc."
+                      },
+                      dependent_on_event: {
+                        type: "string",
+                        description: "Calendar event this task depends on, e.g., 'after 2pm meeting', 'before school pickup'"
+                      },
+                      flexibility: {
+                        type: "string",
+                        enum: ["fixed", "flexible"],
+                        description: "Whether timing is strict or flexible"
+                      }
+                    },
+                    description: "Optional scheduling hints extracted from the input"
                   }
                 },
                 required: ["title", "category", "priority"]
@@ -143,7 +171,8 @@ If there's additional context beyond the title, put it in the description.`;
           description: parsedTask.description || null,
           task_category: parsedTask.category,
           priority_level: parsedTask.priority,
-          due_date: parsedTask.due_date || null
+          due_date: parsedTask.due_date || null,
+          scheduling_context: parsedTask.scheduling_context || null
         }
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
