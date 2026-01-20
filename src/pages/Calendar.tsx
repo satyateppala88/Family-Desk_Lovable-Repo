@@ -4,9 +4,7 @@ import { Header } from "@/components/layout/Header";
 import { MobileNav } from "@/components/layout/MobileNav";
 import { Footer } from "@/components/layout/Footer";
 import { CalendarGrid } from "@/components/calendar/CalendarGrid";
-import { CalendarSidebar } from "@/components/calendar/CalendarSidebar";
 import { CalendarHeader } from "@/components/calendar/CalendarHeader";
-import { CalendarLegend } from "@/components/calendar/CalendarLegend";
 import { CalendarEventDialog } from "@/components/calendar/CalendarEventDialog";
 import { ConnectCalendarDialog } from "@/components/calendar/ConnectCalendarDialog";
 import { useCalendarEvents, type CalendarEvent } from "@/hooks/useCalendarEvents";
@@ -20,7 +18,7 @@ const Calendar = () => {
   const [showConnectDialog, setShowConnectDialog] = useState(false);
 
   const { data: events, isLoading } = useCalendarEvents(currentDate, "month");
-  const { handleOAuthCallback, connections } = useCalendarConnections();
+  const { handleOAuthCallback } = useCalendarConnections();
 
   // Handle OAuth callback
   useEffect(() => {
@@ -45,33 +43,20 @@ const Calendar = () => {
           onConnectCalendar={() => setShowConnectDialog(true)}
         />
 
-        <div className="flex-1 flex">
-          {/* Sidebar - hidden on mobile */}
-          <div className="hidden md:block">
-            <CalendarSidebar
+        {/* Main calendar area - now full width */}
+        <div className="flex-1 flex flex-col">
+          {isLoading ? (
+            <div className="flex-1 p-4">
+              <Skeleton className="h-full w-full" />
+            </div>
+          ) : (
+            <CalendarGrid
               currentDate={currentDate}
-              onDateSelect={setCurrentDate}
-              onConnectCalendar={() => setShowConnectDialog(true)}
+              events={events || []}
+              onEventClick={setSelectedEvent}
+              onDateClick={setCurrentDate}
             />
-          </div>
-
-          {/* Main calendar area */}
-          <div className="flex-1 flex flex-col">
-            {isLoading ? (
-              <div className="flex-1 p-4">
-                <Skeleton className="h-full w-full" />
-              </div>
-            ) : (
-              <CalendarGrid
-                currentDate={currentDate}
-                events={events || []}
-                onEventClick={setSelectedEvent}
-                onDateClick={setCurrentDate}
-              />
-            )}
-
-            <CalendarLegend />
-          </div>
+          )}
         </div>
       </main>
 
