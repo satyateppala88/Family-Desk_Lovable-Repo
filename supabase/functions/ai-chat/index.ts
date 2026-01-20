@@ -79,7 +79,16 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
   try {
-    const { messages, householdId, userId } = await req.json();
+    // Validate authentication
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: 'Missing authorization header' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const { messages, householdId } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
@@ -90,6 +99,35 @@ serve(async (req) => {
     }
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+    // Verify the JWT and get the authenticated user
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    
+    if (authError || !user) {
+      return new Response(JSON.stringify({ error: 'Invalid or expired token' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const userId = user.id;
+
+    // Validate that the authenticated user is a member of the specified household
+    const { data: membership, error: membershipError } = await supabase
+      .from('household_members')
+      .select('id')
+      .eq('household_id', householdId)
+      .eq('user_id', userId)
+      .single();
+
+    if (membershipError || !membership) {
+      console.error('Household membership check failed:', membershipError);
+      return new Response(JSON.stringify({ error: 'You are not a member of this household' }), {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
     // Build system prompt with personality
     const systemPrompt = `You are HomeMate AI, a friendly and proactive household assistant for Indian families. 
