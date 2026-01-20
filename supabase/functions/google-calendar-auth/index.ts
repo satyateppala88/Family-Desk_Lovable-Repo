@@ -23,8 +23,8 @@ serve(async (req) => {
   }
 
   try {
-    const url = new URL(req.url);
-    const action = url.searchParams.get("action");
+    const body = await req.json();
+    const action = body.action;
 
     // Get user from auth header
     const authHeader = req.headers.get("authorization");
@@ -50,10 +50,8 @@ serve(async (req) => {
       userId = user.id;
     }
 
-    // Handle different actions
     if (action === "init") {
       // Generate OAuth URL
-      const body = await req.json();
       const { redirectUri, householdId } = body;
 
       // Store state with user info for callback
@@ -75,7 +73,6 @@ serve(async (req) => {
 
     if (action === "callback") {
       // Exchange auth code for tokens
-      const body = await req.json();
       const { code, redirectUri, state } = body;
 
       // Decode state
@@ -191,7 +188,6 @@ serve(async (req) => {
     }
 
     if (action === "disconnect") {
-      const body = await req.json();
       const { connectionId } = body;
 
       const { error } = await supabase
@@ -213,7 +209,6 @@ serve(async (req) => {
     }
 
     if (action === "update") {
-      const body = await req.json();
       const { connectionId, displayName, color, isVisible } = body;
 
       const updates: Record<string, unknown> = {};
