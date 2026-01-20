@@ -12,9 +12,114 @@ interface TaskWithScore {
   reasoning?: string;
 }
 
+interface CalendarEvent {
+  id: string;
+  title: string;
+  start: string;
+  end: string;
+  allDay: boolean;
+  calendarOwner?: string;
+}
+
+// Fetch today's calendar events for the user
+async function fetchCalendarEvents(
+  supabase: any,
+  householdId: string,
+  targetDate: string
+): Promise<CalendarEvent[]> {
+  try {
+    // Get calendar connections for the household
+    const { data: connections, error } = await supabase
+      .from("calendar_connections")
+      .select("*")
+      .eq("household_id", householdId)
+      .eq("is_visible", true);
+
+    if (error || !connections || connections.length === 0) {
+      console.log("No calendar connections found");
+      return [];
+    }
+
+    // Call the fetch-calendar-events function
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    
+    const response = await fetch(`${supabaseUrl}/functions/v1/fetch-calendar-events`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${supabaseKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        startDate: targetDate,
+        endDate: targetDate,
+        householdId,
+      }),
+    });
+
+    if (!response.ok) {
+      console.error("Failed to fetch calendar events:", response.status);
+      return [];
+    }
+
+    const events = await response.json();
+    return events || [];
+  } catch (error) {
+    console.error("Error fetching calendar events:", error);
+    return [];
+  }
+}
+
+// Analyze calendar busyness
+function analyzeCalendarBusyness(events: CalendarEvent[]): {
+  totalEvents: number;
+  totalMeetingHours: number;
+  busyLevel: 'light' | 'moderate' | 'busy' | 'packed';
+  freeSlots: string[];
+} {
+  let totalMinutes = 0;
+  const busyPeriods: { start: Date; end: Date }[] = [];
+
+  for (const event of events) {
+    if (!event.allDay) {
+      const start = new Date(event.start);
+      const end = new Date(event.end);
+      const duration = (end.getTime() - start.getTime()) / (1000 * 60);
+      totalMinutes += duration;
+      busyPeriods.push({ start, end });
+    }
+  }
+
+  const totalHours = totalMinutes / 60;
+  let busyLevel: 'light' | 'moderate' | 'busy' | 'packed';
+  
+  if (totalHours <= 2) busyLevel = 'light';
+  else if (totalHours <= 4) busyLevel = 'moderate';
+  else if (totalHours <= 6) busyLevel = 'busy';
+  else busyLevel = 'packed';
+
+  // Find free slots (simplified - just identify general availability)
+  const freeSlots: string[] = [];
+  if (totalHours < 3) freeSlots.push("morning (9am-12pm)");
+  if (totalHours < 5) freeSlots.push("afternoon (1pm-5pm)");
+  if (totalHours < 7) freeSlots.push("evening (6pm-9pm)");
+
+  return {
+    totalEvents: events.length,
+    totalMeetingHours: Math.round(totalHours * 10) / 10,
+    busyLevel,
+    freeSlots,
+  };
+}
+
 // Fallback rule-based scoring when AI is unavailable
-function scoreTasksWithRules(tasks: any[], today: Date): TaskWithScore[] {
-  return tasks.map((task: any) => {
+function scoreTasksWithRules(tasks: any[], today: Date, calendarBusyness?: ReturnType<typeof analyzeCalendarBusyness>): TaskWithScore[] {
+  // Reduce task load if calendar is busy
+  const maxTasks = calendarBusyness?.busyLevel === 'packed' ? 4 
+    : calendarBusyness?.busyLevel === 'busy' ? 5 
+    : 7;
+
+  return tasks.slice(0, maxTasks * 2).map((task: any) => {
     let score = 0;
     const reasons: string[] = [];
 
@@ -53,10 +158,21 @@ function scoreTasksWithRules(tasks: any[], today: Date): TaskWithScore[] {
       reasons.push("Already started");
     }
 
-    // Category tweak
+    // Category tweak - consider time of day fit
     if (task.task_category === "kid") {
       score += 10;
       if (!reasons.includes("Kid-related")) reasons.push("Kid-related");
+    }
+
+    // Calendar-aware adjustments
+    if (calendarBusyness) {
+      // On busy days, prioritize quick/urgent tasks
+      if (calendarBusyness.busyLevel === 'packed' || calendarBusyness.busyLevel === 'busy') {
+        if (task.priority_level === 1) {
+          score += 15; // Boost urgent tasks on busy days
+          reasons.push("Fits busy schedule");
+        }
+      }
     }
 
     return { 
@@ -67,11 +183,13 @@ function scoreTasksWithRules(tasks: any[], today: Date): TaskWithScore[] {
   });
 }
 
-// AI-powered smart prioritization
+// AI-powered smart prioritization with calendar awareness
 async function scoreTasksWithAI(
   tasks: any[], 
   today: Date,
-  apiKey: string
+  apiKey: string,
+  calendarEvents: CalendarEvent[],
+  calendarBusyness: ReturnType<typeof analyzeCalendarBusyness>
 ): Promise<TaskWithScore[] | null> {
   try {
     const taskSummaries = tasks.map(t => ({
@@ -86,19 +204,47 @@ async function scoreTasksWithAI(
       age_days: Math.floor((today.getTime() - new Date(t.created_at).getTime()) / (1000 * 60 * 60 * 24))
     }));
 
+    // Build calendar context for AI
+    const calendarContext = calendarEvents.length > 0 
+      ? `
+TODAY'S CALENDAR (${calendarEvents.length} events, ${calendarBusyness.totalMeetingHours} hours scheduled):
+${calendarEvents.map(e => {
+  const start = new Date(e.start);
+  const end = new Date(e.end);
+  const timeStr = e.allDay ? "All day" : `${start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })} - ${end.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`;
+  return `- ${timeStr}: ${e.title}${e.calendarOwner ? ` (${e.calendarOwner})` : ''}`;
+}).join('\n')}
+
+SCHEDULE ANALYSIS:
+- Day busyness: ${calendarBusyness.busyLevel.toUpperCase()}
+- Free time slots: ${calendarBusyness.freeSlots.join(', ') || 'Very limited'}
+- Recommendation: ${calendarBusyness.busyLevel === 'packed' ? 'Select only 3-4 critical tasks' : calendarBusyness.busyLevel === 'busy' ? 'Select 4-5 important tasks' : 'Normal task load (up to 7 tasks)'}
+`
+      : `
+NO CALENDAR DATA AVAILABLE - Assume normal day with flexible schedule.
+`;
+
     const systemPrompt = `You are a smart task prioritization assistant helping a busy family manage their day.
 
 Today's date is ${today.toISOString().split("T")[0]}.
+${calendarContext}
 
-Analyze the provided tasks and select the top 7 most important tasks for today. Consider:
-1. **Urgency**: Overdue and due-soon tasks should be prioritized
-2. **Priority level**: P1 (critical) > P2 (high) > P3 (normal) > P4 (low)
-3. **Work continuity**: Tasks already in_progress should often be completed
-4. **Balance**: Try to include a mix of categories when possible
-5. **Task age**: Older tasks shouldn't be forgotten
-6. **Family context**: Kid-related tasks often have fixed timings
+Analyze the provided tasks and select the most important tasks for today. Consider:
 
-For each selected task, provide a brief, friendly reasoning (under 10 words) explaining why it's prioritized.`;
+1. **Calendar Awareness**: 
+   - On busy/packed days, select FEWER tasks (3-5 max)
+   - Work tasks fit better during work hours (9am-5pm) when not in meetings
+   - Home tasks fit better in evenings or during free slots
+   - Kid-related tasks often align with school schedules (pickup ~3pm, activities)
+   - Don't overcommit on meeting-heavy days
+
+2. **Urgency**: Overdue and due-soon tasks should be prioritized
+3. **Priority level**: P1 (critical) > P2 (high) > P3 (normal) > P4 (low)
+4. **Work continuity**: Tasks already in_progress should often be completed
+5. **Balance**: Try to include a mix of categories when possible
+6. **Task age**: Older tasks shouldn't be forgotten
+
+For each selected task, provide a brief, friendly reasoning (under 12 words) that may reference calendar context when relevant.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -107,17 +253,17 @@ For each selected task, provide a brief, friendly reasoning (under 10 words) exp
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-pro",
+        model: "google/gemini-3-flash-preview",
         messages: [
           { role: "system", content: systemPrompt },
-          { role: "user", content: `Here are my open tasks:\n${JSON.stringify(taskSummaries, null, 2)}\n\nSelect and prioritize the top 7 tasks for today.` }
+          { role: "user", content: `Here are my open tasks:\n${JSON.stringify(taskSummaries, null, 2)}\n\nSelect and prioritize the best tasks for today given my calendar.` }
         ],
         tools: [
           {
             type: "function",
             function: {
               name: "select_daily_tasks",
-              description: "Select and prioritize tasks for today's plan",
+              description: "Select and prioritize tasks for today's plan based on calendar availability",
               parameters: {
                 type: "object",
                 properties: {
@@ -136,12 +282,20 @@ For each selected task, provide a brief, friendly reasoning (under 10 words) exp
                         },
                         reasoning: { 
                           type: "string",
-                          description: "Brief explanation why this task is prioritized (under 10 words)" 
+                          description: "Brief explanation including calendar context when relevant (under 12 words)" 
+                        },
+                        suggested_time: {
+                          type: "string",
+                          description: "Optional: suggested time slot like 'morning', 'after 2pm meeting', 'evening'"
                         }
                       },
                       required: ["task_id", "position", "reasoning"]
                     },
-                    description: "Array of selected tasks in priority order, max 7 tasks"
+                    description: "Array of selected tasks in priority order, adjusted for calendar busyness"
+                  },
+                  day_summary: {
+                    type: "string",
+                    description: "Brief summary of how the day looks for tasks"
                   }
                 },
                 required: ["selected_tasks"]
@@ -169,6 +323,8 @@ For each selected task, provide a brief, friendly reasoning (under 10 words) exp
     const result = JSON.parse(toolCall.function.arguments);
     const selectedTasks = result.selected_tasks || [];
 
+    console.log("AI day summary:", result.day_summary);
+
     // Map AI selections back to tasks
     const taskMap = new Map(tasks.map(t => [t.id, t]));
     const scoredTasks: TaskWithScore[] = [];
@@ -176,10 +332,14 @@ For each selected task, provide a brief, friendly reasoning (under 10 words) exp
     for (const selection of selectedTasks) {
       const task = taskMap.get(selection.task_id);
       if (task) {
+        const reasoning = selection.suggested_time 
+          ? `${selection.reasoning} (${selection.suggested_time})`
+          : selection.reasoning;
+        
         scoredTasks.push({
           task,
-          score: 100 - (selection.position * 10), // Higher position = higher score
-          reasoning: selection.reasoning
+          score: 100 - (selection.position * 10),
+          reasoning
         });
       }
     }
@@ -296,27 +456,38 @@ serve(async (req) => {
       return handleEmptyPlan("Plan generated (no open tasks)");
     }
 
+    // Fetch calendar events for today to inform prioritization
+    const calendarEvents = await fetchCalendarEvents(supabase, householdId, targetDate);
+    const calendarBusyness = analyzeCalendarBusyness(calendarEvents);
+    
+    console.log(`Calendar analysis: ${calendarEvents.length} events, ${calendarBusyness.totalMeetingHours}h scheduled, ${calendarBusyness.busyLevel} day`);
+
     // Try AI-powered scoring first, fall back to rules
     let scoredTasks: TaskWithScore[];
     let usedAI = false;
 
     if (lovableApiKey) {
-      const aiResult = await scoreTasksWithAI(tasks, today, lovableApiKey);
+      const aiResult = await scoreTasksWithAI(tasks, today, lovableApiKey, calendarEvents, calendarBusyness);
       if (aiResult && aiResult.length > 0) {
         scoredTasks = aiResult;
         usedAI = true;
       } else {
-        scoredTasks = scoreTasksWithRules(tasks, today);
+        scoredTasks = scoreTasksWithRules(tasks, today, calendarBusyness);
       }
     } else {
-      scoredTasks = scoreTasksWithRules(tasks, today);
+      scoredTasks = scoreTasksWithRules(tasks, today, calendarBusyness);
     }
 
-    // Sort and take top 7 (AI already returns sorted, rules need sorting)
+    // Sort and take top tasks (AI already returns sorted, rules need sorting)
+    // Adjust max tasks based on calendar busyness
+    const maxTasks = calendarBusyness.busyLevel === 'packed' ? 4 
+      : calendarBusyness.busyLevel === 'busy' ? 5 
+      : 7;
+    
     if (!usedAI) {
       scoredTasks.sort((a, b) => b.score - a.score);
     }
-    const topTasks = scoredTasks.slice(0, 7);
+    const topTasks = scoredTasks.slice(0, maxTasks);
 
     // Create or update plan
     let planId: string;

@@ -13,11 +13,12 @@ export const useDashboardStats = (householdId: string | null) => {
       const todayEnd = endOfDay(today);
 
       // Fetch pending tasks count and top 3 upcoming tasks
+      // Use task_status instead of status - exclude completed tasks
       const { data: tasks, error: tasksError } = await supabase
         .from("tasks")
         .select("*")
         .eq("household_id", householdId)
-        .eq("status", "pending")
+        .neq("task_status", "done")
         .order("due_date", { ascending: true, nullsFirst: false })
         .limit(3);
 
@@ -27,7 +28,7 @@ export const useDashboardStats = (householdId: string | null) => {
         .from("tasks")
         .select("*", { count: "exact", head: true })
         .eq("household_id", householdId)
-        .eq("status", "pending");
+        .neq("task_status", "done");
 
       // Fetch today's meal plan
       const { data: mealPlan, error: mealError } = await supabase
@@ -64,5 +65,8 @@ export const useDashboardStats = (householdId: string | null) => {
       };
     },
     enabled: !!householdId,
+    refetchOnMount: 'always',
+    staleTime: 0,
+    refetchOnWindowFocus: true,
   });
 };
