@@ -117,10 +117,10 @@ async function fetchEventsFromGoogle(
     calendarIds.push("primary");
   }
 
-  console.log(`Fetching events from ${calendarIds.length} calendars (limited to 5)`);
-  console.log(`Calendar order: ${calendarIds.slice(0, 5).join(', ')}`);
+  console.log(`Fetching events from ${calendarIds.length} calendars`);
+  console.log(`Calendar order: ${calendarIds.slice(0, 3).join(', ')}...`);
 
-  for (const calendarId of calendarIds.slice(0, 5)) { // Limit to 5 calendars
+  for (const calendarId of calendarIds) { // Fetch from all calendars
     try {
       const eventsUrl = new URL(
         `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events`
