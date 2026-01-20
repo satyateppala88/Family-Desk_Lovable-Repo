@@ -173,6 +173,94 @@ export type Database = {
           },
         ]
       }
+      calendar_connections: {
+        Row: {
+          access_token: string
+          color: string
+          created_at: string | null
+          display_name: string
+          google_account_email: string
+          household_id: string
+          id: string
+          is_visible: boolean | null
+          refresh_token: string
+          token_expires_at: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          access_token: string
+          color?: string
+          created_at?: string | null
+          display_name: string
+          google_account_email: string
+          household_id: string
+          id?: string
+          is_visible?: boolean | null
+          refresh_token: string
+          token_expires_at: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          access_token?: string
+          color?: string
+          created_at?: string | null
+          display_name?: string
+          google_account_email?: string
+          household_id?: string
+          id?: string
+          is_visible?: boolean | null
+          refresh_token?: string
+          token_expires_at?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "calendar_connections_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      calendar_settings: {
+        Row: {
+          created_at: string | null
+          default_view: string | null
+          household_id: string
+          id: string
+          show_weekends: boolean | null
+          week_starts_on: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          default_view?: string | null
+          household_id: string
+          id?: string
+          show_weekends?: boolean | null
+          week_starts_on?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          default_view?: string | null
+          household_id?: string
+          id?: string
+          show_weekends?: boolean | null
+          week_starts_on?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "calendar_settings_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: true
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       daily_plan_items: {
         Row: {
           ai_reasoning: string | null
