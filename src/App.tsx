@@ -23,6 +23,7 @@ import TaskmasterDashboard from "./pages/TaskmasterDashboard";
 import Meals from "./pages/Meals";
 import Grocery from "./pages/Grocery";
 import Calendar from "./pages/Calendar";
+import Habits from "./pages/Habits";
 import TermsOfService from "./pages/TermsOfService";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import NotFound from "./pages/NotFound";
@@ -140,6 +141,11 @@ const App = () => (
             <Route path="/calendar" element={
               <ProtectedRoute>
                 <Calendar />
+              </ProtectedRoute>
+            } />
+            <Route path="/habits" element={
+              <ProtectedRoute>
+                <Habits />
               </ProtectedRoute>
             } />
             <Route path="/terms" element={<TermsOfService />} />
