@@ -1,3 +1,6 @@
+export type HabitAssignmentType = 'personal' | 'multiple' | 'household';
+export type HabitFrequencyType = 'daily' | 'weekly' | 'specific_days';
+
 export interface Habit {
   id: string;
   household_id: string;
@@ -6,14 +9,22 @@ export interface Habit {
   description: string | null;
   icon: string;
   color: string;
-  frequency_type: 'daily' | 'weekly' | 'specific_days';
+  frequency_type: HabitFrequencyType;
   frequency_days: number[];
   reminder_time: string | null;
   target_value: number | null;
   target_unit: string | null;
   is_active: boolean;
+  assignment_type: HabitAssignmentType;
   created_at: string;
   updated_at: string;
+}
+
+export interface HabitAssignee {
+  id: string;
+  habit_id: string;
+  user_id: string;
+  created_at: string;
 }
 
 export interface HabitLog {
@@ -35,6 +46,18 @@ export interface HabitStreak {
   current_streak: number;
   longest_streak: number;
   last_completed_date: string | null;
+  updated_at: string;
+}
+
+export interface HabitScore {
+  id: string;
+  household_id: string;
+  user_id: string;
+  score_date: string;
+  daily_score: number;
+  streak_bonus: number;
+  total_score: number;
+  created_at: string;
   updated_at: string;
 }
 
@@ -88,6 +111,7 @@ export interface UserHabitBadge {
 export interface HabitWithStreak extends Habit {
   streak?: HabitStreak;
   todayLog?: HabitLog;
+  assignees?: HabitAssignee[];
 }
 
 export interface HouseholdHabitStats {
@@ -107,4 +131,15 @@ export interface MemberHabitStats {
   plannedToday: number;
   currentStreak: number;
   weeklyRate: number;
+}
+
+export interface LeaderboardEntry {
+  userId: string;
+  displayName: string;
+  avatarUrl: string | null;
+  weeklyScore: number;
+  monthlyScore: number;
+  rank: number;
+  previousRank: number | null;
+  streakBonus: number;
 }
