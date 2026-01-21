@@ -6,6 +6,7 @@ import { Footer } from "@/components/layout/Footer";
 import { OnboardingTour } from "@/components/onboarding/OnboardingTour";
 import { OnboardingProgressIndicator } from "@/components/onboarding/OnboardingProgressIndicator";
 import { ResetOnboardingButton } from "@/components/development/ResetOnboardingButton";
+import { PendingInvitationBanner } from "@/components/household/PendingInvitationBanner";
 import { useHousehold } from "@/hooks/useHousehold";
 import { useOnboardingProgress } from "@/hooks/useOnboardingProgress";
 import { useAuth } from "@/contexts/AuthContext";
@@ -100,6 +101,9 @@ const Index = () => {
       <main className="flex-1 container mx-auto px-4 sm:px-6 py-6 sm:py-8 pb-24">
         {/* Development Reset Button - Only in development */}
         <ResetOnboardingButton />
+        
+        {/* Pending Invitation Banner - Show if user has been invited to another household */}
+        <PendingInvitationBanner />
         
         {/* Onboarding Progress Card - Only show if not completed */}
         {!onboardingCompleted && progressData && progressData.percentage < 100 && (

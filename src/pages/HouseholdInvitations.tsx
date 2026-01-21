@@ -6,13 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useHousehold } from "@/hooks/useHousehold";
 import { useIsHouseholdAdmin } from "@/hooks/useIsHouseholdAdmin";
-import { usePendingInvitations } from "@/hooks/usePendingInvitations";
+import { usePendingInvitations, getInvitationTypeLabel } from "@/hooks/usePendingInvitations";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Check, X, UserPlus } from "lucide-react";
+import { Check, X, UserPlus, Mail } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Skeleton } from "@/components/ui/skeleton";
+import { InviteMemberDialog } from "@/components/household/InviteMemberDialog";
 
 const HouseholdInvitations = () => {
   const { householdId } = useHousehold();
@@ -115,9 +116,22 @@ const HouseholdInvitations = () => {
       <Header />
       <main className="container mx-auto py-6 sm:py-8 px-4 sm:px-6 min-h-screen pb-24">
         <div className="max-w-4xl mx-auto space-y-6">
-          <div className="flex items-center gap-3">
-            <UserPlus className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
-            <h1 className="text-2xl sm:text-3xl font-bold">Pending Invitations</h1>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <UserPlus className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
+              <h1 className="text-2xl sm:text-3xl font-bold">Manage Invitations</h1>
+            </div>
+            {householdId && (
+              <InviteMemberDialog 
+                householdId={householdId} 
+                trigger={
+                  <Button>
+                    <Mail className="h-4 w-4 mr-2" />
+                    Invite Member
+                  </Button>
+                }
+              />
+            )}
           </div>
 
           {!invitations || invitations.length === 0 ? (
@@ -125,10 +139,10 @@ const HouseholdInvitations = () => {
               <CardHeader>
                 <CardTitle>No Pending Invitations</CardTitle>
                 <CardDescription>
-                  You'll see join requests here when someone tries to join your household using the invite code.
+                  Invite family members directly by email, or they can request to join using your household invite code.
                 </CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="flex gap-2">
                 <Button onClick={() => navigate("/settings")} variant="outline">
                   Back to Settings
                 </Button>
@@ -136,45 +150,67 @@ const HouseholdInvitations = () => {
             </Card>
           ) : (
             <div className="space-y-4">
-              {invitations.map((invitation) => (
+              {invitations.map((invitation: any) => (
                 <Card key={invitation.id}>
                   <CardHeader>
-                    <div className="flex justify-between items-start">
-                      <div>
+                    <div className="flex justify-between items-start gap-2">
+                      <div className="min-w-0">
                         <CardTitle className="text-lg">
                           {invitation.invitee_name || "New Member"}
                         </CardTitle>
-                        <CardDescription>{invitation.invitee_email}</CardDescription>
+                        <CardDescription className="truncate">{invitation.invitee_email}</CardDescription>
                       </div>
-                      <Badge variant="secondary">
-                        {invitation.requested_role === "admin" ? "Admin" : "Member"}
-                      </Badge>
+                      <div className="flex gap-2 flex-shrink-0">
+                        <Badge variant="outline">
+                          {getInvitationTypeLabel(invitation.invitation_type)}
+                        </Badge>
+                        <Badge variant="secondary">
+                          {invitation.requested_role === "admin" ? "Admin" : "Member"}
+                        </Badge>
+                      </div>
                     </div>
                   </CardHeader>
                   <CardContent>
-                    <div className="flex gap-2">
-                      <Button
-                        onClick={() => approveMutation.mutate(invitation.id)}
-                        disabled={approveMutation.isPending}
-                        size="sm"
-                        className="flex-1"
-                      >
-                        <Check className="h-4 w-4 mr-2" />
-                        Approve
-                      </Button>
-                      <Button
-                        onClick={() => rejectMutation.mutate(invitation.id)}
-                        disabled={rejectMutation.isPending}
-                        variant="destructive"
-                        size="sm"
-                        className="flex-1"
-                      >
-                        <X className="h-4 w-4 mr-2" />
-                        Reject
-                      </Button>
-                    </div>
+                    {invitation.invitation_type === "join_request" ? (
+                      <div className="flex gap-2">
+                        <Button
+                          onClick={() => approveMutation.mutate(invitation.id)}
+                          disabled={approveMutation.isPending}
+                          size="sm"
+                          className="flex-1"
+                        >
+                          <Check className="h-4 w-4 mr-2" />
+                          Approve
+                        </Button>
+                        <Button
+                          onClick={() => rejectMutation.mutate(invitation.id)}
+                          disabled={rejectMutation.isPending}
+                          variant="destructive"
+                          size="sm"
+                          className="flex-1"
+                        >
+                          <X className="h-4 w-4 mr-2" />
+                          Reject
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="border-warning text-warning">
+                          Awaiting Response
+                        </Badge>
+                        <Button
+                          onClick={() => rejectMutation.mutate(invitation.id)}
+                          disabled={rejectMutation.isPending}
+                          variant="ghost"
+                          size="sm"
+                        >
+                          <X className="h-4 w-4 mr-2" />
+                          Cancel Invite
+                        </Button>
+                      </div>
+                    )}
                     <p className="text-xs text-muted-foreground mt-3">
-                      Requested: {new Date(invitation.created_at).toLocaleDateString()}
+                      {invitation.invitation_type === "admin_invite" ? "Invited" : "Requested"}: {new Date(invitation.created_at).toLocaleDateString()}
                     </p>
                   </CardContent>
                 </Card>

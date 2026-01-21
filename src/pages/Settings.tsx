@@ -10,12 +10,13 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useHousehold } from "@/hooks/useHousehold";
 import { toast } from "sonner";
 import { HouseholdPreferences } from "@/types/database";
-import { Settings as SettingsIcon, RefreshCw, Copy, Users, UserPlus, Key } from "lucide-react";
+import { Settings as SettingsIcon, RefreshCw, Copy, Users, UserPlus, Key, Mail } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useIsHouseholdAdmin } from "@/hooks/useIsHouseholdAdmin";
 import { usePendingInvitations } from "@/hooks/usePendingInvitations";
 import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
+import { InviteMemberDialog } from "@/components/household/InviteMemberDialog";
 
 export const Settings = () => {
   const { user } = useAuth();
@@ -179,33 +180,42 @@ export const Settings = () => {
                     </p>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {isAdmin && (
+                  {isAdmin && (
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      {householdId && (
+                        <InviteMemberDialog 
+                          householdId={householdId} 
+                          trigger={
+                            <Button variant="default" className="w-full">
+                              <Mail className="h-4 w-4 mr-2" />
+                              Invite Member
+                            </Button>
+                          }
+                        />
+                      )}
                       <Button
                         onClick={() => navigate("/invitations")}
                         variant="outline"
                         className="w-full relative"
                       >
                         <UserPlus className="h-4 w-4 mr-2" />
-                        Pending Invitations
+                        Invitations
                         {pendingInvitations && pendingInvitations.length > 0 && (
                           <Badge variant="destructive" className="ml-2 h-5 px-1.5 text-xs">
                             {pendingInvitations.length}
                           </Badge>
                         )}
                       </Button>
-                    )}
-                    {isAdmin && (
                       <Button
                         onClick={() => navigate("/members")}
                         variant="outline"
                         className="w-full"
                       >
                         <Users className="h-4 w-4 mr-2" />
-                        Manage Members
+                        Members
                       </Button>
-                    )}
-                  </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 
