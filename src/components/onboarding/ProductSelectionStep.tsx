@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { CheckSquare, ChefHat, Calendar, ShoppingCart } from "lucide-react";
+import { CheckSquare, ChefHat, Calendar, ShoppingCart, Leaf } from "lucide-react";
 import { ProductName } from "@/hooks/useEnabledProducts";
 
 interface ProductSelectionStepProps {
@@ -38,6 +38,13 @@ const products = [
     label: "Grocery",
     description: "Create shopping lists and manage pantry inventory efficiently",
     color: "text-[hsl(145,65%,45%)]",
+  },
+  {
+    name: "habits" as ProductName,
+    icon: Leaf,
+    label: "Habits",
+    description: "Build healthy routines with streak tracking and household habit goals",
+    color: "text-[hsl(142,70%,45%)]",
   },
 ];
 
