@@ -124,19 +124,19 @@ export const MealPlanCalendar = ({
         </div>
       )}
 
-      {/* Day headers with calorie summary */}
-      <div className="grid grid-cols-7 gap-1 sm:gap-2">
+      {/* Day headers with calorie summary - Hidden on mobile (shown inline per meal) */}
+      <div className="hidden sm:grid grid-cols-7 gap-2">
         {weekDays.map((day, index) => {
           const dailyCalories = getDailyCalories(index);
           return (
             <div
               key={index}
-              className="text-center p-1 sm:p-2 bg-primary/10 rounded-lg space-y-1"
+              className="text-center p-2 bg-primary/10 rounded-lg space-y-1"
             >
-              <div className="font-semibold text-xs sm:text-sm">{getShortDayName(day)}</div>
-              <div className="text-[10px] sm:text-xs text-muted-foreground hidden sm:block">{format(day, "MMM d")}</div>
+              <div className="font-semibold text-sm">{getShortDayName(day)}</div>
+              <div className="text-xs text-muted-foreground">{format(day, "MMM d")}</div>
               {dailyCalories > 0 && (
-                <div className="text-[10px] sm:text-xs font-medium text-orange-600">
+                <div className="text-xs font-medium text-orange-600">
                   {dailyCalories} cal
                 </div>
               )}
@@ -144,11 +144,11 @@ export const MealPlanCalendar = ({
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-5 sm:h-6 w-full text-[10px] sm:text-xs px-1"
+                  className="h-8 w-full text-xs px-2"
                   onClick={() => onRegenerateDay(index)}
                 >
-                  <RefreshCw className="w-2 h-2 sm:w-3 sm:h-3 sm:mr-1" />
-                  <span className="hidden sm:inline">Regenerate</span>
+                  <RefreshCw className="w-3 h-3 mr-1" />
+                  Regenerate
                 </Button>
               )}
             </div>
@@ -202,84 +202,84 @@ export const MealPlanCalendar = ({
                       {recipe.title}
                     </h4>
 
-                    {/* Time, rating, and calories */}
-                    <div className="flex items-center gap-1.5 sm:gap-2 text-[10px] sm:text-xs text-muted-foreground flex-wrap">
-                      <div className="flex items-center gap-0.5 sm:gap-1">
-                        <Clock className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                    {/* Time, rating, and calories - Minimum 12px font */}
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
+                      <div className="flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
                         <span>{totalTime}m</span>
                       </div>
                       {recipe.rating && (
-                        <div className="flex items-center gap-0.5 sm:gap-1">
-                          <Star className="w-2.5 h-2.5 sm:w-3 sm:h-3 fill-yellow-400 text-yellow-400" />
+                        <div className="flex items-center gap-1">
+                          <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
                           <span>{recipe.rating.toFixed(1)}</span>
                         </div>
                       )}
                       {calories && (
-                        <div className="flex items-center gap-0.5 sm:gap-1 text-orange-600">
-                          <Flame className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                        <div className="flex items-center gap-1 text-orange-600">
+                          <Flame className="w-3 h-3" />
                           <span>{calories} cal</span>
                         </div>
                       )}
                     </div>
 
-                    {/* Actions */}
-                    <div className="flex items-center gap-0.5 sm:gap-1">
+                    {/* Actions - Increased touch targets */}
+                    <div className="flex items-center gap-1">
                       {onMarkAsCooked && (
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-5 sm:h-6 px-1 sm:px-2 text-green-600"
+                          className="h-8 w-8 p-0 text-green-600"
                           onClick={(e) => {
                             e.stopPropagation();
                             onMarkAsCooked(recipe);
                           }}
                           title="Mark as cooked"
                         >
-                          <ChefHat className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                          <ChefHat className="w-4 h-4" />
                         </Button>
                       )}
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-5 sm:h-6 px-1 sm:px-2"
+                        className="h-8 w-8 p-0"
                         onClick={(e) => {
                           e.stopPropagation();
                           onRateClick(recipe);
                         }}
                       >
-                        <Star className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                        <Star className="w-4 h-4" />
                       </Button>
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-5 sm:h-6 px-1 sm:px-2"
+                        className="h-8 w-8 p-0"
                         onClick={(e) => handleYouTubeClick(e, recipe.title)}
                       >
-                        <Youtube className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                        <Youtube className="w-4 h-4" />
                       </Button>
                       {onRegenerateMeal && (
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-5 sm:h-6 px-1 sm:px-2"
+                          className="h-8 w-8 p-0"
                           onClick={(e) => {
                             e.stopPropagation();
                             onRegenerateMeal(dayIndex, mealType);
                           }}
                         >
-                          <RefreshCw className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                          <RefreshCw className="w-4 h-4" />
                         </Button>
                       )}
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-5 sm:h-6 px-1 sm:px-2 text-destructive"
+                        className="h-8 w-8 p-0 text-destructive"
                         onClick={(e) => {
                           e.stopPropagation();
                           onRemoveClick(meal.id);
                         }}
                       >
-                        <Trash2 className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                        <Trash2 className="w-4 h-4" />
                       </Button>
                     </div>
                   </div>
