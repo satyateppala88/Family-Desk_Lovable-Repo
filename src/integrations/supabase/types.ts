@@ -763,9 +763,11 @@ export type Database = {
           created_at: string
           household_id: string
           id: string
+          invitation_type: string
+          invited_by: string | null
           invitee_email: string
           invitee_name: string | null
-          invitee_user_id: string
+          invitee_user_id: string | null
           requested_role: string
           reviewed_at: string | null
           reviewed_by: string | null
@@ -776,9 +778,11 @@ export type Database = {
           created_at?: string
           household_id: string
           id?: string
+          invitation_type?: string
+          invited_by?: string | null
           invitee_email: string
           invitee_name?: string | null
-          invitee_user_id: string
+          invitee_user_id?: string | null
           requested_role?: string
           reviewed_at?: string | null
           reviewed_by?: string | null
@@ -789,9 +793,11 @@ export type Database = {
           created_at?: string
           household_id?: string
           id?: string
+          invitation_type?: string
+          invited_by?: string | null
           invitee_email?: string
           invitee_name?: string | null
-          invitee_user_id?: string
+          invitee_user_id?: string | null
           requested_role?: string
           reviewed_at?: string | null
           reviewed_by?: string | null

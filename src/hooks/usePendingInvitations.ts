@@ -20,3 +20,14 @@ export const usePendingInvitations = (householdId: string | undefined | null) =>
     enabled: !!householdId,
   });
 };
+
+// Helper to get invitation type label
+export const getInvitationTypeLabel = (type: string) => {
+  switch (type) {
+    case "admin_invite":
+      return "Invited";
+    case "join_request":
+    default:
+      return "Join Request";
+  }
+};

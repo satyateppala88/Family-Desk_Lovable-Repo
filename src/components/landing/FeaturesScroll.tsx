@@ -1,4 +1,4 @@
-import { CheckSquare, UtensilsCrossed, ShoppingCart, Calendar } from "lucide-react";
+import { CheckSquare, UtensilsCrossed, ShoppingCart, Calendar, Target, Package } from "lucide-react";
 
 const features = [
   {
@@ -20,6 +20,16 @@ const features = [
     icon: Calendar,
     title: "Shared Calendar",
     description: "Keep everyone synchronized. Manage events, schedules, and activities together.",
+  },
+  {
+    icon: Target,
+    title: "Habit Tracker",
+    description: "Build healthy habits together. Gamified with streaks, scores, and family leaderboards.",
+  },
+  {
+    icon: Package,
+    title: "Smart Pantry",
+    description: "Track your pantry inventory. Get alerts for expiring items and low stock.",
   },
 ];
 

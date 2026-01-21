@@ -1,4 +1,4 @@
-import { Clock, Lightbulb, HeartHandshake, Zap } from "lucide-react";
+import { Clock, Lightbulb, HeartHandshake, Zap, Trophy } from "lucide-react";
 
 const benefits = [
   {
@@ -21,6 +21,11 @@ const benefits = [
     title: "AI-Powered",
     description: "Smart suggestions tailored to you",
   },
+  {
+    icon: Trophy,
+    title: "Family Engagement",
+    description: "Gamified habits with streaks & leaderboards",
+  },
 ];
 
 export const Benefits = () => {
@@ -31,7 +36,7 @@ export const Benefits = () => {
           Why Choose Family Desk?
         </h2>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
           {benefits.map((benefit, index) => (
             <div
               key={index}
