@@ -3,6 +3,7 @@ import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { MobileNav } from "@/components/layout/MobileNav";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -154,18 +155,30 @@ const HouseholdMembers = () => {
                     key={member.id}
                     className="flex items-center justify-between p-4 border rounded-lg"
                   >
-                    <div className="space-y-1">
-                      <p className="font-medium">
-                        {member.profiles?.display_name || "Unknown User"}
-                        {isCurrentUser && " (You)"}
-                      </p>
-                      <div className="flex gap-2 items-center">
-                        <p className="text-sm text-muted-foreground">
-                          Joined: {new Date(member.joined_at).toLocaleDateString()}
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-10 w-10">
+                        <AvatarFallback className="bg-primary text-primary-foreground">
+                          {(member.profiles?.display_name || "U")
+                            .split(" ")
+                            .map((n: string) => n[0])
+                            .join("")
+                            .toUpperCase()
+                            .slice(0, 2)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="space-y-1">
+                        <p className="font-medium">
+                          {member.profiles?.display_name || "Unknown User"}
+                          {isCurrentUser && " (You)"}
                         </p>
-                        {isCreator && (
-                          <Badge variant="secondary">Creator</Badge>
-                        )}
+                        <div className="flex gap-2 items-center">
+                          <p className="text-sm text-muted-foreground">
+                            Joined: {new Date(member.joined_at).toLocaleDateString()}
+                          </p>
+                          {isCreator && (
+                            <Badge variant="secondary">Creator</Badge>
+                          )}
+                        </div>
                       </div>
                     </div>
 
