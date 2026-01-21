@@ -10,7 +10,8 @@ import {
   Folder,
   LayoutDashboard,
   ChevronUp,
-  Sun
+  Sun,
+  Leaf
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useHousehold } from "@/hooks/useHousehold";
@@ -25,6 +26,7 @@ import {
 const allNavItems = [
   { path: "/dashboard", icon: Home, label: "Home", product: null },
   { path: "/tasks", icon: CheckSquare, label: "Tasks", product: "tasks" as ProductName, hasSubmenu: true },
+  { path: "/habits", icon: Leaf, label: "Habits", product: "habits" as ProductName },
   { path: "/meals", icon: UtensilsCrossed, label: "Meals", product: "meals" as ProductName },
   { path: "/grocery", icon: ShoppingCart, label: "Grocery", product: "grocery" as ProductName },
   { path: "/calendar", icon: Calendar, label: "Calendar", product: "calendar" as ProductName },

@@ -379,6 +379,224 @@ export type Database = {
           },
         ]
       }
+      habit_badges: {
+        Row: {
+          created_at: string
+          criteria_type: string
+          criteria_value: number
+          description: string
+          icon: string
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          criteria_type: string
+          criteria_value: number
+          description: string
+          icon: string
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          criteria_type?: string
+          criteria_value?: number
+          description?: string
+          icon?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      habit_coach_recommendations: {
+        Row: {
+          content: string
+          context: Json | null
+          created_at: string
+          dismissed: boolean
+          generated_at: string
+          household_id: string
+          id: string
+          recommendation_type: string
+          user_id: string | null
+        }
+        Insert: {
+          content: string
+          context?: Json | null
+          created_at?: string
+          dismissed?: boolean
+          generated_at?: string
+          household_id: string
+          id?: string
+          recommendation_type?: string
+          user_id?: string | null
+        }
+        Update: {
+          content?: string
+          context?: Json | null
+          created_at?: string
+          dismissed?: boolean
+          generated_at?: string
+          household_id?: string
+          id?: string
+          recommendation_type?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "habit_coach_recommendations_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      habit_logs: {
+        Row: {
+          actual_value: number | null
+          completed: boolean
+          created_at: string
+          habit_id: string
+          id: string
+          log_date: string
+          logged_at: string
+          notes: string | null
+          user_id: string
+        }
+        Insert: {
+          actual_value?: number | null
+          completed?: boolean
+          created_at?: string
+          habit_id: string
+          id?: string
+          log_date: string
+          logged_at?: string
+          notes?: string | null
+          user_id: string
+        }
+        Update: {
+          actual_value?: number | null
+          completed?: boolean
+          created_at?: string
+          habit_id?: string
+          id?: string
+          log_date?: string
+          logged_at?: string
+          notes?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "habit_logs_habit_id_fkey"
+            columns: ["habit_id"]
+            isOneToOne: false
+            referencedRelation: "habits"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      habit_streaks: {
+        Row: {
+          current_streak: number
+          habit_id: string
+          id: string
+          last_completed_date: string | null
+          longest_streak: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          current_streak?: number
+          habit_id: string
+          id?: string
+          last_completed_date?: string | null
+          longest_streak?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          current_streak?: number
+          habit_id?: string
+          id?: string
+          last_completed_date?: string | null
+          longest_streak?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "habit_streaks_habit_id_fkey"
+            columns: ["habit_id"]
+            isOneToOne: false
+            referencedRelation: "habits"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      habits: {
+        Row: {
+          color: string | null
+          created_at: string
+          description: string | null
+          frequency_days: number[] | null
+          frequency_type: string
+          household_id: string
+          icon: string | null
+          id: string
+          is_active: boolean
+          name: string
+          reminder_time: string | null
+          target_unit: string | null
+          target_value: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          frequency_days?: number[] | null
+          frequency_type?: string
+          household_id: string
+          icon?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          reminder_time?: string | null
+          target_unit?: string | null
+          target_value?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          frequency_days?: number[] | null
+          frequency_type?: string
+          household_id?: string
+          icon?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          reminder_time?: string | null
+          target_unit?: string | null
+          target_value?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "habits_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       household_enabled_products: {
         Row: {
           enabled_at: string
@@ -404,6 +622,59 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "household_enabled_products_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      household_habit_goals: {
+        Row: {
+          created_at: string
+          created_by: string
+          current_value: number
+          description: string | null
+          end_date: string
+          household_id: string
+          id: string
+          metric_type: string
+          name: string
+          start_date: string
+          status: string
+          target_value: number
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          current_value?: number
+          description?: string | null
+          end_date: string
+          household_id: string
+          id?: string
+          metric_type?: string
+          name: string
+          start_date: string
+          status?: string
+          target_value: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          current_value?: number
+          description?: string | null
+          end_date?: string
+          household_id?: string
+          id?: string
+          metric_type?: string
+          name?: string
+          start_date?: string
+          status?: string
+          target_value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "household_habit_goals_household_id_fkey"
             columns: ["household_id"]
             isOneToOne: false
             referencedRelation: "households"
@@ -1318,6 +1589,48 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_habit_badges: {
+        Row: {
+          badge_id: string
+          created_at: string
+          earned_at: string
+          habit_id: string | null
+          id: string
+          user_id: string
+        }
+        Insert: {
+          badge_id: string
+          created_at?: string
+          earned_at?: string
+          habit_id?: string | null
+          id?: string
+          user_id: string
+        }
+        Update: {
+          badge_id?: string
+          created_at?: string
+          earned_at?: string
+          habit_id?: string | null
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_habit_badges_badge_id_fkey"
+            columns: ["badge_id"]
+            isOneToOne: false
+            referencedRelation: "habit_badges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_habit_badges_habit_id_fkey"
+            columns: ["habit_id"]
+            isOneToOne: false
+            referencedRelation: "habits"
             referencedColumns: ["id"]
           },
         ]
