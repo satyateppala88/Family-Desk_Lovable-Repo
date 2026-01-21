@@ -1,3 +1,4 @@
+import { useNavigate } from "react-router-dom";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { MobileNav } from "@/components/layout/MobileNav";
@@ -5,15 +6,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
 import { useHousehold } from "@/hooks/useHousehold";
 import { useIsHouseholdAdmin } from "@/hooks/useIsHouseholdAdmin";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Users } from "lucide-react";
+import { Users, ArrowLeft } from "lucide-react";
 
 const HouseholdMembers = () => {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { householdId } = useHousehold();
   const { isAdmin, isLoading: adminLoading } = useIsHouseholdAdmin(householdId);
@@ -112,7 +115,10 @@ const HouseholdMembers = () => {
       <Header />
       <main className="container mx-auto py-6 sm:py-8 px-4 sm:px-6 min-h-screen pb-24">
         <div className="max-w-4xl mx-auto space-y-6">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-4">
+            <Button variant="ghost" size="icon" onClick={() => navigate("/settings")}>
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
             <Users className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
             <h1 className="text-2xl sm:text-3xl font-bold">Household Members</h1>
           </div>

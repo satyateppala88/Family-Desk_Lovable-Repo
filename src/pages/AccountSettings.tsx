@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
@@ -8,10 +9,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { Separator } from "@/components/ui/separator";
-import { User, Lock, Globe } from "lucide-react";
+import { User, Lock, Globe, ArrowLeft } from "lucide-react";
 import { ResetOnboardingButton } from "@/components/development/ResetOnboardingButton";
+import { Header } from "@/components/layout/Header";
+import { Footer } from "@/components/layout/Footer";
+import { MobileNav } from "@/components/layout/MobileNav";
 
 const AccountSettings = () => {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
@@ -102,13 +107,20 @@ const AccountSettings = () => {
   };
 
   return (
-    <div className="container max-w-4xl px-4 sm:px-6 py-6 sm:py-8 space-y-6 sm:space-y-8 pb-24">
-      <div>
-        <h1 className="text-2xl sm:text-3xl font-bold">Account Settings</h1>
-        <p className="text-muted-foreground mt-2 text-sm sm:text-base">
-          Manage your account settings and preferences
-        </p>
-      </div>
+    <>
+      <Header />
+      <main className="container max-w-4xl px-4 sm:px-6 py-6 sm:py-8 space-y-6 sm:space-y-8 pb-24">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" onClick={() => navigate("/dashboard")}>
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold">Account Settings</h1>
+            <p className="text-muted-foreground mt-1 text-sm sm:text-base">
+              Manage your account settings and preferences
+            </p>
+          </div>
+        </div>
 
       <Tabs defaultValue="profile" className="w-full">
         <TabsList className="grid w-full grid-cols-3">
@@ -255,8 +267,11 @@ const AccountSettings = () => {
             </CardContent>
           </Card>
         </TabsContent>
-      </Tabs>
-    </div>
+        </Tabs>
+      </main>
+      <Footer />
+      <MobileNav />
+    </>
   );
 };
 

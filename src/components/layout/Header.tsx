@@ -9,7 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { User, Settings, LogOut, HelpCircle, FileText, Shield, Bell } from "lucide-react";
+import { User, Settings, LogOut, HelpCircle, FileText, Shield, Bell, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useHousehold } from "@/hooks/useHousehold";
 import { useIsHouseholdAdmin } from "@/hooks/useIsHouseholdAdmin";
@@ -84,16 +84,22 @@ export const Header = ({ onStartOnboarding }: HeaderProps) => {
               <Settings className="mr-2 h-4 w-4" />
               Household Settings
             </DropdownMenuItem>
-            {isAdmin && pendingCount > 0 && (
+            {isAdmin && (
               <>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => navigate("/household/invitations")}>
-                  <Bell className="mr-2 h-4 w-4" />
-                  Pending Invitations
-                  <Badge variant="destructive" className="ml-auto">
-                    {pendingCount}
-                  </Badge>
+                <DropdownMenuItem onClick={() => navigate("/household/members")}>
+                  <Users className="mr-2 h-4 w-4" />
+                  Manage Members
                 </DropdownMenuItem>
+                {pendingCount > 0 && (
+                  <DropdownMenuItem onClick={() => navigate("/household/invitations")}>
+                    <Bell className="mr-2 h-4 w-4" />
+                    Pending Invitations
+                    <Badge variant="destructive" className="ml-auto">
+                      {pendingCount}
+                    </Badge>
+                  </DropdownMenuItem>
+                )}
               </>
             )}
             <DropdownMenuSeparator />

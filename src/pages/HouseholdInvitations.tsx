@@ -10,7 +10,7 @@ import { usePendingInvitations, getInvitationTypeLabel } from "@/hooks/usePendin
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Check, X, UserPlus, Mail } from "lucide-react";
+import { Check, X, UserPlus, Mail, ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Skeleton } from "@/components/ui/skeleton";
 import { InviteMemberDialog } from "@/components/household/InviteMemberDialog";
@@ -117,7 +117,10 @@ const HouseholdInvitations = () => {
       <main className="container mx-auto py-6 sm:py-8 px-4 sm:px-6 min-h-screen pb-24">
         <div className="max-w-4xl mx-auto space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-4">
+              <Button variant="ghost" size="icon" onClick={() => navigate("/settings")}>
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
               <UserPlus className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
               <h1 className="text-2xl sm:text-3xl font-bold">Manage Invitations</h1>
             </div>
