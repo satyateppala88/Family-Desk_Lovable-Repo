@@ -1,20 +1,23 @@
 import { useState } from "react";
 import { format } from "date-fns";
-import { RefreshCw, Users, User } from "lucide-react";
+import { Users, User } from "lucide-react";
 import { Header } from "@/components/layout/Header";
 import { MobileNav } from "@/components/layout/MobileNav";
 import { Footer } from "@/components/layout/Footer";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useHousehold } from "@/hooks/useHousehold";
 import { useHabits } from "@/hooks/useHabits";
 import { useHouseholdHabitStats } from "@/hooks/useHouseholdHabitStats";
+import { useHabitLeaderboard } from "@/hooks/useHabitLeaderboard";
+import { useHouseholdMembers } from "@/hooks/useHouseholdMembers";
 import { HabitCard } from "@/components/habits/HabitCard";
-import { HabitQuickAdd } from "@/components/habits/HabitQuickAdd";
+import { HabitCreateDialog } from "@/components/habits/HabitCreateDialog";
 import { HabitCoachInsight } from "@/components/habits/HabitCoachInsight";
 import { HouseholdHabitSummary } from "@/components/habits/HouseholdHabitSummary";
 import { MemberProgressCard } from "@/components/habits/MemberProgressCard";
+import { HabitLeaderboard } from "@/components/habits/HabitLeaderboard";
+import { HabitAssignmentType, HabitFrequencyType } from "@/types/habits";
 
 const Habits = () => {
   const [view, setView] = useState<"personal" | "household">("personal");
@@ -22,6 +25,8 @@ const Habits = () => {
 
   const { todaysHabits, isLoading: habitsLoading, createHabit, logHabit } = useHabits(householdId);
   const { data: householdStats, isLoading: statsLoading } = useHouseholdHabitStats(householdId);
+  const { data: leaderboardEntries, isLoading: leaderboardLoading } = useHabitLeaderboard(householdId);
+  const { data: householdMembers } = useHouseholdMembers(householdId);
 
   const today = new Date();
   const completedCount = todaysHabits.filter((h) => h.todayLog?.completed).length;
@@ -35,8 +40,17 @@ const Habits = () => {
     logHabit.mutate({ habitId, completed: false, actualValue: value });
   };
 
-  const handleAddHabit = (name: string) => {
-    createHabit.mutate({ name });
+  const handleCreateHabit = (data: {
+    name: string;
+    assignment_type: HabitAssignmentType;
+    assigned_members?: string[];
+    frequency_type: HabitFrequencyType;
+    frequency_days: number[];
+    target_value?: number;
+    target_unit?: string;
+    reminder_time?: string;
+  }) => {
+    createHabit.mutate(data);
   };
 
   if (householdLoading) {
@@ -137,8 +151,12 @@ const Habits = () => {
               </div>
             )}
 
-            {/* Quick add */}
-            <HabitQuickAdd onAdd={handleAddHabit} isLoading={createHabit.isPending} />
+            {/* Create Habit Dialog */}
+            <HabitCreateDialog
+              onCreateHabit={handleCreateHabit}
+              isLoading={createHabit.isPending}
+              householdMembers={householdMembers}
+            />
           </div>
         ) : (
           /* Household View */
@@ -155,6 +173,13 @@ const Habits = () => {
                   <h2 className="text-lg font-semibold mb-3">Today's Summary</h2>
                   <HouseholdHabitSummary stats={householdStats} />
                 </div>
+
+                {/* Leaderboard */}
+                <HabitLeaderboard
+                  entries={leaderboardEntries || []}
+                  isLoading={leaderboardLoading}
+                  period="weekly"
+                />
 
                 {/* Member progress */}
                 <div>

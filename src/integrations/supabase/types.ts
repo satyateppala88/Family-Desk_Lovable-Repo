@@ -379,6 +379,35 @@ export type Database = {
           },
         ]
       }
+      habit_assignees: {
+        Row: {
+          created_at: string | null
+          habit_id: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          habit_id: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          habit_id?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "habit_assignees_habit_id_fkey"
+            columns: ["habit_id"]
+            isOneToOne: false
+            referencedRelation: "habits"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       habit_badges: {
         Row: {
           created_at: string
@@ -497,6 +526,50 @@ export type Database = {
           },
         ]
       }
+      habit_scores: {
+        Row: {
+          created_at: string | null
+          daily_score: number
+          household_id: string
+          id: string
+          score_date: string
+          streak_bonus: number
+          total_score: number
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          daily_score?: number
+          household_id: string
+          id?: string
+          score_date?: string
+          streak_bonus?: number
+          total_score?: number
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          daily_score?: number
+          household_id?: string
+          id?: string
+          score_date?: string
+          streak_bonus?: number
+          total_score?: number
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "habit_scores_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       habit_streaks: {
         Row: {
           current_streak: number
@@ -537,6 +610,7 @@ export type Database = {
       }
       habits: {
         Row: {
+          assignment_type: string
           color: string | null
           created_at: string
           description: string | null
@@ -554,6 +628,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          assignment_type?: string
           color?: string | null
           created_at?: string
           description?: string | null
@@ -571,6 +646,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          assignment_type?: string
           color?: string | null
           created_at?: string
           description?: string | null
