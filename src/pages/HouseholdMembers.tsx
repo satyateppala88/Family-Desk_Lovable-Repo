@@ -13,7 +13,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Users, ArrowLeft } from "lucide-react";
+import { Users, ArrowLeft, Mail } from "lucide-react";
+import { InviteMemberDialog } from "@/components/household/InviteMemberDialog";
 
 const HouseholdMembers = () => {
   const navigate = useNavigate();
@@ -115,12 +116,25 @@ const HouseholdMembers = () => {
       <Header />
       <main className="container mx-auto py-6 sm:py-8 px-4 sm:px-6 min-h-screen pb-24">
         <div className="max-w-4xl mx-auto space-y-6">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => navigate("/settings")}>
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <Users className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
-            <h1 className="text-2xl sm:text-3xl font-bold">Household Members</h1>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <Button variant="ghost" size="icon" onClick={() => navigate("/settings")}>
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+              <Users className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
+              <h1 className="text-2xl sm:text-3xl font-bold">Household Members</h1>
+            </div>
+            {householdId && (
+              <InviteMemberDialog 
+                householdId={householdId} 
+                trigger={
+                  <Button>
+                    <Mail className="h-4 w-4 mr-2" />
+                    Invite Member
+                  </Button>
+                }
+              />
+            )}
           </div>
 
           <Card>
