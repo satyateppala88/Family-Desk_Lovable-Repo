@@ -397,30 +397,33 @@ const Grocery = () => {
     <div className="min-h-screen flex flex-col bg-background">
       <Header onStartOnboarding={handleStartOnboarding} />
       <main className="container px-4 py-6 pb-20 flex-1">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold">Grocery Management</h1>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+          <h1 className="text-xl sm:text-2xl font-bold">Grocery Management</h1>
           <div className="flex flex-wrap gap-2">
             <Button
               variant="outline"
               onClick={() => setShowAIImport(true)}
-              className="gap-2"
+              className="gap-2 h-9"
               size="sm"
             >
               <Sparkles className="h-4 w-4" />
-              AI Import
+              <span className="hidden xs:inline">AI Import</span>
+              <span className="xs:hidden">AI</span>
             </Button>
             <Button
               variant="outline"
               onClick={() => setShowQuickAdd(true)}
-              className="gap-2"
+              className="gap-2 h-9"
               size="sm"
             >
               <ListChecks className="h-4 w-4" />
-              Quick Add
+              <span className="hidden xs:inline">Quick Add</span>
+              <span className="xs:hidden">Quick</span>
             </Button>
-            <Button onClick={() => setShowAddDialog(true)} className="gap-2" size="sm">
+            <Button onClick={() => setShowAddDialog(true)} className="gap-2 h-9" size="sm">
               <Plus className="h-4 w-4" />
-              Add Item
+              <span className="hidden xs:inline">Add Item</span>
+              <span className="xs:hidden">Add</span>
             </Button>
           </div>
         </div>
