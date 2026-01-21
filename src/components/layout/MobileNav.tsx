@@ -52,6 +52,10 @@ export const MobileNav = () => {
   });
 
   const isTaskmasterRoute = location.pathname.startsWith("/taskmaster") || location.pathname === "/tasks";
+  
+  // Settings-related routes should keep Home highlighted
+  const settingsRoutes = ["/settings", "/members", "/invitations", "/account-settings", "/household"];
+  const isSettingsRoute = settingsRoutes.some(route => location.pathname.startsWith(route));
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border z-50">
@@ -59,7 +63,9 @@ export const MobileNav = () => {
         {navItems.map(({ path, icon: Icon, label, hasSubmenu }) => {
           const isActive = hasSubmenu 
             ? isTaskmasterRoute
-            : location.pathname === path;
+            : path === "/dashboard"
+              ? location.pathname === path || isSettingsRoute
+              : location.pathname === path;
 
           if (hasSubmenu) {
             return (
