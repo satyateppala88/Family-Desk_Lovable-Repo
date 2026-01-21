@@ -1,15 +1,12 @@
-import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { MobileNav } from "@/components/layout/MobileNav";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { useHousehold } from "@/hooks/useHousehold";
 import { toast } from "sonner";
-import { HouseholdPreferences } from "@/types/database";
 import { Settings as SettingsIcon, RefreshCw, Copy, Users, UserPlus, Key, Mail } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useIsHouseholdAdmin } from "@/hooks/useIsHouseholdAdmin";
@@ -17,17 +14,23 @@ import { usePendingInvitations } from "@/hooks/usePendingInvitations";
 import { Badge } from "@/components/ui/badge";
 import { useQuery } from "@tanstack/react-query";
 import { InviteMemberDialog } from "@/components/household/InviteMemberDialog";
+import { useHouseholdPreferences } from "@/hooks/useHouseholdPreferences";
+import { EditHouseholdBasicsDialog } from "@/components/settings/EditHouseholdBasicsDialog";
+import { EditDietaryPreferencesDialog } from "@/components/settings/EditDietaryPreferencesDialog";
+import { EditCookingPreferencesDialog } from "@/components/settings/EditCookingPreferencesDialog";
+import { EditRoutinePreferencesDialog } from "@/components/settings/EditRoutinePreferencesDialog";
+import { EditBudgetPreferencesDialog } from "@/components/settings/EditBudgetPreferencesDialog";
+import { supabase } from "@/lib/supabase";
 
 export const Settings = () => {
   const { user } = useAuth();
   const { householdId } = useHousehold();
   const navigate = useNavigate();
-  const [preferences, setPreferences] = useState<HouseholdPreferences | null>(null);
-  const [loading, setLoading] = useState(true);
   const { isAdmin } = useIsHouseholdAdmin(householdId);
   const { data: pendingInvitations } = usePendingInvitations(householdId);
+  const { preferences, isLoading: preferencesLoading, updatePreferences, isUpdating } = useHouseholdPreferences(householdId);
 
-  const { data: household } = useQuery({
+  const { data: household, isLoading: householdLoading } = useQuery({
     queryKey: ["household-details", householdId],
     queryFn: async () => {
       if (!householdId) return null;
@@ -41,35 +44,14 @@ export const Settings = () => {
     enabled: !!householdId,
   });
 
+  const loading = preferencesLoading || householdLoading;
+
   const copyInviteCode = () => {
     if (household?.invite_code) {
       navigator.clipboard.writeText(household.invite_code);
       toast.success("Invite code copied!");
     }
   };
-
-  useEffect(() => {
-    const fetchPreferences = async () => {
-      if (!householdId) return;
-
-      try {
-        const { data, error } = await supabase
-          .from("household_preferences")
-          .select("*")
-          .eq("household_id", householdId)
-          .single();
-
-        if (error && error.code !== "PGRST116") throw error;
-        setPreferences(data as HouseholdPreferences);
-      } catch (error: any) {
-        toast.error("Failed to load preferences: " + error.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchPreferences();
-  }, [householdId]);
 
   const handleRerunOnboarding = () => {
     navigate("/onboarding/preferences");
@@ -220,9 +202,16 @@ export const Settings = () => {
               </Card>
 
               <Card>
-                <CardHeader>
-                  <CardTitle>Household Basics</CardTitle>
-                  <CardDescription>Basic information about your household</CardDescription>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <div>
+                    <CardTitle>Household Basics</CardTitle>
+                    <CardDescription>Basic information about your household</CardDescription>
+                  </div>
+                  <EditHouseholdBasicsDialog
+                    preferences={preferences}
+                    onSave={updatePreferences}
+                    isUpdating={isUpdating}
+                  />
                 </CardHeader>
                 <CardContent className="grid gap-4">
                   <div className="grid grid-cols-2 sm:grid-cols-2 gap-4">
@@ -243,9 +232,16 @@ export const Settings = () => {
               </Card>
 
               <Card>
-                <CardHeader>
-                  <CardTitle>Dietary Preferences</CardTitle>
-                  <CardDescription>Your dietary needs and restrictions</CardDescription>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <div>
+                    <CardTitle>Dietary Preferences</CardTitle>
+                    <CardDescription>Your dietary needs and restrictions</CardDescription>
+                  </div>
+                  <EditDietaryPreferencesDialog
+                    preferences={preferences}
+                    onSave={updatePreferences}
+                    isUpdating={isUpdating}
+                  />
                 </CardHeader>
                 <CardContent className="grid gap-4">
                   <div>
@@ -272,9 +268,16 @@ export const Settings = () => {
               </Card>
 
               <Card>
-                <CardHeader>
-                  <CardTitle>Cooking & Meal Planning</CardTitle>
-                  <CardDescription>Your cooking habits and preferences</CardDescription>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <div>
+                    <CardTitle>Cooking & Meal Planning</CardTitle>
+                    <CardDescription>Your cooking habits and preferences</CardDescription>
+                  </div>
+                  <EditCookingPreferencesDialog
+                    preferences={preferences}
+                    onSave={updatePreferences}
+                    isUpdating={isUpdating}
+                  />
                 </CardHeader>
                 <CardContent className="grid gap-4">
                   <div>
@@ -303,9 +306,16 @@ export const Settings = () => {
               </Card>
 
               <Card>
-                <CardHeader>
-                  <CardTitle>Household Routine & Priorities</CardTitle>
-                  <CardDescription>Your daily schedule and concerns</CardDescription>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <div>
+                    <CardTitle>Household Routine & Priorities</CardTitle>
+                    <CardDescription>Your daily schedule and concerns</CardDescription>
+                  </div>
+                  <EditRoutinePreferencesDialog
+                    preferences={preferences}
+                    onSave={updatePreferences}
+                    isUpdating={isUpdating}
+                  />
                 </CardHeader>
                 <CardContent className="grid gap-4">
                   <div>
@@ -328,9 +338,16 @@ export const Settings = () => {
               </Card>
 
               <Card>
-                <CardHeader>
-                  <CardTitle>Budget & Shopping</CardTitle>
-                  <CardDescription>Your budget and shopping preferences</CardDescription>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <div>
+                    <CardTitle>Budget & Shopping</CardTitle>
+                    <CardDescription>Your budget and shopping preferences</CardDescription>
+                  </div>
+                  <EditBudgetPreferencesDialog
+                    preferences={preferences}
+                    onSave={updatePreferences}
+                    isUpdating={isUpdating}
+                  />
                 </CardHeader>
                 <CardContent className="grid gap-4">
                   <div>
