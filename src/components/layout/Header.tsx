@@ -87,12 +87,12 @@ export const Header = ({ onStartOnboarding }: HeaderProps) => {
             {isAdmin && (
               <>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => navigate("/household/members")}>
+                <DropdownMenuItem onClick={() => navigate("/members")}>
                   <Users className="mr-2 h-4 w-4" />
                   Manage Members
                 </DropdownMenuItem>
                 {pendingCount > 0 && (
-                  <DropdownMenuItem onClick={() => navigate("/household/invitations")}>
+                  <DropdownMenuItem onClick={() => navigate("/invitations")}>
                     <Bell className="mr-2 h-4 w-4" />
                     Pending Invitations
                     <Badge variant="destructive" className="ml-auto">
