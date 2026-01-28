@@ -1,9 +1,10 @@
 import { useAuth } from "@/contexts/AuthContext";
-import { Navigate } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { user, loading } = useAuth();
+  const { user, loading, isEmailVerified } = useAuth();
+  const location = useLocation();
 
   if (loading) {
     return (
@@ -18,6 +19,13 @@ export const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   }
 
   if (!user) {
+    return <Navigate to="/auth" replace />;
+  }
+
+  // Allow access to verification-related pages even if not verified
+  const allowedUnverifiedPaths = ["/verify-email"];
+  if (!isEmailVerified && !allowedUnverifiedPaths.includes(location.pathname)) {
+    // Redirect unverified users to auth page where they'll see the verification pending state
     return <Navigate to="/auth" replace />;
   }
 
