@@ -28,7 +28,7 @@ export function getCorsHeaders(origin: string | null): Record<string, string> {
   
   return {
     "Access-Control-Allow-Origin": allowedOrigin,
-    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-dev-test-mode",
     "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
     "Access-Control-Allow-Credentials": "true",
   };
@@ -37,4 +37,20 @@ export function getCorsHeaders(origin: string | null): Record<string, string> {
 // For backward compatibility, export a function that creates headers from a request
 export function getCorsHeadersFromRequest(req: Request): Record<string, string> {
   return getCorsHeaders(req.headers.get("origin"));
+}
+
+// Development test mode utilities
+export function isTestMode(req: Request): boolean {
+  const environment = Deno.env.get("ENVIRONMENT") || "development";
+  const isDev = environment !== "production";
+  const testHeader = req.headers.get("x-dev-test-mode");
+  return isDev && testHeader === "true";
+}
+
+export function getTestUserId(): string {
+  return Deno.env.get("DEV_TEST_USER_ID") || "";
+}
+
+export function getTestHouseholdId(): string {
+  return Deno.env.get("DEV_TEST_HOUSEHOLD_ID") || "";
 }

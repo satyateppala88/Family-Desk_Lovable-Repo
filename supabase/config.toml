@@ -75,3 +75,6 @@ verify_jwt = false
 [functions.send-meal-plan-summary]
 verify_jwt = true
 
+[functions.dev-seed-test-user]
+verify_jwt = false
+
