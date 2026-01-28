@@ -55,7 +55,7 @@ const AdminAccessRequests = () => {
   });
 
   const approveMutation = useMutation({
-    mutationFn: async (requestId: string) => {
+    mutationFn: async (request: AccessRequest) => {
       const { error } = await supabase
         .from("access_requests")
         .update({
@@ -63,15 +63,45 @@ const AdminAccessRequests = () => {
           reviewed_by: user?.id,
           reviewed_at: new Date().toISOString(),
         })
-        .eq("id", requestId);
+        .eq("id", request.id);
 
       if (error) throw error;
+
+      // Send approval email
+      const session = await supabase.auth.getSession();
+      const accessToken = session.data.session?.access_token;
+      
+      if (accessToken) {
+        try {
+          const response = await fetch(
+            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-access-decision`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${accessToken}`,
+              },
+              body: JSON.stringify({
+                email: request.email,
+                fullName: request.full_name,
+                decision: "approved",
+              }),
+            }
+          );
+          
+          if (!response.ok) {
+            console.warn("Failed to send approval email:", await response.text());
+          }
+        } catch (emailError) {
+          console.warn("Email sending failed:", emailError);
+        }
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["access-requests"] });
       toast({
         title: "Request Approved",
-        description: "User can now sign up with their email.",
+        description: "User can now sign up with their email. An approval email has been sent.",
       });
     },
     onError: (error: any) => {
@@ -84,7 +114,7 @@ const AdminAccessRequests = () => {
   });
 
   const rejectMutation = useMutation({
-    mutationFn: async ({ requestId, reason }: { requestId: string; reason: string }) => {
+    mutationFn: async ({ request, reason }: { request: AccessRequest; reason: string }) => {
       const { error } = await supabase
         .from("access_requests")
         .update({
@@ -93,9 +123,40 @@ const AdminAccessRequests = () => {
           reviewed_at: new Date().toISOString(),
           rejection_reason: reason,
         })
-        .eq("id", requestId);
+        .eq("id", request.id);
 
       if (error) throw error;
+
+      // Send rejection email
+      const session = await supabase.auth.getSession();
+      const accessToken = session.data.session?.access_token;
+      
+      if (accessToken) {
+        try {
+          const response = await fetch(
+            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-access-decision`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${accessToken}`,
+              },
+              body: JSON.stringify({
+                email: request.email,
+                fullName: request.full_name,
+                decision: "rejected",
+                rejectionReason: reason || undefined,
+              }),
+            }
+          );
+          
+          if (!response.ok) {
+            console.warn("Failed to send rejection email:", await response.text());
+          }
+        } catch (emailError) {
+          console.warn("Email sending failed:", emailError);
+        }
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["access-requests"] });
@@ -103,7 +164,7 @@ const AdminAccessRequests = () => {
       setRejectionReason("");
       toast({
         title: "Request Rejected",
-        description: "The request has been declined.",
+        description: "The request has been declined and the applicant has been notified.",
       });
     },
     onError: (error: any) => {
@@ -123,7 +184,7 @@ const AdminAccessRequests = () => {
   const confirmReject = () => {
     if (selectedRequest) {
       rejectMutation.mutate({
-        requestId: selectedRequest.id,
+        request: selectedRequest,
         reason: rejectionReason,
       });
     }
@@ -230,7 +291,7 @@ const AdminAccessRequests = () => {
                     <div className="flex gap-2">
                       <Button
                         size="sm"
-                        onClick={() => approveMutation.mutate(request.id)}
+                        onClick={() => approveMutation.mutate(request)}
                         disabled={approveMutation.isPending}
                       >
                         <CheckCircle className="mr-2 h-4 w-4" />

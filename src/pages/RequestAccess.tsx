@@ -43,6 +43,25 @@ const RequestAccess = () => {
           throw error;
         }
       } else {
+        // Send confirmation email (fire and forget - don't block on email failure)
+        try {
+          const response = await fetch(
+            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-access-request-confirmation`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ email, fullName }),
+            }
+          );
+          
+          if (!response.ok) {
+            console.warn("Failed to send confirmation email:", await response.text());
+          }
+        } catch (emailError) {
+          console.warn("Email sending failed:", emailError);
+          // Don't throw - form submission was successful
+        }
+        
         setSubmitted(true);
       }
     } catch (error: any) {

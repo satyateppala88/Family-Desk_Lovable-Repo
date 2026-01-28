@@ -56,6 +56,44 @@ export const PendingInvitationBanner = () => {
         .eq("id", invitation.id);
 
       if (invError) throw invError;
+
+      // Send notification to the inviter
+      if (invitation.invited_by) {
+        const session = await supabase.auth.getSession();
+        const accessToken = session.data.session?.access_token;
+
+        if (accessToken) {
+          // Get current user's display name
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("display_name")
+            .eq("id", user!.id)
+            .single();
+
+          const memberName = profile?.display_name || user!.email?.split("@")[0] || "A member";
+
+          try {
+            await fetch(
+              `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-invitation-response`,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${accessToken}`,
+                },
+                body: JSON.stringify({
+                  memberName,
+                  action: "accepted",
+                  householdName: invitation.households?.name || "the household",
+                  invitedByUserId: invitation.invited_by,
+                }),
+              }
+            );
+          } catch (emailError) {
+            console.warn("Failed to send invitation response email:", emailError);
+          }
+        }
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["my-pending-invitations"] });
@@ -70,7 +108,7 @@ export const PendingInvitationBanner = () => {
   });
 
   const declineMutation = useMutation({
-    mutationFn: async (invitationId: string) => {
+    mutationFn: async (invitation: any) => {
       const { error } = await supabase
         .from("household_invitations")
         .update({
@@ -78,9 +116,47 @@ export const PendingInvitationBanner = () => {
           invitee_user_id: user!.id,
           reviewed_at: new Date().toISOString(),
         })
-        .eq("id", invitationId);
+        .eq("id", invitation.id);
 
       if (error) throw error;
+
+      // Send notification to the inviter
+      if (invitation.invited_by) {
+        const session = await supabase.auth.getSession();
+        const accessToken = session.data.session?.access_token;
+
+        if (accessToken) {
+          // Get current user's display name
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("display_name")
+            .eq("id", user!.id)
+            .single();
+
+          const memberName = profile?.display_name || user!.email?.split("@")[0] || "A member";
+
+          try {
+            await fetch(
+              `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-invitation-response`,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${accessToken}`,
+                },
+                body: JSON.stringify({
+                  memberName,
+                  action: "declined",
+                  householdName: invitation.households?.name || "the household",
+                  invitedByUserId: invitation.invited_by,
+                }),
+              }
+            );
+          } catch (emailError) {
+            console.warn("Failed to send invitation response email:", emailError);
+          }
+        }
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["my-pending-invitations"] });
@@ -136,7 +212,7 @@ export const PendingInvitationBanner = () => {
               </Button>
               <Button 
                 variant="outline"
-                onClick={() => declineMutation.mutate(invitation.id)}
+                onClick={() => declineMutation.mutate(invitation)}
                 disabled={acceptMutation.isPending || declineMutation.isPending}
                 className="flex-1 sm:flex-none"
                 size="sm"

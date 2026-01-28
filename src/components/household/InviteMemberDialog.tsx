@@ -54,10 +54,52 @@ export const InviteMemberDialog = ({ householdId, trigger }: InviteMemberDialogP
         });
 
       if (insertError) throw insertError;
+
+      // Get household name and inviter's profile for the email
+      const [householdResult, profileResult] = await Promise.all([
+        supabase.from("households").select("name").eq("id", householdId).single(),
+        supabase.from("profiles").select("display_name").eq("id", user.id).single(),
+      ]);
+
+      const householdName = householdResult.data?.name || "the household";
+      const inviterName = profileResult.data?.display_name || user.email?.split("@")[0] || "Someone";
+
+      // Send invitation email
+      const session = await supabase.auth.getSession();
+      const accessToken = session.data.session?.access_token;
+
+      if (accessToken) {
+        try {
+          const response = await fetch(
+            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-household-invitation`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${accessToken}`,
+              },
+              body: JSON.stringify({
+                inviteeEmail: email.toLowerCase(),
+                inviteeName: displayName.trim() || undefined,
+                inviterName,
+                householdName,
+                householdId,
+                role,
+              }),
+            }
+          );
+
+          if (!response.ok) {
+            console.warn("Failed to send invitation email:", await response.text());
+          }
+        } catch (emailError) {
+          console.warn("Email sending failed:", emailError);
+        }
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["pending-invitations"] });
-      toast.success("Invitation sent successfully!");
+      toast.success("Invitation sent successfully! An email has been sent to the invitee.");
       setOpen(false);
       setEmail("");
       setDisplayName("");
