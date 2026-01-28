@@ -42,3 +42,18 @@ verify_jwt = false
 [functions.verify-email-token]
 verify_jwt = false
 
+[functions.send-access-request-confirmation]
+verify_jwt = false
+
+[functions.send-access-decision]
+verify_jwt = true
+
+[functions.send-household-invitation]
+verify_jwt = true
+
+[functions.send-join-request-notification]
+verify_jwt = true
+
+[functions.send-invitation-response]
+verify_jwt = true
+

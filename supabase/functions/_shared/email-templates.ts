@@ -257,3 +257,31 @@ export function getJoinRequestNotificationContent(
     <p>You can approve or decline this request from your household settings.</p>
   `;
 }
+
+export function getInvitationResponseContent(
+  memberName: string,
+  action: "accepted" | "declined",
+  householdName: string
+): string {
+  if (action === "accepted") {
+    return `
+      <p>Great news! ${memberName} has accepted your invitation to join ${householdName}! 🎉</p>
+      
+      <p>They can now:</p>
+      <ul>
+        <li>View and manage shared tasks</li>
+        <li>Access the family calendar</li>
+        <li>Contribute to meal planning</li>
+        <li>Track habits together</li>
+      </ul>
+      
+      <p>Your household is growing! Welcome them to the team.</p>
+    `;
+  } else {
+    return `
+      <p>${memberName} has declined your invitation to join ${householdName}.</p>
+      
+      <p>If you'd like, you can send them another invitation or reach out to them directly to discuss joining your household.</p>
+    `;
+  }
+}
