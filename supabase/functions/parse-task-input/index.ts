@@ -115,34 +115,15 @@ If there's additional context beyond the title, put it in the description.`;
                   },
                   priority: {
                     type: "integer",
-                    enum: [1, 2, 3, 4],
                     description: "Priority level: 1=urgent, 2=high, 3=normal, 4=low"
                   },
                   due_date: {
                     type: "string",
                     description: "Due date in YYYY-MM-DD format, or null if not specified"
-                  },
-                  scheduling_context: {
-                    type: "object",
-                    properties: {
-                      preferred_time_window: {
-                        type: "string",
-                        description: "Preferred time like 'morning', 'afternoon', 'evening', 'during lunch', etc."
-                      },
-                      dependent_on_event: {
-                        type: "string",
-                        description: "Calendar event this task depends on, e.g., 'after 2pm meeting', 'before school pickup'"
-                      },
-                      flexibility: {
-                        type: "string",
-                        enum: ["fixed", "flexible"],
-                        description: "Whether timing is strict or flexible"
-                      }
-                    },
-                    description: "Optional scheduling hints extracted from the input"
                   }
                 },
-                required: ["title", "category", "priority"]
+                required: ["title", "category", "priority"],
+                additionalProperties: false
               }
             }
           }
