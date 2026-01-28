@@ -93,12 +93,24 @@ export const useMealPlans = (householdId: string | null, weekStartDate?: string)
 
       return mealPlan;
     },
-    onSuccess: () => {
+    onSuccess: async (data) => {
       queryClient.invalidateQueries({ queryKey: ["meal-plans", householdId] });
       toast({
         title: "Meal plan created",
         description: "Your meal plan has been saved successfully.",
       });
+
+      // Send meal plan summary email
+      try {
+        await supabase.functions.invoke("send-meal-plan-summary", {
+          body: {
+            mealPlanId: data.id,
+            householdId: householdId,
+          },
+        });
+      } catch (error) {
+        console.error("Failed to send meal plan summary email:", error);
+      }
     },
     onError: (error: any) => {
       toast({
