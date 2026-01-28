@@ -8,8 +8,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { Eye, EyeOff, Mail, RefreshCw } from "lucide-react";
+import { Eye, EyeOff, Mail, RefreshCw, FlaskConical } from "lucide-react";
 import logoImg from "@/assets/logo-family-desk-primary.png";
+import { useDevAuth } from "@/hooks/useDevAuth";
 
 type AuthState = "form" | "verification-pending";
 
@@ -25,6 +26,24 @@ const Auth = () => {
   const [pendingUserId, setPendingUserId] = useState<string | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { loginAsTestUser, isLoading: devLoading, isDevEnvironment } = useDevAuth();
+
+  const handleDevLogin = async () => {
+    const result = await loginAsTestUser();
+    if (result.success) {
+      toast({
+        title: "Dev Mode Active",
+        description: "Logged in as test user",
+      });
+      navigate("/dashboard");
+    } else {
+      toast({
+        title: "Dev Login Failed",
+        description: result.error,
+        variant: "destructive",
+      });
+    }
+  };
 
   const sendVerificationEmail = async (userId: string, userEmail: string, userName?: string) => {
     try {
@@ -435,6 +454,42 @@ const Auth = () => {
               </form>
             </TabsContent>
           </Tabs>
+
+          {/* Dev Mode Quick Login - Only visible in development */}
+          {isDevEnvironment && (
+            <Card className="mt-4 border-purple-300 bg-purple-50 dark:bg-purple-950/30 dark:border-purple-700">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <FlaskConical className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                    <div>
+                      <h3 className="font-semibold text-purple-900 dark:text-purple-100 text-sm">Dev Mode</h3>
+                      <p className="text-xs text-purple-700 dark:text-purple-300">Quick login as test user</p>
+                    </div>
+                  </div>
+                  <Button
+                    onClick={handleDevLogin}
+                    disabled={devLoading || loading}
+                    variant="outline"
+                    size="sm"
+                    className="border-purple-400 text-purple-700 hover:bg-purple-100 dark:border-purple-600 dark:text-purple-300 dark:hover:bg-purple-900"
+                  >
+                    {devLoading ? (
+                      <>
+                        <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                        Loading...
+                      </>
+                    ) : (
+                      <>
+                        <FlaskConical className="mr-2 h-4 w-4" />
+                        Login as Test User
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </CardContent>
       </Card>
     </div>

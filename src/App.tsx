@@ -4,6 +4,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { DevModeProvider } from "@/contexts/DevModeContext";
+import { DevModeBanner } from "@/components/development/DevModeBanner";
 import { ProtectedRoute } from "@/components/layout/ProtectedRoute";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
@@ -41,122 +43,125 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <AuthProvider>
-          <Routes>
-            <Route path="/" element={<Landing />} />
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/verify-email" element={<VerifyEmail />} />
-            <Route path="/request-access" element={<RequestAccess />} />
-            <Route
-              path="/admin/access-requests"
-              element={
+        <DevModeProvider>
+          <AuthProvider>
+            <DevModeBanner />
+            <Routes>
+              <Route path="/" element={<Landing />} />
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/verify-email" element={<VerifyEmail />} />
+              <Route path="/request-access" element={<RequestAccess />} />
+              <Route
+                path="/admin/access-requests"
+                element={
+                  <ProtectedRoute>
+                    <AdminAccessRequests />
+                  </ProtectedRoute>
+                }
+              />
+              <Route path="/household-setup" element={
                 <ProtectedRoute>
-                  <AdminAccessRequests />
+                  <HouseholdSetup />
                 </ProtectedRoute>
-              }
-            />
-            <Route path="/household-setup" element={
-              <ProtectedRoute>
-                <HouseholdSetup />
-              </ProtectedRoute>
-            } />
-            <Route path="/onboarding/preferences" element={
-              <ProtectedRoute>
-                <UserPreferencesOnboarding />
-              </ProtectedRoute>
-            } />
-            <Route path="/settings" element={
-              <ProtectedRoute>
-                <Settings />
-              </ProtectedRoute>
-            } />
-            <Route path="/invitations" element={
-              <ProtectedRoute>
-                <HouseholdInvitations />
-              </ProtectedRoute>
-            } />
-            <Route path="/members" element={
-              <ProtectedRoute>
-                <HouseholdMembers />
-              </ProtectedRoute>
-            } />
-            <Route path="/household/products" element={
-              <ProtectedRoute>
-                <HouseholdProductSettings />
-              </ProtectedRoute>
-            } />
-            <Route path="/account-settings" element={
-              <ProtectedRoute>
-                <AccountSettings />
-              </ProtectedRoute>
-            } />
-            <Route path="/dashboard" element={
-              <ProtectedRoute>
-                <Index />
-              </ProtectedRoute>
-            } />
-            <Route path="/tasks" element={
-              <ProtectedRoute>
-                <TaskmasterToday />
-              </ProtectedRoute>
-            } />
-            <Route path="/taskmaster/today" element={
-              <ProtectedRoute>
-                <TaskmasterToday />
-              </ProtectedRoute>
-            } />
-            <Route path="/taskmaster/tasks" element={
-              <ProtectedRoute>
-                <TaskmasterTasks />
-              </ProtectedRoute>
-            } />
-            <Route path="/taskmaster/projects" element={
-              <ProtectedRoute>
-                <TaskmasterProjects />
-              </ProtectedRoute>
-            } />
-            <Route path="/taskmaster/projects/:id" element={
-              <ProtectedRoute>
-                <TaskmasterProjectDetail />
-              </ProtectedRoute>
-            } />
-            <Route path="/taskmaster/my-tasks" element={
-              <ProtectedRoute>
-                <TaskmasterMyTasks />
-              </ProtectedRoute>
-            } />
-            <Route path="/taskmaster/dashboard" element={
-              <ProtectedRoute>
-                <TaskmasterDashboard />
-              </ProtectedRoute>
-            } />
-            <Route path="/meals" element={
-              <ProtectedRoute>
-                <Meals />
-              </ProtectedRoute>
-            } />
-            <Route path="/grocery" element={
-              <ProtectedRoute>
-                <Grocery />
-              </ProtectedRoute>
-            } />
-            <Route path="/calendar" element={
-              <ProtectedRoute>
-                <Calendar />
-              </ProtectedRoute>
-            } />
-            <Route path="/habits" element={
-              <ProtectedRoute>
-                <Habits />
-              </ProtectedRoute>
-            } />
-            <Route path="/terms" element={<TermsOfService />} />
-            <Route path="/privacy" element={<PrivacyPolicy />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-          <AIChatWidget />
-        </AuthProvider>
+              } />
+              <Route path="/onboarding/preferences" element={
+                <ProtectedRoute>
+                  <UserPreferencesOnboarding />
+                </ProtectedRoute>
+              } />
+              <Route path="/settings" element={
+                <ProtectedRoute>
+                  <Settings />
+                </ProtectedRoute>
+              } />
+              <Route path="/invitations" element={
+                <ProtectedRoute>
+                  <HouseholdInvitations />
+                </ProtectedRoute>
+              } />
+              <Route path="/members" element={
+                <ProtectedRoute>
+                  <HouseholdMembers />
+                </ProtectedRoute>
+              } />
+              <Route path="/household/products" element={
+                <ProtectedRoute>
+                  <HouseholdProductSettings />
+                </ProtectedRoute>
+              } />
+              <Route path="/account-settings" element={
+                <ProtectedRoute>
+                  <AccountSettings />
+                </ProtectedRoute>
+              } />
+              <Route path="/dashboard" element={
+                <ProtectedRoute>
+                  <Index />
+                </ProtectedRoute>
+              } />
+              <Route path="/tasks" element={
+                <ProtectedRoute>
+                  <TaskmasterToday />
+                </ProtectedRoute>
+              } />
+              <Route path="/taskmaster/today" element={
+                <ProtectedRoute>
+                  <TaskmasterToday />
+                </ProtectedRoute>
+              } />
+              <Route path="/taskmaster/tasks" element={
+                <ProtectedRoute>
+                  <TaskmasterTasks />
+                </ProtectedRoute>
+              } />
+              <Route path="/taskmaster/projects" element={
+                <ProtectedRoute>
+                  <TaskmasterProjects />
+                </ProtectedRoute>
+              } />
+              <Route path="/taskmaster/projects/:id" element={
+                <ProtectedRoute>
+                  <TaskmasterProjectDetail />
+                </ProtectedRoute>
+              } />
+              <Route path="/taskmaster/my-tasks" element={
+                <ProtectedRoute>
+                  <TaskmasterMyTasks />
+                </ProtectedRoute>
+              } />
+              <Route path="/taskmaster/dashboard" element={
+                <ProtectedRoute>
+                  <TaskmasterDashboard />
+                </ProtectedRoute>
+              } />
+              <Route path="/meals" element={
+                <ProtectedRoute>
+                  <Meals />
+                </ProtectedRoute>
+              } />
+              <Route path="/grocery" element={
+                <ProtectedRoute>
+                  <Grocery />
+                </ProtectedRoute>
+              } />
+              <Route path="/calendar" element={
+                <ProtectedRoute>
+                  <Calendar />
+                </ProtectedRoute>
+              } />
+              <Route path="/habits" element={
+                <ProtectedRoute>
+                  <Habits />
+                </ProtectedRoute>
+              } />
+              <Route path="/terms" element={<TermsOfService />} />
+              <Route path="/privacy" element={<PrivacyPolicy />} />
+              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+            <AIChatWidget />
+          </AuthProvider>
+        </DevModeProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
