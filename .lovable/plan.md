@@ -1,237 +1,309 @@
-# Comprehensive Email System Implementation Plan
+
+# Development Test Mode Implementation Plan
 
 ## Overview
 
-This plan implements **all email communication points** for Family Desk, organized into 4 phases by priority. The existing email template infrastructure and Resend integration will be leveraged.
+This plan creates a **development-only test mode** that allows full platform testing without authentication barriers. The solution includes:
+1. A pre-seeded test user with complete data
+2. Auto-login mechanism for development
+3. Edge function test mode bypass
+4. Visual indicator when test mode is active
 
 ---
 
-## ✅ ALL PHASES COMPLETED
+## Security Considerations
+
+**Critical**: This feature will ONLY work in development mode. Multiple safeguards will be implemented:
+- Environment variable checks (`import.meta.env.DEV`)
+- Edge function environment checks (`ENVIRONMENT !== 'production'`)
+- Test user flagged in database for easy identification
+- Clear visual indicators when test mode is active
 
 ---
 
-## Phase 1: Access Request Emails (High Priority) ✅ COMPLETED
+## Implementation Steps
 
-### 1.1 Request Confirmation Email ✅
-**Trigger**: When user submits access request form  
-**Edge Function**: `send-access-request-confirmation`
+### Step 1: Create Test User Seed Edge Function
 
-- ✅ Created edge function
-- ✅ Modified `RequestAccess.tsx` to call function after form submit
-- ✅ Uses existing `getAccessRequestConfirmationContent()` template
+**File**: `supabase/functions/dev-seed-test-user/index.ts`
 
-### 1.2 Approval Notification Email ✅
-**Trigger**: When admin approves request in AdminAccessRequests page  
-**Edge Function**: `send-access-decision`
+Creates a complete test user with:
+- Pre-approved access request
+- Verified email
+- Household with sample data
+- All preferences configured
 
-- ✅ Created edge function handling both approval and rejection
-- ✅ Modified `AdminAccessRequests.tsx` to call function after approve/reject
-- ✅ Uses existing `getAccessApprovedContent()` template
-
-### 1.3 Rejection Notification Email ✅
-**Trigger**: When admin rejects request  
-- ✅ Same `send-access-decision` edge function with rejection parameter  
-- ✅ Uses existing `getAccessRejectedContent()` template
-
----
-
-## Phase 2: Household Management Emails (High Priority) ✅ COMPLETED
-
-### 2.1 Household Invitation Email ✅
-**Trigger**: When admin invites member via InviteMemberDialog  
-**Edge Function**: `send-household-invitation`
-
-- ✅ Created edge function with household details
-- ✅ Modified `InviteMemberDialog.tsx` to call function after invitation created
-- ✅ Uses existing `getHouseholdInvitationContent()` template
-- ✅ Respects `user_email_preferences.household_invitations`
-
-### 2.2 Join Request Notification (to Admin) ✅
-**Trigger**: When user requests to join household  
-**Edge Function**: `send-join-request-notification`
-
-- ✅ Created edge function that notifies household admins
-- ✅ Uses existing `getJoinRequestNotificationContent()` template
-- ✅ Queries all admin members and sends notification to each
-- ✅ Respects admin's `user_email_preferences.household_invitations`
-
-### 2.3 Invitation Response Notification ✅
-**Trigger**: When invited user accepts or declines  
-**Edge Function**: `send-invitation-response`
-
-- ✅ Created edge function
-- ✅ Added `getInvitationResponseContent()` template
-- ✅ Modified `PendingInvitationBanner.tsx` to call function on accept/decline
-
----
-
-## Phase 3: Task & Productivity Emails (Medium Priority) ✅ COMPLETED
-
-### 3.1 Task Assignment Email ✅
-**Trigger**: When task is assigned to a member  
-**Edge Function**: `send-task-notification`
-
-- ✅ Created edge function for task-related notifications
-- ✅ Modified `useTasks.ts` to detect assignment changes and trigger email
-- ✅ Respects `user_email_preferences.task_notifications`
-- ✅ Added `getTaskAssignmentContent()` template
-
-### 3.2 Task Reminder Email (Cron-based) ✅
-**Trigger**: Daily cron job checks for tasks due tomorrow  
-**Edge Function**: `send-task-reminders`
-
-- ✅ Created edge function (ready for cron scheduling via pg_cron)
-- ✅ Queries tasks with due_date = tomorrow
-- ✅ Groups by assignee and sends digest email
-- ✅ Respects `user_email_preferences.task_notifications`
-- ✅ Added `getTaskReminderContent()` template
-
----
-
-## Phase 4: Engagement & Summary Emails (Lower Priority) ✅ COMPLETED
-
-### 4.1 Weekly Digest Email (Cron-based) ✅
-**Trigger**: Weekly cron job (e.g., Sunday evening)  
-**Edge Function**: `send-weekly-digest`
-
-- ✅ Created edge function
-- ✅ Includes tasks completed, upcoming tasks, habit streaks, meals planned
-- ✅ Respects `user_email_preferences.weekly_digest`
-- ✅ Added `getWeeklyDigestContent()` template
-
-### 4.2 Habit Streak Reminders (Cron-based) ✅
-**Trigger**: Daily cron for users with active habits  
-**Edge Function**: `send-habit-reminders`
-
-- ✅ Created edge function
-- ✅ Checks for users who haven't logged habits today
-- ✅ Sends streak warning if streak >= 3 days is at risk
-- ✅ Respects `user_email_preferences.habit_reminders`
-- ✅ Added `getHabitReminderContent()` and `getStreakWarningContent()` templates
-
-### 4.3 Pantry Expiration Alerts (Cron-based) ✅
-**Trigger**: Daily check for expiring items  
-**Edge Function**: `send-pantry-alerts`
-
-- ✅ Created edge function
-- ✅ Queries pantry_items with expiry_date within 3 days
-- ✅ Sends grouped alert to household members
-- ✅ Added `getPantryAlertContent()` template
-
-### 4.4 Meal Plan Summary Email ✅
-**Trigger**: When weekly meal plan is generated  
-**Edge Function**: `send-meal-plan-summary`
-
-- ✅ Created edge function
-- ✅ Sends formatted meal plan for the week
-- ✅ Modified `useMealPlans.ts` to trigger after meal plan creation
-- ✅ Respects `user_email_preferences.meal_summaries`
-- ✅ Added `getMealPlanSummaryContent()` template
-
----
-
-## Technical Architecture Summary
-
-### Edge Functions Created (11 total)
-
-| Function Name | Type | Status |
-|--------------|------|--------|
-| `send-access-request-confirmation` | On-demand | ✅ Deployed |
-| `send-access-decision` | On-demand | ✅ Deployed |
-| `send-household-invitation` | On-demand | ✅ Deployed |
-| `send-join-request-notification` | On-demand | ✅ Deployed |
-| `send-invitation-response` | On-demand | ✅ Deployed |
-| `send-task-notification` | On-demand | ✅ Deployed |
-| `send-task-reminders` | Cron (daily) | ✅ Deployed |
-| `send-weekly-digest` | Cron (weekly) | ✅ Deployed |
-| `send-habit-reminders` | Cron (daily) | ✅ Deployed |
-| `send-pantry-alerts` | Cron (daily) | ✅ Deployed |
-| `send-meal-plan-summary` | On-demand | ✅ Deployed |
-
-### Email Templates Added (8 total)
-
-All templates in `supabase/functions/_shared/email-templates.ts`:
-- ✅ `getInvitationResponseContent()`
-- ✅ `getTaskAssignmentContent()`
-- ✅ `getTaskReminderContent()`
-- ✅ `getWeeklyDigestContent()`
-- ✅ `getHabitReminderContent()`
-- ✅ `getStreakWarningContent()`
-- ✅ `getPantryAlertContent()`
-- ✅ `getMealPlanSummaryContent()`
-
-### Frontend Integration Points Modified (5 files)
-
-| File | Change | Status |
-|------|--------|--------|
-| `RequestAccess.tsx` | Email call after form submit | ✅ Done |
-| `AdminAccessRequests.tsx` | Email calls on approve/reject | ✅ Done |
-| `InviteMemberDialog.tsx` | Email call after invitation | ✅ Done |
-| `PendingInvitationBanner.tsx` | Email on accept/decline | ✅ Done |
-| `useTasks.ts` | Task assignment email trigger | ✅ Done |
-| `useMealPlans.ts` | Meal plan summary email | ✅ Done |
-
----
-
-## Cron Scheduling (Next Step)
-
-To enable scheduled emails, run these SQL commands to set up pg_cron jobs:
-
-```sql
--- Daily task reminders (8 AM)
-SELECT cron.schedule(
-  'daily-task-reminders',
-  '0 8 * * *',
-  $$SELECT net.http_post(
-    url:='https://ekihgsdoscvgbgqhazru.supabase.co/functions/v1/send-task-reminders',
-    headers:='{"Authorization": "Bearer YOUR_ANON_KEY"}'::jsonb
-  )$$
-);
-
--- Daily habit reminders (9 AM)
-SELECT cron.schedule(
-  'daily-habit-reminders',
-  '0 9 * * *',
-  $$SELECT net.http_post(
-    url:='https://ekihgsdoscvgbgqhazru.supabase.co/functions/v1/send-habit-reminders',
-    headers:='{"Authorization": "Bearer YOUR_ANON_KEY"}'::jsonb
-  )$$
-);
-
--- Daily pantry alerts (10 AM)
-SELECT cron.schedule(
-  'daily-pantry-alerts',
-  '0 10 * * *',
-  $$SELECT net.http_post(
-    url:='https://ekihgsdoscvgbgqhazru.supabase.co/functions/v1/send-pantry-alerts',
-    headers:='{"Authorization": "Bearer YOUR_ANON_KEY"}'::jsonb
-  )$$
-);
-
--- Weekly digest (Sunday 6 PM)
-SELECT cron.schedule(
-  'weekly-digest',
-  '0 18 * * 0',
-  $$SELECT net.http_post(
-    url:='https://ekihgsdoscvgbgqhazru.supabase.co/functions/v1/send-weekly-digest',
-    headers:='{"Authorization": "Bearer YOUR_ANON_KEY"}'::jsonb
-  )$$
-);
+```text
++------------------------+
+|  Test User Creation    |
++------------------------+
+         |
+         v
++------------------------+
+| 1. Create auth user    |
+|    with verified email |
++------------------------+
+         |
+         v
++------------------------+
+| 2. Create profile      |
++------------------------+
+         |
+         v
++------------------------+
+| 3. Create household    |
+|    "Test Household"    |
++------------------------+
+         |
+         v
++------------------------+
+| 4. Add household       |
+|    member (admin)      |
++------------------------+
+         |
+         v
++------------------------+
+| 5. Seed sample data:   |
+|    - Tasks (5)         |
+|    - Recipes (3)       |
+|    - Pantry items (10) |
+|    - Habits (3)        |
+|    - Preferences       |
++------------------------+
 ```
 
----
+Test User Credentials:
+- Email: `testuser@familydesk.dev`
+- Password: `TestUser123!`
+- Display Name: "Test User"
 
-## Email Preference Respect
+### Step 2: Create Dev Auth Bypass Hook
 
-All emails check `user_email_preferences` before sending:
+**File**: `src/hooks/useDevAuth.ts`
+
+A custom hook that handles development authentication:
+- Detects dev environment
+- Auto-logs in test user on mount (optional)
+- Provides manual login function
+- Stores dev mode state
+
 ```typescript
-const { data: prefs } = await supabase
-  .from('user_email_preferences')
-  .select('task_notifications')
-  .eq('user_id', userId)
-  .maybeSingle();
+// Key functionality
+export const useDevAuth = () => {
+  const [isDevMode, setIsDevMode] = useState(false);
+  
+  const loginAsTestUser = async () => {
+    if (!import.meta.env.DEV) return;
+    
+    await supabase.auth.signInWithPassword({
+      email: 'testuser@familydesk.dev',
+      password: 'TestUser123!'
+    });
+    setIsDevMode(true);
+  };
+  
+  return { isDevMode, loginAsTestUser };
+};
+```
 
-if (prefs?.task_notifications === false) {
-  return; // User opted out
+### Step 3: Create Dev Mode Banner Component
+
+**File**: `src/components/development/DevModeBanner.tsx`
+
+A prominent banner showing when test mode is active:
+- Displays test user info
+- Quick links to all major pages
+- Reset test data button
+- Switch to real user option
+
+Visual design:
+```text
++----------------------------------------------------------+
+| 🧪 DEV MODE ACTIVE | User: testuser@familydesk.dev       |
+|    [Dashboard] [Tasks] [Meals] [Grocery] [Reset Data]    |
++----------------------------------------------------------+
+```
+
+### Step 4: Add Dev Login Button to Auth Page
+
+**File**: `src/pages/Auth.tsx` (modification)
+
+Add a development-only quick login button:
+
+```typescript
+// Only visible in development
+{import.meta.env.DEV && (
+  <Card className="mt-4 border-purple-300 bg-purple-50">
+    <CardContent className="p-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="font-semibold text-purple-900">Dev Mode</h3>
+          <p className="text-sm text-purple-700">Quick login as test user</p>
+        </div>
+        <Button onClick={loginAsTestUser} variant="outline">
+          🧪 Login as Test User
+        </Button>
+      </div>
+    </CardContent>
+  </Card>
+)}
+```
+
+### Step 5: Edge Function Test Mode Support
+
+**Modify**: `supabase/functions/_shared/cors.ts`
+
+Add a shared utility for test mode detection:
+
+```typescript
+export const isTestMode = (req: Request): boolean => {
+  const isDev = Deno.env.get('ENVIRONMENT') !== 'production';
+  const testHeader = req.headers.get('X-Dev-Test-Mode');
+  return isDev && testHeader === 'true';
+};
+
+export const getTestUserId = (): string => {
+  // Return consistent test user ID for development
+  return Deno.env.get('DEV_TEST_USER_ID') || '';
+};
+```
+
+**Modify**: Edge functions to support test bypass
+
+Example modification for `ai-chat/index.ts`:
+```typescript
+// At the start of the handler
+if (isTestMode(req)) {
+  // Skip JWT validation, use test user ID
+  const userId = getTestUserId();
+  const householdId = getTestHouseholdId();
+  // Continue with rest of function
 }
 ```
+
+### Step 6: Create Reset Test Data Function
+
+**File**: `supabase/functions/dev-reset-test-data/index.ts`
+
+Allows resetting test user data without deleting the user:
+- Clears tasks, habits, pantry items
+- Re-seeds with fresh sample data
+- Keeps user account intact
+
+### Step 7: Add DevMode Context Provider
+
+**File**: `src/contexts/DevModeContext.tsx`
+
+Global context for dev mode state:
+
+```typescript
+interface DevModeContextType {
+  isDevMode: boolean;
+  testUserId: string | null;
+  testHouseholdId: string | null;
+  enableDevMode: () => Promise<void>;
+  disableDevMode: () => void;
+  resetTestData: () => Promise<void>;
+}
+```
+
+### Step 8: Integrate with App.tsx
+
+**Modify**: `src/App.tsx`
+
+Wrap application with DevModeProvider:
+
+```typescript
+<QueryClientProvider client={queryClient}>
+  <DevModeProvider>
+    <AuthProvider>
+      {/* DevModeBanner renders conditionally */}
+      <DevModeBanner />
+      <Routes>...</Routes>
+    </AuthProvider>
+  </DevModeProvider>
+</QueryClientProvider>
+```
+
+---
+
+## Database Changes
+
+### Add Dev Test User Flag to Profiles
+
+No schema change needed - we'll use a specific email domain (`@familydesk.dev`) to identify test users.
+
+### Environment Variables
+
+Add to Supabase secrets (for edge functions):
+- `DEV_TEST_USER_ID` - UUID of the seeded test user
+- `DEV_TEST_HOUSEHOLD_ID` - UUID of the test household
+
+---
+
+## Sample Test Data to Seed
+
+### Tasks (5)
+1. "Weekly grocery shopping" - due tomorrow, medium priority
+2. "Pay electricity bill" - due in 3 days, high priority
+3. "Schedule dentist appointment" - no due date, low priority
+4. "Clean out garage" - overdue, low priority
+5. "Plan birthday party" - due in 1 week, high priority
+
+### Recipes (3)
+1. "Dal Tadka" - North Indian, vegetarian
+2. "Chicken Biryani" - South Indian, non-veg
+3. "Palak Paneer" - North Indian, vegetarian
+
+### Pantry Items (10)
+- Rice (5 kg), Wheat flour (2 kg), Sugar (1 kg)
+- Milk (2 L), Yogurt (500g) - expiring in 3 days
+- Onions (2 kg), Tomatoes (1 kg), Potatoes (3 kg)
+- Cooking oil (2 L), Spices variety pack
+
+### Habits (3)
+1. "Morning meditation" - daily, 10 min target
+2. "Evening walk" - daily, 30 min target
+3. "Read a book" - 3x per week, 20 min target
+
+---
+
+## Files to Create/Modify
+
+| File | Action | Purpose |
+|------|--------|---------|
+| `supabase/functions/dev-seed-test-user/index.ts` | Create | Seed test user with data |
+| `supabase/functions/dev-reset-test-data/index.ts` | Create | Reset test data |
+| `src/hooks/useDevAuth.ts` | Create | Dev authentication hook |
+| `src/contexts/DevModeContext.tsx` | Create | Dev mode state management |
+| `src/components/development/DevModeBanner.tsx` | Create | Dev mode UI indicator |
+| `src/pages/Auth.tsx` | Modify | Add dev login button |
+| `src/App.tsx` | Modify | Add DevModeProvider |
+| `supabase/functions/_shared/cors.ts` | Modify | Add test mode utilities |
+| `supabase/config.toml` | Modify | Register new functions |
+
+---
+
+## Testing Workflow After Implementation
+
+1. **Initial Setup**: Run `dev-seed-test-user` once to create the test user
+2. **Quick Login**: Click "Login as Test User" button on Auth page
+3. **Full Access**: Navigate to any protected page with full data
+4. **Reset Anytime**: Click "Reset Data" to get fresh test data
+5. **Test Chatbot**: AI chatbot will work with test household context
+
+---
+
+## Usage Notes
+
+**For Lovable AI Testing**:
+- Open browser, navigate to Auth page
+- Click "Login as Test User" button
+- Full platform access is now available
+- Use "Reset Data" before each test session for consistent state
+
+**Security Reminders**:
+- All dev features check `import.meta.env.DEV`
+- Edge functions check `ENVIRONMENT` env var
+- Test user email uses `.dev` domain for easy identification
+- Never deploy with test mode enabled
