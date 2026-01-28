@@ -8,8 +8,10 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, Mail, RefreshCw } from "lucide-react";
 import logoImg from "@/assets/logo-family-desk-primary.png";
+
+type AuthState = "form" | "verification-pending";
 
 const Auth = () => {
   const [email, setEmail] = useState("");
@@ -18,8 +20,74 @@ const Auth = () => {
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [authState, setAuthState] = useState<AuthState>("form");
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const [pendingUserId, setPendingUserId] = useState<string | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  const sendVerificationEmail = async (userId: string, userEmail: string, userName?: string) => {
+    try {
+      const response = await supabase.functions.invoke("send-verification-email", {
+        body: {
+          userId,
+          email: userEmail,
+          displayName: userName,
+          origin: window.location.origin,
+        },
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message || "Failed to send verification email");
+      }
+
+      if (response.data?.remainingSeconds) {
+        setResendCooldown(response.data.remainingSeconds);
+        startCooldownTimer(response.data.remainingSeconds);
+        throw new Error(response.data.error);
+      }
+
+      return true;
+    } catch (error: any) {
+      console.error("Error sending verification email:", error);
+      throw error;
+    }
+  };
+
+  const startCooldownTimer = (seconds: number) => {
+    setResendCooldown(seconds);
+    const interval = setInterval(() => {
+      setResendCooldown((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
+  const handleResendVerification = async () => {
+    if (resendCooldown > 0 || !pendingUserId) return;
+
+    setLoading(true);
+    try {
+      await sendVerificationEmail(pendingUserId, email, displayName);
+      startCooldownTimer(60);
+      toast({
+        title: "Email Sent",
+        description: "A new verification email has been sent to your inbox.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,11 +121,12 @@ const Auth = () => {
         setLoading(false);
         return;
       }
+
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/`,
+          emailRedirectTo: `${window.location.origin}/verify-email`,
           data: {
             display_name: displayName,
           },
@@ -76,14 +145,20 @@ const Auth = () => {
             preferred_language: 'en'
           })
           .eq("id", data.user.id);
-      }
 
-      toast({
-        title: "Account created!",
-        description: "Welcome to Family Desk. Let's set up your household.",
-      });
-      
-      navigate("/household-setup");
+        // Send custom verification email
+        setPendingUserId(data.user.id);
+        await sendVerificationEmail(data.user.id, email, displayName);
+
+        // Show verification pending state
+        setAuthState("verification-pending");
+        startCooldownTimer(60);
+        
+        toast({
+          title: "Check your email!",
+          description: "We've sent you a verification link to confirm your email address.",
+        });
+      }
     } catch (error: any) {
       toast({
         title: "Error",
@@ -100,12 +175,27 @@ const Auth = () => {
     setLoading(true);
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (error) throw error;
+
+      // Check if email is verified
+      if (data.user && !data.user.email_confirmed_at) {
+        // User exists but email not verified - show verification pending
+        setPendingUserId(data.user.id);
+        setDisplayName(data.user.user_metadata?.display_name || "");
+        setAuthState("verification-pending");
+        
+        toast({
+          title: "Email Not Verified",
+          description: "Please verify your email address to continue.",
+          variant: "destructive",
+        });
+        return;
+      }
 
       toast({
         title: "Welcome back!",
@@ -123,6 +213,71 @@ const Auth = () => {
       setLoading(false);
     }
   };
+
+  // Render verification pending state
+  if (authState === "verification-pending") {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-secondary/5 p-4">
+        <Card className="w-full max-w-md text-center">
+          <CardHeader>
+            <div className="flex justify-center mb-4">
+              <div className="h-16 w-16 bg-primary/10 rounded-full flex items-center justify-center">
+                <Mail className="h-8 w-8 text-primary" />
+              </div>
+            </div>
+            <CardTitle className="text-2xl">Check your email</CardTitle>
+            <CardDescription className="mt-2">
+              We've sent a verification link to <strong>{email}</strong>
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Click the link in your email to verify your account and get started with Family Desk.
+            </p>
+            
+            <div className="pt-4 border-t">
+              <p className="text-sm text-muted-foreground mb-3">
+                Didn't receive the email?
+              </p>
+              <Button
+                variant="outline"
+                onClick={handleResendVerification}
+                disabled={loading || resendCooldown > 0}
+                className="w-full"
+              >
+                {loading ? (
+                  <>
+                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                    Sending...
+                  </>
+                ) : resendCooldown > 0 ? (
+                  `Resend in ${resendCooldown}s`
+                ) : (
+                  <>
+                    <RefreshCw className="mr-2 h-4 w-4" />
+                    Resend verification email
+                  </>
+                )}
+              </Button>
+            </div>
+
+            <div className="pt-4">
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setAuthState("form");
+                  setPendingUserId(null);
+                }}
+                className="text-sm"
+              >
+                ← Back to sign in
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-secondary/5 p-4">

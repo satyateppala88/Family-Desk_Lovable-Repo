@@ -379,6 +379,36 @@ export type Database = {
           },
         ]
       }
+      email_verification_tokens: {
+        Row: {
+          created_at: string | null
+          email: string
+          expires_at: string
+          id: string
+          token: string
+          used_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          email: string
+          expires_at?: string
+          id?: string
+          token: string
+          used_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          email?: string
+          expires_at?: string
+          id?: string
+          token?: string
+          used_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       habit_assignees: {
         Row: {
           created_at: string | null
@@ -1674,6 +1704,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_email_preferences: {
+        Row: {
+          access_updates: boolean | null
+          created_at: string | null
+          habit_reminders: boolean | null
+          household_invitations: boolean | null
+          id: string
+          meal_summaries: boolean | null
+          task_notifications: boolean | null
+          updated_at: string | null
+          user_id: string
+          weekly_digest: boolean | null
+        }
+        Insert: {
+          access_updates?: boolean | null
+          created_at?: string | null
+          habit_reminders?: boolean | null
+          household_invitations?: boolean | null
+          id?: string
+          meal_summaries?: boolean | null
+          task_notifications?: boolean | null
+          updated_at?: string | null
+          user_id: string
+          weekly_digest?: boolean | null
+        }
+        Update: {
+          access_updates?: boolean | null
+          created_at?: string | null
+          habit_reminders?: boolean | null
+          household_invitations?: boolean | null
+          id?: string
+          meal_summaries?: boolean | null
+          task_notifications?: boolean | null
+          updated_at?: string | null
+          user_id?: string
+          weekly_digest?: boolean | null
+        }
+        Relationships: []
       }
       user_habit_badges: {
         Row: {

@@ -30,6 +30,7 @@ import NotFound from "./pages/NotFound";
 import HouseholdInvitations from "./pages/HouseholdInvitations";
 import HouseholdMembers from "./pages/HouseholdMembers";
 import HouseholdProductSettings from "./pages/HouseholdProductSettings";
+import VerifyEmail from "./pages/VerifyEmail";
 import { AIChatWidget } from "./components/ai/AIChatWidget";
 
 const queryClient = new QueryClient();
@@ -44,6 +45,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Landing />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/verify-email" element={<VerifyEmail />} />
             <Route path="/request-access" element={<RequestAccess />} />
             <Route
               path="/admin/access-requests"
