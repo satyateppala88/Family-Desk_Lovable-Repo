@@ -1235,6 +1235,36 @@ export type Database = {
           },
         ]
       }
+      phone_verification_tokens: {
+        Row: {
+          created_at: string | null
+          expires_at: string
+          id: string
+          phone_number: string
+          token: string
+          used_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          expires_at?: string
+          id?: string
+          phone_number: string
+          token: string
+          used_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          expires_at?: string
+          id?: string
+          phone_number?: string
+          token?: string
+          used_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -1242,10 +1272,14 @@ export type Database = {
           display_name: string | null
           id: string
           onboarding_completed: boolean | null
+          phone_number: string | null
+          phone_verified: boolean | null
+          phone_verified_at: string | null
           preferred_language: string | null
           region: string | null
           terms_accepted_at: string | null
           updated_at: string
+          whatsapp_opted_in: boolean | null
         }
         Insert: {
           avatar_url?: string | null
@@ -1253,10 +1287,14 @@ export type Database = {
           display_name?: string | null
           id: string
           onboarding_completed?: boolean | null
+          phone_number?: string | null
+          phone_verified?: boolean | null
+          phone_verified_at?: string | null
           preferred_language?: string | null
           region?: string | null
           terms_accepted_at?: string | null
           updated_at?: string
+          whatsapp_opted_in?: boolean | null
         }
         Update: {
           avatar_url?: string | null
@@ -1264,10 +1302,14 @@ export type Database = {
           display_name?: string | null
           id?: string
           onboarding_completed?: boolean | null
+          phone_number?: string | null
+          phone_verified?: boolean | null
+          phone_verified_at?: string | null
           preferred_language?: string | null
           region?: string | null
           terms_accepted_at?: string | null
           updated_at?: string
+          whatsapp_opted_in?: boolean | null
         }
         Relationships: []
       }
@@ -1709,38 +1751,56 @@ export type Database = {
         Row: {
           access_updates: boolean | null
           created_at: string | null
+          daily_plan_whatsapp: boolean | null
           habit_reminders: boolean | null
+          habit_reminders_whatsapp: boolean | null
           household_invitations: boolean | null
+          household_invitations_whatsapp: boolean | null
           id: string
           meal_summaries: boolean | null
+          pantry_alerts_whatsapp: boolean | null
           task_notifications: boolean | null
+          task_notifications_whatsapp: boolean | null
           updated_at: string | null
           user_id: string
           weekly_digest: boolean | null
+          weekly_digest_whatsapp: boolean | null
         }
         Insert: {
           access_updates?: boolean | null
           created_at?: string | null
+          daily_plan_whatsapp?: boolean | null
           habit_reminders?: boolean | null
+          habit_reminders_whatsapp?: boolean | null
           household_invitations?: boolean | null
+          household_invitations_whatsapp?: boolean | null
           id?: string
           meal_summaries?: boolean | null
+          pantry_alerts_whatsapp?: boolean | null
           task_notifications?: boolean | null
+          task_notifications_whatsapp?: boolean | null
           updated_at?: string | null
           user_id: string
           weekly_digest?: boolean | null
+          weekly_digest_whatsapp?: boolean | null
         }
         Update: {
           access_updates?: boolean | null
           created_at?: string | null
+          daily_plan_whatsapp?: boolean | null
           habit_reminders?: boolean | null
+          habit_reminders_whatsapp?: boolean | null
           household_invitations?: boolean | null
+          household_invitations_whatsapp?: boolean | null
           id?: string
           meal_summaries?: boolean | null
+          pantry_alerts_whatsapp?: boolean | null
           task_notifications?: boolean | null
+          task_notifications_whatsapp?: boolean | null
           updated_at?: string | null
           user_id?: string
           weekly_digest?: boolean | null
+          weekly_digest_whatsapp?: boolean | null
         }
         Relationships: []
       }

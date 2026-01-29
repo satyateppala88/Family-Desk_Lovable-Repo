@@ -6,6 +6,7 @@ import {
   getPantryAlertContent 
 } from "../_shared/email-templates.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
+import { sendWhatsAppTemplate, WHATSAPP_TEMPLATES } from "../_shared/whatsapp.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -92,40 +93,67 @@ const handler = async (req: Request): Promise<Response> => {
         // Send to each member
         for (const member of members) {
           try {
-            // Check user email preferences (using meal_summaries as closest preference)
-            const { data: prefs } = await supabaseAdmin
-              .from("user_email_preferences")
-              .select("meal_summaries")
-              .eq("user_id", member.user_id)
-              .maybeSingle();
-
-            if (prefs?.meal_summaries === false) {
-              console.log(`User ${member.user_id} has opted out of pantry alerts`);
-              continue;
-            }
-
             // Get user info
             const { data: userData } = await supabaseAdmin.auth.admin.getUserById(member.user_id);
             if (!userData?.user?.email) continue;
 
             const { data: profile } = await supabaseAdmin
               .from("profiles")
-              .select("display_name")
+              .select("display_name, phone_number, phone_verified, whatsapp_opted_in")
               .eq("id", member.user_id)
               .maybeSingle();
 
-            const emailResponse = await resend.emails.send({
-              from: "Family Desk <noreply@familydesk.in>",
-              to: [userData.user.email],
-              subject: `🥫 ${items.length} item${items.length > 1 ? "s" : ""} expiring soon!`,
-              html: getEmailWrapper(emailContent, {
-                recipientName: profile?.display_name || undefined,
-                preheader: `${items[0].name}${items.length > 1 ? ` and ${items.length - 1} more items` : ""} expiring within 3 days`,
-              }),
-            });
+            // Check user email preferences
+            const { data: prefs } = await supabaseAdmin
+              .from("user_email_preferences")
+              .select("meal_summaries, pantry_alerts_whatsapp")
+              .eq("user_id", member.user_id)
+              .maybeSingle();
 
-            console.log(`Pantry alert sent to ${userData.user.email}:`, emailResponse);
-            emailsSent.push(userData.user.email);
+            // Send email if not opted out
+            if (prefs?.meal_summaries !== false) {
+              const emailResponse = await resend.emails.send({
+                from: "Family Desk <noreply@familydesk.in>",
+                to: [userData.user.email],
+                subject: `🥫 ${items.length} item${items.length > 1 ? "s" : ""} expiring soon!`,
+                html: getEmailWrapper(emailContent, {
+                  recipientName: profile?.display_name || undefined,
+                  preheader: `${items[0].name}${items.length > 1 ? ` and ${items.length - 1} more items` : ""} expiring within 3 days`,
+                }),
+              });
+
+              console.log(`Pantry alert email sent to ${userData.user.email}:`, emailResponse);
+              emailsSent.push(userData.user.email);
+            }
+
+            // Send WhatsApp if enabled
+            if (
+              profile?.phone_verified &&
+              profile?.whatsapp_opted_in &&
+              profile?.phone_number &&
+              prefs?.pantry_alerts_whatsapp
+            ) {
+              const itemsList = formattedItems
+                .slice(0, 3)
+                .map((item) => `${item.name} - ${item.expiryDate}`)
+                .join(", ");
+
+              const waResult = await sendWhatsAppTemplate(
+                profile.phone_number,
+                WHATSAPP_TEMPLATES.PANTRY_EXPIRY_ALERT,
+                [
+                  items.length.toString(),
+                  itemsList,
+                  "https://homemate.lovable.app/grocery"
+                ]
+              );
+
+              if (waResult.success) {
+                console.log(`Pantry alert WhatsApp sent to ${profile.phone_number}`);
+              } else {
+                console.log(`Failed WhatsApp to ${profile.phone_number}:`, waResult.error);
+              }
+            }
           } catch (memberError: any) {
             console.error(`Error sending to member ${member.user_id}:`, memberError);
             errors.push(`Member ${member.user_id}: ${memberError.message}`);

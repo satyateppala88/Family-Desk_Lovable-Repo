@@ -9,11 +9,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { Separator } from "@/components/ui/separator";
-import { User, Lock, Globe, ArrowLeft } from "lucide-react";
+import { User, Lock, Globe, ArrowLeft, Bell } from "lucide-react";
 import { ResetOnboardingButton } from "@/components/development/ResetOnboardingButton";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { MobileNav } from "@/components/layout/MobileNav";
+import { PhoneVerificationSection } from "@/components/settings/PhoneVerificationSection";
+import { NotificationPreferencesSection } from "@/components/settings/NotificationPreferencesSection";
 
 const AccountSettings = () => {
   const navigate = useNavigate();
@@ -123,10 +125,14 @@ const AccountSettings = () => {
         </div>
 
       <Tabs defaultValue="profile" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="profile" className="flex-col sm:flex-row gap-1 sm:gap-2 py-2">
             <User className="w-4 h-4" />
             <span className="text-xs sm:text-sm">Profile</span>
+          </TabsTrigger>
+          <TabsTrigger value="notifications" className="flex-col sm:flex-row gap-1 sm:gap-2 py-2">
+            <Bell className="w-4 h-4" />
+            <span className="text-xs sm:text-sm">Notifications</span>
           </TabsTrigger>
           <TabsTrigger value="security" className="flex-col sm:flex-row gap-1 sm:gap-2 py-2">
             <Lock className="w-4 h-4" />
@@ -179,6 +185,11 @@ const AccountSettings = () => {
               </form>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="notifications" className="space-y-4">
+          <PhoneVerificationSection />
+          <NotificationPreferencesSection />
         </TabsContent>
 
         <TabsContent value="security" className="space-y-4">

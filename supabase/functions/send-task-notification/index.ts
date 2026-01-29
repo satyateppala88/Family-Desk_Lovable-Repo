@@ -6,6 +6,7 @@ import {
   getTaskAssignmentContent 
 } from "../_shared/email-templates.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
+import { sendWhatsAppTemplate, WHATSAPP_TEMPLATES } from "../_shared/whatsapp.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -122,8 +123,50 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log("Task notification email sent:", emailResponse);
 
+    // Check if user has WhatsApp enabled for task notifications
+    const { data: profile } = await supabaseAdmin
+      .from("profiles")
+      .select("phone_number, phone_verified, whatsapp_opted_in")
+      .eq("id", assigneeId)
+      .maybeSingle();
+
+    const { data: waPrefs } = await supabaseAdmin
+      .from("user_email_preferences")
+      .select("task_notifications_whatsapp")
+      .eq("user_id", assigneeId)
+      .maybeSingle();
+
+    let whatsappSent = false;
+    let whatsappMessageId: string | undefined;
+
+    if (
+      profile?.phone_verified &&
+      profile?.whatsapp_opted_in &&
+      profile?.phone_number &&
+      waPrefs?.task_notifications_whatsapp
+    ) {
+      const waResult = await sendWhatsAppTemplate(
+        profile.phone_number,
+        WHATSAPP_TEMPLATES.TASK_ASSIGNED,
+        [taskTitle, assignerName, formattedDueDate || "No due date"]
+      );
+
+      if (waResult.success) {
+        whatsappSent = true;
+        whatsappMessageId = waResult.messageId;
+        console.log("Task notification WhatsApp sent:", waResult.messageId);
+      } else {
+        console.log("Failed to send WhatsApp notification:", waResult.error);
+      }
+    }
+
     return new Response(
-      JSON.stringify({ success: true, emailId: (emailResponse as any).id }),
+      JSON.stringify({ 
+        success: true, 
+        emailId: (emailResponse as any).id,
+        whatsappSent,
+        whatsappMessageId
+      }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error: any) {
