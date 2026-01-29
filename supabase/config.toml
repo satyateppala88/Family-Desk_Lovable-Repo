@@ -78,3 +78,15 @@ verify_jwt = true
 [functions.dev-seed-test-user]
 verify_jwt = false
 
+[functions.whatsapp-notify]
+verify_jwt = false
+
+[functions.whatsapp-send-otp]
+verify_jwt = false
+
+[functions.whatsapp-verify-otp]
+verify_jwt = false
+
+[functions.send-daily-plan-whatsapp]
+verify_jwt = false
+
