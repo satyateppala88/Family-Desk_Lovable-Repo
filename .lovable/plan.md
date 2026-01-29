@@ -1,309 +1,387 @@
 
-# Development Test Mode Implementation Plan
 
-## Overview
+# WhatsApp P0 Implementation Plan
 
-This plan creates a **development-only test mode** that allows full platform testing without authentication barriers. The solution includes:
-1. A pre-seeded test user with complete data
-2. Auto-login mechanism for development
-3. Edge function test mode bypass
-4. Visual indicator when test mode is active
+## Executive Summary
 
----
+This plan implements WhatsApp as an **additional notification channel** alongside email, with phone number verification via OTP. Users will be able to receive notifications on both WhatsApp AND email for each notification type.
 
-## Security Considerations
-
-**Critical**: This feature will ONLY work in development mode. Multiple safeguards will be implemented:
-- Environment variable checks (`import.meta.env.DEV`)
-- Edge function environment checks (`ENVIRONMENT !== 'production'`)
-- Test user flagged in database for easy identification
-- Clear visual indicators when test mode is active
+### P0 Features
+1. **Phone Verification via OTP** - Secure phone number verification
+2. **Task Assignment Notifications** - Instant WhatsApp alerts when tasks are assigned
+3. **Daily Plan Summaries** - Morning AI-generated task priorities via WhatsApp
+4. **Expiring Item Alerts** - Pantry expiration warnings via WhatsApp
 
 ---
 
-## Implementation Steps
-
-### Step 1: Create Test User Seed Edge Function
-
-**File**: `supabase/functions/dev-seed-test-user/index.ts`
-
-Creates a complete test user with:
-- Pre-approved access request
-- Verified email
-- Household with sample data
-- All preferences configured
+## Architecture Overview
 
 ```text
-+------------------------+
-|  Test User Creation    |
-+------------------------+
-         |
-         v
-+------------------------+
-| 1. Create auth user    |
-|    with verified email |
-+------------------------+
-         |
-         v
-+------------------------+
-| 2. Create profile      |
-+------------------------+
-         |
-         v
-+------------------------+
-| 3. Create household    |
-|    "Test Household"    |
-+------------------------+
-         |
-         v
-+------------------------+
-| 4. Add household       |
-|    member (admin)      |
-+------------------------+
-         |
-         v
-+------------------------+
-| 5. Seed sample data:   |
-|    - Tasks (5)         |
-|    - Recipes (3)       |
-|    - Pantry items (10) |
-|    - Habits (3)        |
-|    - Preferences       |
-+------------------------+
-```
-
-Test User Credentials:
-- Email: `testuser@familydesk.dev`
-- Password: `TestUser123!`
-- Display Name: "Test User"
-
-### Step 2: Create Dev Auth Bypass Hook
-
-**File**: `src/hooks/useDevAuth.ts`
-
-A custom hook that handles development authentication:
-- Detects dev environment
-- Auto-logs in test user on mount (optional)
-- Provides manual login function
-- Stores dev mode state
-
-```typescript
-// Key functionality
-export const useDevAuth = () => {
-  const [isDevMode, setIsDevMode] = useState(false);
-  
-  const loginAsTestUser = async () => {
-    if (!import.meta.env.DEV) return;
-    
-    await supabase.auth.signInWithPassword({
-      email: 'testuser@familydesk.dev',
-      password: 'TestUser123!'
-    });
-    setIsDevMode(true);
-  };
-  
-  return { isDevMode, loginAsTestUser };
-};
-```
-
-### Step 3: Create Dev Mode Banner Component
-
-**File**: `src/components/development/DevModeBanner.tsx`
-
-A prominent banner showing when test mode is active:
-- Displays test user info
-- Quick links to all major pages
-- Reset test data button
-- Switch to real user option
-
-Visual design:
-```text
-+----------------------------------------------------------+
-| 🧪 DEV MODE ACTIVE | User: testuser@familydesk.dev       |
-|    [Dashboard] [Tasks] [Meals] [Grocery] [Reset Data]    |
-+----------------------------------------------------------+
-```
-
-### Step 4: Add Dev Login Button to Auth Page
-
-**File**: `src/pages/Auth.tsx` (modification)
-
-Add a development-only quick login button:
-
-```typescript
-// Only visible in development
-{import.meta.env.DEV && (
-  <Card className="mt-4 border-purple-300 bg-purple-50">
-    <CardContent className="p-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="font-semibold text-purple-900">Dev Mode</h3>
-          <p className="text-sm text-purple-700">Quick login as test user</p>
-        </div>
-        <Button onClick={loginAsTestUser} variant="outline">
-          🧪 Login as Test User
-        </Button>
-      </div>
-    </CardContent>
-  </Card>
-)}
-```
-
-### Step 5: Edge Function Test Mode Support
-
-**Modify**: `supabase/functions/_shared/cors.ts`
-
-Add a shared utility for test mode detection:
-
-```typescript
-export const isTestMode = (req: Request): boolean => {
-  const isDev = Deno.env.get('ENVIRONMENT') !== 'production';
-  const testHeader = req.headers.get('X-Dev-Test-Mode');
-  return isDev && testHeader === 'true';
-};
-
-export const getTestUserId = (): string => {
-  // Return consistent test user ID for development
-  return Deno.env.get('DEV_TEST_USER_ID') || '';
-};
-```
-
-**Modify**: Edge functions to support test bypass
-
-Example modification for `ai-chat/index.ts`:
-```typescript
-// At the start of the handler
-if (isTestMode(req)) {
-  // Skip JWT validation, use test user ID
-  const userId = getTestUserId();
-  const householdId = getTestHouseholdId();
-  // Continue with rest of function
-}
-```
-
-### Step 6: Create Reset Test Data Function
-
-**File**: `supabase/functions/dev-reset-test-data/index.ts`
-
-Allows resetting test user data without deleting the user:
-- Clears tasks, habits, pantry items
-- Re-seeds with fresh sample data
-- Keeps user account intact
-
-### Step 7: Add DevMode Context Provider
-
-**File**: `src/contexts/DevModeContext.tsx`
-
-Global context for dev mode state:
-
-```typescript
-interface DevModeContextType {
-  isDevMode: boolean;
-  testUserId: string | null;
-  testHouseholdId: string | null;
-  enableDevMode: () => Promise<void>;
-  disableDevMode: () => void;
-  resetTestData: () => Promise<void>;
-}
-```
-
-### Step 8: Integrate with App.tsx
-
-**Modify**: `src/App.tsx`
-
-Wrap application with DevModeProvider:
-
-```typescript
-<QueryClientProvider client={queryClient}>
-  <DevModeProvider>
-    <AuthProvider>
-      {/* DevModeBanner renders conditionally */}
-      <DevModeBanner />
-      <Routes>...</Routes>
-    </AuthProvider>
-  </DevModeProvider>
-</QueryClientProvider>
+┌─────────────────────────────────────────────────────────────────┐
+│                     FAMILY DESK APP                              │
+├─────────────────────────────────────────────────────────────────┤
+│  Account Settings Page                                           │
+│  ┌──────────────────┐  ┌───────────────────────────────────┐   │
+│  │ Phone Number     │  │ Notification Preferences          │   │
+│  │ +91 9876543210   │  │ ┌─────────────┬─────────┬───────┐ │   │
+│  │ [✓ Verified]     │  │ │ Type        │ Email   │ WA    │ │   │
+│  │                  │  │ ├─────────────┼─────────┼───────┤ │   │
+│  │ [Change Number]  │  │ │ Tasks       │ ✓       │ ✓     │ │   │
+│  │                  │  │ │ Daily Plan  │ ✓       │ ✓     │ │   │
+│  └──────────────────┘  │ │ Pantry      │ ✓       │ ✓     │ │   │
+│                        │ │ Habits      │ ✓       │ □     │ │   │
+│                        │ └─────────────┴─────────┴───────┘ │   │
+│                        └───────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                     EDGE FUNCTIONS                               │
+├─────────────────────────────────────────────────────────────────┤
+│  ┌────────────────────┐  ┌────────────────────────────────┐    │
+│  │ whatsapp-send-otp  │  │ whatsapp-verify-otp            │    │
+│  │ Send 6-digit OTP   │  │ Validate & mark verified       │    │
+│  └────────────────────┘  └────────────────────────────────┘    │
+│                                                                  │
+│  ┌────────────────────┐  ┌────────────────────────────────┐    │
+│  │ whatsapp-notify    │  │ send-task-notification         │    │
+│  │ Generic WA sender  │  │ (Enhanced: Email + WA)         │    │
+│  └────────────────────┘  └────────────────────────────────┘    │
+│                                                                  │
+│  ┌────────────────────┐  ┌────────────────────────────────┐    │
+│  │ send-daily-plan-wa │  │ send-pantry-alerts             │    │
+│  │ Morning summary    │  │ (Enhanced: Email + WA)         │    │
+│  └────────────────────┘  └────────────────────────────────┘    │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                 WHATSAPP CLOUD API                               │
+│  ─────────────────────────────────────────────────────────────  │
+│  • Template Messages (pre-approved)                              │
+│  • Session Messages (24h window after user interaction)         │
+│  • Webhook for delivery receipts                                 │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
 ## Database Changes
 
-### Add Dev Test User Flag to Profiles
+### 1. Update `profiles` Table
 
-No schema change needed - we'll use a specific email domain (`@familydesk.dev`) to identify test users.
+Add phone number and verification fields:
 
-### Environment Variables
+```sql
+ALTER TABLE profiles
+ADD COLUMN phone_number VARCHAR(20),
+ADD COLUMN phone_verified BOOLEAN DEFAULT false,
+ADD COLUMN phone_verified_at TIMESTAMP WITH TIME ZONE,
+ADD COLUMN whatsapp_opted_in BOOLEAN DEFAULT false;
+```
 
-Add to Supabase secrets (for edge functions):
-- `DEV_TEST_USER_ID` - UUID of the seeded test user
-- `DEV_TEST_HOUSEHOLD_ID` - UUID of the test household
+### 2. Create `phone_verification_tokens` Table
 
----
+Store OTP tokens for verification:
 
-## Sample Test Data to Seed
+```sql
+CREATE TABLE phone_verification_tokens (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  phone_number VARCHAR(20) NOT NULL,
+  token VARCHAR(6) NOT NULL,
+  expires_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (NOW() + INTERVAL '10 minutes'),
+  used_at TIMESTAMP WITH TIME ZONE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
 
-### Tasks (5)
-1. "Weekly grocery shopping" - due tomorrow, medium priority
-2. "Pay electricity bill" - due in 3 days, high priority
-3. "Schedule dentist appointment" - no due date, low priority
-4. "Clean out garage" - overdue, low priority
-5. "Plan birthday party" - due in 1 week, high priority
+-- RLS Policies
+ALTER TABLE phone_verification_tokens ENABLE ROW LEVEL SECURITY;
 
-### Recipes (3)
-1. "Dal Tadka" - North Indian, vegetarian
-2. "Chicken Biryani" - South Indian, non-veg
-3. "Palak Paneer" - North Indian, vegetarian
+CREATE POLICY "Users can view their own tokens"
+ON phone_verification_tokens FOR SELECT
+USING (user_id = auth.uid());
 
-### Pantry Items (10)
-- Rice (5 kg), Wheat flour (2 kg), Sugar (1 kg)
-- Milk (2 L), Yogurt (500g) - expiring in 3 days
-- Onions (2 kg), Tomatoes (1 kg), Potatoes (3 kg)
-- Cooking oil (2 L), Spices variety pack
+CREATE POLICY "Service role can manage tokens"
+ON phone_verification_tokens FOR ALL
+TO service_role
+USING (true) WITH CHECK (true);
+```
 
-### Habits (3)
-1. "Morning meditation" - daily, 10 min target
-2. "Evening walk" - daily, 30 min target
-3. "Read a book" - 3x per week, 20 min target
+### 3. Update `user_email_preferences` to `notification_preferences`
 
----
+Rename and extend to support channel selection:
 
-## Files to Create/Modify
-
-| File | Action | Purpose |
-|------|--------|---------|
-| `supabase/functions/dev-seed-test-user/index.ts` | Create | Seed test user with data |
-| `supabase/functions/dev-reset-test-data/index.ts` | Create | Reset test data |
-| `src/hooks/useDevAuth.ts` | Create | Dev authentication hook |
-| `src/contexts/DevModeContext.tsx` | Create | Dev mode state management |
-| `src/components/development/DevModeBanner.tsx` | Create | Dev mode UI indicator |
-| `src/pages/Auth.tsx` | Modify | Add dev login button |
-| `src/App.tsx` | Modify | Add DevModeProvider |
-| `supabase/functions/_shared/cors.ts` | Modify | Add test mode utilities |
-| `supabase/config.toml` | Modify | Register new functions |
-
----
-
-## Testing Workflow After Implementation
-
-1. **Initial Setup**: Run `dev-seed-test-user` once to create the test user
-2. **Quick Login**: Click "Login as Test User" button on Auth page
-3. **Full Access**: Navigate to any protected page with full data
-4. **Reset Anytime**: Click "Reset Data" to get fresh test data
-5. **Test Chatbot**: AI chatbot will work with test household context
+```sql
+-- Add WhatsApp preference columns
+ALTER TABLE user_email_preferences
+ADD COLUMN task_notifications_whatsapp BOOLEAN DEFAULT false,
+ADD COLUMN daily_plan_whatsapp BOOLEAN DEFAULT false,
+ADD COLUMN pantry_alerts_whatsapp BOOLEAN DEFAULT false,
+ADD COLUMN habit_reminders_whatsapp BOOLEAN DEFAULT false,
+ADD COLUMN household_invitations_whatsapp BOOLEAN DEFAULT false,
+ADD COLUMN weekly_digest_whatsapp BOOLEAN DEFAULT false;
+```
 
 ---
 
-## Usage Notes
+## Edge Functions
 
-**For Lovable AI Testing**:
-- Open browser, navigate to Auth page
-- Click "Login as Test User" button
-- Full platform access is now available
-- Use "Reset Data" before each test session for consistent state
+### 1. `whatsapp-send-otp` (NEW)
 
-**Security Reminders**:
-- All dev features check `import.meta.env.DEV`
-- Edge functions check `ENVIRONMENT` env var
-- Test user email uses `.dev` domain for easy identification
-- Never deploy with test mode enabled
+Sends a 6-digit OTP to the user's WhatsApp number.
+
+**Flow:**
+1. Validate phone number format
+2. Generate 6-digit OTP
+3. Store in `phone_verification_tokens`
+4. Send via WhatsApp Cloud API template message
+5. Return success/failure
+
+**Template Message (to be registered in Meta Business):**
+```
+🔐 Your Family Desk verification code is: {{1}}
+
+This code expires in 10 minutes. Do not share this code with anyone.
+```
+
+### 2. `whatsapp-verify-otp` (NEW)
+
+Validates the OTP and marks phone as verified.
+
+**Flow:**
+1. Accept phone number + OTP
+2. Look up token in `phone_verification_tokens`
+3. Verify not expired and not used
+4. Mark token as used
+5. Update `profiles.phone_verified = true`
+6. Return success
+
+### 3. `whatsapp-notify` (NEW)
+
+Generic WhatsApp message sender using Cloud API.
+
+**Parameters:**
+- `phoneNumber`: Target phone number
+- `templateName`: Registered template name
+- `templateParams`: Array of dynamic values
+
+**Supported Templates (to register in Meta):**
+- `task_assigned` - New task notification
+- `daily_plan` - Morning plan summary
+- `pantry_expiry` - Items expiring soon
+- `otp_verification` - OTP code
+
+### 4. `send-task-notification` (ENHANCE)
+
+Add WhatsApp delivery alongside email:
+
+```typescript
+// After email sending logic...
+
+// Check WhatsApp preferences
+const { data: profile } = await supabaseAdmin
+  .from("profiles")
+  .select("phone_number, phone_verified, whatsapp_opted_in")
+  .eq("id", assigneeId)
+  .single();
+
+const { data: waPrefs } = await supabaseAdmin
+  .from("user_email_preferences")
+  .select("task_notifications_whatsapp")
+  .eq("user_id", assigneeId)
+  .single();
+
+if (profile?.phone_verified && 
+    profile?.whatsapp_opted_in && 
+    waPrefs?.task_notifications_whatsapp) {
+  // Send WhatsApp notification
+  await sendWhatsAppTemplate(
+    profile.phone_number,
+    "task_assigned",
+    [taskTitle, assignerName, formattedDueDate || "No due date"]
+  );
+}
+```
+
+### 5. `send-daily-plan-whatsapp` (NEW)
+
+Send morning daily plan summary via WhatsApp.
+
+**Trigger:** Scheduled cron job at 7:00 AM IST
+
+**Message Format:**
+```
+🌅 Good morning, {name}!
+
+Here's your plan for today:
+
+1. ⚡ {task1} - {reasoning1}
+2. 📋 {task2} - {reasoning2}
+3. 📋 {task3} - {reasoning3}
+
+📅 {calendar_summary}
+
+Tap to view full plan: {link}
+```
+
+### 6. `send-pantry-alerts` (ENHANCE)
+
+Add WhatsApp delivery for expiring items:
+
+**Message Format:**
+```
+🥫 Pantry Alert!
+
+{count} items expiring soon:
+• {item1} - expires {date1}
+• {item2} - expires {date2}
+• {item3} - expires {date3}
+
+Plan meals around these to reduce waste!
+View pantry: {link}
+```
+
+---
+
+## Frontend Components
+
+### 1. Phone Verification Component
+
+**File:** `src/components/settings/PhoneVerificationSection.tsx`
+
+Features:
+- Phone number input with country code dropdown
+- "Send OTP" button
+- 6-digit OTP input (using existing InputOTP component)
+- Resend timer (60 seconds)
+- Verification success state
+
+### 2. Notification Preferences Grid
+
+**File:** `src/components/settings/NotificationPreferencesSection.tsx`
+
+Features:
+- Grid layout: Notification Type | Email | WhatsApp
+- WhatsApp toggles disabled until phone verified
+- Tooltip explaining why disabled
+- Visual indicator when both channels enabled
+
+### 3. Account Settings Updates
+
+**File:** `src/pages/AccountSettings.tsx`
+
+Add two new sections:
+1. Phone Verification Section
+2. Notification Channel Preferences
+
+---
+
+## WhatsApp Template Messages
+
+These templates must be registered with Meta Business Manager:
+
+| Template Name | Purpose | Variables |
+|--------------|---------|-----------|
+| `otp_verification` | Phone verification | `{{1}}` = OTP code |
+| `task_assigned` | Task assignment | `{{1}}` = task title, `{{2}}` = assigner, `{{3}}` = due date |
+| `daily_plan_summary` | Morning summary | `{{1}}` = name, `{{2}}` = task list, `{{3}}` = link |
+| `pantry_expiry_alert` | Expiring items | `{{1}}` = count, `{{2}}` = items list, `{{3}}` = link |
+
+---
+
+## Required Secrets
+
+The following secrets need to be configured:
+
+| Secret Name | Description |
+|-------------|-------------|
+| `WHATSAPP_PHONE_NUMBER_ID` | Your WhatsApp Business phone number ID |
+| `WHATSAPP_ACCESS_TOKEN` | Meta Graph API access token |
+| `WHATSAPP_BUSINESS_ACCOUNT_ID` | Your WhatsApp Business Account ID |
+
+---
+
+## Implementation Steps
+
+### Phase 1: Database & Infrastructure (Day 1)
+1. Create database migration for new columns and tables
+2. Create `whatsapp-notify` base edge function
+3. Add secrets for WhatsApp Cloud API
+4. Create shared WhatsApp utility functions
+
+### Phase 2: Phone Verification (Day 2)
+1. Create `whatsapp-send-otp` edge function
+2. Create `whatsapp-verify-otp` edge function
+3. Build `PhoneVerificationSection` component
+4. Integrate into Account Settings page
+5. Test full OTP flow
+
+### Phase 3: Task Notifications (Day 3)
+1. Update `send-task-notification` to support WhatsApp
+2. Build `NotificationPreferencesSection` component
+3. Create hook for notification preferences
+4. Test task assignment with WhatsApp enabled
+
+### Phase 4: Daily Plan & Pantry Alerts (Day 4)
+1. Create `send-daily-plan-whatsapp` edge function
+2. Update `send-pantry-alerts` for WhatsApp
+3. Set up cron jobs for scheduled messages
+4. Test all notification types
+
+### Phase 5: Testing & Polish (Day 5)
+1. End-to-end testing of all flows
+2. Error handling improvements
+3. Rate limiting implementation
+4. Documentation updates
+
+---
+
+## Files to Create
+
+| File | Type | Purpose |
+|------|------|---------|
+| `supabase/functions/whatsapp-notify/index.ts` | Edge Function | Generic WhatsApp sender |
+| `supabase/functions/whatsapp-send-otp/index.ts` | Edge Function | OTP sending |
+| `supabase/functions/whatsapp-verify-otp/index.ts` | Edge Function | OTP verification |
+| `supabase/functions/send-daily-plan-whatsapp/index.ts` | Edge Function | Daily plan via WA |
+| `supabase/functions/_shared/whatsapp-templates.ts` | Shared | Template message helpers |
+| `src/components/settings/PhoneVerificationSection.tsx` | Component | Phone verification UI |
+| `src/components/settings/NotificationPreferencesSection.tsx` | Component | Channel preferences |
+| `src/hooks/useNotificationPreferences.ts` | Hook | Preferences management |
+| `src/hooks/usePhoneVerification.ts` | Hook | OTP flow management |
+
+## Files to Modify
+
+| File | Changes |
+|------|---------|
+| `supabase/functions/send-task-notification/index.ts` | Add WhatsApp channel |
+| `supabase/functions/send-pantry-alerts/index.ts` | Add WhatsApp channel |
+| `src/pages/AccountSettings.tsx` | Add new sections |
+| `supabase/config.toml` | Register new functions |
+
+---
+
+## Security Considerations
+
+1. **OTP Rate Limiting**: Max 3 OTP requests per phone number per hour
+2. **Token Expiry**: OTPs expire after 10 minutes
+3. **Single Use**: Tokens marked as used after verification
+4. **Phone Format Validation**: Server-side validation with libphonenumber
+5. **WhatsApp Opt-in**: Explicit opt-in required per notification type
+
+---
+
+## What I Need From You
+
+Before I start implementation, please:
+
+1. **WhatsApp Business Setup**: Provide the following from your Meta Business Manager:
+   - `WHATSAPP_PHONE_NUMBER_ID`
+   - `WHATSAPP_ACCESS_TOKEN`
+   - `WHATSAPP_BUSINESS_ACCOUNT_ID`
+
+2. **Template Approval**: Register the 4 template messages listed above in Meta Business Manager (I can provide exact copy for each)
+
+3. **Confirmation**: Confirm you're ready to proceed with implementation
+
