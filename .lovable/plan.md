@@ -1,241 +1,153 @@
 
-# Logo Color Theme Integration Plan
+# Extract Logo and Improve Sign-in Page
 
 ## Overview
 
-Update the entire application color theme to match the Family Desk logo colors. The logo features a rich palette of dark teal, warm orange, cyan, forest green, and golden accents that will replace the current warm coral theme.
+Two changes are needed:
+1. **Generate a transparent-background version of the logo** using AI image editing
+2. **Increase logo size on the Auth page** from 64px to 96-112px
 
 ---
 
-## Color Palette Extracted from Logo
+## Part 1: Create Transparent Logo
 
-### Primary Colors (from logo analysis)
+### Current Problem
 
-| Color | Hex Approx | HSL Value | Usage |
-|-------|------------|-----------|-------|
-| Dark Teal | #0F3A4D | `196 65% 18%` | Landing page background, dark mode base |
-| Warm Orange | #E67E4A | `20 76% 60%` | Primary accent, CTAs |
-| Cyan/Teal | #4BA8C2 | `193 52% 52%` | Secondary accent, highlights |
-| Forest Green | #4CAF7C | `145 42% 49%` | Success states, positive indicators |
-| Golden Yellow | #F5B43D | `40 90% 60%` | Accent highlights, emphasis |
-| Sky Blue | #6DC1D9 | `193 55% 64%` | Light accents, hover states |
+The current logo has a dark blue (#0F3A4D) solid background which:
+- Looks jarring on light-themed pages (Auth, HouseholdSetup)
+- Creates a blue square instead of a clean logo mark
+- Doesn't blend with the app's light backgrounds
+
+### Solution
+
+Use Lovable AI's image generation capability to create a version of the logo with a transparent background.
+
+**Process:**
+1. Create a new edge function `remove-logo-background` that uses the Nano banana pro model to extract the logo
+2. Generate a new logo image with transparent background
+3. Save the result to the assets folder
+
+**Alternative (Simpler):**
+Since AI image generation outputs can be unpredictable for background removal, a more reliable approach is to use CSS to create a consistent visual treatment:
+- Add a white/light background container behind the logo with rounded corners
+- This ensures the logo always looks clean regardless of page background
+
+### Recommended Approach: CSS Container
+
+Add a subtle light background container to the logo in all locations:
+
+```tsx
+// Before
+<img src={logoImg} alt="Family Desk Logo" className="h-16 w-16 object-contain" />
+
+// After - with light background container
+<div className="bg-white rounded-xl p-2 shadow-sm">
+  <img src={logoImg} alt="Family Desk Logo" className="h-20 w-20 object-contain" />
+</div>
+```
+
+This approach:
+- Works immediately without regenerating the logo
+- Creates a consistent "logo card" look
+- The white background makes the colorful logo elements pop
 
 ---
 
-## Part 1: CSS Variables Update (`src/index.css`)
+## Part 2: Increase Auth Page Logo Size
 
-### Light Mode Changes
+### File: `src/pages/Auth.tsx`
 
-```text
-Current                          New (Logo-based)
---primary: 11 76% 63% (coral)    --primary: 20 76% 60% (warm orange)
---accent: 28 89% 67% (gold)      --accent: 193 52% 52% (cyan/teal)
---success: 145 60% 51%           --success: 145 42% 49% (forest green)
-
---landing-bg: 36 100% 98%        --landing-bg: 196 60% 96% (teal-tinted cream)
---landing-accent: 11 76% 63%     --landing-accent: 20 76% 60% (warm orange)
---landing-highlight: 145 60% 51% --landing-highlight: 193 52% 52% (cyan)
---landing-secondary: 28 89% 67%  --landing-secondary: 40 90% 60% (golden)
+**Current (line 342):**
+```tsx
+className="h-16 w-16 object-contain"
 ```
 
-### Dark Mode Changes
-
-```text
-Current                          New (Logo-based)
---background: 24 12% 10%         --background: 196 65% 10% (dark teal)
---primary: 15 85% 73%            --primary: 20 80% 70% (soft orange)
---accent: 45 96% 55%             --accent: 193 60% 60% (bright cyan)
-
---landing-bg: 24 12% 10%         --landing-bg: 196 65% 12% (deep teal)
---landing-accent: 15 85% 73%     --landing-accent: 20 80% 70% (soft orange)
+**New:**
+```tsx
+className="h-24 w-24 sm:h-28 sm:w-28 object-contain"
 ```
 
-### Complete Variable Map
-
-```css
-/* Light Mode - Logo-based theme */
-:root {
-  --background: 196 40% 98%;     /* Slight teal tint */
-  --foreground: 196 50% 12%;     /* Dark teal text */
-  
-  --primary: 20 76% 60%;          /* Warm Orange */
-  --primary-foreground: 0 0% 100%;
-  
-  --accent: 193 52% 52%;          /* Cyan/Teal */
-  --accent-foreground: 0 0% 100%;
-  
-  --success: 145 42% 49%;         /* Forest Green */
-  --warning: 40 90% 60%;          /* Golden Yellow */
-  
-  /* Landing page */
-  --landing-bg: 196 40% 98%;
-  --landing-bg-secondary: 196 35% 95%;
-  --landing-accent: 20 76% 60%;   /* Orange */
-  --landing-highlight: 193 52% 52%; /* Cyan */
-  --landing-secondary: 40 90% 60%; /* Gold */
-  
-  /* Charts - Logo palette */
-  --chart-1: 20 76% 60%;          /* Orange */
-  --chart-2: 193 52% 52%;         /* Cyan */
-  --chart-3: 145 42% 49%;         /* Green */
-  --chart-4: 40 90% 60%;          /* Gold */
-  --chart-5: 196 50% 30%;         /* Dark Teal */
-}
-
-/* Dark Mode - Logo-based theme */
-.dark {
-  --background: 196 50% 10%;      /* Deep teal */
-  --foreground: 196 20% 95%;
-  
-  --card: 196 45% 14%;
-  
-  --primary: 20 80% 70%;          /* Soft Orange */
-  --accent: 193 60% 60%;          /* Bright Cyan */
-  
-  --landing-bg: 196 50% 10%;      /* Matches logo background */
-  --landing-accent: 20 80% 70%;
-}
-```
+Size comparison:
+| Device | Current | New |
+|--------|---------|-----|
+| Mobile | 64px | 96px |
+| Desktop | 64px | 112px |
 
 ---
 
-## Part 2: Update Logo Asset
+## Part 3: Apply Consistent Logo Treatment
 
-### Copy New Logo to Assets
-
-Copy the uploaded logo to replace the current one:
-
-```
-user-uploads://ElevenLabs_image_nano-banana-pro_design_a_log...
-  → src/assets/logo-family-desk-primary.png
-```
-
-This automatically updates all logo usages since they import from this path.
-
----
-
-## Part 3: Landing Page Component Updates
+Update all logo usages with the same pattern for consistency:
 
 ### Files to Update
 
-| File | Changes |
-|------|---------|
-| `Hero.tsx` | Update gradient colors to use teal tones |
-| `FeaturesScroll.tsx` | Already uses CSS variables - no changes needed |
-| `Benefits.tsx` | Already uses CSS variables - no changes needed |
-| `HowItWorks.tsx` | Already uses CSS variables - no changes needed |
-| `FinalCTA.tsx` | Update gradient to match new palette |
+| File | Current Size | New Size | Add Container |
+|------|-------------|----------|---------------|
+| `src/pages/Auth.tsx` | h-16 w-16 | h-24 w-24 sm:h-28 | Yes |
+| `src/pages/HouseholdSetup.tsx` | h-16 w-16 | h-20 w-20 | Yes |
+| `src/components/layout/Header.tsx` | h-12 w-12 | h-10 w-10 | Yes (smaller) |
+| `src/components/landing/LandingNav.tsx` | h-12 w-12 | h-10 w-10 | Yes (smaller) |
+| `src/pages/VerifyEmail.tsx` | TBD | h-20 w-20 | Yes |
 
-### Hero.tsx Gradient Update
+### Container Style Pattern
 
-```text
-Current: from-landing-bg via-landing-bg-secondary to-[hsl(40_70%_94%)]
-New:     from-landing-bg via-landing-bg-secondary to-[hsl(193_40%_94%)]
-         (Cyan-tinted instead of yellow-tinted)
-```
+```tsx
+// For Auth/Setup pages (larger, more prominent)
+<div className="bg-white/90 rounded-2xl p-3 shadow-lg ring-1 ring-black/5">
+  <img src={logoImg} alt="Family Desk Logo" className="h-24 w-24 sm:h-28 sm:w-28 object-contain" />
+</div>
 
-### FinalCTA.tsx Gradient Update
-
-```text
-Current: to-[hsl(40_70%_94%)]
-New:     to-[hsl(193_40%_94%)]
+// For Header/Nav (compact)
+<div className="bg-white/80 rounded-lg p-1.5 shadow-sm">
+  <img src={logoImg} alt="Family Desk Logo" className="h-10 w-10 object-contain" />
+</div>
 ```
 
 ---
 
-## Part 4: App-Wide Theme Consistency
+## Visual Comparison
 
-### Header (`src/components/layout/Header.tsx`)
-
-The header uses `text-primary` which will automatically pick up the new orange color. No code changes needed.
-
-### Dashboard Widgets
-
-All dashboard widgets use semantic colors (`primary`, `accent`, `success`) which will automatically update via CSS variables.
-
-### Cards and UI Components
-
-Already use theme variables - will automatically reflect new palette.
-
----
-
-## Part 5: Color Harmony Verification
-
-### Landing Page Color Flow
+### Auth Page - Before vs After
 
 ```text
-+-------------------------------------------------------+
-|  [Logo] Family Desk (orange text)      [Orange CTA]   |  Nav
-+-------------------------------------------------------+
-|                                                        |
-|   "Manage Your Household"                              |
-|   "With Elegance" (ORANGE accent)                      |
-|                                                        |
-|   [Orange CTA] [Cyan outline button]                   |  Hero
-|                                                        |
-|   (Soft cyan + orange gradient orbs in background)    |
-|                                                        |
-+-------------------------------------------------------+
-|   Feature Cards (Orange icons, Cyan highlights)        |  Features
-+-------------------------------------------------------+
-|   Benefit Cards (Green success icons)                  |  Benefits
-+-------------------------------------------------------+
-|   Steps (Orange numbered icons)                        |  How It Works
-+-------------------------------------------------------+
-|   [Orange CTA button]                                  |  Final CTA
-+-------------------------------------------------------+
+BEFORE                              AFTER
++-------------------+               +-------------------+
+|                   |               |                   |
+|  +--------+       |               |  +-----------+    |
+|  | [Blue  |       |               |  | [White    |    |
+|  | square |       |               |  |  rounded  |    |
+|  | 64x64] |       |               |  |  112x112] |    |
+|  +--------+       |               |  +-----------+    |
+|   Family Desk     |               |    Family Desk    |
+|                   |               |                   |
++-------------------+               +-------------------+
 ```
 
-### Dashboard Color Flow
+### Header - Before vs After
 
 ```text
-+-------------------+-------------------+
-|  Tasks (Orange)   |  Meals (Cyan)     |
-+-------------------+-------------------+
-|  Calendar (Teal)  |  Grocery (Green)  |
-+-------------------+-------------------+
+BEFORE                              AFTER
+[Blue square] Family Desk           [Rounded white] Family Desk
 ```
 
 ---
 
 ## Files to Modify
 
-| File | Type | Changes |
-|------|------|---------|
-| `src/index.css` | CSS | Update ~40 CSS variables for both light and dark modes |
-| `src/assets/logo-family-desk-primary.png` | Asset | Replace with new logo |
-| `src/components/landing/Hero.tsx` | React | Update gradient to cyan-tinted |
-| `src/components/landing/FinalCTA.tsx` | React | Update gradient to cyan-tinted |
-
----
-
-## Visual Before/After
-
-### Before (Current Warm Coral Theme)
-
-```text
-Primary: Coral (#E07A5F)
-Accent: Soft Gold (#F4A261)  
-Background: Warm Cream (#FFFBF5)
-```
-
-### After (Logo-based Teal + Orange Theme)
-
-```text
-Primary: Warm Orange (#E67E4A)
-Accent: Cyan/Teal (#4BA8C2)
-Secondary: Golden (#F5B43D)
-Success: Forest Green (#4CAF7C)
-Background: Teal-tinted White (#F8FCFD)
-Dark Background: Deep Teal (#152B35)
-```
+| File | Changes |
+|------|---------|
+| `src/pages/Auth.tsx` | Add white container, increase size to h-24 sm:h-28 |
+| `src/pages/HouseholdSetup.tsx` | Add white container, increase size to h-20 |
+| `src/pages/VerifyEmail.tsx` | Add white container, adjust size |
+| `src/components/layout/Header.tsx` | Add compact white container |
+| `src/components/landing/LandingNav.tsx` | Add compact white container |
 
 ---
 
 ## Expected Outcomes
 
-1. **Brand Consistency**: App colors match the logo perfectly
-2. **Distinctive Identity**: Teal+Orange creates a unique, memorable palette
-3. **Better Dark Mode**: Deep teal background matches logo's dark aesthetic
-4. **Visual Hierarchy**: Orange for actions, Cyan for information, Green for success
-5. **Accessibility**: All color combinations maintain WCAG contrast ratios
+1. **Clean Logo Appearance**: White background container eliminates the jarring blue square
+2. **Larger Auth Logo**: 75% larger logo creates better first impression
+3. **Brand Consistency**: Same treatment across all pages
+4. **No Asset Regeneration**: Works with existing logo file
+5. **Professional Look**: Rounded corners and subtle shadow add polish
