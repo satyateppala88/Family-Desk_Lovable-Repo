@@ -12,10 +12,10 @@ export const Hero = () => {
 
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-landing-bg">
-      {/* Warm gradient background */}
-      <div className="absolute inset-0 bg-gradient-to-br from-landing-bg via-landing-bg-secondary to-[hsl(40_70%_94%)] opacity-70" />
+      {/* Teal-tinted gradient background */}
+      <div className="absolute inset-0 bg-gradient-to-br from-landing-bg via-landing-bg-secondary to-[hsl(193_40%_94%)] opacity-70" />
       
-      {/* Soft warm accents */}
+      {/* Soft cyan + orange accents */}
       <div className="absolute inset-0 opacity-20">
         <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-landing-accent rounded-full blur-[150px] animate-float" />
         <div className="absolute bottom-1/4 right-1/4 w-[500px] h-[500px] bg-landing-highlight rounded-full blur-[150px] animate-float-delayed" />
