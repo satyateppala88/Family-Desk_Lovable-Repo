@@ -36,6 +36,7 @@ export const useCalendarConnections = () => {
       return (data || []) as CalendarConnection[];
     },
     enabled: !!householdId,
+    staleTime: 2 * 60 * 1000, // 2 minutes
   });
 
   const initiateOAuth = useMutation({

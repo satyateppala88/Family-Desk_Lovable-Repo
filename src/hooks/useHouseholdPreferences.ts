@@ -20,6 +20,7 @@ export const useHouseholdPreferences = (householdId: string | null) => {
       return data as HouseholdPreferences | null;
     },
     enabled: !!householdId,
+    staleTime: 5 * 60 * 1000, // 5 minutes - preferences rarely change
   });
 
   const updatePreferences = useMutation({
