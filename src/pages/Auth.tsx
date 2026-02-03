@@ -216,11 +216,44 @@ const Auth = () => {
         return;
       }
 
+      // Check if user has a household
+      const { data: memberData } = await supabase
+        .from("household_members")
+        .select("household_id")
+        .eq("user_id", data.user.id)
+        .limit(1)
+        .maybeSingle();
+
+      if (!memberData?.household_id) {
+        toast({
+          title: "Welcome!",
+          description: "Let's set up your household.",
+        });
+        navigate("/household-setup");
+        return;
+      }
+
+      // Check if onboarding is complete
+      const { data: householdData } = await supabase
+        .from("households")
+        .select("onboarding_completed")
+        .eq("id", memberData.household_id)
+        .single();
+
+      if (!householdData?.onboarding_completed) {
+        toast({
+          title: "Welcome back!",
+          description: "Let's continue setting up your preferences.",
+        });
+        navigate("/onboarding/preferences");
+        return;
+      }
+
+      // Fully onboarded - go to dashboard
       toast({
         title: "Welcome back!",
         description: "You've successfully signed in.",
       });
-      
       navigate("/dashboard");
     } catch (error: any) {
       toast({

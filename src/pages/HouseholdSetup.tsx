@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
@@ -23,6 +23,23 @@ const HouseholdSetup = () => {
   const { toast } = useToast();
   const { user } = useAuth();
   const queryClient = useQueryClient();
+
+  // Validate session on mount to detect stale JWT tokens
+  useEffect(() => {
+    const validateSession = async () => {
+      const { data: { user: currentUser }, error } = await supabase.auth.getUser();
+      if (error || !currentUser) {
+        toast({
+          title: "Session Expired",
+          description: "Please sign in again.",
+          variant: "destructive",
+        });
+        await supabase.auth.signOut();
+        navigate("/auth");
+      }
+    };
+    validateSession();
+  }, [navigate, toast]);
 
   const handleCreateHousehold = async (e: React.FormEvent) => {
     e.preventDefault();
