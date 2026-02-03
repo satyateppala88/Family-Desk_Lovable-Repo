@@ -3,7 +3,7 @@
 
 const BRAND_COLOR = "#47CC7B";
 const BRAND_NAME = "Family Desk";
-const LOGO_URL = "https://homemate.lovable.app/logo-family-desk-primary.png";
+const LOGO_URL = "https://familydesk.lovable.app/logo-family-desk-primary.png";
 
 export interface EmailOptions {
   recipientName?: string;
@@ -114,7 +114,7 @@ export function getEmailWrapper(content: string, options: EmailOptions = {}): st
     <div class="footer">
       <p>&copy; ${new Date().getFullYear()} ${BRAND_NAME}. All rights reserved.</p>
       <p>
-        <a href="https://homemate.lovable.app">Visit our website</a>
+        <a href="https://familydesk.lovable.app">Visit our website</a>
       </p>
     </div>
   </div>

@@ -94,7 +94,7 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    const taskUrl = `https://homemate.lovable.app/taskmaster/tasks?task=${taskId}`;
+    const taskUrl = `https://familydesk.lovable.app/taskmaster/tasks?task=${taskId}`;
     const formattedDueDate = dueDate 
       ? new Date(dueDate).toLocaleDateString("en-US", { 
           weekday: "long", 

@@ -91,7 +91,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     const emailContent = getMealPlanSummaryContent(
       weekDays,
-      "https://homemate.lovable.app/meals"
+      "https://familydesk.lovable.app/meals"
     );
 
     // Get household members to send email

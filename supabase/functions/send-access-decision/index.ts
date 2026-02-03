@@ -95,7 +95,7 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    const signupUrl = "https://homemate.lovable.app/auth";
+    const signupUrl = "https://familydesk.lovable.app/auth";
     
     let emailContent: string;
     let subject: string;
