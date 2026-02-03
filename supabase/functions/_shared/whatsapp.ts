@@ -243,7 +243,7 @@ export function generateOTP(): string {
 
 // Template names as constants for consistency
 export const WHATSAPP_TEMPLATES = {
-  OTP_VERIFICATION: "otp_verification",
+  OTP_VERIFICATION: "otp_verification_new",
   TASK_ASSIGNED: "task_assigned",
   DAILY_PLAN_SUMMARY: "daily_plan_summary",
   PANTRY_EXPIRY_ALERT: "pantry_expiry_alert",
