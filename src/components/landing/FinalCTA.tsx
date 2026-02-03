@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 
 export const FinalCTA = () => {
   return (
-    <section className="py-32 bg-gradient-to-br from-landing-bg via-landing-bg-secondary to-[hsl(40_70%_94%)] relative overflow-hidden">
+    <section className="py-32 bg-gradient-to-br from-landing-bg via-landing-bg-secondary to-[hsl(193_40%_94%)] relative overflow-hidden">
       <div className="absolute inset-0 opacity-20">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-landing-accent rounded-full blur-[150px]" />
         <div className="absolute top-1/4 right-1/4 w-[400px] h-[400px] bg-landing-highlight rounded-full blur-[120px]" />
