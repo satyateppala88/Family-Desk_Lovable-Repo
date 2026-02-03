@@ -70,7 +70,7 @@ export const CalendarHeader = ({
           </div>
         </div>
 
-        <Button onClick={onConnectCalendar}>
+        <Button onClick={onConnectCalendar} data-tour="connect-calendar">
           <Plus className="h-4 w-4 mr-2" />
           Connect Calendar
         </Button>

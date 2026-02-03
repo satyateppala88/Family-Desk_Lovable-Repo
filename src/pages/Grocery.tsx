@@ -30,10 +30,45 @@ import { usePantryStats } from "@/hooks/usePantryStats";
 import { useShoppingLists } from "@/hooks/useShoppingLists";
 import { useHousehold } from "@/hooks/useHousehold";
 import { useAuth } from "@/contexts/AuthContext";
+import { useFeatureTour } from "@/hooks/useFeatureTour";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 import type { Step } from "react-joyride";
 import type { PantryItem } from "@/hooks/usePantryItems";
+
+const groceryTourSteps: Step[] = [
+  {
+    target: "body",
+    content: "Welcome to Grocery Management! Track your pantry and shopping lists.",
+    placement: "center",
+    disableBeacon: true,
+  },
+  {
+    target: "[data-tour='ai-import']",
+    content: "Use AI to quickly import multiple pantry items by describing what you have.",
+    placement: "bottom",
+  },
+  {
+    target: "[data-tour='quick-add']",
+    content: "Quick add common Indian pantry staples with one click.",
+    placement: "bottom",
+  },
+  {
+    target: "[role='tablist']",
+    content: "Switch between Pantry to manage inventory, Shopping Lists for upcoming purchases, and Insights for usage analytics.",
+    placement: "bottom",
+  },
+  {
+    target: "[data-tour='category-grid']",
+    content: "Browse items by category. Low stock and expiring items are highlighted.",
+    placement: "top",
+  },
+  {
+    target: ".user-menu",
+    content: "Access settings and restart this tour anytime from the User Guide menu.",
+    placement: "bottom",
+  },
+];
 
 const Grocery = () => {
   const { user } = useAuth();
@@ -46,7 +81,6 @@ const Grocery = () => {
   const { stats } = usePantryStats(householdId);
   const { shoppingLists, createShoppingList, completeShoppingList, deleteShoppingList, toggleItemChecked, deleteItem } = useShoppingLists(householdId);
   
-  const [runOnboarding, setRunOnboarding] = useState(false);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [showAIImport, setShowAIImport] = useState(false);
@@ -61,6 +95,17 @@ const Grocery = () => {
   const [selectedCategoryDetail, setSelectedCategoryDetail] = useState<string | null>(null);
   const [cartItemCount, setCartItemCount] = useState(0);
 
+  // Feature-specific tour
+  const { shouldShowTour, tourChecked, markTourComplete } = useFeatureTour("grocery");
+  const [runOnboarding, setRunOnboarding] = useState(false);
+
+  // Start tour automatically if user hasn't seen it
+  useEffect(() => {
+    if (tourChecked && shouldShowTour && householdId) {
+      setTimeout(() => setRunOnboarding(true), 500);
+    }
+  }, [tourChecked, shouldShowTour, householdId]);
+
   // Initialize default categories if none exist
   useEffect(() => {
     if (householdId && categories.length === 0 && !categoriesLoading) {
@@ -69,7 +114,10 @@ const Grocery = () => {
   }, [householdId, categories.length, categoriesLoading]);
 
   const handleStartOnboarding = () => setRunOnboarding(true);
-  const handleOnboardingComplete = () => setRunOnboarding(false);
+  const handleOnboardingComplete = () => {
+    setRunOnboarding(false);
+    markTourComplete();
+  };
 
   const handleAddItem = (item: Partial<PantryItem>) => {
     if (!householdId || !user?.id) return;
@@ -372,13 +420,7 @@ const Grocery = () => {
     );
   }, [selectedCategoryDetail, pantryItems]);
 
-  const groceryTourSteps: Step[] = [
-    {
-      target: "body",
-      content: "Welcome to Grocery Management! Manage your pantry inventory and shopping lists all in one place.",
-      placement: "center",
-    },
-  ];
+  // groceryTourSteps is now defined at the top of the file
 
   if (!user || !householdId) {
     return (
@@ -405,6 +447,7 @@ const Grocery = () => {
               onClick={() => setShowAIImport(true)}
               className="gap-2 h-9"
               size="sm"
+              data-tour="ai-import"
             >
               <Sparkles className="h-4 w-4" />
               <span className="hidden xs:inline">AI Import</span>
@@ -415,6 +458,7 @@ const Grocery = () => {
               onClick={() => setShowQuickAdd(true)}
               className="gap-2 h-9"
               size="sm"
+              data-tour="quick-add"
             >
               <ListChecks className="h-4 w-4" />
               <span className="hidden xs:inline">Quick Add</span>
@@ -472,11 +516,13 @@ const Grocery = () => {
                 onAddToCart={handleAddToCart}
               />
             ) : (
-              <PantryCategoryGrid
-                categories={categories}
-                items={pantryItems}
-                onSelectCategory={handleSelectCategory}
-              />
+              <div data-tour="category-grid">
+                <PantryCategoryGrid
+                  categories={categories}
+                  items={pantryItems}
+                  onSelectCategory={handleSelectCategory}
+                />
+              </div>
             )}
             
             <FloatingCartButton
@@ -599,6 +645,7 @@ const Grocery = () => {
         run={runOnboarding} 
         onComplete={handleOnboardingComplete} 
         steps={groceryTourSteps}
+        featureName="grocery"
       />
     </div>
   );

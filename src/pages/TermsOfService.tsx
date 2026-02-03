@@ -26,7 +26,7 @@ export default function TermsOfService() {
           <CardHeader>
             <CardTitle className="text-3xl">Terms of Service</CardTitle>
             <p className="text-sm text-muted-foreground">
-              Last Updated: {new Date().toLocaleDateString('en-IN')}
+              Last Updated: February 3, 2026
             </p>
           </CardHeader>
           <CardContent className="prose prose-sm max-w-none space-y-6">
@@ -40,7 +40,7 @@ export default function TermsOfService() {
             <section>
               <h2 className="text-xl font-semibold mb-3">2. Description of Service</h2>
               <p className="text-muted-foreground">
-                Family Desk is a household management platform designed for Indian families, providing features including task management, AI-powered meal planning with Indian cuisine focus, grocery list management, calendar organization, and Google Calendar integration with AI-powered task extraction.
+                Family Desk is a household management platform designed for Indian families, providing features including task management, AI-powered meal planning with Indian cuisine focus, grocery list management, calendar organization, habit tracking, project management (Taskmaster), and Google Calendar integration with AI-powered task extraction.
               </p>
             </section>
 
@@ -149,6 +149,27 @@ export default function TermsOfService() {
                 <li>Duplicate task extraction is prevented through event tracking</li>
                 <li>AI-extracted tasks are marked with their calendar source for transparency</li>
               </ul>
+
+              <h3 className="text-lg font-medium mb-2 mt-4">5.7 Habit Tracking Features</h3>
+              <p className="text-muted-foreground mb-2">When using the Habits feature:</p>
+              <ul className="list-disc pl-6 space-y-2 text-muted-foreground">
+                <li>Personal habits are visible only to you unless marked as household habits</li>
+                <li>Household habits and completion data are visible to all household members</li>
+                <li>Leaderboards show relative performance of household members</li>
+                <li>AI coach suggestions are based on your habit patterns and may not be personalized medical advice</li>
+                <li>Habit streaks reset if you miss a scheduled day</li>
+                <li>You can delete habits and their history at any time</li>
+              </ul>
+
+              <h3 className="text-lg font-medium mb-2 mt-4">5.8 Taskmaster Project Management</h3>
+              <p className="text-muted-foreground mb-2">The Taskmaster feature provides advanced project management:</p>
+              <ul className="list-disc pl-6 space-y-2 text-muted-foreground">
+                <li>Projects and tasks are visible to all household members</li>
+                <li>AI parsing of task inputs may not always be accurate; verify extracted details</li>
+                <li>Project completion status is tracked and stored</li>
+                <li>AI-generated daily plans prioritize tasks based on multiple factors including urgency, your schedule, and task dependencies</li>
+                <li>You maintain full control over accepting or modifying AI-suggested plans</li>
+              </ul>
             </section>
 
             <section>
@@ -172,21 +193,21 @@ export default function TermsOfService() {
             <section>
               <h2 className="text-xl font-semibold mb-3">7. Household Sharing Features</h2>
               <p className="text-muted-foreground">
-                When you create or join a household, you agree to share certain data with household members. You are responsible for managing household member access and permissions. Connected calendars and extracted tasks are visible to all household members.
+                When you create or join a household, you agree to share certain data with household members. You are responsible for managing household member access and permissions. Connected calendars and extracted tasks are visible to all household members. Habit leaderboards and completion data are shared within your household.
               </p>
             </section>
 
             <section>
-              <h2 className="text-xl font-semibold mb-3">7. Intellectual Property</h2>
+              <h2 className="text-xl font-semibold mb-3">8. Intellectual Property</h2>
               <p className="text-muted-foreground">
-                The Service and its original content, features, and functionality are owned by HomeMate and are protected by international copyright, trademark, patent, trade secret, and other intellectual property laws.
+                The Service and its original content, features, and functionality are owned by Family Desk and are protected by international copyright, trademark, patent, trade secret, and other intellectual property laws.
               </p>
             </section>
 
             <section>
-              <h2 className="text-xl font-semibold mb-3">8. Limitation of Liability</h2>
+              <h2 className="text-xl font-semibold mb-3">9. Limitation of Liability</h2>
               <p className="text-muted-foreground">
-                To the maximum extent permitted by applicable law, HomeMate shall not be liable for any indirect, incidental, special, consequential, or punitive damages, or any loss of profits or revenues, whether incurred directly or indirectly.
+                To the maximum extent permitted by applicable law, Family Desk shall not be liable for any indirect, incidental, special, consequential, or punitive damages, or any loss of profits or revenues, whether incurred directly or indirectly.
               </p>
             </section>
 

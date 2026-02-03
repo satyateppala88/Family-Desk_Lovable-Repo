@@ -10,6 +10,7 @@ import { PendingInvitationBanner } from "@/components/household/PendingInvitatio
 import { useHousehold } from "@/hooks/useHousehold";
 import { useOnboardingProgress } from "@/hooks/useOnboardingProgress";
 import { useAuth } from "@/contexts/AuthContext";
+import { useFeatureTour } from "@/hooks/useFeatureTour";
 import { supabase } from "@/lib/supabase";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent } from "@/components/ui/card";
@@ -22,17 +23,66 @@ import { DashboardGroceryWidget } from "@/components/dashboard/DashboardGroceryW
 import { DashboardCalendarWidget } from "@/components/dashboard/DashboardCalendarWidget";
 import { useEnabledProducts, isProductEnabled } from "@/hooks/useEnabledProducts";
 import { ArrowRight } from "lucide-react";
+import type { Step } from "react-joyride";
+
+const dashboardTourSteps: Step[] = [
+  {
+    target: "body",
+    content: "Welcome to Family Desk! Your central hub for managing household activities.",
+    placement: "center",
+    disableBeacon: true,
+  },
+  {
+    target: ".dashboard-overview",
+    content: "This is your dashboard showing an overview of tasks, meals, calendar events, and pantry status.",
+    placement: "bottom",
+  },
+  {
+    target: "[data-tour='tasks-card']",
+    content: "Quick view of pending tasks. Click to manage all your household tasks.",
+    placement: "top",
+  },
+  {
+    target: "[data-tour='meals-card']",
+    content: "Today's meal plan at a glance. Get AI-powered meal suggestions based on your preferences.",
+    placement: "top",
+  },
+  {
+    target: "[data-tour='grocery-card']",
+    content: "Track your pantry inventory and manage shopping lists.",
+    placement: "top",
+  },
+  {
+    target: "[data-tour='calendar-card']",
+    content: "Upcoming events and deadlines from your connected calendars.",
+    placement: "top",
+  },
+  {
+    target: ".user-menu",
+    content: "Access settings, household management, and this guide anytime from the menu.",
+    placement: "bottom",
+  },
+];
 
 const Index = () => {
   const navigate = useNavigate();
   const { householdId, isLoading, onboardingCompleted } = useHousehold();
   const { user } = useAuth();
   const [household, setHousehold] = useState<Household | null>(null);
-  const [runOnboarding, setRunOnboarding] = useState(false);
-  const [onboardingChecked, setOnboardingChecked] = useState(false);
   const { data: dashboardStats, isLoading: statsLoading } = useDashboardStats(householdId);
   const { data: enabledProducts } = useEnabledProducts(householdId);
   const { data: progressData } = useOnboardingProgress(householdId);
+  
+  // Feature-specific tour
+  const { shouldShowTour, tourChecked, markTourComplete } = useFeatureTour("dashboard");
+  const [runOnboarding, setRunOnboarding] = useState(false);
+
+  // Start tour automatically if user hasn't seen it
+  useEffect(() => {
+    if (tourChecked && shouldShowTour && householdId) {
+      setTimeout(() => setRunOnboarding(true), 500);
+    }
+  }, [tourChecked, shouldShowTour, householdId]);
 
   // Safety net: redirect users without a household to setup
   useEffect(() => {
@@ -56,30 +106,13 @@ const Index = () => {
     fetchHousehold();
   }, [householdId]);
 
-  useEffect(() => {
-    const checkOnboarding = async () => {
-      if (user && !isLoading && householdId) {
-        const { data } = await supabase
-          .from("profiles")
-          .select("onboarding_completed")
-          .eq("id", user.id)
-          .single();
-        
-        if (data && !data.onboarding_completed) {
-          setTimeout(() => setRunOnboarding(true), 500);
-        }
-        setOnboardingChecked(true);
-      }
-    };
-    checkOnboarding();
-  }, [user, isLoading, householdId]);
-
   const handleStartOnboarding = () => {
     setRunOnboarding(true);
   };
 
   const handleOnboardingComplete = () => {
     setRunOnboarding(false);
+    markTourComplete();
   };
 
   if (isLoading || !household) {
@@ -102,8 +135,13 @@ const Index = () => {
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <Header onStartOnboarding={handleStartOnboarding} />
-      {onboardingChecked && (
-        <OnboardingTour run={runOnboarding} onComplete={handleOnboardingComplete} />
+      {tourChecked && (
+        <OnboardingTour 
+          run={runOnboarding} 
+          onComplete={handleOnboardingComplete} 
+          steps={dashboardTourSteps}
+          featureName="dashboard"
+        />
       )}
       <main className="flex-1 container mx-auto px-4 sm:px-6 py-4 sm:py-6 pb-20">
         {/* Development Reset Button - Only in development */}
@@ -157,19 +195,27 @@ const Index = () => {
           ) : (
             <>
               {isProductEnabled(enabledProducts, "tasks") && (
-                <DashboardTaskWidget 
-                  tasks={dashboardStats?.tasks || []} 
-                  pendingCount={dashboardStats?.pendingTasksCount || 0}
-                />
+                <div data-tour="tasks-card">
+                  <DashboardTaskWidget 
+                    tasks={dashboardStats?.tasks || []} 
+                    pendingCount={dashboardStats?.pendingTasksCount || 0}
+                  />
+                </div>
               )}
               {isProductEnabled(enabledProducts, "meals") && (
-                <DashboardMealWidget todayMeals={dashboardStats?.todayMeals || []} />
+                <div data-tour="meals-card">
+                  <DashboardMealWidget todayMeals={dashboardStats?.todayMeals || []} />
+                </div>
               )}
               {isProductEnabled(enabledProducts, "grocery") && (
-                <DashboardGroceryWidget pantryItemsCount={dashboardStats?.pantryItemsCount || 0} />
+                <div data-tour="grocery-card">
+                  <DashboardGroceryWidget pantryItemsCount={dashboardStats?.pantryItemsCount || 0} />
+                </div>
               )}
               {isProductEnabled(enabledProducts, "calendar") && (
-                <DashboardCalendarWidget />
+                <div data-tour="calendar-card">
+                  <DashboardCalendarWidget />
+                </div>
               )}
             </>
           )}
