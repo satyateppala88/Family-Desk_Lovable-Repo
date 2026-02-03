@@ -1,286 +1,435 @@
 
-# Comprehensive Optimization Plan
+# Comprehensive User Guide, Privacy Policy & Terms Update
 
-This plan addresses three key areas: **Whitespace Optimization**, **Scalability Improvements**, and **Security Fixes**.
+## Overview
+
+This plan addresses three major areas:
+1. **Feature-Specific User Guides** - Complete, per-feature onboarding tours that show only once per feature per user lifetime
+2. **Privacy Policy Updates** - Add missing features (Habits, Taskmaster) and ensure completeness
+3. **Terms of Service Updates** - Fix section numbering, add missing features
 
 ---
 
-## Part 1: Whitespace Optimization
+## Part 1: Feature-Specific User Guide System
 
-Reduce excessive spacing across the dashboard to maximize content density while maintaining readability.
+### 1.1 Database Changes
 
-### 1.1 Dashboard Layout (`src/pages/Index.tsx`)
+Create a new column in the `profiles` table to track which feature tours have been completed:
 
-| Current | Optimized |
-|---------|-----------|
-| Main container: `py-6 sm:py-8 pb-24` | `py-4 sm:py-6 pb-20` |
-| Welcome section: `mb-8 sm:mb-10` | `mb-4 sm:mb-6` |
-| Widget grid gap: `gap-4 sm:gap-6` | `gap-3 sm:gap-4` |
-
-### 1.2 Card Component (`src/components/ui/card.tsx`)
-
-| Current | Optimized |
-|---------|-----------|
-| CardHeader: `p-6` | `p-4 sm:p-5` |
-| CardContent: `px-6 pb-6` | `px-4 pb-4 sm:px-5 sm:pb-5` |
-| CardTitle: `text-2xl` | `text-lg sm:text-xl` |
-
-### 1.3 Dashboard Widgets
-
-**DashboardTaskWidget.tsx**
-- Reduce icon size: `h-6 w-6` to `h-5 w-5`
-- Tighten spacing: `space-y-3` to `space-y-2`
-- Smaller "View all" margin: `mt-4` to `mt-2`
-
-**DashboardCalendarWidget.tsx**
-- Same icon/spacing reductions
-- Reduce date heading: `text-lg` to `text-base`
-
-**DashboardMealWidget.tsx**
-- Reduce `space-y-4` to `space-y-2`
-- Smaller meal type labels
-
-**DashboardGroceryWidget.tsx**
-- Reduce stat box padding: `p-2` to `p-1.5`
-- Smaller numbers: `text-2xl` to `text-xl`
-
-### 1.4 Footer (`src/components/layout/Footer.tsx`)
-
-| Current | Optimized |
-|---------|-----------|
-| Container: `py-6` | `py-4` |
-| Gap: `gap-4` | `gap-3` |
-
-### Visual Comparison
-
-```text
-BEFORE (Current Layout)
-+----------------------------------------------------------+
-|  Header                                                   |
-+----------------------------------------------------------+
-|                                                           |
-|   [Large Welcome Section - 40px margin]                   |
-|                                                           |
-|   +------------------+    +------------------+            |
-|   |                  |    |                  |            |
-|   |  Task Widget     |    |  Meal Widget     |  (24px gap)|
-|   |  (24px padding)  |    |  (24px padding)  |            |
-|   |                  |    |                  |            |
-|   +------------------+    +------------------+            |
-|                                                           |
-+----------------------------------------------------------+
-
-AFTER (Optimized Layout)
-+----------------------------------------------------------+
-|  Header                                                   |
-+----------------------------------------------------------+
-|   [Compact Welcome - 16px margin]                         |
-|   +---------------+  +---------------+  +---------------+ |
-|   | Task Widget   |  | Meal Widget   |  | Calendar      | |
-|   | (16px pad)    |  | (16px pad)    |  | (16px pad)    | | (12px gap)
-|   +---------------+  +---------------+  +---------------+ |
-|   +---------------+                                       |
-|   | Grocery       |                                       |
-|   +---------------+                                       |
-+----------------------------------------------------------+
+```sql
+ALTER TABLE profiles 
+ADD COLUMN completed_tours JSONB DEFAULT '{}'::jsonb;
 ```
 
----
+The JSONB structure will be:
+```json
+{
+  "dashboard": true,
+  "tasks": true,
+  "meals": true,
+  "grocery": false,
+  "habits": false,
+  "calendar": false,
+  "taskmaster": false
+}
+```
 
-## Part 2: Scalability Improvements
+### 1.2 New Hook: `useFeatureTour`
 
-### 2.1 Query Pagination
-
-Add pagination to prevent hitting the 1000-row Supabase limit.
-
-**Files to Update:**
-
-| Hook | Current | Optimized |
-|------|---------|-----------|
-| `useTasks.ts` | Fetch all tasks | Add limit + pagination params |
-| `useRecipes.ts` | Fetch all recipes | Add limit + pagination params |
-| `useHabits.ts` | Fetch all habits | Add limit (habits typically < 50) |
-
-**Implementation Pattern:**
+Create `src/hooks/useFeatureTour.ts`:
 
 ```typescript
-// New pagination hook pattern
-interface PaginationParams {
-  page?: number;
-  pageSize?: number;
-}
-
-export const useTasks = (householdId: string | null, pagination?: PaginationParams) => {
-  const page = pagination?.page || 1;
-  const pageSize = pagination?.pageSize || 50;
-  const offset = (page - 1) * pageSize;
-
-  const { data, isLoading } = useQuery({
-    queryKey: ["tasks", householdId, page, pageSize],
-    queryFn: async () => {
-      const { data, error, count } = await supabase
-        .from("tasks")
-        .select("*", { count: "exact" })
-        .eq("household_id", householdId)
-        .order("created_at", { ascending: false })
-        .range(offset, offset + pageSize - 1);
-
-      return { tasks: data, totalCount: count };
-    },
-  });
-  
-  return {
-    tasks: data?.tasks || [],
-    totalCount: data?.totalCount || 0,
-    totalPages: Math.ceil((data?.totalCount || 0) / pageSize),
-    // ...
-  };
+// Manages feature-specific tour state
+export const useFeatureTour = (featureName: string) => {
+  // Fetches completed_tours from profiles
+  // Returns { shouldShowTour, markTourComplete }
+  // Only shows tour if user hasn't seen it before
 };
 ```
 
-### 2.2 React Query Caching
+### 1.3 Updated OnboardingTour Component
 
-Optimize staleTime for less frequently changing data:
+Modify `src/components/onboarding/OnboardingTour.tsx`:
+- Accept `featureName` prop to identify which feature tour
+- On completion, update only that feature in `completed_tours` JSONB
+- Remove global `onboarding_completed` update
 
-| Hook | Current staleTime | Optimized |
-|------|-------------------|-----------|
-| `useDashboardStats` | 0 (always refetch) | 30 seconds |
-| `useHouseholdPreferences` | Default | 5 minutes |
-| `useEnabledProducts` | Default | 10 minutes |
-| `useCalendarConnections` | Default | 2 minutes |
+### 1.4 Complete Tour Steps for Each Feature
 
-**Example:**
-
+**Dashboard Tour** (`src/pages/Index.tsx`):
 ```typescript
-// useDashboardStats.ts
-useQuery({
-  queryKey: ["dashboard-stats", householdId],
-  staleTime: 30 * 1000, // 30 seconds
-  refetchInterval: 60 * 1000, // Background refresh every minute
-  // ...
-});
+const dashboardTourSteps: Step[] = [
+  {
+    target: "body",
+    content: "Welcome to Family Desk! Your central hub for managing household activities.",
+    placement: "center",
+    disableBeacon: true,
+  },
+  {
+    target: ".dashboard-overview",
+    content: "This is your dashboard showing an overview of tasks, meals, calendar events, and pantry status.",
+    placement: "bottom",
+  },
+  {
+    target: ".tasks-card",
+    content: "Quick view of pending tasks. Click to manage all your household tasks.",
+    placement: "top",
+  },
+  {
+    target: ".meals-card",
+    content: "Today's meal plan at a glance. Get AI-powered meal suggestions.",
+    placement: "top",
+  },
+  {
+    target: ".grocery-card",
+    content: "Track your pantry inventory and shopping lists.",
+    placement: "top",
+  },
+  {
+    target: ".calendar-card",
+    content: "Upcoming events and deadlines from your connected calendars.",
+    placement: "top",
+  },
+  {
+    target: ".user-menu",
+    content: "Access settings, household management, and this guide anytime from the menu.",
+    placement: "bottom",
+  },
+];
 ```
 
-### 2.3 Pagination UI Component
-
-Create a reusable pagination component for Tasks/Recipes pages:
-
+**Tasks Tour** (`src/pages/Tasks.tsx`):
 ```typescript
-// src/components/ui/pagination-controls.tsx
-interface PaginationControlsProps {
-  currentPage: number;
-  totalPages: number;
-  onPageChange: (page: number) => void;
-}
+const tasksTourSteps: Step[] = [
+  {
+    target: "body",
+    content: "Welcome to Tasks! Manage household tasks for you and your family.",
+    placement: "center",
+    disableBeacon: true,
+  },
+  {
+    target: "[data-tour='add-task-button']",
+    content: "Click here to create a new task. You can set priority, due date, and assign to family members.",
+    placement: "bottom",
+  },
+  {
+    target: "[data-tour='task-filters']",
+    content: "Filter tasks by status (pending, in progress, completed) or priority level.",
+    placement: "bottom",
+  },
+  {
+    target: "[data-tour='task-card']",
+    content: "Each task card shows the title, priority, due date, and assignee. Click to edit or mark complete.",
+    placement: "top",
+  },
+];
+```
+
+**Meals Tour** (`src/pages/Meals.tsx`):
+```typescript
+const mealsTourSteps: Step[] = [
+  {
+    target: "body",
+    content: "Welcome to Meal Planning! Plan your weekly meals with AI-powered suggestions.",
+    placement: "center",
+    disableBeacon: true,
+  },
+  {
+    target: "[data-tour='generate-full-week']",
+    content: "Generate a complete week of meals based on your dietary preferences and family size.",
+    placement: "bottom",
+  },
+  {
+    target: "[data-tour='generate-remaining']",
+    content: "Or just fill in the remaining days of the current week.",
+    placement: "bottom",
+  },
+  {
+    target: "[role='tablist']",
+    content: "Switch between Calendar View to see your weekly plan, or All Recipes to browse your collection.",
+    placement: "bottom",
+  },
+  {
+    target: "[data-tour='week-navigator']",
+    content: "Navigate between weeks to plan ahead or review past meals.",
+    placement: "bottom",
+  },
+  {
+    target: "[data-tour='meal-card']",
+    content: "Click any meal to see the full recipe, rate it, or mark it as cooked to update your pantry.",
+    placement: "top",
+  },
+];
+```
+
+**Grocery Tour** (`src/pages/Grocery.tsx`):
+```typescript
+const groceryTourSteps: Step[] = [
+  {
+    target: "body",
+    content: "Welcome to Grocery Management! Track your pantry and shopping lists.",
+    placement: "center",
+    disableBeacon: true,
+  },
+  {
+    target: "[data-tour='ai-import']",
+    content: "Use AI to quickly import multiple pantry items by describing what you have.",
+    placement: "bottom",
+  },
+  {
+    target: "[data-tour='quick-add']",
+    content: "Quick add common Indian pantry staples with one click.",
+    placement: "bottom",
+  },
+  {
+    target: "[role='tablist']",
+    content: "Switch between Pantry to manage inventory, Shopping Lists for upcoming purchases, and Insights for usage analytics.",
+    placement: "bottom",
+  },
+  {
+    target: "[data-tour='category-grid']",
+    content: "Browse items by category. Low stock and expiring items are highlighted.",
+    placement: "top",
+  },
+];
+```
+
+**Habits Tour** (`src/pages/Habits.tsx`):
+```typescript
+const habitsTourSteps: Step[] = [
+  {
+    target: "body",
+    content: "Welcome to Habits! Build healthy routines for you and your family.",
+    placement: "center",
+    disableBeacon: true,
+  },
+  {
+    target: "[data-tour='view-toggle']",
+    content: "Switch between your personal habits and household-wide progress.",
+    placement: "bottom",
+  },
+  {
+    target: "[data-tour='progress-summary']",
+    content: "Track your daily progress and completion rate.",
+    placement: "bottom",
+  },
+  {
+    target: "[data-tour='habit-card']",
+    content: "Check off habits as you complete them. Track streaks and consistency.",
+    placement: "top",
+  },
+  {
+    target: "[data-tour='create-habit']",
+    content: "Create personal or household habits with reminders and target values.",
+    placement: "top",
+  },
+];
+```
+
+**Calendar Tour** (`src/pages/Calendar.tsx`):
+```typescript
+const calendarTourSteps: Step[] = [
+  {
+    target: "body",
+    content: "Welcome to Calendar! View and manage all your events in one place.",
+    placement: "center",
+    disableBeacon: true,
+  },
+  {
+    target: "[data-tour='connect-calendar']",
+    content: "Connect your Google Calendar to sync events automatically.",
+    placement: "bottom",
+  },
+  {
+    target: "[data-tour='calendar-nav']",
+    content: "Navigate between months and return to today.",
+    placement: "bottom",
+  },
+  {
+    target: "[data-tour='calendar-grid']",
+    content: "Click any event to see details. Tasks, meals, and external calendar events are color-coded.",
+    placement: "center",
+  },
+];
+```
+
+### 1.5 Files to Modify
+
+| File | Changes |
+|------|---------|
+| `src/hooks/useFeatureTour.ts` | NEW - Hook for managing feature-specific tours |
+| `src/components/onboarding/OnboardingTour.tsx` | Accept featureName, update per-feature completion |
+| `src/pages/Index.tsx` | Add complete dashboard tour steps with data-tour attributes |
+| `src/pages/Tasks.tsx` | Expand tour steps, add data-tour attributes |
+| `src/pages/Meals.tsx` | Expand tour steps, add data-tour attributes |
+| `src/pages/Grocery.tsx` | Complete tour steps, add data-tour attributes |
+| `src/pages/Habits.tsx` | Add full tour implementation |
+| `src/pages/Calendar.tsx` | Add full tour implementation |
+| Database migration | Add `completed_tours` JSONB column |
+
+---
+
+## Part 2: Privacy Policy Updates
+
+### 2.1 Add Habits Feature Section
+
+Add new section after "4. AI-Powered Features":
+
+```
+### 4.5 Habit Tracking
+
+When you use our Habits feature:
+- Personal habit data (name, frequency, completion status) is stored securely
+- Household habits are visible to all household members
+- Habit streaks and completion history are tracked to provide insights
+- AI coach suggestions are generated based on your habit patterns
+- Habit data is used to create leaderboards and progress reports
+- You can delete individual habits and their history at any time
+```
+
+### 2.2 Add Taskmaster Feature Section
+
+Add section covering project management:
+
+```
+### 4.6 Taskmaster Project Management
+
+When you use the Taskmaster feature:
+- Project names, descriptions, and status are stored
+- Tasks within projects are associated with your household
+- Natural language input is processed to extract task details
+- Project data is shared with household members
+```
+
+### 2.3 Update Section 2 (Information We Collect)
+
+Add to 2.2 Usage Information:
+```
+- Habit creation, completion logs, and streaks
+- Project and advanced task management data
+```
+
+### 2.4 Fix "Last Updated" to Static Date
+
+Change from dynamic date to static:
+```typescript
+// From:
+<p>Last Updated: {new Date().toLocaleDateString('en-IN')}</p>
+
+// To:
+<p>Last Updated: February 3, 2026</p>
 ```
 
 ---
 
-## Part 3: Security Fixes
+## Part 3: Terms of Service Updates
 
-### 3.1 Security Definer View (ERROR)
+### 3.1 Fix Section Numbering
 
-**Issue:** `calendar_connections_safe` view uses SECURITY DEFINER pattern which enforces the view creator's permissions.
+Current: Section 7 appears twice (Household Sharing Features and Intellectual Property)
 
-**Current View:**
+Fix numbering:
+- Section 7: Household Sharing Features
+- Section 8: Intellectual Property
+- Section 9: Limitation of Liability
+- Section 10: Compliance with Indian Laws (currently 10)
+- Section 11: Third-Party Services (currently 11)
+- ...continue renumbering
+
+### 3.2 Add Habits Section
+
+Add to Section 5 (Data Usage and AI Features):
+
+```
+### 5.7 Habit Tracking Features
+
+When using the Habits feature:
+- Personal habits are visible only to you unless marked as household habits
+- Household habits and completion data are visible to all household members
+- Leaderboards show relative performance of household members
+- AI coach suggestions are based on your habit patterns and may not be personalized medical advice
+- Habit streaks reset if you miss a scheduled day
+```
+
+### 3.3 Add Taskmaster Section
+
+Add to Section 5:
+
+```
+### 5.8 Taskmaster Project Management
+
+The Taskmaster feature provides advanced project management:
+- Projects and tasks are visible to all household members
+- AI parsing of task inputs may not always be accurate; verify extracted details
+- Project completion status is tracked and stored
+```
+
+### 3.4 Fix "Last Updated" to Static Date
+
+Same as Privacy Policy - use static date.
+
+---
+
+## Part 4: Files Summary
+
+### New Files
+| File | Purpose |
+|------|---------|
+| `src/hooks/useFeatureTour.ts` | Hook for per-feature tour management |
+
+### Modified Files
+| File | Changes |
+|------|---------|
+| `src/components/onboarding/OnboardingTour.tsx` | Feature-specific completion tracking |
+| `src/pages/Index.tsx` | Complete dashboard tour, data-tour attributes |
+| `src/pages/Tasks.tsx` | Complete tasks tour, data-tour attributes |
+| `src/pages/Meals.tsx` | Complete meals tour, data-tour attributes |
+| `src/pages/Grocery.tsx` | Complete grocery tour, data-tour attributes |
+| `src/pages/Habits.tsx` | Add full Habits tour |
+| `src/pages/Calendar.tsx` | Add full Calendar tour |
+| `src/pages/PrivacyPolicy.tsx` | Add Habits & Taskmaster sections, fix date |
+| `src/pages/TermsOfService.tsx` | Fix numbering, add Habits & Taskmaster, fix date |
+
+### Database Migration
 ```sql
-SELECT id, user_id, household_id, google_account_email, display_name, color, 
-       is_visible, created_at, updated_at, token_expires_at
-FROM calendar_connections cc
-WHERE EXISTS (
-  SELECT 1 FROM household_members hm
-  WHERE hm.household_id = cc.household_id AND hm.user_id = auth.uid()
-);
+-- Add completed_tours column for per-feature tour tracking
+ALTER TABLE profiles 
+ADD COLUMN completed_tours JSONB DEFAULT '{}'::jsonb;
+
+-- Comment for documentation
+COMMENT ON COLUMN profiles.completed_tours IS 
+  'Tracks which feature tours the user has completed. Keys: dashboard, tasks, meals, grocery, habits, calendar, taskmaster';
 ```
-
-**Fix Option A - Convert to RLS (Recommended):**
-1. Drop the view
-2. Create an RLS policy on `calendar_connections` table that only exposes safe columns
-3. Modify the query to exclude sensitive columns
-
-**Fix Option B - Document as Intentional:**
-The view intentionally excludes tokens (`access_token`, `refresh_token`), so this is a security-conscious design. The linter warning can be acknowledged as intentional.
-
-**Recommendation:** Option B - The current implementation is secure because:
-- Tokens are explicitly excluded from the view
-- Household membership is properly verified via `auth.uid()`
-- This is a common pattern for data masking
-
-### 3.2 RLS Policy Always True (WARN)
-
-**Investigation:** Search found no `USING (true)` or `WITH CHECK (true)` policies in migrations. This warning may be from:
-- A system-generated policy
-- An outdated policy that was later replaced
-
-**Action:** Run a database query to identify the specific policy:
-
-```sql
-SELECT schemaname, tablename, policyname, permissive, roles, cmd, qual, with_check
-FROM pg_policies 
-WHERE qual = 'true' OR with_check = 'true';
-```
-
-Then either:
-- Tighten the policy with proper user/household checks
-- Remove if redundant
-
-### 3.3 Leaked Password Protection (WARN)
-
-**Issue:** This is a Supabase Auth setting that must be enabled in the dashboard.
-
-**Action Required (Manual):**
-1. Open Lovable Cloud backend settings
-2. Navigate to Authentication > Settings > Security
-3. Enable "Leaked Password Protection"
-
-This setting checks passwords against known breached password databases during signup/password change.
 
 ---
 
-## Implementation Order
+## Part 5: Future Maintenance Process
 
-| Phase | Task | Priority | Effort |
-|-------|------|----------|--------|
-| 1 | Whitespace optimization | High | 30 min |
-| 2 | Card component tightening | High | 15 min |
-| 3 | Dashboard widget compaction | High | 30 min |
-| 4 | Footer optimization | Low | 5 min |
-| 5 | Add pagination to useTasks | Medium | 30 min |
-| 6 | Add pagination to useRecipes | Medium | 20 min |
-| 7 | Create pagination UI component | Medium | 20 min |
-| 8 | Optimize React Query caching | Medium | 15 min |
-| 9 | Document SECURITY DEFINER view | Low | 5 min |
-| 10 | Identify/fix always-true RLS | Medium | 15 min |
-| 11 | Enable Leaked Password Protection | High | Manual |
+To keep these documents updated with each feature release:
 
----
+1. **New Feature Checklist**:
+   - Add tour steps for the new feature page
+   - Add entry to `completed_tours` JSONB schema
+   - Update Privacy Policy with data collection/usage
+   - Update Terms of Service with feature terms
+   - Update "Last Updated" date
 
-## Files to Modify
+2. **Version Control**:
+   - Store policy versions with dates
+   - Consider a changelog section for major policy changes
 
-### Whitespace Optimization
-- `src/pages/Index.tsx`
-- `src/components/ui/card.tsx`
-- `src/components/dashboard/DashboardTaskWidget.tsx`
-- `src/components/dashboard/DashboardCalendarWidget.tsx`
-- `src/components/dashboard/DashboardMealWidget.tsx`
-- `src/components/dashboard/DashboardGroceryWidget.tsx`
-- `src/components/layout/Footer.tsx`
-
-### Scalability
-- `src/hooks/useTasks.ts`
-- `src/hooks/useRecipes.ts`
-- `src/hooks/useDashboardStats.ts`
-- `src/components/ui/pagination-controls.tsx` (new)
-- `src/pages/Tasks.tsx` (add pagination UI)
-
-### Security
-- Database migration for RLS policy fix
-- Manual: Enable Leaked Password Protection in backend settings
+3. **Review Triggers**:
+   - Any new AI-powered feature
+   - Any new third-party integration
+   - Any change to data collection/storage
+   - Any new sharing/collaboration feature
 
 ---
 
 ## Expected Outcomes
 
-1. **Whitespace:** ~30% more content visible above the fold
-2. **Scalability:** App can handle 10,000+ tasks/recipes without performance degradation
-3. **Security:** All linter warnings resolved, production-ready security posture
+1. **Per-Feature Tours**: Users see each feature tour only once, ever
+2. **Complete Guides**: Each feature has comprehensive onboarding
+3. **Legal Compliance**: Privacy Policy and Terms cover all features
+4. **Maintainability**: Clear process for keeping documents updated
+5. **User Experience**: Non-intrusive tours that add value
