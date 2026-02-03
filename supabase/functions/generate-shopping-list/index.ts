@@ -10,23 +10,64 @@ serve(async (req) => {
   }
 
   try {
-    const { householdId, mealPlanId, userId } = await req.json();
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+    const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
+    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     
-    if (!householdId || !mealPlanId || !userId) {
+    if (!SUPABASE_URL || !SUPABASE_ANON_KEY || !SUPABASE_SERVICE_ROLE_KEY) {
+      throw new Error("Supabase credentials not configured");
+    }
+
+    // Verify authorization header
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
       return new Response(
-        JSON.stringify({ error: "householdId, mealPlanId, and userId are required" }),
+        JSON.stringify({ error: "Missing or invalid authorization header" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Verify user token
+    const supabaseAuth = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      global: { headers: { Authorization: authHeader } },
+    });
+
+    const token = authHeader.replace("Bearer ", "");
+    const { data: { user }, error: userError } = await supabaseAuth.auth.getUser(token);
+
+    if (userError || !user) {
+      return new Response(
+        JSON.stringify({ error: "Invalid token" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const { householdId, mealPlanId } = await req.json();
+    
+    if (!householdId || !mealPlanId) {
+      return new Response(
+        JSON.stringify({ error: "householdId and mealPlanId are required" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
-    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    
-    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-      throw new Error("Supabase credentials not configured");
-    }
-
+    // Use service role for database operations
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+    // Verify user is a member of the household
+    const { data: membership, error: membershipError } = await supabase
+      .from("household_members")
+      .select("id")
+      .eq("household_id", householdId)
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (membershipError || !membership) {
+      return new Response(
+        JSON.stringify({ error: "Unauthorized - not a member of this household" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     // Fetch meal plan with recipes and ingredients
     const { data: mealPlan, error: mealPlanError } = await supabase
@@ -42,9 +83,18 @@ serve(async (req) => {
         )
       `)
       .eq("id", mealPlanId)
+      .eq("household_id", householdId)
       .single();
 
-    if (mealPlanError) throw mealPlanError;
+    if (mealPlanError) {
+      if (mealPlanError.code === "PGRST116") {
+        return new Response(
+          JSON.stringify({ error: "Meal plan not found or not accessible" }),
+          { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      throw mealPlanError;
+    }
 
     // Fetch current pantry inventory
     const { data: pantryItems, error: pantryError } = await supabase
@@ -111,7 +161,7 @@ serve(async (req) => {
       }
     });
 
-    // Create shopping list
+    // Create shopping list - use authenticated user's ID
     const { data: createdList, error: listError } = await supabase
       .from("shopping_lists")
       .insert({
@@ -119,7 +169,7 @@ serve(async (req) => {
         name: `Shopping for Week of ${new Date(mealPlan.week_start_date).toLocaleDateString()}`,
         auto_generated: true,
         meal_plan_id: mealPlanId,
-        created_by: userId,
+        created_by: user.id,
       })
       .select()
       .single();
