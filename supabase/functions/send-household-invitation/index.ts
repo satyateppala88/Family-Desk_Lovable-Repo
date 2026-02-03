@@ -88,7 +88,7 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
 
-    const acceptUrl = "https://homemate.lovable.app/dashboard";
+    const acceptUrl = "https://familydesk.lovable.app/dashboard";
     const displayRole = role === "admin" ? "Admin" : "Member";
 
     const emailContent = getHouseholdInvitationContent(

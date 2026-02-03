@@ -87,7 +87,7 @@ const handler = async (req: Request): Promise<Response> => {
 
         const emailContent = getPantryAlertContent(
           formattedItems,
-          "https://homemate.lovable.app/grocery"
+          "https://familydesk.lovable.app/grocery"
         );
 
         // Send to each member
@@ -144,7 +144,7 @@ const handler = async (req: Request): Promise<Response> => {
                 [
                   items.length.toString(),
                   itemsList,
-                  "https://homemate.lovable.app/grocery"
+                  "https://familydesk.lovable.app/grocery"
                 ]
               );
 

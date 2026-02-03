@@ -87,7 +87,7 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    const reviewUrl = "https://homemate.lovable.app/household/members";
+    const reviewUrl = "https://familydesk.lovable.app/household/members";
     const emailsSent: string[] = [];
 
     for (const admin of admins) {

@@ -3,7 +3,7 @@
 
 const ALLOWED_ORIGINS = [
   // Production URLs
-  "https://homemate.lovable.app",
+  "https://familydesk.lovable.app",
   "https://id-preview--3862c136-3a8c-457d-b6f8-bd3654b2fade.lovable.app",
   // Lovable editor
   "https://lovable.app",

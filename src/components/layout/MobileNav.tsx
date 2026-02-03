@@ -59,7 +59,7 @@ export const MobileNav = () => {
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border z-50">
-      <div className="flex justify-around items-center h-16">
+      <div className="flex items-center h-16 overflow-x-auto scrollbar-hide px-1">
         {navItems.map(({ path, icon: Icon, label, hasSubmenu }) => {
           const isActive = hasSubmenu 
             ? isTaskmasterRoute
@@ -73,7 +73,7 @@ export const MobileNav = () => {
                 <DropdownMenuTrigger asChild>
                   <button
                     className={cn(
-                      "flex flex-col items-center justify-center flex-1 h-full transition-all duration-200",
+                      "flex flex-col items-center justify-center min-w-[64px] flex-1 h-full transition-all duration-200 px-2",
                       isActive
                         ? "text-accent font-semibold"
                         : "text-muted-foreground hover:text-primary"
@@ -112,7 +112,7 @@ export const MobileNav = () => {
               key={path}
               to={path}
               className={cn(
-                "flex flex-col items-center justify-center flex-1 h-full transition-all duration-200",
+                "flex flex-col items-center justify-center min-w-[64px] flex-1 h-full transition-all duration-200 px-2",
                 isActive
                   ? "text-accent font-semibold"
                   : "text-muted-foreground hover:text-primary"
