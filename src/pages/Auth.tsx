@@ -336,11 +336,13 @@ const Auth = () => {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
-            <img 
-              src={logoImg} 
-              alt="Family Desk Logo" 
-              className="h-16 w-16 object-contain"
-            />
+            <div className="bg-white/90 rounded-2xl p-3 shadow-lg ring-1 ring-black/5">
+              <img 
+                src={logoImg} 
+                alt="Family Desk Logo" 
+                className="h-24 w-24 sm:h-28 sm:w-28 object-contain"
+              />
+            </div>
           </div>
           <CardTitle className="text-3xl">Family Desk</CardTitle>
           <CardDescription>

@@ -145,11 +145,13 @@ const VerifyEmail = () => {
       <Card className="w-full max-w-md text-center">
         <CardHeader>
           <div className="flex justify-center mb-4">
-            <img 
-              src={logoImg} 
-              alt="Family Desk Logo" 
-              className="h-16 w-16 object-contain"
-            />
+            <div className="bg-white/90 rounded-2xl p-3 shadow-lg ring-1 ring-black/5">
+              <img 
+                src={logoImg} 
+                alt="Family Desk Logo" 
+                className="h-20 w-20 object-contain"
+              />
+            </div>
           </div>
           {renderContent()}
         </CardHeader>
