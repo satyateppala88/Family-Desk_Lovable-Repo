@@ -65,8 +65,9 @@ export const useDashboardStats = (householdId: string | null) => {
       };
     },
     enabled: !!householdId,
-    refetchOnMount: 'always',
-    staleTime: 0,
+    staleTime: 30 * 1000, // 30 seconds - reduce API calls
+    refetchInterval: 60 * 1000, // Background refresh every minute
+    refetchOnMount: true,
     refetchOnWindowFocus: true,
   });
 };

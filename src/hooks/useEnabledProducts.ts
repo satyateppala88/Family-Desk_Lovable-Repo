@@ -19,6 +19,7 @@ export const useEnabledProducts = (householdId: string | null) => {
       return data.map((p) => p.product_name as ProductName);
     },
     enabled: !!householdId,
+    staleTime: 10 * 60 * 1000, // 10 minutes - enabled products rarely change
   });
 };
 

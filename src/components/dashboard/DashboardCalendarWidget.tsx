@@ -16,48 +16,48 @@ export const DashboardCalendarWidget = () => {
   return (
     <Link to="/calendar" className="block hover:scale-[1.02] transition-transform">
       <Card className="h-full border-l-4 border-l-[hsl(215,75%,55%)]">
-        <CardHeader>
+        <CardHeader className="pb-2">
           <CardTitle className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <CalendarIcon className="h-6 w-6" style={{ color: "hsl(215, 75%, 55%)" }} />
+            <div className="flex items-center gap-2">
+              <CalendarIcon className="h-5 w-5" style={{ color: "hsl(215, 75%, 55%)" }} />
               <span>Calendar</span>
             </div>
             {hasConnections && events && events.length > 0 && (
-              <span className="text-sm font-normal text-muted-foreground">
+              <span className="text-xs font-normal text-muted-foreground">
                 {events.length} event{events.length !== 1 ? "s" : ""} today
               </span>
             )}
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3">
+        <CardContent className="space-y-2">
           <div>
-            <p className="text-sm text-muted-foreground">Today</p>
-            <p className="text-lg font-semibold mt-1">{today}</p>
+            <p className="text-xs text-muted-foreground">Today</p>
+            <p className="text-base font-semibold">{today}</p>
           </div>
 
           {isLoading ? (
-            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-10 w-full" />
           ) : !hasConnections ? (
-            <p className="text-sm text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               Connect your Google Calendar to see events
             </p>
           ) : events && events.length > 0 ? (
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               {events.slice(0, 3).map((event) => (
                 <div
                   key={event.id}
-                  className="flex items-center gap-2 text-sm"
+                  className="flex items-center gap-1.5 text-sm"
                 >
                   <div
-                    className="w-2 h-2 rounded-full flex-shrink-0"
+                    className="w-1.5 h-1.5 rounded-full flex-shrink-0"
                     style={{ backgroundColor: event.color }}
                   />
-                  <span className="font-medium">
+                  <span className="font-medium text-xs">
                     {event.allDay
                       ? "All day"
                       : format(parseISO(event.start), "h:mm a")}
                   </span>
-                  <span className="truncate text-muted-foreground">
+                  <span className="truncate text-xs text-muted-foreground">
                     {event.title}
                   </span>
                 </div>
@@ -69,12 +69,12 @@ export const DashboardCalendarWidget = () => {
               )}
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               No events scheduled for today
             </p>
           )}
 
-          <div className="flex items-center justify-end gap-1 text-sm font-medium mt-4" style={{ color: "hsl(215, 75%, 55%)" }}>
+          <div className="flex items-center justify-end gap-1 text-sm font-medium mt-2" style={{ color: "hsl(215, 75%, 55%)" }}>
             View calendar <ArrowRight className="h-4 w-4" />
           </div>
         </CardContent>

@@ -3,25 +3,36 @@ import { supabase } from "@/lib/supabase";
 import { Recipe } from "@/types/database";
 import { useToast } from "@/hooks/use-toast";
 
-export const useRecipes = (householdId: string | null) => {
+interface PaginationParams {
+  page?: number;
+  pageSize?: number;
+}
+
+export const useRecipes = (householdId: string | null, pagination?: PaginationParams) => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  const { data: recipes, isLoading } = useQuery({
-    queryKey: ["recipes", householdId],
-    queryFn: async () => {
-      if (!householdId) return [];
+  const page = pagination?.page || 1;
+  const pageSize = pagination?.pageSize || 50;
+  const offset = (page - 1) * pageSize;
 
-      const { data, error } = await (supabase as any)
+  const { data, isLoading } = useQuery({
+    queryKey: ["recipes", householdId, page, pageSize],
+    queryFn: async () => {
+      if (!householdId) return { recipes: [], totalCount: 0 };
+
+      const { data, error, count } = await (supabase as any)
         .from("recipes")
-        .select("*")
+        .select("*", { count: "exact" })
         .eq("household_id", householdId)
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false })
+        .range(offset, offset + pageSize - 1);
 
       if (error) throw error;
-      return data as Recipe[];
+      return { recipes: data as Recipe[], totalCount: count || 0 };
     },
     enabled: !!householdId,
+    staleTime: 60 * 1000, // 1 minute
   });
 
   const createRecipe = useMutation({
@@ -105,7 +116,11 @@ export const useRecipes = (householdId: string | null) => {
   });
 
   return {
-    recipes: recipes || [],
+    recipes: data?.recipes || [],
+    totalCount: data?.totalCount || 0,
+    totalPages: Math.ceil((data?.totalCount || 0) / pageSize),
+    currentPage: page,
+    pageSize,
     isLoading,
     createRecipe,
     updateRecipe,

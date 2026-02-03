@@ -31,16 +31,16 @@ export const DashboardTaskWidget = ({ tasks, pendingCount }: DashboardTaskWidget
   return (
     <Link to="/tasks" className="block hover:scale-[1.02] transition-transform">
       <Card className="h-full border-l-4 border-l-primary">
-        <CardHeader>
+        <CardHeader className="pb-2">
           <CardTitle className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <CheckSquare className="h-6 w-6 text-primary" />
+            <div className="flex items-center gap-2">
+              <CheckSquare className="h-5 w-5 text-primary" />
               <span>Tasks</span>
             </div>
-            <Badge variant="secondary">{pendingCount} pending</Badge>
+            <Badge variant="secondary" className="text-xs">{pendingCount} pending</Badge>
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3">
+        <CardContent className="space-y-2">
           {tasks.length === 0 ? (
             <p className="text-sm text-muted-foreground">No pending tasks</p>
           ) : (
@@ -49,8 +49,8 @@ export const DashboardTaskWidget = ({ tasks, pendingCount }: DashboardTaskWidget
                 <div key={task.id} className="flex items-start justify-between gap-2">
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{task.title}</p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <Badge variant={getPriorityColor(task.priority)} className="text-xs">
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <Badge variant={getPriorityColor(task.priority)} className="text-xs px-1.5 py-0">
                         {task.priority}
                       </Badge>
                       {task.due_date && (
@@ -62,7 +62,7 @@ export const DashboardTaskWidget = ({ tasks, pendingCount }: DashboardTaskWidget
                   </div>
                 </div>
               ))}
-              <div className="flex items-center justify-end gap-1 text-sm text-primary font-medium mt-4">
+              <div className="flex items-center justify-end gap-1 text-sm text-primary font-medium mt-2">
                 View all <ArrowRight className="h-4 w-4" />
               </div>
             </>

@@ -35,25 +35,36 @@ async function sendTaskAssignmentEmail(
   }
 }
 
-export const useTasks = (householdId: string | null) => {
+interface PaginationParams {
+  page?: number;
+  pageSize?: number;
+}
+
+export const useTasks = (householdId: string | null, pagination?: PaginationParams) => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  
+  const page = pagination?.page || 1;
+  const pageSize = pagination?.pageSize || 50;
+  const offset = (page - 1) * pageSize;
 
-  const { data: tasks, isLoading } = useQuery({
-    queryKey: ["tasks", householdId],
+  const { data, isLoading } = useQuery({
+    queryKey: ["tasks", householdId, page, pageSize],
     queryFn: async () => {
-      if (!householdId) return [];
+      if (!householdId) return { tasks: [], totalCount: 0 };
 
-      const { data, error } = await (supabase as any)
+      const { data, error, count } = await (supabase as any)
         .from("tasks")
-        .select("*")
+        .select("*", { count: "exact" })
         .eq("household_id", householdId)
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false })
+        .range(offset, offset + pageSize - 1);
 
       if (error) throw error;
-      return data as Task[];
+      return { tasks: data as Task[], totalCount: count || 0 };
     },
     enabled: !!householdId,
+    staleTime: 30 * 1000, // 30 seconds
   });
 
   const createTask = useMutation({
@@ -174,7 +185,11 @@ export const useTasks = (householdId: string | null) => {
   });
 
   return {
-    tasks: tasks || [],
+    tasks: data?.tasks || [],
+    totalCount: data?.totalCount || 0,
+    totalPages: Math.ceil((data?.totalCount || 0) / pageSize),
+    currentPage: page,
+    pageSize,
     isLoading,
     createTask,
     updateTask,
