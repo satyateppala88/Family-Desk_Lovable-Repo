@@ -1,435 +1,241 @@
 
-# Comprehensive User Guide, Privacy Policy & Terms Update
+# Logo Color Theme Integration Plan
 
 ## Overview
 
-This plan addresses three major areas:
-1. **Feature-Specific User Guides** - Complete, per-feature onboarding tours that show only once per feature per user lifetime
-2. **Privacy Policy Updates** - Add missing features (Habits, Taskmaster) and ensure completeness
-3. **Terms of Service Updates** - Fix section numbering, add missing features
+Update the entire application color theme to match the Family Desk logo colors. The logo features a rich palette of dark teal, warm orange, cyan, forest green, and golden accents that will replace the current warm coral theme.
 
 ---
 
-## Part 1: Feature-Specific User Guide System
+## Color Palette Extracted from Logo
 
-### 1.1 Database Changes
+### Primary Colors (from logo analysis)
 
-Create a new column in the `profiles` table to track which feature tours have been completed:
+| Color | Hex Approx | HSL Value | Usage |
+|-------|------------|-----------|-------|
+| Dark Teal | #0F3A4D | `196 65% 18%` | Landing page background, dark mode base |
+| Warm Orange | #E67E4A | `20 76% 60%` | Primary accent, CTAs |
+| Cyan/Teal | #4BA8C2 | `193 52% 52%` | Secondary accent, highlights |
+| Forest Green | #4CAF7C | `145 42% 49%` | Success states, positive indicators |
+| Golden Yellow | #F5B43D | `40 90% 60%` | Accent highlights, emphasis |
+| Sky Blue | #6DC1D9 | `193 55% 64%` | Light accents, hover states |
 
-```sql
-ALTER TABLE profiles 
-ADD COLUMN completed_tours JSONB DEFAULT '{}'::jsonb;
+---
+
+## Part 1: CSS Variables Update (`src/index.css`)
+
+### Light Mode Changes
+
+```text
+Current                          New (Logo-based)
+--primary: 11 76% 63% (coral)    --primary: 20 76% 60% (warm orange)
+--accent: 28 89% 67% (gold)      --accent: 193 52% 52% (cyan/teal)
+--success: 145 60% 51%           --success: 145 42% 49% (forest green)
+
+--landing-bg: 36 100% 98%        --landing-bg: 196 60% 96% (teal-tinted cream)
+--landing-accent: 11 76% 63%     --landing-accent: 20 76% 60% (warm orange)
+--landing-highlight: 145 60% 51% --landing-highlight: 193 52% 52% (cyan)
+--landing-secondary: 28 89% 67%  --landing-secondary: 40 90% 60% (golden)
 ```
 
-The JSONB structure will be:
-```json
-{
-  "dashboard": true,
-  "tasks": true,
-  "meals": true,
-  "grocery": false,
-  "habits": false,
-  "calendar": false,
-  "taskmaster": false
+### Dark Mode Changes
+
+```text
+Current                          New (Logo-based)
+--background: 24 12% 10%         --background: 196 65% 10% (dark teal)
+--primary: 15 85% 73%            --primary: 20 80% 70% (soft orange)
+--accent: 45 96% 55%             --accent: 193 60% 60% (bright cyan)
+
+--landing-bg: 24 12% 10%         --landing-bg: 196 65% 12% (deep teal)
+--landing-accent: 15 85% 73%     --landing-accent: 20 80% 70% (soft orange)
+```
+
+### Complete Variable Map
+
+```css
+/* Light Mode - Logo-based theme */
+:root {
+  --background: 196 40% 98%;     /* Slight teal tint */
+  --foreground: 196 50% 12%;     /* Dark teal text */
+  
+  --primary: 20 76% 60%;          /* Warm Orange */
+  --primary-foreground: 0 0% 100%;
+  
+  --accent: 193 52% 52%;          /* Cyan/Teal */
+  --accent-foreground: 0 0% 100%;
+  
+  --success: 145 42% 49%;         /* Forest Green */
+  --warning: 40 90% 60%;          /* Golden Yellow */
+  
+  /* Landing page */
+  --landing-bg: 196 40% 98%;
+  --landing-bg-secondary: 196 35% 95%;
+  --landing-accent: 20 76% 60%;   /* Orange */
+  --landing-highlight: 193 52% 52%; /* Cyan */
+  --landing-secondary: 40 90% 60%; /* Gold */
+  
+  /* Charts - Logo palette */
+  --chart-1: 20 76% 60%;          /* Orange */
+  --chart-2: 193 52% 52%;         /* Cyan */
+  --chart-3: 145 42% 49%;         /* Green */
+  --chart-4: 40 90% 60%;          /* Gold */
+  --chart-5: 196 50% 30%;         /* Dark Teal */
+}
+
+/* Dark Mode - Logo-based theme */
+.dark {
+  --background: 196 50% 10%;      /* Deep teal */
+  --foreground: 196 20% 95%;
+  
+  --card: 196 45% 14%;
+  
+  --primary: 20 80% 70%;          /* Soft Orange */
+  --accent: 193 60% 60%;          /* Bright Cyan */
+  
+  --landing-bg: 196 50% 10%;      /* Matches logo background */
+  --landing-accent: 20 80% 70%;
 }
 ```
 
-### 1.2 New Hook: `useFeatureTour`
+---
 
-Create `src/hooks/useFeatureTour.ts`:
+## Part 2: Update Logo Asset
 
-```typescript
-// Manages feature-specific tour state
-export const useFeatureTour = (featureName: string) => {
-  // Fetches completed_tours from profiles
-  // Returns { shouldShowTour, markTourComplete }
-  // Only shows tour if user hasn't seen it before
-};
+### Copy New Logo to Assets
+
+Copy the uploaded logo to replace the current one:
+
+```
+user-uploads://ElevenLabs_image_nano-banana-pro_design_a_log...
+  → src/assets/logo-family-desk-primary.png
 ```
 
-### 1.3 Updated OnboardingTour Component
+This automatically updates all logo usages since they import from this path.
 
-Modify `src/components/onboarding/OnboardingTour.tsx`:
-- Accept `featureName` prop to identify which feature tour
-- On completion, update only that feature in `completed_tours` JSONB
-- Remove global `onboarding_completed` update
+---
 
-### 1.4 Complete Tour Steps for Each Feature
+## Part 3: Landing Page Component Updates
 
-**Dashboard Tour** (`src/pages/Index.tsx`):
-```typescript
-const dashboardTourSteps: Step[] = [
-  {
-    target: "body",
-    content: "Welcome to Family Desk! Your central hub for managing household activities.",
-    placement: "center",
-    disableBeacon: true,
-  },
-  {
-    target: ".dashboard-overview",
-    content: "This is your dashboard showing an overview of tasks, meals, calendar events, and pantry status.",
-    placement: "bottom",
-  },
-  {
-    target: ".tasks-card",
-    content: "Quick view of pending tasks. Click to manage all your household tasks.",
-    placement: "top",
-  },
-  {
-    target: ".meals-card",
-    content: "Today's meal plan at a glance. Get AI-powered meal suggestions.",
-    placement: "top",
-  },
-  {
-    target: ".grocery-card",
-    content: "Track your pantry inventory and shopping lists.",
-    placement: "top",
-  },
-  {
-    target: ".calendar-card",
-    content: "Upcoming events and deadlines from your connected calendars.",
-    placement: "top",
-  },
-  {
-    target: ".user-menu",
-    content: "Access settings, household management, and this guide anytime from the menu.",
-    placement: "bottom",
-  },
-];
-```
-
-**Tasks Tour** (`src/pages/Tasks.tsx`):
-```typescript
-const tasksTourSteps: Step[] = [
-  {
-    target: "body",
-    content: "Welcome to Tasks! Manage household tasks for you and your family.",
-    placement: "center",
-    disableBeacon: true,
-  },
-  {
-    target: "[data-tour='add-task-button']",
-    content: "Click here to create a new task. You can set priority, due date, and assign to family members.",
-    placement: "bottom",
-  },
-  {
-    target: "[data-tour='task-filters']",
-    content: "Filter tasks by status (pending, in progress, completed) or priority level.",
-    placement: "bottom",
-  },
-  {
-    target: "[data-tour='task-card']",
-    content: "Each task card shows the title, priority, due date, and assignee. Click to edit or mark complete.",
-    placement: "top",
-  },
-];
-```
-
-**Meals Tour** (`src/pages/Meals.tsx`):
-```typescript
-const mealsTourSteps: Step[] = [
-  {
-    target: "body",
-    content: "Welcome to Meal Planning! Plan your weekly meals with AI-powered suggestions.",
-    placement: "center",
-    disableBeacon: true,
-  },
-  {
-    target: "[data-tour='generate-full-week']",
-    content: "Generate a complete week of meals based on your dietary preferences and family size.",
-    placement: "bottom",
-  },
-  {
-    target: "[data-tour='generate-remaining']",
-    content: "Or just fill in the remaining days of the current week.",
-    placement: "bottom",
-  },
-  {
-    target: "[role='tablist']",
-    content: "Switch between Calendar View to see your weekly plan, or All Recipes to browse your collection.",
-    placement: "bottom",
-  },
-  {
-    target: "[data-tour='week-navigator']",
-    content: "Navigate between weeks to plan ahead or review past meals.",
-    placement: "bottom",
-  },
-  {
-    target: "[data-tour='meal-card']",
-    content: "Click any meal to see the full recipe, rate it, or mark it as cooked to update your pantry.",
-    placement: "top",
-  },
-];
-```
-
-**Grocery Tour** (`src/pages/Grocery.tsx`):
-```typescript
-const groceryTourSteps: Step[] = [
-  {
-    target: "body",
-    content: "Welcome to Grocery Management! Track your pantry and shopping lists.",
-    placement: "center",
-    disableBeacon: true,
-  },
-  {
-    target: "[data-tour='ai-import']",
-    content: "Use AI to quickly import multiple pantry items by describing what you have.",
-    placement: "bottom",
-  },
-  {
-    target: "[data-tour='quick-add']",
-    content: "Quick add common Indian pantry staples with one click.",
-    placement: "bottom",
-  },
-  {
-    target: "[role='tablist']",
-    content: "Switch between Pantry to manage inventory, Shopping Lists for upcoming purchases, and Insights for usage analytics.",
-    placement: "bottom",
-  },
-  {
-    target: "[data-tour='category-grid']",
-    content: "Browse items by category. Low stock and expiring items are highlighted.",
-    placement: "top",
-  },
-];
-```
-
-**Habits Tour** (`src/pages/Habits.tsx`):
-```typescript
-const habitsTourSteps: Step[] = [
-  {
-    target: "body",
-    content: "Welcome to Habits! Build healthy routines for you and your family.",
-    placement: "center",
-    disableBeacon: true,
-  },
-  {
-    target: "[data-tour='view-toggle']",
-    content: "Switch between your personal habits and household-wide progress.",
-    placement: "bottom",
-  },
-  {
-    target: "[data-tour='progress-summary']",
-    content: "Track your daily progress and completion rate.",
-    placement: "bottom",
-  },
-  {
-    target: "[data-tour='habit-card']",
-    content: "Check off habits as you complete them. Track streaks and consistency.",
-    placement: "top",
-  },
-  {
-    target: "[data-tour='create-habit']",
-    content: "Create personal or household habits with reminders and target values.",
-    placement: "top",
-  },
-];
-```
-
-**Calendar Tour** (`src/pages/Calendar.tsx`):
-```typescript
-const calendarTourSteps: Step[] = [
-  {
-    target: "body",
-    content: "Welcome to Calendar! View and manage all your events in one place.",
-    placement: "center",
-    disableBeacon: true,
-  },
-  {
-    target: "[data-tour='connect-calendar']",
-    content: "Connect your Google Calendar to sync events automatically.",
-    placement: "bottom",
-  },
-  {
-    target: "[data-tour='calendar-nav']",
-    content: "Navigate between months and return to today.",
-    placement: "bottom",
-  },
-  {
-    target: "[data-tour='calendar-grid']",
-    content: "Click any event to see details. Tasks, meals, and external calendar events are color-coded.",
-    placement: "center",
-  },
-];
-```
-
-### 1.5 Files to Modify
+### Files to Update
 
 | File | Changes |
 |------|---------|
-| `src/hooks/useFeatureTour.ts` | NEW - Hook for managing feature-specific tours |
-| `src/components/onboarding/OnboardingTour.tsx` | Accept featureName, update per-feature completion |
-| `src/pages/Index.tsx` | Add complete dashboard tour steps with data-tour attributes |
-| `src/pages/Tasks.tsx` | Expand tour steps, add data-tour attributes |
-| `src/pages/Meals.tsx` | Expand tour steps, add data-tour attributes |
-| `src/pages/Grocery.tsx` | Complete tour steps, add data-tour attributes |
-| `src/pages/Habits.tsx` | Add full tour implementation |
-| `src/pages/Calendar.tsx` | Add full tour implementation |
-| Database migration | Add `completed_tours` JSONB column |
+| `Hero.tsx` | Update gradient colors to use teal tones |
+| `FeaturesScroll.tsx` | Already uses CSS variables - no changes needed |
+| `Benefits.tsx` | Already uses CSS variables - no changes needed |
+| `HowItWorks.tsx` | Already uses CSS variables - no changes needed |
+| `FinalCTA.tsx` | Update gradient to match new palette |
 
----
+### Hero.tsx Gradient Update
 
-## Part 2: Privacy Policy Updates
-
-### 2.1 Add Habits Feature Section
-
-Add new section after "4. AI-Powered Features":
-
-```
-### 4.5 Habit Tracking
-
-When you use our Habits feature:
-- Personal habit data (name, frequency, completion status) is stored securely
-- Household habits are visible to all household members
-- Habit streaks and completion history are tracked to provide insights
-- AI coach suggestions are generated based on your habit patterns
-- Habit data is used to create leaderboards and progress reports
-- You can delete individual habits and their history at any time
+```text
+Current: from-landing-bg via-landing-bg-secondary to-[hsl(40_70%_94%)]
+New:     from-landing-bg via-landing-bg-secondary to-[hsl(193_40%_94%)]
+         (Cyan-tinted instead of yellow-tinted)
 ```
 
-### 2.2 Add Taskmaster Feature Section
+### FinalCTA.tsx Gradient Update
 
-Add section covering project management:
-
-```
-### 4.6 Taskmaster Project Management
-
-When you use the Taskmaster feature:
-- Project names, descriptions, and status are stored
-- Tasks within projects are associated with your household
-- Natural language input is processed to extract task details
-- Project data is shared with household members
-```
-
-### 2.3 Update Section 2 (Information We Collect)
-
-Add to 2.2 Usage Information:
-```
-- Habit creation, completion logs, and streaks
-- Project and advanced task management data
-```
-
-### 2.4 Fix "Last Updated" to Static Date
-
-Change from dynamic date to static:
-```typescript
-// From:
-<p>Last Updated: {new Date().toLocaleDateString('en-IN')}</p>
-
-// To:
-<p>Last Updated: February 3, 2026</p>
+```text
+Current: to-[hsl(40_70%_94%)]
+New:     to-[hsl(193_40%_94%)]
 ```
 
 ---
 
-## Part 3: Terms of Service Updates
+## Part 4: App-Wide Theme Consistency
 
-### 3.1 Fix Section Numbering
+### Header (`src/components/layout/Header.tsx`)
 
-Current: Section 7 appears twice (Household Sharing Features and Intellectual Property)
+The header uses `text-primary` which will automatically pick up the new orange color. No code changes needed.
 
-Fix numbering:
-- Section 7: Household Sharing Features
-- Section 8: Intellectual Property
-- Section 9: Limitation of Liability
-- Section 10: Compliance with Indian Laws (currently 10)
-- Section 11: Third-Party Services (currently 11)
-- ...continue renumbering
+### Dashboard Widgets
 
-### 3.2 Add Habits Section
+All dashboard widgets use semantic colors (`primary`, `accent`, `success`) which will automatically update via CSS variables.
 
-Add to Section 5 (Data Usage and AI Features):
+### Cards and UI Components
 
-```
-### 5.7 Habit Tracking Features
-
-When using the Habits feature:
-- Personal habits are visible only to you unless marked as household habits
-- Household habits and completion data are visible to all household members
-- Leaderboards show relative performance of household members
-- AI coach suggestions are based on your habit patterns and may not be personalized medical advice
-- Habit streaks reset if you miss a scheduled day
-```
-
-### 3.3 Add Taskmaster Section
-
-Add to Section 5:
-
-```
-### 5.8 Taskmaster Project Management
-
-The Taskmaster feature provides advanced project management:
-- Projects and tasks are visible to all household members
-- AI parsing of task inputs may not always be accurate; verify extracted details
-- Project completion status is tracked and stored
-```
-
-### 3.4 Fix "Last Updated" to Static Date
-
-Same as Privacy Policy - use static date.
+Already use theme variables - will automatically reflect new palette.
 
 ---
 
-## Part 4: Files Summary
+## Part 5: Color Harmony Verification
 
-### New Files
-| File | Purpose |
-|------|---------|
-| `src/hooks/useFeatureTour.ts` | Hook for per-feature tour management |
+### Landing Page Color Flow
 
-### Modified Files
-| File | Changes |
-|------|---------|
-| `src/components/onboarding/OnboardingTour.tsx` | Feature-specific completion tracking |
-| `src/pages/Index.tsx` | Complete dashboard tour, data-tour attributes |
-| `src/pages/Tasks.tsx` | Complete tasks tour, data-tour attributes |
-| `src/pages/Meals.tsx` | Complete meals tour, data-tour attributes |
-| `src/pages/Grocery.tsx` | Complete grocery tour, data-tour attributes |
-| `src/pages/Habits.tsx` | Add full Habits tour |
-| `src/pages/Calendar.tsx` | Add full Calendar tour |
-| `src/pages/PrivacyPolicy.tsx` | Add Habits & Taskmaster sections, fix date |
-| `src/pages/TermsOfService.tsx` | Fix numbering, add Habits & Taskmaster, fix date |
+```text
++-------------------------------------------------------+
+|  [Logo] Family Desk (orange text)      [Orange CTA]   |  Nav
++-------------------------------------------------------+
+|                                                        |
+|   "Manage Your Household"                              |
+|   "With Elegance" (ORANGE accent)                      |
+|                                                        |
+|   [Orange CTA] [Cyan outline button]                   |  Hero
+|                                                        |
+|   (Soft cyan + orange gradient orbs in background)    |
+|                                                        |
++-------------------------------------------------------+
+|   Feature Cards (Orange icons, Cyan highlights)        |  Features
++-------------------------------------------------------+
+|   Benefit Cards (Green success icons)                  |  Benefits
++-------------------------------------------------------+
+|   Steps (Orange numbered icons)                        |  How It Works
++-------------------------------------------------------+
+|   [Orange CTA button]                                  |  Final CTA
++-------------------------------------------------------+
+```
 
-### Database Migration
-```sql
--- Add completed_tours column for per-feature tour tracking
-ALTER TABLE profiles 
-ADD COLUMN completed_tours JSONB DEFAULT '{}'::jsonb;
+### Dashboard Color Flow
 
--- Comment for documentation
-COMMENT ON COLUMN profiles.completed_tours IS 
-  'Tracks which feature tours the user has completed. Keys: dashboard, tasks, meals, grocery, habits, calendar, taskmaster';
+```text
++-------------------+-------------------+
+|  Tasks (Orange)   |  Meals (Cyan)     |
++-------------------+-------------------+
+|  Calendar (Teal)  |  Grocery (Green)  |
++-------------------+-------------------+
 ```
 
 ---
 
-## Part 5: Future Maintenance Process
+## Files to Modify
 
-To keep these documents updated with each feature release:
+| File | Type | Changes |
+|------|------|---------|
+| `src/index.css` | CSS | Update ~40 CSS variables for both light and dark modes |
+| `src/assets/logo-family-desk-primary.png` | Asset | Replace with new logo |
+| `src/components/landing/Hero.tsx` | React | Update gradient to cyan-tinted |
+| `src/components/landing/FinalCTA.tsx` | React | Update gradient to cyan-tinted |
 
-1. **New Feature Checklist**:
-   - Add tour steps for the new feature page
-   - Add entry to `completed_tours` JSONB schema
-   - Update Privacy Policy with data collection/usage
-   - Update Terms of Service with feature terms
-   - Update "Last Updated" date
+---
 
-2. **Version Control**:
-   - Store policy versions with dates
-   - Consider a changelog section for major policy changes
+## Visual Before/After
 
-3. **Review Triggers**:
-   - Any new AI-powered feature
-   - Any new third-party integration
-   - Any change to data collection/storage
-   - Any new sharing/collaboration feature
+### Before (Current Warm Coral Theme)
+
+```text
+Primary: Coral (#E07A5F)
+Accent: Soft Gold (#F4A261)  
+Background: Warm Cream (#FFFBF5)
+```
+
+### After (Logo-based Teal + Orange Theme)
+
+```text
+Primary: Warm Orange (#E67E4A)
+Accent: Cyan/Teal (#4BA8C2)
+Secondary: Golden (#F5B43D)
+Success: Forest Green (#4CAF7C)
+Background: Teal-tinted White (#F8FCFD)
+Dark Background: Deep Teal (#152B35)
+```
 
 ---
 
 ## Expected Outcomes
 
-1. **Per-Feature Tours**: Users see each feature tour only once, ever
-2. **Complete Guides**: Each feature has comprehensive onboarding
-3. **Legal Compliance**: Privacy Policy and Terms cover all features
-4. **Maintainability**: Clear process for keeping documents updated
-5. **User Experience**: Non-intrusive tours that add value
+1. **Brand Consistency**: App colors match the logo perfectly
+2. **Distinctive Identity**: Teal+Orange creates a unique, memorable palette
+3. **Better Dark Mode**: Deep teal background matches logo's dark aesthetic
+4. **Visual Hierarchy**: Orange for actions, Cyan for information, Green for success
+5. **Accessibility**: All color combinations maintain WCAG contrast ratios
