@@ -42,7 +42,9 @@ export const Header = ({ onStartOnboarding }: HeaderProps) => {
     <header className="sticky top-0 z-40 bg-background border-b border-border">
       <div className="container flex h-16 items-center justify-between px-4">
         <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate("/dashboard")}>
-          <img src={logoImg} alt="Family Desk Logo" className="h-12 w-12 object-contain" />
+          <div className="bg-white/80 rounded-lg p-1.5 shadow-sm">
+            <img src={logoImg} alt="Family Desk Logo" className="h-10 w-10 object-contain" />
+          </div>
           <h1 className="text-xl font-bold text-primary">Family Desk</h1>
         </div>
 
