@@ -34,6 +34,13 @@ const Index = () => {
   const { data: enabledProducts } = useEnabledProducts(householdId);
   const { data: progressData } = useOnboardingProgress(householdId);
 
+  // Safety net: redirect users without a household to setup
+  useEffect(() => {
+    if (!isLoading && !householdId && user) {
+      navigate("/household-setup");
+    }
+  }, [isLoading, householdId, user, navigate]);
+
   useEffect(() => {
     const fetchHousehold = async () => {
       if (householdId) {
