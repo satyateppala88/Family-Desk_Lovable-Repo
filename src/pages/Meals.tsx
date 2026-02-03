@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Header } from "@/components/layout/Header";
 import { MobileNav } from "@/components/layout/MobileNav";
 import { RecipeDetailDialog } from "@/components/meals/RecipeDetailDialog";
@@ -11,6 +11,7 @@ import { useHousehold } from "@/hooks/useHousehold";
 import { useRecipes } from "@/hooks/useRecipes";
 import { useMealPlans } from "@/hooks/useMealPlans";
 import { useRecipeRating } from "@/hooks/useRecipeRating";
+import { useFeatureTour } from "@/hooks/useFeatureTour";
 import { Recipe } from "@/types/database";
 import { Button } from "@/components/ui/button";
 import { Sparkles, Calendar, LayoutGrid } from "lucide-react";
@@ -25,6 +26,40 @@ import { useRegenerateMeals } from "@/hooks/useRegenerateMeals";
 import { RecipeCard } from "@/components/meals/RecipeCard";
 import { OnboardingTour } from "@/components/onboarding/OnboardingTour";
 import type { Step } from "react-joyride";
+
+const mealsTourSteps: Step[] = [
+  {
+    target: "body",
+    content: "Welcome to Meal Planning! Plan your weekly meals with AI-powered suggestions.",
+    placement: "center",
+    disableBeacon: true,
+  },
+  {
+    target: "[data-tour='generate-full-week']",
+    content: "Generate a complete week of meals based on your dietary preferences and family size.",
+    placement: "bottom",
+  },
+  {
+    target: "[data-tour='generate-remaining']",
+    content: "Or just fill in the remaining days of the current week.",
+    placement: "bottom",
+  },
+  {
+    target: "[role='tablist']",
+    content: "Switch between Calendar View to see your weekly plan, or All Recipes to browse your collection.",
+    placement: "bottom",
+  },
+  {
+    target: "[data-tour='week-navigator']",
+    content: "Navigate between weeks to plan ahead or review past meals.",
+    placement: "bottom",
+  },
+  {
+    target: ".user-menu",
+    content: "Access settings and restart this tour anytime from the User Guide menu.",
+    placement: "bottom",
+  },
+];
 
 const Meals = () => {
   const { user } = useAuth();
@@ -42,28 +77,23 @@ const Meals = () => {
   const calendarRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const regenerateMeals = useRegenerateMeals();
+  
+  // Feature-specific tour
+  const { shouldShowTour, tourChecked, markTourComplete } = useFeatureTour("meals");
   const [runOnboarding, setRunOnboarding] = useState(false);
 
-  const handleStartOnboarding = () => setRunOnboarding(true);
-  const handleOnboardingComplete = () => setRunOnboarding(false);
+  // Start tour automatically if user hasn't seen it
+  useEffect(() => {
+    if (tourChecked && shouldShowTour && householdId) {
+      setTimeout(() => setRunOnboarding(true), 500);
+    }
+  }, [tourChecked, shouldShowTour, householdId]);
 
-  const mealsTourSteps: Step[] = [
-    {
-      target: "body",
-      content: "Welcome to Meal Planning! Let me show you how to manage your weekly meals.",
-      placement: "center",
-    },
-    {
-      target: ".bg-gradient-to-r",
-      content: "Use this button to generate a full week of AI-powered meal suggestions based on your preferences.",
-      placement: "bottom",
-    },
-    {
-      target: "[role='tablist']",
-      content: "Switch between Calendar View to see your weekly plan, or All Recipes to browse your recipe collection.",
-      placement: "bottom",
-    },
-  ];
+  const handleStartOnboarding = () => setRunOnboarding(true);
+  const handleOnboardingComplete = () => {
+    setRunOnboarding(false);
+    markTourComplete();
+  };
 
   const currentWeekPlan = mealPlans[0] || null;
 
@@ -200,6 +230,7 @@ const Meals = () => {
               disabled={generatingPlan}
               variant="outline"
               className="flex-1 sm:flex-none"
+              data-tour="generate-remaining"
             >
               <Sparkles className="w-4 h-4 sm:mr-2" />
               <span className="hidden sm:inline">{generatingPlan ? "Generating..." : "Rest of Week"}</span>
@@ -210,6 +241,7 @@ const Meals = () => {
               size="sm"
               disabled={generatingPlan}
               className="bg-gradient-to-r from-purple-500 to-pink-500 flex-1 sm:flex-none"
+              data-tour="generate-full-week"
             >
               <Sparkles className="w-4 h-4 sm:mr-2" />
               <span className="hidden sm:inline">{generatingPlan ? "Generating..." : "Full Week"}</span>
@@ -238,11 +270,13 @@ const Meals = () => {
           </TabsList>
 
           <TabsContent value="calendar" className="space-y-6">
-            <WeekNavigator
-              weekStart={currentWeekStart}
-              onPrevious={() => setCurrentWeekStart(addWeeks(currentWeekStart, -1))}
-              onNext={() => setCurrentWeekStart(addWeeks(currentWeekStart, 1))}
-            />
+            <div data-tour="week-navigator">
+              <WeekNavigator
+                weekStart={currentWeekStart}
+                onPrevious={() => setCurrentWeekStart(addWeeks(currentWeekStart, -1))}
+                onNext={() => setCurrentWeekStart(addWeeks(currentWeekStart, 1))}
+              />
+            </div>
             
             <div ref={calendarRef}>
               <MealPlanCalendar
@@ -331,6 +365,7 @@ const Meals = () => {
         run={runOnboarding} 
         onComplete={handleOnboardingComplete} 
         steps={mealsTourSteps}
+        featureName="meals"
       />
     </div>
   );

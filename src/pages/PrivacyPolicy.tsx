@@ -26,7 +26,7 @@ export default function PrivacyPolicy() {
           <CardHeader>
             <CardTitle className="text-3xl">Privacy Policy</CardTitle>
             <p className="text-sm text-muted-foreground">
-              Last Updated: {new Date().toLocaleDateString('en-IN')}
+              Last Updated: February 3, 2026
             </p>
           </CardHeader>
           <CardContent className="prose prose-sm max-w-none space-y-6">
@@ -77,6 +77,8 @@ export default function PrivacyPolicy() {
                 <li>Calendar events and reminders</li>
                 <li>AI meal planning queries and preferences</li>
                 <li>Natural language task inputs and scheduling preferences</li>
+                <li>Habit creation, completion logs, and streaks</li>
+                <li>Project and advanced task management data (Taskmaster)</li>
               </ul>
 
               <h3 className="text-lg font-medium mb-2 mt-4">2.3 Google Calendar Data</h3>
@@ -178,6 +180,27 @@ export default function PrivacyPolicy() {
                 <li>Extracted tasks are linked to their source calendar events for transparency</li>
                 <li>You can delete any AI-extracted task without affecting the original calendar event</li>
               </ul>
+
+              <h3 className="text-lg font-medium mb-2 mt-4">4.5 Habit Tracking</h3>
+              <p className="text-muted-foreground mb-2">When you use our Habits feature:</p>
+              <ul className="list-disc pl-6 space-y-2 text-muted-foreground">
+                <li>Personal habit data (name, frequency, completion status) is stored securely</li>
+                <li>Household habits are visible to all household members</li>
+                <li>Habit streaks and completion history are tracked to provide insights</li>
+                <li>AI coach suggestions are generated based on your habit patterns</li>
+                <li>Habit data is used to create leaderboards and progress reports</li>
+                <li>You can delete individual habits and their history at any time</li>
+              </ul>
+
+              <h3 className="text-lg font-medium mb-2 mt-4">4.6 Taskmaster Project Management</h3>
+              <p className="text-muted-foreground mb-2">When you use the Taskmaster feature:</p>
+              <ul className="list-disc pl-6 space-y-2 text-muted-foreground">
+                <li>Project names, descriptions, and status are stored</li>
+                <li>Tasks within projects are associated with your household</li>
+                <li>Natural language input is processed to extract task details</li>
+                <li>Project data is shared with household members</li>
+                <li>AI-generated daily plans prioritize tasks based on urgency and your schedule</li>
+              </ul>
             </section>
 
             <section>
@@ -266,6 +289,8 @@ export default function PrivacyPolicy() {
                 <li>Calendar OAuth tokens are deleted when you disconnect your Google Calendar</li>
                 <li>Tasks extracted from calendar retain their source reference for your records</li>
                 <li>AI-generated content (meal plans, task suggestions) is deleted with your account</li>
+                <li>Habit logs and streaks are deleted with your account</li>
+                <li>Project data and Taskmaster history are deleted with your account</li>
               </ul>
             </section>
 

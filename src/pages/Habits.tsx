@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { Users, User } from "lucide-react";
 import { Header } from "@/components/layout/Header";
@@ -6,11 +6,13 @@ import { MobileNav } from "@/components/layout/MobileNav";
 import { Footer } from "@/components/layout/Footer";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { OnboardingTour } from "@/components/onboarding/OnboardingTour";
 import { useHousehold } from "@/hooks/useHousehold";
 import { useHabits } from "@/hooks/useHabits";
 import { useHouseholdHabitStats } from "@/hooks/useHouseholdHabitStats";
 import { useHabitLeaderboard } from "@/hooks/useHabitLeaderboard";
 import { useHouseholdMembers } from "@/hooks/useHouseholdMembers";
+import { useFeatureTour } from "@/hooks/useFeatureTour";
 import { HabitCard } from "@/components/habits/HabitCard";
 import { HabitCreateDialog } from "@/components/habits/HabitCreateDialog";
 import { HabitCoachInsight } from "@/components/habits/HabitCoachInsight";
@@ -18,6 +20,41 @@ import { HouseholdHabitSummary } from "@/components/habits/HouseholdHabitSummary
 import { MemberProgressCard } from "@/components/habits/MemberProgressCard";
 import { HabitLeaderboard } from "@/components/habits/HabitLeaderboard";
 import { HabitAssignmentType, HabitFrequencyType } from "@/types/habits";
+import type { Step } from "react-joyride";
+
+const habitsTourSteps: Step[] = [
+  {
+    target: "body",
+    content: "Welcome to Habits! Build healthy routines for you and your family.",
+    placement: "center",
+    disableBeacon: true,
+  },
+  {
+    target: "[data-tour='view-toggle']",
+    content: "Switch between your personal habits and household-wide progress.",
+    placement: "bottom",
+  },
+  {
+    target: "[data-tour='progress-summary']",
+    content: "Track your daily progress and completion rate.",
+    placement: "bottom",
+  },
+  {
+    target: "[data-tour='habit-list']",
+    content: "Check off habits as you complete them. Track streaks and consistency.",
+    placement: "top",
+  },
+  {
+    target: "[data-tour='create-habit']",
+    content: "Create personal or household habits with reminders and target values.",
+    placement: "top",
+  },
+  {
+    target: ".user-menu",
+    content: "Access settings and restart this tour anytime from the User Guide menu.",
+    placement: "bottom",
+  },
+];
 
 const Habits = () => {
   const [view, setView] = useState<"personal" | "household">("personal");
@@ -27,6 +64,23 @@ const Habits = () => {
   const { data: householdStats, isLoading: statsLoading } = useHouseholdHabitStats(householdId);
   const { data: leaderboardEntries, isLoading: leaderboardLoading } = useHabitLeaderboard(householdId);
   const { data: householdMembers } = useHouseholdMembers(householdId);
+
+  // Feature-specific tour
+  const { shouldShowTour, tourChecked, markTourComplete } = useFeatureTour("habits");
+  const [runOnboarding, setRunOnboarding] = useState(false);
+
+  // Start tour automatically if user hasn't seen it
+  useEffect(() => {
+    if (tourChecked && shouldShowTour && householdId) {
+      setTimeout(() => setRunOnboarding(true), 500);
+    }
+  }, [tourChecked, shouldShowTour, householdId]);
+
+  const handleStartOnboarding = () => setRunOnboarding(true);
+  const handleOnboardingComplete = () => {
+    setRunOnboarding(false);
+    markTourComplete();
+  };
 
   const today = new Date();
   const completedCount = todaysHabits.filter((h) => h.todayLog?.completed).length;
@@ -70,7 +124,7 @@ const Habits = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      <Header />
+      <Header onStartOnboarding={handleStartOnboarding} />
 
       <main className="flex-1 container max-w-4xl mx-auto px-4 py-6 pb-24">
         {/* Header with date and view toggle */}
@@ -81,25 +135,27 @@ const Habits = () => {
               {format(today, "EEEE, MMMM d, yyyy")}
             </p>
           </div>
-          <Tabs value={view} onValueChange={(v) => setView(v as "personal" | "household")}>
-            <TabsList>
-              <TabsTrigger value="personal" className="gap-2">
-                <User className="h-4 w-4" />
-                Me
-              </TabsTrigger>
-              <TabsTrigger value="household" className="gap-2">
-                <Users className="h-4 w-4" />
-                Household
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
+          <div data-tour="view-toggle">
+            <Tabs value={view} onValueChange={(v) => setView(v as "personal" | "household")}>
+              <TabsList>
+                <TabsTrigger value="personal" className="gap-2">
+                  <User className="h-4 w-4" />
+                  Me
+                </TabsTrigger>
+                <TabsTrigger value="household" className="gap-2">
+                  <Users className="h-4 w-4" />
+                  Household
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
         </div>
 
         {view === "personal" ? (
           /* Personal View */
           <div className="space-y-4">
             {/* Progress summary */}
-            <div className="flex items-center justify-between p-4 bg-accent/10 rounded-lg">
+            <div className="flex items-center justify-between p-4 bg-accent/10 rounded-lg" data-tour="progress-summary">
               <div>
                 <p className="text-sm text-muted-foreground">Today's Progress</p>
                 <p className="text-2xl font-bold">
@@ -139,7 +195,7 @@ const Habits = () => {
                 </p>
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-3" data-tour="habit-list">
                 {todaysHabits.map((habit) => (
                   <HabitCard
                     key={habit.id}
@@ -152,11 +208,13 @@ const Habits = () => {
             )}
 
             {/* Create Habit Dialog */}
-            <HabitCreateDialog
-              onCreateHabit={handleCreateHabit}
-              isLoading={createHabit.isPending}
-              householdMembers={householdMembers}
-            />
+            <div data-tour="create-habit">
+              <HabitCreateDialog
+                onCreateHabit={handleCreateHabit}
+                isLoading={createHabit.isPending}
+                householdMembers={householdMembers}
+              />
+            </div>
           </div>
         ) : (
           /* Household View */
@@ -212,6 +270,13 @@ const Habits = () => {
 
       <Footer />
       <MobileNav />
+
+      <OnboardingTour
+        run={runOnboarding}
+        onComplete={handleOnboardingComplete}
+        steps={habitsTourSteps}
+        featureName="habits"
+      />
     </div>
   );
 };
