@@ -26,7 +26,10 @@ export const PendingInvitationBanner = () => {
         .eq("status", "pending")
         .eq("invitation_type", "admin_invite");
 
-      if (error) throw error;
+      if (error) {
+        console.warn("Failed to fetch invitations:", error.message);
+        return [];
+      }
       return data || [];
     },
     enabled: !!user?.email,
