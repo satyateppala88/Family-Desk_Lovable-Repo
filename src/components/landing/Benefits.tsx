@@ -30,9 +30,9 @@ const benefits = [
 
 export const Benefits = () => {
   return (
-    <section className="py-24 bg-landing-bg-secondary">
+    <section className="py-16 bg-landing-bg-secondary">
       <div className="container mx-auto px-4">
-        <h2 className="text-4xl md:text-5xl font-bold text-center mb-20 text-landing-text">
+        <h2 className="text-4xl md:text-5xl font-bold text-center mb-12 text-landing-text">
           Why Choose Family Desk?
         </h2>
 
@@ -40,7 +40,7 @@ export const Benefits = () => {
           {benefits.map((benefit, index) => (
             <div
               key={index}
-              className="group p-8 rounded-2xl bg-white border border-landing-accent/20 hover:border-landing-accent transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-xl"
+              className="group p-6 rounded-2xl bg-white border border-landing-accent/10 hover:border-landing-accent transition-all duration-300 hover:translate-y-[-2px] shadow-sm hover:shadow-md"
             >
               <div className="w-14 h-14 mb-6 rounded-xl bg-landing-highlight/20 flex items-center justify-center group-hover:bg-landing-highlight/30 transition-colors">
                 <benefit.icon className="w-7 h-7 text-landing-highlight" strokeWidth={1.5} />

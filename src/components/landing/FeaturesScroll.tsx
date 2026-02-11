@@ -35,8 +35,8 @@ const features = [
 
 export const FeaturesScroll = () => {
   return (
-    <section id="features" className="py-24 bg-landing-bg-secondary">
-      <div className="container mx-auto px-4 mb-16">
+    <section id="features" className="py-16 bg-landing-bg-secondary">
+      <div className="container mx-auto px-4 mb-12">
         <h2 className="text-4xl md:text-5xl font-bold text-center mb-4 text-landing-text">
           Everything Your Household Needs
         </h2>
@@ -50,7 +50,7 @@ export const FeaturesScroll = () => {
           {features.map((feature, index) => (
             <div
               key={index}
-              className="group relative w-80 md:w-96 p-8 rounded-2xl bg-white border border-landing-accent/20 hover:border-landing-accent transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-xl"
+              className="group relative w-80 md:w-96 p-6 rounded-2xl bg-white border border-landing-accent/10 hover:border-landing-accent transition-all duration-300 hover:translate-y-[-2px] shadow-sm hover:shadow-md"
               style={{
                 animationDelay: `${index * 0.1}s`,
               }}
@@ -58,8 +58,8 @@ export const FeaturesScroll = () => {
               <div className="absolute inset-0 bg-gradient-to-br from-landing-accent/5 to-landing-highlight/5 opacity-0 group-hover:opacity-100 transition-opacity rounded-2xl" />
               
               <div className="relative z-10">
-                <div className="w-16 h-16 mb-6 rounded-xl bg-landing-accent/10 flex items-center justify-center group-hover:bg-landing-accent/20 transition-colors">
-                  <feature.icon className="w-8 h-8 text-landing-accent" strokeWidth={1.5} />
+                <div className="w-12 h-12 mb-6 rounded-xl bg-landing-accent/10 flex items-center justify-center group-hover:bg-landing-accent/20 transition-colors">
+                  <feature.icon className="w-6 h-6 text-landing-accent" strokeWidth={1.5} />
                 </div>
                 
                 <h3 className="text-2xl font-bold mb-4 text-landing-text">{feature.title}</h3>

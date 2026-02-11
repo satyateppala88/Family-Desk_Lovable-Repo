@@ -23,13 +23,13 @@ const steps = [
 
 export const HowItWorks = () => {
   return (
-    <section id="how-it-works" className="py-24 bg-white">
+    <section id="how-it-works" className="py-16 bg-white">
       <div className="container mx-auto px-4">
-        <h2 className="text-4xl md:text-5xl font-bold text-center mb-20 text-landing-text">
+        <h2 className="text-4xl md:text-5xl font-bold text-center mb-12 text-landing-text">
           How It Works
         </h2>
 
-        <div className="max-w-5xl mx-auto space-y-16">
+        <div className="max-w-5xl mx-auto space-y-12">
           {steps.map((step, index) => (
             <div
               key={index}
@@ -37,11 +37,11 @@ export const HowItWorks = () => {
             >
               <div className="flex-shrink-0">
                 <div className="relative">
-                  <span className="text-[120px] font-bold text-landing-accent/20 leading-none">
+                  <span className="text-[100px] font-bold text-landing-accent/20 leading-none">
                     {step.number}
                   </span>
-                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-20 h-20 rounded-2xl bg-landing-accent text-white flex items-center justify-center group-hover:scale-110 transition-all shadow-lg group-hover:shadow-xl">
-                    <step.icon className="w-10 h-10" strokeWidth={1.5} />
+                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-16 h-16 rounded-2xl bg-landing-accent text-white flex items-center justify-center group-hover:scale-110 transition-all shadow-sm group-hover:shadow-md">
+                    <step.icon className="w-8 h-8" strokeWidth={1.5} />
                   </div>
                 </div>
               </div>

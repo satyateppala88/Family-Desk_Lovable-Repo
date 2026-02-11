@@ -31,12 +31,12 @@ export const LandingNav = () => {
       }`}
     >
       <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between h-20">
-          <Link to="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-            <div className="bg-white/80 rounded-lg p-1.5 shadow-sm">
-              <img src={logoImg} alt="Family Desk Logo" className="h-10 w-10 object-contain" />
+        <div className="flex items-center justify-between h-16">
+          <Link to="/" className="flex items-center gap-2.5 hover:opacity-80 transition-opacity">
+            <div className="bg-white/80 rounded-lg p-1 shadow-sm">
+              <img src={logoImg} alt="Family Desk Logo" className="h-8 w-8 object-contain" />
             </div>
-            <span className="text-2xl font-bold text-landing-text">Family Desk</span>
+            <span className="text-xl font-bold text-landing-text">Family Desk</span>
           </Link>
 
           {/* Desktop Navigation */}
