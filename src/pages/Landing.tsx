@@ -8,18 +8,12 @@ import { Footer } from "@/components/layout/Footer";
 
 const Landing = () => {
   return (
-    <div className="landing-page bg-landing-bg text-landing-text overflow-x-hidden">
+    <div className="bg-background text-foreground overflow-x-hidden">
       <LandingNav />
       <Hero />
       <FeaturesScroll />
       <HowItWorks />
       <Benefits />
-      <div className="bg-landing-highlight py-8">
-        <div className="container mx-auto px-4 text-center">
-          <h2 className="text-2xl md:text-3xl font-bold mb-4 text-white">🇮🇳 Made for Indian Households</h2>
-          <p className="text-lg text-white/90">Regional recipes • Local festivals • Indian family dynamics</p>
-        </div>
-      </div>
       <FinalCTA />
       <Footer />
     </div>

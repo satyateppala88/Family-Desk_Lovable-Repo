@@ -3,169 +3,138 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system - Warm Minimal Theme
-   All colors MUST be HSL.
-*/
+/* Apple-inspired minimalist design system — all colors HSL */
 
 @layer base {
   :root {
-    /* Core colors - Logo-based Teal + Orange Theme */
-    --background: 196 40% 98%;
-    --foreground: 196 50% 12%;
+    --background: 0 0% 100%;
+    --foreground: 0 0% 11%;
 
     --card: 0 0% 100%;
-    --card-foreground: 196 50% 12%;
+    --card-foreground: 0 0% 11%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 196 50% 12%;
+    --popover-foreground: 0 0% 11%;
 
-    --primary: 20 76% 60%;
+    --primary: 0 0% 11%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 196 30% 92%;
-    --secondary-foreground: 196 50% 15%;
+    --secondary: 0 0% 96%;
+    --secondary-foreground: 0 0% 11%;
 
-    --muted: 196 25% 92%;
-    --muted-foreground: 196 20% 45%;
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 53%;
 
-    --accent: 193 52% 52%;
+    --accent: 210 10% 45%;
     --accent-foreground: 0 0% 100%;
 
-    --success: 145 42% 49%;
+    --success: 145 30% 50%;
     --success-foreground: 0 0% 100%;
 
-    --warning: 40 90% 60%;
-    --warning-foreground: 196 50% 12%;
+    --warning: 40 70% 55%;
+    --warning-foreground: 0 0% 11%;
 
-    --destructive: 0 72% 50%;
+    --destructive: 0 60% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 196 25% 90%;
-    --input: 196 25% 88%;
-    --ring: 20 76% 60%;
+    --border: 0 0% 93%;
+    --input: 0 0% 90%;
+    --ring: 210 10% 45%;
 
-    --radius: 0.75rem;
+    --radius: 0.5rem;
 
-    /* Landing page - Teal + Orange */
-    --landing-bg: 196 40% 98%;
-    --landing-bg-secondary: 196 35% 95%;
-    --landing-text: 196 50% 12%;
-    --landing-text-muted: 196 20% 45%;
-    --landing-accent: 20 76% 60%;
-    --landing-accent-glow: 20 80% 70%;
-    --landing-highlight: 193 52% 52%;
-    --landing-secondary: 40 90% 60%;
-
-    /* Sidebar - Teal Theme */
-    --sidebar-background: 196 40% 98%;
-    --sidebar-foreground: 196 50% 12%;
-    --sidebar-primary: 20 76% 60%;
+    /* Sidebar */
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 0 0% 11%;
+    --sidebar-primary: 0 0% 11%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 196 30% 92%;
-    --sidebar-accent-foreground: 196 50% 15%;
-    --sidebar-border: 196 25% 90%;
-    --sidebar-ring: 20 76% 60%;
-    --sidebar: 196 40% 98%;
+    --sidebar-accent: 0 0% 95%;
+    --sidebar-accent-foreground: 0 0% 11%;
+    --sidebar-border: 0 0% 93%;
+    --sidebar-ring: 210 10% 45%;
+    --sidebar: 0 0% 98%;
 
-    /* Charts - Logo palette */
-    --chart-1: 20 76% 60%;
-    --chart-2: 193 52% 52%;
-    --chart-3: 145 42% 49%;
-    --chart-4: 40 90% 60%;
-    --chart-5: 196 50% 30%;
+    /* Charts — monochrome + one accent */
+    --chart-1: 0 0% 11%;
+    --chart-2: 210 10% 45%;
+    --chart-3: 0 0% 53%;
+    --chart-4: 0 0% 73%;
+    --chart-5: 0 0% 87%;
 
-    /* Typography */
-    --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
-    --font-serif: 'Lora', ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif;
-    --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
-
-    /* Shadows - Teal tinted */
-    --shadow-2xs: 0 1px 2px 0px hsl(196 50% 12% / 0.03);
-    --shadow-xs: 0 1px 3px 0px hsl(196 50% 12% / 0.04);
-    --shadow-sm: 0 1px 3px 0px hsl(196 50% 12% / 0.06), 0 1px 2px -1px hsl(196 50% 12% / 0.06);
-    --shadow: 0 1px 3px 0px hsl(196 50% 12% / 0.08), 0 1px 2px -1px hsl(196 50% 12% / 0.06);
-    --shadow-md: 0 2px 6px 0px hsl(196 50% 12% / 0.08), 0 2px 4px -1px hsl(196 50% 12% / 0.06);
-    --shadow-lg: 0 4px 12px 0px hsl(196 50% 12% / 0.08), 0 4px 6px -1px hsl(196 50% 12% / 0.06);
-    --shadow-xl: 0 8px 24px 0px hsl(196 50% 12% / 0.1), 0 8px 10px -1px hsl(196 50% 12% / 0.06);
-    --shadow-2xl: 0 16px 48px 0px hsl(196 50% 12% / 0.12);
+    /* Shadows — ultra-subtle */
+    --shadow-2xs: 0 1px 2px 0 hsl(0 0% 0% / 0.02);
+    --shadow-xs: 0 1px 3px 0 hsl(0 0% 0% / 0.03);
+    --shadow-sm: 0 2px 8px 0 hsl(0 0% 0% / 0.04);
+    --shadow-md: 0 4px 16px 0 hsl(0 0% 0% / 0.06);
+    --shadow-lg: 0 8px 24px 0 hsl(0 0% 0% / 0.08);
+    --shadow-xl: 0 12px 32px 0 hsl(0 0% 0% / 0.1);
+    --shadow-2xl: 0 16px 48px 0 hsl(0 0% 0% / 0.12);
 
     --tracking-normal: 0em;
     --spacing: 0.25rem;
   }
 
   .dark {
-    /* Core colors - Logo-based Dark Teal Theme */
-    --background: 196 50% 10%;
-    --foreground: 196 20% 95%;
+    --background: 0 0% 11%;
+    --foreground: 0 0% 96%;
 
-    --card: 196 45% 14%;
-    --card-foreground: 196 20% 95%;
+    --card: 0 0% 15%;
+    --card-foreground: 0 0% 96%;
 
-    --popover: 196 45% 16%;
-    --popover-foreground: 196 20% 95%;
+    --popover: 0 0% 17%;
+    --popover-foreground: 0 0% 96%;
 
-    --primary: 20 80% 70%;
-    --primary-foreground: 196 50% 10%;
+    --primary: 0 0% 96%;
+    --primary-foreground: 0 0% 11%;
 
-    --secondary: 196 35% 22%;
-    --secondary-foreground: 196 20% 92%;
+    --secondary: 0 0% 20%;
+    --secondary-foreground: 0 0% 90%;
 
-    --muted: 196 35% 22%;
-    --muted-foreground: 196 15% 60%;
+    --muted: 0 0% 20%;
+    --muted-foreground: 0 0% 60%;
 
-    --accent: 193 60% 60%;
-    --accent-foreground: 196 50% 10%;
+    --accent: 210 12% 58%;
+    --accent-foreground: 0 0% 11%;
 
-    --success: 145 50% 55%;
-    --success-foreground: 196 50% 10%;
+    --success: 145 35% 55%;
+    --success-foreground: 0 0% 11%;
 
-    --warning: 40 90% 60%;
-    --warning-foreground: 196 50% 10%;
+    --warning: 40 70% 55%;
+    --warning-foreground: 0 0% 11%;
 
-    --destructive: 0 84% 60%;
+    --destructive: 0 70% 55%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 196 30% 25%;
-    --input: 196 30% 25%;
-    --ring: 20 80% 70%;
+    --border: 0 0% 22%;
+    --input: 0 0% 22%;
+    --ring: 210 12% 58%;
 
-    /* Landing page - Dark Teal */
-    --landing-bg: 196 50% 10%;
-    --landing-bg-secondary: 196 45% 14%;
-    --landing-text: 196 20% 95%;
-    --landing-text-muted: 196 15% 60%;
-    --landing-accent: 20 80% 70%;
-    --landing-accent-glow: 20 85% 80%;
-    --landing-highlight: 193 60% 60%;
-    --landing-secondary: 40 90% 60%;
+    /* Sidebar — dark */
+    --sidebar-background: 0 0% 11%;
+    --sidebar-foreground: 0 0% 96%;
+    --sidebar-primary: 0 0% 96%;
+    --sidebar-primary-foreground: 0 0% 11%;
+    --sidebar-accent: 0 0% 18%;
+    --sidebar-accent-foreground: 0 0% 90%;
+    --sidebar-border: 0 0% 22%;
+    --sidebar-ring: 210 12% 58%;
+    --sidebar: 0 0% 11%;
 
-    /* Sidebar - Dark Teal */
-    --sidebar-background: 196 50% 10%;
-    --sidebar-foreground: 196 20% 95%;
-    --sidebar-primary: 20 80% 70%;
-    --sidebar-primary-foreground: 196 50% 10%;
-    --sidebar-accent: 196 40% 18%;
-    --sidebar-accent-foreground: 196 20% 92%;
-    --sidebar-border: 196 30% 25%;
-    --sidebar-ring: 20 80% 70%;
-    --sidebar: 196 50% 10%;
+    /* Charts — dark */
+    --chart-1: 0 0% 96%;
+    --chart-2: 210 12% 58%;
+    --chart-3: 0 0% 60%;
+    --chart-4: 0 0% 40%;
+    --chart-5: 0 0% 28%;
 
-    /* Charts - Logo dark palette */
-    --chart-1: 20 80% 70%;
-    --chart-2: 193 60% 60%;
-    --chart-3: 145 50% 55%;
-    --chart-4: 40 90% 60%;
-    --chart-5: 196 25% 55%;
-
-    /* Shadows - Dark mode */
-    --shadow-2xs: 0 1px 2px 0px hsl(0 0% 0% / 0.1);
-    --shadow-xs: 0 1px 3px 0px hsl(0 0% 0% / 0.15);
-    --shadow-sm: 0 1px 3px 0px hsl(0 0% 0% / 0.2), 0 1px 2px -1px hsl(0 0% 0% / 0.15);
-    --shadow: 0 1px 3px 0px hsl(0 0% 0% / 0.2), 0 1px 2px -1px hsl(0 0% 0% / 0.15);
-    --shadow-md: 0 2px 6px 0px hsl(0 0% 0% / 0.2), 0 2px 4px -1px hsl(0 0% 0% / 0.15);
-    --shadow-lg: 0 4px 12px 0px hsl(0 0% 0% / 0.25), 0 4px 6px -1px hsl(0 0% 0% / 0.15);
-    --shadow-xl: 0 8px 24px 0px hsl(0 0% 0% / 0.3), 0 8px 10px -1px hsl(0 0% 0% / 0.15);
-    --shadow-2xl: 0 16px 48px 0px hsl(0 0% 0% / 0.35);
+    /* Shadows — dark */
+    --shadow-2xs: 0 1px 2px 0 hsl(0 0% 0% / 0.1);
+    --shadow-xs: 0 1px 3px 0 hsl(0 0% 0% / 0.15);
+    --shadow-sm: 0 2px 8px 0 hsl(0 0% 0% / 0.2);
+    --shadow-md: 0 4px 16px 0 hsl(0 0% 0% / 0.25);
+    --shadow-lg: 0 8px 24px 0 hsl(0 0% 0% / 0.3);
+    --shadow-xl: 0 12px 32px 0 hsl(0 0% 0% / 0.35);
+    --shadow-2xl: 0 16px 48px 0 hsl(0 0% 0% / 0.4);
   }
 }
 
@@ -176,27 +145,18 @@
 
   body {
     @apply bg-background text-foreground antialiased;
+    font-feature-settings: "cv11", "ss01";
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   html {
     scroll-behavior: smooth;
   }
-}
 
-@layer utilities {
-  .landing-page {
-    font-family: 'Inter', system-ui, sans-serif;
+  h1, h2, h3, h4, h5, h6 {
+    letter-spacing: -0.02em;
   }
-
-  /* Staggered fade-in for dashboard grid children */
-  .stagger-fade-in > * {
-    opacity: 0;
-    animation: fade-up 0.4s ease-out forwards;
-  }
-  .stagger-fade-in > *:nth-child(1) { animation-delay: 0ms; }
-  .stagger-fade-in > *:nth-child(2) { animation-delay: 80ms; }
-  .stagger-fade-in > *:nth-child(3) { animation-delay: 160ms; }
-  .stagger-fade-in > *:nth-child(4) { animation-delay: 240ms; }
 }
 
 @keyframes fade-up {
@@ -210,76 +170,11 @@
   }
 }
 
-@keyframes gradient-shift {
-  0%, 100% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
-}
-
-@keyframes float {
-  0%, 100% {
-    transform: translateY(0px);
-  }
-  50% {
-    transform: translateY(-20px);
-  }
-}
-
-@keyframes float-delayed {
-  0%, 100% {
-    transform: translateY(0px);
-  }
-  50% {
-    transform: translateY(20px);
-  }
-}
-
-@keyframes glow-pulse {
-  0%, 100% {
-    box-shadow: 0 4px 20px hsl(var(--landing-accent) / 0.4);
-  }
-  50% {
-    box-shadow: 0 8px 40px hsl(var(--landing-accent) / 0.7);
-  }
-}
-
-@keyframes warm-gradient {
-  0%, 100% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
-}
-
-.animate-gradient-shift {
-  background-size: 200% 200%;
-  animation: gradient-shift 15s ease infinite;
-}
-
-.animate-float {
-  animation: float 6s ease-in-out infinite;
-}
-
-.animate-float-delayed {
-  animation: float-delayed 8s ease-in-out infinite;
-}
-
-.animate-glow-pulse {
-  animation: glow-pulse 3s ease-in-out infinite;
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .animate-fade-in {
-  animation: fade-in 0.8s ease-out;
-}
-
-.animate-fade-in-delayed {
-  animation: fade-in 0.8s ease-out 0.2s both;
-}
-
-.animate-fade-in-more-delayed {
-  animation: fade-in 0.8s ease-out 0.4s both;
+  animation: fade-in 0.5s ease-out;
 }

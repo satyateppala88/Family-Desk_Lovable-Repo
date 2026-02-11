@@ -4,7 +4,6 @@ import { Header } from "@/components/layout/Header";
 import { MobileNav } from "@/components/layout/MobileNav";
 import { Footer } from "@/components/layout/Footer";
 import { OnboardingTour } from "@/components/onboarding/OnboardingTour";
-import { OnboardingProgressIndicator } from "@/components/onboarding/OnboardingProgressIndicator";
 import { ResetOnboardingButton } from "@/components/development/ResetOnboardingButton";
 import { PendingInvitationBanner } from "@/components/household/PendingInvitationBanner";
 import { useHousehold } from "@/hooks/useHousehold";
@@ -22,13 +21,13 @@ import { DashboardMealWidget } from "@/components/dashboard/DashboardMealWidget"
 import { DashboardGroceryWidget } from "@/components/dashboard/DashboardGroceryWidget";
 import { DashboardCalendarWidget } from "@/components/dashboard/DashboardCalendarWidget";
 import { useEnabledProducts, isProductEnabled } from "@/hooks/useEnabledProducts";
-import { ArrowRight } from "lucide-react";
+import { OnboardingProgressIndicator } from "@/components/onboarding/OnboardingProgressIndicator";
 import type { Step } from "react-joyride";
 
 const dashboardTourSteps: Step[] = [
   {
     target: "body",
-    content: "Welcome to Family Desk! Your central hub for managing household activities.",
+    content: "Welcome to FamilyDesk! Your central hub for managing household activities.",
     placement: "center",
     disableBeacon: true,
   },
@@ -57,11 +56,6 @@ const dashboardTourSteps: Step[] = [
     content: "Upcoming events and deadlines from your connected calendars.",
     placement: "top",
   },
-  {
-    target: ".user-menu",
-    content: "Access settings, household management, and this guide anytime from the menu.",
-    placement: "bottom",
-  },
 ];
 
 const Index = () => {
@@ -73,18 +67,15 @@ const Index = () => {
   const { data: enabledProducts } = useEnabledProducts(householdId);
   const { data: progressData } = useOnboardingProgress(householdId);
   
-  // Feature-specific tour
   const { shouldShowTour, tourChecked, markTourComplete } = useFeatureTour("dashboard");
   const [runOnboarding, setRunOnboarding] = useState(false);
 
-  // Start tour automatically if user hasn't seen it
   useEffect(() => {
     if (tourChecked && shouldShowTour && householdId) {
       setTimeout(() => setRunOnboarding(true), 500);
     }
   }, [tourChecked, shouldShowTour, householdId]);
 
-  // Safety net: redirect users without a household to setup
   useEffect(() => {
     if (!isLoading && !householdId && user) {
       navigate("/household-setup");
@@ -106,10 +97,7 @@ const Index = () => {
     fetchHousehold();
   }, [householdId]);
 
-  const handleStartOnboarding = () => {
-    setRunOnboarding(true);
-  };
-
+  const handleStartOnboarding = () => setRunOnboarding(true);
   const handleOnboardingComplete = () => {
     setRunOnboarding(false);
     markTourComplete();
@@ -120,11 +108,9 @@ const Index = () => {
       <div className="min-h-screen flex flex-col bg-background">
         <Header onStartOnboarding={handleStartOnboarding} />
         <main className="flex-1 container mx-auto px-4 py-8">
-          <Skeleton className="h-10 w-64 mb-6" />
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-            {[1, 2, 3, 4].map((i) => (
-              <Skeleton key={i} className="h-32" />
-            ))}
+          <Skeleton className="h-8 w-48 mb-6" />
+          <div className="grid gap-4 md:grid-cols-2">
+            {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-40" />)}
           </div>
         </main>
         <MobileNav />
@@ -143,17 +129,13 @@ const Index = () => {
           featureName="dashboard"
         />
       )}
-      <main className="flex-1 container mx-auto px-4 sm:px-6 py-3 sm:py-4 pb-20">
-        {/* Development Reset Button - Only in development */}
+      <main className="flex-1 container mx-auto px-4 sm:px-6 py-6 pb-20">
         <ResetOnboardingButton />
-        
-        {/* Pending Invitation Banner - Show if user has been invited to another household */}
         <PendingInvitationBanner />
         
-        {/* Onboarding Progress Card - Only show if not completed */}
         {!onboardingCompleted && progressData && progressData.percentage < 100 && (
-          <Card className="mb-4 border-warning/50 bg-gradient-to-r from-warning/5 to-accent/5">
-            <CardContent className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 sm:p-6">
+          <Card className="mb-6 border border-border">
+            <CardContent className="flex flex-col sm:flex-row items-center justify-between gap-4 p-5">
               <div className="flex items-center gap-4">
                 <OnboardingProgressIndicator 
                   percentage={progressData.percentage} 
@@ -161,36 +143,30 @@ const Index = () => {
                   showLabel={false}
                 />
                 <div>
-                  <h3 className="font-semibold text-base sm:text-lg">Complete Your Household Setup</h3>
-                  <p className="text-xs sm:text-sm text-muted-foreground">
-                    {progressData.percentage}% complete - Help us personalize your experience
+                  <h3 className="font-medium text-sm">Complete your setup</h3>
+                  <p className="text-xs text-muted-foreground">
+                    {progressData.percentage}% complete
                   </p>
                 </div>
               </div>
               <Button 
                 onClick={() => navigate("/onboarding/preferences")}
-                className="w-full sm:w-auto"
+                size="sm"
               >
-                Continue Setup
-                <ArrowRight className="h-4 w-4 ml-2" />
+                Continue
               </Button>
             </CardContent>
           </Card>
         )}
         
-        <div className="mb-3 sm:mb-4 dashboard-overview">
-          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold mb-1 sm:mb-2">Welcome to {household.name}</h1>
-          <p className="text-xs sm:text-sm lg:text-base text-muted-foreground">
-            Manage your household tasks, meals, and groceries all in one place
-          </p>
+        <div className="mb-6 dashboard-overview">
+          <h1 className="text-2xl font-semibold tracking-tight">{household.name}</h1>
         </div>
 
-        <div className="grid gap-2.5 sm:gap-3 grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 dashboard-overview stagger-fade-in">
+        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 dashboard-overview">
           {statsLoading ? (
             <>
-              {[1, 2, 3, 4].map((i) => (
-                <Skeleton key={i} className="h-48" />
-              ))}
+              {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-40" />)}
             </>
           ) : (
             <>

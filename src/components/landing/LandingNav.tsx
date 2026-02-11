@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import logoImg from "@/assets/logo-family-desk-primary.png";
 import { Menu, X } from "lucide-react";
 
 export const LandingNav = () => {
@@ -9,98 +8,57 @@ export const LandingNav = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
-    const handleScroll = () => {
-      setScrolled(window.scrollY > 50);
-    };
+    const handleScroll = () => setScrolled(window.scrollY > 50);
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
   const scrollToSection = (id: string) => {
-    const element = document.getElementById(id);
-    if (element) {
-      element.scrollIntoView({ behavior: "smooth" });
-      setMobileMenuOpen(false);
-    }
+    document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
+    setMobileMenuOpen(false);
   };
 
   return (
-    <nav
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        scrolled ? "bg-white/95 backdrop-blur-lg border-b border-landing-accent/10 shadow-sm" : "bg-white/50 backdrop-blur-sm"
-      }`}
-    >
+    <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-200 ${
+      scrolled ? "bg-background/90 backdrop-blur-xl" : "bg-transparent"
+    }`}>
       <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between h-16">
-          <Link to="/" className="flex items-center gap-2.5 hover:opacity-80 transition-opacity">
-            <div className="bg-white/80 rounded-lg p-1 shadow-sm">
-              <img src={logoImg} alt="Family Desk Logo" className="h-8 w-8 object-contain" />
-            </div>
-            <span className="text-xl font-bold text-landing-text">Family Desk</span>
+        <div className="flex items-center justify-between h-14">
+          <Link to="/" className="text-lg font-semibold text-foreground tracking-tight">
+            FamilyDesk
           </Link>
 
-          {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-8">
-            <button
-              onClick={() => scrollToSection("features")}
-              className="text-landing-text-muted hover:text-landing-accent transition-colors uppercase text-sm tracking-wider"
-            >
+            <button onClick={() => scrollToSection("features")} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
               Features
             </button>
-            <button
-              onClick={() => scrollToSection("how-it-works")}
-              className="text-landing-text-muted hover:text-landing-accent transition-colors uppercase text-sm tracking-wider"
-            >
+            <button onClick={() => scrollToSection("how-it-works")} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
               How It Works
             </button>
             <Link to="/auth">
-              <Button variant="ghost" className="text-landing-text hover:text-landing-accent">
-                Sign In
-              </Button>
+              <Button variant="ghost" size="sm">Sign In</Button>
             </Link>
             <Link to="/auth">
-              <Button className="bg-landing-accent text-white hover:bg-landing-accent/90 shadow-md hover:shadow-lg hover:shadow-landing-accent/30 transition-all">
-                Get Started
-              </Button>
+              <Button size="sm">Get Started</Button>
             </Link>
           </div>
 
-          {/* Mobile Menu Button */}
-          <button
-            className="md:hidden text-landing-text p-2"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            aria-label="Toggle menu"
-          >
-            {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          <button className="md:hidden text-foreground p-2" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
+            {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
         </div>
 
-        {/* Mobile Menu */}
         {mobileMenuOpen && (
-          <div className="md:hidden py-6 border-t border-landing-accent/10 animate-fade-in">
-            <div className="flex flex-col gap-4">
-              <button
-                onClick={() => scrollToSection("features")}
-                className="text-landing-text-muted hover:text-landing-accent transition-colors uppercase text-sm tracking-wider text-left"
-              >
+          <div className="md:hidden py-4 border-t border-border animate-fade-in">
+            <div className="flex flex-col gap-3">
+              <button onClick={() => scrollToSection("features")} className="text-sm text-muted-foreground hover:text-foreground text-left py-2">
                 Features
               </button>
-              <button
-                onClick={() => scrollToSection("how-it-works")}
-                className="text-landing-text-muted hover:text-landing-accent transition-colors uppercase text-sm tracking-wider text-left"
-              >
+              <button onClick={() => scrollToSection("how-it-works")} className="text-sm text-muted-foreground hover:text-foreground text-left py-2">
                 How It Works
               </button>
-              <Link to="/auth" className="w-full">
-                <Button variant="ghost" className="w-full text-landing-text hover:text-landing-accent">
-                  Sign In
-                </Button>
-              </Link>
-              <Link to="/auth" className="w-full">
-                <Button className="w-full bg-landing-accent text-white hover:bg-landing-accent/90 shadow-md">
-                  Get Started
-                </Button>
-              </Link>
+              <Link to="/auth"><Button variant="ghost" className="w-full justify-start">Sign In</Button></Link>
+              <Link to="/auth"><Button className="w-full">Get Started</Button></Link>
             </div>
           </div>
         )}
