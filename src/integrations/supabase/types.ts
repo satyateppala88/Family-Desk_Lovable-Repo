@@ -1881,19 +1881,19 @@ export type Database = {
       }
       user_roles: {
         Row: {
-          household_id: string
+          household_id: string | null
           id: string
           role: Database["public"]["Enums"]["app_role"]
           user_id: string
         }
         Insert: {
-          household_id: string
+          household_id?: string | null
           id?: string
           role: Database["public"]["Enums"]["app_role"]
           user_id: string
         }
         Update: {
-          household_id?: string
+          household_id?: string | null
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
