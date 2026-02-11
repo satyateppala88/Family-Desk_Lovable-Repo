@@ -143,7 +143,7 @@ const Index = () => {
           featureName="dashboard"
         />
       )}
-      <main className="flex-1 container mx-auto px-4 sm:px-6 py-4 sm:py-6 pb-20">
+      <main className="flex-1 container mx-auto px-4 sm:px-6 py-3 sm:py-4 pb-20">
         {/* Development Reset Button - Only in development */}
         <ResetOnboardingButton />
         
@@ -152,7 +152,7 @@ const Index = () => {
         
         {/* Onboarding Progress Card - Only show if not completed */}
         {!onboardingCompleted && progressData && progressData.percentage < 100 && (
-          <Card className="mb-6 border-warning/50 bg-gradient-to-r from-warning/5 to-accent/5">
+          <Card className="mb-4 border-warning/50 bg-gradient-to-r from-warning/5 to-accent/5">
             <CardContent className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 sm:p-6">
               <div className="flex items-center gap-4">
                 <OnboardingProgressIndicator 
@@ -178,14 +178,14 @@ const Index = () => {
           </Card>
         )}
         
-        <div className="mb-4 sm:mb-6 dashboard-overview">
+        <div className="mb-3 sm:mb-4 dashboard-overview">
           <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold mb-1 sm:mb-2">Welcome to {household.name}</h1>
           <p className="text-xs sm:text-sm lg:text-base text-muted-foreground">
             Manage your household tasks, meals, and groceries all in one place
           </p>
         </div>
 
-        <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 dashboard-overview">
+        <div className="grid gap-2.5 sm:gap-3 grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 dashboard-overview">
           {statsLoading ? (
             <>
               {[1, 2, 3, 4].map((i) => (

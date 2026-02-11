@@ -21,11 +21,11 @@ export const DashboardGroceryWidget = ({ pantryItemsCount }: DashboardGroceryWid
         </CardHeader>
         <CardContent className="space-y-2">
           <div className="grid grid-cols-2 gap-2">
-            <div className="text-center p-1.5 bg-muted rounded-md">
+            <div className="text-center p-1 bg-muted rounded-md">
               <p className="text-xl font-bold">{pantryItemsCount}</p>
               <p className="text-xs text-muted-foreground">Pantry Items</p>
             </div>
-            <div className="text-center p-1.5 bg-muted rounded-md">
+            <div className="text-center p-1 bg-muted rounded-md">
               <p className="text-xl font-bold">0</p>
               <p className="text-xs text-muted-foreground">Shopping Lists</p>
             </div>

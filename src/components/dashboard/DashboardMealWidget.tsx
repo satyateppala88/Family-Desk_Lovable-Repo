@@ -45,7 +45,7 @@ export const DashboardMealWidget = ({ todayMeals }: DashboardMealWidgetProps) =>
             </div>
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-2">
+        <CardContent className="space-y-1.5">
           {todayMeals.length === 0 ? (
             <p className="text-sm text-muted-foreground">No meals planned for today</p>
           ) : (
