@@ -14,7 +14,10 @@ export const usePendingInvitations = (householdId: string | undefined | null) =>
         .eq("status", "pending")
         .order("created_at", { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.warn("Failed to fetch pending invitations:", error.message);
+        return [];
+      }
       return data || [];
     },
     enabled: !!householdId,
