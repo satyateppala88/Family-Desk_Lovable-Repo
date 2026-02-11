@@ -117,7 +117,7 @@ const handler = async (req: Request): Promise<Response> => {
 
         const emailContent = getWeeklyDigestContent(
           stats,
-          "https://familydesk.lovable.app/dashboard"
+          "https://familydesk.in/dashboard"
         );
 
         const emailResponse = await resend.emails.send({

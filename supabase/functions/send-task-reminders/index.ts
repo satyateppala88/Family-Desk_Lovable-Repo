@@ -112,7 +112,7 @@ const handler = async (req: Request): Promise<Response> => {
 
         const emailContent = getTaskReminderContent(
           formattedTasks,
-          "https://familydesk.lovable.app/taskmaster/today"
+          "https://familydesk.in/taskmaster/today"
         );
 
         const emailResponse = await resend.emails.send({

@@ -1,0 +1,6 @@
+
+ALTER TABLE public.user_email_preferences
+ADD COLUMN IF NOT EXISTS pantry_alerts BOOLEAN DEFAULT true;
+
+CREATE EXTENSION IF NOT EXISTS pg_cron WITH SCHEMA pg_catalog;
+CREATE EXTENSION IF NOT EXISTS pg_net WITH SCHEMA extensions;

@@ -1761,6 +1761,7 @@ export type Database = {
           household_invitations_whatsapp: boolean | null
           id: string
           meal_summaries: boolean | null
+          pantry_alerts: boolean | null
           pantry_alerts_whatsapp: boolean | null
           task_notifications: boolean | null
           task_notifications_whatsapp: boolean | null
@@ -1779,6 +1780,7 @@ export type Database = {
           household_invitations_whatsapp?: boolean | null
           id?: string
           meal_summaries?: boolean | null
+          pantry_alerts?: boolean | null
           pantry_alerts_whatsapp?: boolean | null
           task_notifications?: boolean | null
           task_notifications_whatsapp?: boolean | null
@@ -1797,6 +1799,7 @@ export type Database = {
           household_invitations_whatsapp?: boolean | null
           id?: string
           meal_summaries?: boolean | null
+          pantry_alerts?: boolean | null
           pantry_alerts_whatsapp?: boolean | null
           task_notifications?: boolean | null
           task_notifications_whatsapp?: boolean | null

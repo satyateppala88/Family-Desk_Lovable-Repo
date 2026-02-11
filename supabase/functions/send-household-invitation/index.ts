@@ -43,11 +43,9 @@ const handler = async (req: Request): Promise<Response> => {
     });
 
     // Verify user
-    const { data: claims, error: claimsError } = await supabase.auth.getClaims(
-      authHeader.replace("Bearer ", "")
-    );
+    const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
     
-    if (claimsError || !claims?.claims?.sub) {
+    if (authError || !authUser) {
       return new Response(
         JSON.stringify({ error: "Invalid token" }),
         { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
@@ -88,7 +86,7 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
 
-    const acceptUrl = "https://familydesk.lovable.app/dashboard";
+    const acceptUrl = "https://familydesk.in/dashboard";
     const displayRole = role === "admin" ? "Admin" : "Member";
 
     const emailContent = getHouseholdInvitationContent(

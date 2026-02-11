@@ -96,7 +96,7 @@ serve(async (req: Request): Promise<Response> => {
       .single();
 
     // Send welcome email
-    const dashboardUrl = `${origin || "https://familydesk.lovable.app"}/household-setup`;
+    const dashboardUrl = `${origin || "https://familydesk.in"}/household-setup`;
     const welcomeContent = getWelcomeEmailContent(dashboardUrl);
     const welcomeHtml = getEmailWrapper(welcomeContent, {
       recipientName: profile?.display_name || undefined,

@@ -48,9 +48,8 @@ const handler = async (req: Request): Promise<Response> => {
       { global: { headers: { Authorization: authHeader } } }
     );
 
-    const token = authHeader.replace("Bearer ", "");
-    const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
-    if (claimsError || !claimsData?.claims) {
+    const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+    if (authError || !authUser) {
       return new Response(
         JSON.stringify({ error: "Unauthorized" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -94,7 +93,7 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    const taskUrl = `https://familydesk.lovable.app/taskmaster/tasks?task=${taskId}`;
+    const taskUrl = `https://familydesk.in/taskmaster/tasks?task=${taskId}`;
     const formattedDueDate = dueDate 
       ? new Date(dueDate).toLocaleDateString("en-US", { 
           weekday: "long", 
