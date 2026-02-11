@@ -18,6 +18,8 @@ export const usePendingInvitations = (householdId: string | undefined | null) =>
       return data || [];
     },
     enabled: !!householdId,
+    retry: false,
+    staleTime: 5 * 60 * 1000,
   });
 };
 

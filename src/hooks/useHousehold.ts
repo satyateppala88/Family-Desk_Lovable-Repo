@@ -38,6 +38,7 @@ export const useHousehold = () => {
       };
     },
     enabled: !!user,
+    staleTime: 5 * 60 * 1000,
   });
 
   return {
