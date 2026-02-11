@@ -1,63 +1,91 @@
 
 
-# Add Voice-to-Text for AI Pantry Import and Chatbot
+# Calendar-to-Tasks: Smart Task Extraction Button
 
-Add microphone input using the browser's built-in Web Speech API -- no external dependencies or API keys needed. Works on Chrome, Edge, Safari, and most modern browsers.
-
----
-
-## 1. Create a Reusable `useSpeechRecognition` Hook
-
-**New file: `src/hooks/useSpeechRecognition.ts`**
-
-A shared hook that manages:
-- Starting/stopping the browser's `SpeechRecognition` API
-- Returning `transcript`, `isListening`, `start()`, `stop()`, and `isSupported`
-- Accepting an `onResult` callback to append recognized text
-- Handling errors gracefully (permission denied, not supported)
-- Configured for continuous recognition with interim results
-- Language set to `en-IN` (Indian English) for better recognition of Indian terms
-
-## 2. Update AI Pantry Import Dialog
-
-**File: `src/components/grocery/AIPantryImportDialog.tsx`**
-
-- Import `useSpeechRecognition` hook
-- Add a microphone button next to the textarea
-- When recording, append recognized speech into the existing textarea content
-- Show a visual indicator (pulsing red dot or highlighted mic icon) when actively listening
-- Mic button toggles between start/stop
-
-## 3. Update AI Chat Widget
-
-**File: `src/components/ai/AIChatWidget.tsx`**
-
-- Import `useSpeechRecognition` hook
-- Add a microphone button next to the Send button in the input area
-- When recording, fill the input field with recognized speech
-- Show visual feedback while listening
-- Mic button toggles between start/stop
+Add a "Scan Calendar" button to the Taskmaster Dashboard that reviews upcoming calendar events and generates a preview of suggested tasks for the user to approve before they are created.
 
 ---
 
-## Technical Details
+## Current Behavior
 
-**Hook API:**
-```typescript
-const { isListening, isSupported, start, stop } = useSpeechRecognition({
-  onResult: (text: string) => setInput(prev => prev + " " + text),
-  language: "en-IN",
-  continuous: true,
-});
-```
+The existing `extract-calendar-tasks` edge function already does the heavy lifting: it fetches calendar events, uses AI to identify actionable items (e.g., "Call dentist"), filters out meetings/appointments, and inserts tasks directly into the database. However, it only runs silently as part of the daily plan generation -- users have no direct control and no chance to review before tasks are created.
 
-**UI Pattern (both components):**
-- A `Mic` / `MicOff` icon button from lucide-react
-- When `isListening`: icon turns red/pulsing with `animate-pulse`
-- When `!isSupported`: button is hidden or disabled with a tooltip
-- Pressing mic while already listening stops it
+## What Changes
 
-**Browser Compatibility:**
-- Uses `webkitSpeechRecognition` (Chrome/Edge) and `SpeechRecognition` (Firefox/Safari)
-- Gracefully degrades: if not supported, the mic button is simply not shown
+### 1. Two-Step Flow: Preview, Then Confirm
+
+Instead of auto-creating tasks, introduce a review step:
+
+1. User clicks **"Scan Calendar"** button on the Dashboard
+2. A dialog opens showing a loading state while the AI analyzes calendar events
+3. The dialog displays suggested tasks with title, priority, category, and AI reasoning
+4. User can **check/uncheck** individual tasks, **edit titles**, or **change priority/category** before confirming
+5. Only confirmed tasks are created in the database
+
+### 2. Date Range Selection
+
+Rather than only scanning today, let users pick a date range (Today, This Week, Next 7 Days) to catch upcoming actionable items early -- e.g., "Renew car insurance" scheduled for next Thursday can become a task today.
+
+### 3. Duplicate Detection Badge
+
+Show a "Already imported" badge on events that were previously converted to tasks (using the existing `source_calendar_event_id` tracking), so users know what has already been handled.
+
+### 4. Calendar Connection Check
+
+If no Google Calendar is connected, the button shows a helpful prompt to connect one first, linking to the Calendar page.
+
+---
+
+## Technical Plan
+
+### New Edge Function: `extract-calendar-tasks-preview`
+
+A variant of the existing function that returns suggested tasks **without inserting them** into the database. This keeps the existing auto-insert function untouched.
+
+- Accepts `{ householdId, startDate, endDate }`
+- Fetches events via `fetch-calendar-events`
+- Checks existing `source_calendar_event_id` for duplicates
+- Calls AI to identify actionable tasks
+- Returns `{ suggestions: [...], alreadyImported: [...] }` without any database writes
+
+### New Component: `CalendarTaskScanDialog`
+
+**File: `src/components/taskmaster/CalendarTaskScanDialog.tsx`**
+
+A dialog with:
+- Date range selector (Today / This Week / Next 7 Days)
+- Loading state with "Scanning your calendar..." message
+- List of suggested tasks, each with:
+  - Checkbox (default checked)
+  - Editable title field
+  - Priority dropdown (P1-P4)
+  - Category dropdown (Home/Work/Kid/Other)
+  - AI reasoning shown as a subtle tooltip
+  - "Already imported" badge for duplicates (unchecked by default)
+- "Create X Tasks" confirmation button
+- "Cancel" button
+
+### Update: `TaskmasterDashboard.tsx`
+
+- Add a "Scan Calendar" button in the header area next to the Dashboard title
+- Button shows a Calendar + Sparkles icon
+- Opens the `CalendarTaskScanDialog`
+- After tasks are created, invalidates the `taskmaster-tasks` query to refresh stats
+
+### Update: `useTaskmaster.ts`
+
+- Add a `createMultipleTasks` mutation that batch-inserts the confirmed tasks
+- Reuses the existing insert logic but accepts an array
+
+---
+
+## Summary
+
+| Item | Details |
+|------|---------|
+| New edge function | `extract-calendar-tasks-preview` -- returns suggestions without DB writes |
+| New component | `CalendarTaskScanDialog` -- review dialog with edit capability |
+| Updated page | `TaskmasterDashboard.tsx` -- add Scan Calendar button |
+| Updated hook | `useTaskmaster.ts` -- add batch create mutation |
+| Config | Add function to `supabase/config.toml` with `verify_jwt = false` |
 
