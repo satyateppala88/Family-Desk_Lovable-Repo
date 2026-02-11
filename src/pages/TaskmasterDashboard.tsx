@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Header } from "@/components/layout/Header";
 import { MobileNav } from "@/components/layout/MobileNav";
 import { useHousehold } from "@/hooks/useHousehold";
@@ -15,8 +15,12 @@ import {
   TrendingUp,
   ListTodo,
   Folder,
-  Calendar
+  Calendar,
+  Sparkles,
+  CalendarSearch
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { CalendarTaskScanDialog } from "@/components/taskmaster/CalendarTaskScanDialog";
 import { differenceInDays, subDays, isAfter, format } from "date-fns";
 import { cn } from "@/lib/utils";
 import {
@@ -30,6 +34,7 @@ const TaskmasterDashboard = () => {
   const { householdId, isLoading: loadingHousehold } = useHousehold();
   const { tasks, isLoading: loadingTasks } = useTaskmaster(householdId);
   const { projects, isLoading: loadingProjects } = useProjects(householdId);
+  const [scanDialogOpen, setScanDialogOpen] = useState(false);
 
   const stats = useMemo(() => {
     if (!tasks) return null;
@@ -156,10 +161,19 @@ const TaskmasterDashboard = () => {
       <Header />
 
       <main className="container px-4 sm:px-6 py-6 pb-24">
-        <div className="flex items-center gap-2 mb-6">
-          <LayoutDashboard className="w-6 h-6" />
-          <h1 className="text-xl sm:text-2xl font-bold">Dashboard</h1>
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-2">
+            <LayoutDashboard className="w-6 h-6" />
+            <h1 className="text-xl sm:text-2xl font-bold">Dashboard</h1>
+          </div>
+          <Button variant="outline" size="sm" onClick={() => setScanDialogOpen(true)}>
+            <CalendarSearch className="w-4 h-4 mr-2" />
+            <Sparkles className="w-3 h-3 mr-1" />
+            Scan Calendar
+          </Button>
         </div>
+
+        <CalendarTaskScanDialog open={scanDialogOpen} onOpenChange={setScanDialogOpen} />
 
         {/* Summary Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
