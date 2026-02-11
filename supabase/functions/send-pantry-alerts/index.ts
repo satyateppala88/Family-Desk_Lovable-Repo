@@ -87,7 +87,7 @@ const handler = async (req: Request): Promise<Response> => {
 
         const emailContent = getPantryAlertContent(
           formattedItems,
-          "https://familydesk.lovable.app/grocery"
+          "https://familydesk.in/grocery"
         );
 
         // Send to each member
@@ -106,12 +106,12 @@ const handler = async (req: Request): Promise<Response> => {
             // Check user email preferences
             const { data: prefs } = await supabaseAdmin
               .from("user_email_preferences")
-              .select("meal_summaries, pantry_alerts_whatsapp")
+              .select("pantry_alerts, pantry_alerts_whatsapp")
               .eq("user_id", member.user_id)
               .maybeSingle();
 
             // Send email if not opted out
-            if (prefs?.meal_summaries !== false) {
+            if (prefs?.pantry_alerts !== false) {
               const emailResponse = await resend.emails.send({
                 from: "Family Desk <noreply@familydesk.in>",
                 to: [userData.user.email],
@@ -144,7 +144,7 @@ const handler = async (req: Request): Promise<Response> => {
                 [
                   items.length.toString(),
                   itemsList,
-                  "https://familydesk.lovable.app/grocery"
+                  "https://familydesk.in/grocery"
                 ]
               );
 

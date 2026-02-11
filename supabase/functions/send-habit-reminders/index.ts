@@ -151,7 +151,7 @@ const handler = async (req: Request): Promise<Response> => {
           const warningContent = getStreakWarningContent(
             highestStreak.name,
             highestStreak.streak,
-            "https://familydesk.lovable.app/habits"
+            "https://familydesk.in/habits"
           );
 
           await resend.emails.send({
@@ -167,7 +167,7 @@ const handler = async (req: Request): Promise<Response> => {
           // Send regular habit reminder
           const emailContent = getHabitReminderContent(
             habitsToRemind.map(h => ({ name: h.name, streak: h.streak })),
-            "https://familydesk.lovable.app/habits"
+            "https://familydesk.in/habits"
           );
 
           await resend.emails.send({

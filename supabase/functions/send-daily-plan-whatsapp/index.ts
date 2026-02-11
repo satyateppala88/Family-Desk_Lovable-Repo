@@ -121,7 +121,7 @@ const handler = async (req: Request): Promise<Response> => {
           [
             profile.display_name || "there",
             taskList,
-            "https://familydesk.lovable.app/taskmaster/today"
+            "https://familydesk.in/taskmaster/today"
           ]
         );
 

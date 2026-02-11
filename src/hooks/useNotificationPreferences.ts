@@ -6,6 +6,7 @@ interface NotificationPreferences {
   // Email preferences
   task_notifications: boolean;
   meal_summaries: boolean;
+  pantry_alerts: boolean;
   habit_reminders: boolean;
   household_invitations: boolean;
   weekly_digest: boolean;
@@ -22,6 +23,7 @@ interface NotificationPreferences {
 const defaultPreferences: NotificationPreferences = {
   task_notifications: true,
   meal_summaries: true,
+  pantry_alerts: true,
   habit_reminders: true,
   household_invitations: true,
   weekly_digest: true,

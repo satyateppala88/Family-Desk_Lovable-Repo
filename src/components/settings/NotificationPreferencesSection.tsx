@@ -19,6 +19,7 @@ const PREFERENCE_KEYS = {
   email: {
     task_notifications: "task_notifications",
     meal_summaries: "meal_summaries",
+    pantry_alerts: "pantry_alerts",
     habit_reminders: "habit_reminders",
     household_invitations: "household_invitations",
     weekly_digest: "weekly_digest",
@@ -45,14 +46,14 @@ const NOTIFICATION_TYPES: NotificationType[] = [
     id: "daily_plan",
     label: "Daily Plan Summary",
     description: "Morning AI-prioritized task plan",
-    emailKey: "meal_summaries", // Reusing meal_summaries for daily plan email
+    emailKey: "meal_summaries",
     whatsappKey: "daily_plan_whatsapp",
   },
   {
     id: "pantry",
     label: "Pantry Alerts",
     description: "Items expiring soon",
-    emailKey: "meal_summaries", // Grouped with meal summaries
+    emailKey: "pantry_alerts",
     whatsappKey: "pantry_alerts_whatsapp",
   },
   {
