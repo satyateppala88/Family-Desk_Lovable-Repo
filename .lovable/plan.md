@@ -1,65 +1,63 @@
 
 
-# Fix: "Failed to start Google authorization" in Production
+# Add Voice-to-Text for AI Pantry Import and Chatbot
 
-## Root Cause Analysis
+Add microphone input using the browser's built-in Web Speech API -- no external dependencies or API keys needed. Works on Chrome, Edge, Safari, and most modern browsers.
 
-The error "Failed to start Google authorization" is a generic client-side toast that hides the actual failure reason. After reviewing the code, several potential failure points exist:
+---
 
-1. **No household ID** -- `initiateOAuth` throws immediately if `householdId` is falsy, but the error is swallowed into a generic toast
-2. **Stale auth session** -- `getSession()` can return a cached/expired session; the edge function then rejects the token
-3. **Edge function response shape** -- `supabase.functions.invoke()` sometimes returns errors inside `response.data.error` rather than `response.error`, so the check on line 57 may pass while `response.data.authUrl` is undefined
+## 1. Create a Reusable `useSpeechRecognition` Hook
 
-## Changes
+**New file: `src/hooks/useSpeechRecognition.ts`**
 
-### 1. Improve error handling in `useCalendarConnections.ts`
+A shared hook that manages:
+- Starting/stopping the browser's `SpeechRecognition` API
+- Returning `transcript`, `isListening`, `start()`, `stop()`, and `isSupported`
+- Accepting an `onResult` callback to append recognized text
+- Handling errors gracefully (permission denied, not supported)
+- Configured for continuous recognition with interim results
+- Language set to `en-IN` (Indian English) for better recognition of Indian terms
 
-- Add specific error messages for each failure point (no household, no session)
-- Check `response.data?.authUrl` exists before redirecting
-- Log the actual error details to console for debugging
-- Show more descriptive toast messages so the user (and developer) knows what went wrong
+## 2. Update AI Pantry Import Dialog
 
-### 2. Add defensive checks in `useCalendarConnections.ts`
+**File: `src/components/grocery/AIPantryImportDialog.tsx`**
 
-- Validate `response.data.authUrl` is a valid URL before assigning to `window.location.href`
-- Check for error in `response.data.error` (edge function may return 200 with error body)
-- Add a fallback if `authUrl` is missing
+- Import `useSpeechRecognition` hook
+- Add a microphone button next to the textarea
+- When recording, append recognized speech into the existing textarea content
+- Show a visual indicator (pulsing red dot or highlighted mic icon) when actively listening
+- Mic button toggles between start/stop
+
+## 3. Update AI Chat Widget
+
+**File: `src/components/ai/AIChatWidget.tsx`**
+
+- Import `useSpeechRecognition` hook
+- Add a microphone button next to the Send button in the input area
+- When recording, fill the input field with recognized speech
+- Show visual feedback while listening
+- Mic button toggles between start/stop
 
 ---
 
 ## Technical Details
 
-**File: `src/hooks/useCalendarConnections.ts`** (initiateOAuth mutation)
-
-Current:
+**Hook API:**
 ```typescript
-if (!householdId) throw new Error("No household");
-const { data: { session } } = await supabase.auth.getSession();
-if (!session) throw new Error("Not authenticated");
-// ...
-if (response.error) throw response.error;
-window.location.href = response.data.authUrl;
+const { isListening, isSupported, start, stop } = useSpeechRecognition({
+  onResult: (text: string) => setInput(prev => prev + " " + text),
+  language: "en-IN",
+  continuous: true,
+});
 ```
 
-Updated:
-```typescript
-if (!householdId) throw new Error("Please set up your household first");
-const { data: { session } } = await supabase.auth.getSession();
-if (!session) throw new Error("Please sign in again to connect your calendar");
-// ...
-if (response.error) throw new Error(response.error.message || "Connection failed");
-if (response.data?.error) throw new Error(response.data.error);
-if (!response.data?.authUrl) throw new Error("No authorization URL returned");
-window.location.href = response.data.authUrl;
-```
+**UI Pattern (both components):**
+- A `Mic` / `MicOff` icon button from lucide-react
+- When `isListening`: icon turns red/pulsing with `animate-pulse`
+- When `!isSupported`: button is hidden or disabled with a tooltip
+- Pressing mic while already listening stops it
 
-And improve the `onError` handler to show the actual error message:
-```typescript
-onError: (error) => {
-  console.error("OAuth error:", error);
-  toast.error(error instanceof Error ? error.message : "Failed to start Google authorization");
-},
-```
-
-This will surface the real reason for the failure instead of hiding it behind a generic message, making it immediately clear whether the issue is a missing household, expired session, or backend problem.
+**Browser Compatibility:**
+- Uses `webkitSpeechRecognition` (Chrome/Edge) and `SpeechRecognition` (Firefox/Safari)
+- Gracefully degrades: if not supported, the mic button is simply not shown
 
