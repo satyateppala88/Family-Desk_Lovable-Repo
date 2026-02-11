@@ -2,9 +2,10 @@ import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, Sparkles } from "lucide-react";
+import { Loader2, Mic, MicOff, Sparkles } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
+import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
 import type { PantryItem } from "@/hooks/usePantryItems";
 
 interface AIPantryImportDialogProps {
@@ -25,6 +26,12 @@ export const AIPantryImportDialog = ({
   const [input, setInput] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
+
+  const { isListening, isSupported, start, stop } = useSpeechRecognition({
+    onResult: (text) => setInput((prev) => (prev ? prev + " " + text : text)),
+    language: "en-IN",
+    continuous: true,
+  });
 
   const handleSubmit = async () => {
     if (!input.trim()) return;
@@ -100,13 +107,31 @@ export const AIPantryImportDialog = ({
 
         <div className="space-y-4 py-4">
           <div className="space-y-2">
-            <Textarea
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="Example: I have 2kg rice, 500g toor dal, some tomatoes, 1L milk, amul butter, haldi powder, and a few onions"
-              rows={6}
-              className="resize-none"
-            />
+            <div className="relative">
+              <Textarea
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="Example: I have 2kg rice, 500g toor dal, some tomatoes, 1L milk, amul butter, haldi powder, and a few onions"
+                rows={6}
+                className="resize-none pr-12"
+              />
+              {isSupported && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="absolute top-2 right-2 h-8 w-8"
+                  onClick={isListening ? stop : start}
+                  disabled={isProcessing}
+                >
+                  {isListening ? (
+                    <Mic className="h-4 w-4 text-destructive animate-pulse" />
+                  ) : (
+                    <Mic className="h-4 w-4 text-muted-foreground" />
+                  )}
+                </Button>
+              )}
+            </div>
           </div>
 
           <div className="bg-muted p-3 rounded-lg text-sm space-y-1">

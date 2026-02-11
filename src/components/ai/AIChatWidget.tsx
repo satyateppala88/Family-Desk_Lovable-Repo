@@ -7,9 +7,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Drawer, DrawerContent, DrawerTrigger } from "@/components/ui/drawer";
-import { MessageCircle, Send, Loader2, Sparkles } from "lucide-react";
+import { MessageCircle, Send, Loader2, Mic, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
 
 interface Message {
   role: "user" | "assistant";
@@ -31,6 +32,12 @@ export const AIChatWidget = () => {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  const { isListening, isSupported, start, stop } = useSpeechRecognition({
+    onResult: (text) => setInput((prev) => (prev ? prev + " " + text : text)),
+    language: "en-IN",
+    continuous: true,
+  });
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -261,6 +268,17 @@ export const AIChatWidget = () => {
                   disabled={isLoading}
                   className="flex-1"
                 />
+                {isSupported && (
+                  <Button
+                    onClick={isListening ? stop : start}
+                    disabled={isLoading}
+                    size="icon"
+                    variant={isListening ? "destructive" : "outline"}
+                    className="flex-shrink-0"
+                  >
+                    <Mic className={cn("h-4 w-4", isListening && "animate-pulse")} />
+                  </Button>
+                )}
                 <Button
                   onClick={sendMessage}
                   disabled={isLoading || !input.trim()}
