@@ -30,6 +30,9 @@ verify_jwt = false
 [functions.extract-calendar-tasks]
 verify_jwt = false
 
+[functions.extract-calendar-tasks-preview]
+verify_jwt = false
+
 [functions.generate-daily-plan]
 verify_jwt = false
 
