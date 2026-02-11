@@ -41,10 +41,10 @@ export const useCalendarConnections = () => {
 
   const initiateOAuth = useMutation({
     mutationFn: async () => {
-      if (!householdId) throw new Error("No household");
+      if (!householdId) throw new Error("Please set up your household first");
 
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error("Not authenticated");
+      if (!session) throw new Error("Please sign in again to connect your calendar");
 
       // Use the current window location as the redirect URI
       const redirectUri = `${window.location.origin}/calendar`;
@@ -54,14 +54,16 @@ export const useCalendarConnections = () => {
         headers: { Authorization: `Bearer ${session.access_token}` },
       });
 
-      if (response.error) throw response.error;
+      if (response.error) throw new Error(response.error.message || "Connection failed");
+      if (response.data?.error) throw new Error(response.data.error);
+      if (!response.data?.authUrl) throw new Error("No authorization URL returned — please try again");
 
       // Redirect to Google OAuth
       window.location.href = response.data.authUrl;
     },
     onError: (error) => {
       console.error("OAuth error:", error);
-      toast.error("Failed to start Google authorization");
+      toast.error(error instanceof Error ? error.message : "Failed to start Google authorization");
     },
   });
 
