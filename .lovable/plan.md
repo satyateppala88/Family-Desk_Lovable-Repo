@@ -1,83 +1,112 @@
 
 
-# Fix Admin Functionality & Assign Platform Admin Role
+# Fix Email Function Issues
 
-## Current State
-
-- The admin page exists at `/admin/access-requests` and the code is fully functional
-- The `user_roles` table has an `app_role` enum that includes `platform_admin`
-- However, **no user currently has the `platform_admin` role** -- only `household_admin` roles exist
-- This means the RLS policies on `access_requests` block all reads/updates, so the admin page shows empty data for everyone
-- The user `satyateppala@zohomail.in` (user_id: `a4cdc5e5-4e93-4e78-862a-401b6d0f816e`) needs to be made a platform admin
-
-## Changes Required
-
-### 1. Insert platform_admin role for satyateppala@zohomail.in
-
-Run a database insert to add a `platform_admin` entry in the `user_roles` table:
-
-```sql
-INSERT INTO public.user_roles (user_id, role)
-VALUES ('a4cdc5e5-4e93-4e78-862a-401b6d0f816e', 'platform_admin');
-```
-
-The `household_id` column will be NULL for this row since `platform_admin` is a platform-level role, not household-scoped. This needs verification that the column is nullable (it appears to be based on the existing `has_household_role` function accepting a household_id parameter separately).
-
-### 2. Verify the admin page works
-
-After inserting the role, the admin page at `/admin/access-requests` should:
-- Show all 6 existing access requests (currently visible in the database)
-- Allow approving/rejecting pending requests
-- Send decision emails via the `send-access-decision` edge function
-
-### 3. Minor issue: No client-side admin guard on the route
-
-Currently the route only uses `ProtectedRoute` (checks authentication). Any logged-in user can navigate to `/admin/access-requests` -- they'll just see an empty page because RLS blocks the data. This is functionally safe but gives a poor user experience.
-
-**Fix:** Add a client-side check in `AdminAccessRequests.tsx` that verifies the user has the `platform_admin` role and redirects non-admins away (or shows an "unauthorized" message). This is a UX improvement, not a security fix -- the RLS policies already protect the data.
-
-### 4. Add admin link in navigation for platform admins
-
-Currently there's no way for the admin to discover the `/admin/access-requests` page from the UI. Add a conditional link in the Header dropdown menu that only shows for users with the `platform_admin` role.
+Four distinct issues to resolve across the edge functions.
 
 ---
 
-## Technical Details
+## 1. Replace `getClaims()` with `getUser()` in 3 functions
 
-### Files to modify:
+The `getClaims()` method is not a standard Supabase JS method and may fail at runtime. Three functions use it:
 
-| File | Change |
-|------|--------|
-| Database (migration) | Insert `platform_admin` role for the user |
-| `src/hooks/useIsPlatformAdmin.ts` | New hook to check if current user has `platform_admin` role |
-| `src/pages/AdminAccessRequests.tsx` | Add unauthorized guard for non-admin users |
-| `src/components/layout/Header.tsx` | Add conditional "Admin" link in dropdown for platform admins |
+- `send-task-notification/index.ts` (line 52)
+- `send-household-invitation/index.ts` (line 49)
+- `send-invitation-response/index.ts` (line 44)
 
-### New hook: `useIsPlatformAdmin`
+**Fix:** Replace the `getClaims()` call with `supabase.auth.getUser()` which is the standard, supported method.
 
 ```typescript
-export const useIsPlatformAdmin = () => {
-  const { user } = useAuth();
-  
-  const { data: isAdmin = false, isLoading } = useQuery({
-    queryKey: ["is-platform-admin", user?.id],
-    queryFn: async () => {
-      if (!user) return false;
-      const { data } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", user.id)
-        .eq("role", "platform_admin")
-        .maybeSingle();
-      return !!data;
-    },
-    enabled: !!user,
-    staleTime: 10 * 60 * 1000,
-  });
+// Before:
+const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
+if (claimsError || !claimsData?.claims) { ... }
 
-  return { isAdmin, isLoading };
-};
+// After:
+const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+if (authError || !authUser) { ... }
 ```
 
-Note: This requires a SELECT RLS policy on `user_roles` that allows users to read their own roles. If one doesn't exist, it will need to be added.
+---
+
+## 2. Fix pantry alerts email preference check
+
+The `user_email_preferences` table has no `pantry_alerts` column. The function currently checks `meal_summaries` on line 114, which is wrong.
+
+**Fix:** Add a `pantry_alerts` column to the table (defaulting to `true`) and update the function to check it.
+
+**Database migration:**
+```sql
+ALTER TABLE public.user_email_preferences
+ADD COLUMN IF NOT EXISTS pantry_alerts BOOLEAN DEFAULT true;
+```
+
+**Code change in `send-pantry-alerts/index.ts`:**
+```typescript
+// Before (line 109):
+.select("meal_summaries, pantry_alerts_whatsapp")
+
+// After:
+.select("pantry_alerts, pantry_alerts_whatsapp")
+
+// Before (line 114):
+if (prefs?.meal_summaries !== false) {
+
+// After:
+if (prefs?.pantry_alerts !== false) {
+```
+
+The notification preferences UI will also need updating to expose this new toggle.
+
+---
+
+## 3. Update hardcoded URLs to `familydesk.in`
+
+13 files contain `familydesk.lovable.app` URLs. All link URLs in emails/WhatsApp messages should point to the production domain `familydesk.in`.
+
+**Files to update:**
+
+| File | Hardcoded URL |
+|------|--------------|
+| `_shared/email-templates.ts` | Logo URL and footer link |
+| `send-task-notification/index.ts` | Task URL |
+| `send-household-invitation/index.ts` | Accept URL |
+| `send-task-reminders/index.ts` | Today URL |
+| `send-habit-reminders/index.ts` | Habits URL (2 places) |
+| `send-pantry-alerts/index.ts` | Grocery URL (2 places) |
+| `send-weekly-digest/index.ts` | Dashboard URL |
+| `send-meal-plan-summary/index.ts` | Meals URL |
+| `send-access-decision/index.ts` | Auth URL |
+| `send-join-request-notification/index.ts` | Members URL |
+| `send-daily-plan-whatsapp/index.ts` | Today URL |
+| `verify-email-token/index.ts` | Fallback URL |
+
+All instances of `https://familydesk.lovable.app` will be replaced with `https://familydesk.in`.
+
+---
+
+## 4. Set up pg_cron scheduled jobs
+
+The `pg_cron` extension is not yet enabled. Four functions need automated scheduling:
+
+| Function | Schedule | Description |
+|----------|----------|-------------|
+| `send-task-reminders` | Daily at 8:00 AM IST (2:30 AM UTC) | Tasks due tomorrow |
+| `send-habit-reminders` | Daily at 7:00 AM IST (1:30 AM UTC) | Incomplete habits for the day |
+| `send-pantry-alerts` | Daily at 9:00 AM IST (3:30 AM UTC) | Items expiring within 3 days |
+| `send-weekly-digest` | Sundays at 9:00 AM IST (3:30 AM UTC) | Weekly activity summary |
+
+**Steps:**
+1. Enable `pg_cron` and `pg_net` extensions via migration
+2. Insert cron schedules using the data insert tool (since they contain project-specific URLs and keys)
+
+---
+
+## Summary of changes
+
+| Type | What |
+|------|------|
+| Database migration | Add `pantry_alerts` column, enable `pg_cron` and `pg_net` extensions |
+| Database insert | Create 4 cron job schedules |
+| Edge function edits | 13 files -- fix `getClaims()`, fix preference check, update URLs |
+| UI update | Add pantry alerts toggle to notification preferences |
 
