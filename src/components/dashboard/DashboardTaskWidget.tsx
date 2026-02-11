@@ -40,7 +40,7 @@ export const DashboardTaskWidget = ({ tasks, pendingCount }: DashboardTaskWidget
             <Badge variant="secondary" className="text-xs">{pendingCount} pending</Badge>
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-2">
+        <CardContent className="space-y-1.5">
           {tasks.length === 0 ? (
             <p className="text-sm text-muted-foreground">No pending tasks</p>
           ) : (
