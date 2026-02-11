@@ -1,8 +1,7 @@
 import { Link } from "react-router-dom";
-import { Flame, ChevronRight, Leaf } from "lucide-react";
+import { Flame } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Badge } from "@/components/ui/badge";
 import { useHabits } from "@/hooks/useHabits";
 import { cn } from "@/lib/utils";
 
@@ -30,17 +29,14 @@ export const DashboardHabitWidget = ({ householdId }: DashboardHabitWidgetProps)
   }
 
   return (
-    <Card className="hover:shadow-md transition-shadow">
+    <Card className="hover:shadow-sm transition-shadow">
       <CardHeader className="pb-2">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-base font-medium flex items-center gap-2">
-            <Leaf className="h-4 w-4 text-accent" />
-            Habits
-          </CardTitle>
-          <Badge variant="secondary" className="text-xs">
+        <CardTitle className="flex items-center justify-between">
+          <span>Habits</span>
+          <span className="text-xs font-normal text-muted-foreground">
             {completedCount}/{totalCount} today
-          </Badge>
-        </div>
+          </span>
+        </CardTitle>
       </CardHeader>
       <CardContent>
         {totalCount === 0 ? (
@@ -50,30 +46,22 @@ export const DashboardHabitWidget = ({ householdId }: DashboardHabitWidgetProps)
         ) : (
           <div className="space-y-2">
             {todaysHabits.slice(0, 3).map((habit) => (
-              <div
-                key={habit.id}
-                className="flex items-center justify-between text-sm"
-              >
+              <div key={habit.id} className="flex items-center justify-between text-sm">
                 <div className="flex items-center gap-2">
                   <div
                     className={cn(
-                      "w-3 h-3 rounded-full",
+                      "w-2.5 h-2.5 rounded-full",
                       habit.todayLog?.completed
-                        ? "bg-accent"
-                        : "border-2 border-muted-foreground/30"
+                        ? "bg-foreground"
+                        : "border border-muted-foreground/30"
                     )}
                   />
-                  <span
-                    className={cn(
-                      habit.todayLog?.completed &&
-                        "line-through text-muted-foreground"
-                    )}
-                  >
+                  <span className={cn(habit.todayLog?.completed && "line-through text-muted-foreground")}>
                     {habit.name}
                   </span>
                 </div>
                 {(habit.streak?.current_streak || 0) >= 3 && (
-                  <div className="flex items-center gap-1 text-primary text-xs">
+                  <div className="flex items-center gap-1 text-muted-foreground text-xs">
                     <Flame className="h-3 w-3" />
                     {habit.streak?.current_streak}
                   </div>
@@ -81,18 +69,12 @@ export const DashboardHabitWidget = ({ householdId }: DashboardHabitWidgetProps)
               </div>
             ))}
             {totalCount > 3 && (
-              <p className="text-xs text-muted-foreground">
-                +{totalCount - 3} more habits
-              </p>
+              <p className="text-xs text-muted-foreground">+{totalCount - 3} more</p>
             )}
           </div>
         )}
-        <Link
-          to="/habits"
-          className="flex items-center justify-end gap-1 text-sm text-primary mt-3 hover:underline"
-        >
-          View all
-          <ChevronRight className="h-4 w-4" />
+        <Link to="/habits" className="block text-xs text-muted-foreground mt-3 hover:text-foreground transition-colors">
+          View all →
         </Link>
       </CardContent>
     </Card>

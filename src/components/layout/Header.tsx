@@ -9,12 +9,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { User, Settings, LogOut, HelpCircle, FileText, Shield, Bell, Users } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { useHousehold } from "@/hooks/useHousehold";
 import { useIsHouseholdAdmin } from "@/hooks/useIsHouseholdAdmin";
 import { usePendingInvitations } from "@/hooks/usePendingInvitations";
-import logoImg from "@/assets/logo-family-desk-primary.png";
 
 interface HeaderProps {
   onStartOnboarding?: () => void;
@@ -39,34 +36,26 @@ export const Header = ({ onStartOnboarding }: HeaderProps) => {
   };
 
   return (
-    <header className="sticky top-0 z-40 bg-background border-b border-border">
-      <div className="container flex h-16 items-center justify-between px-4">
-        <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate("/dashboard")}>
-          <div className="bg-white/80 rounded-lg p-1.5 shadow-sm">
-            <img src={logoImg} alt="Family Desk Logo" className="h-10 w-10 object-contain" />
-          </div>
-          <h1 className="text-xl font-bold text-primary">Family Desk</h1>
+    <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-xl">
+      <div className="container flex h-14 items-center justify-between px-4">
+        <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate("/dashboard")}>
+          <span className="text-lg font-semibold text-foreground tracking-tight">FamilyDesk</span>
         </div>
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <div className="relative">
-              <Avatar className="h-10 w-10 cursor-pointer hover:opacity-80 transition-opacity user-menu">
-                <AvatarFallback className="bg-primary text-primary-foreground">
+              <Avatar className="h-8 w-8 cursor-pointer hover:opacity-70 transition-opacity">
+                <AvatarFallback className="bg-secondary text-secondary-foreground text-xs font-medium">
                   {getInitials()}
                 </AvatarFallback>
               </Avatar>
               {pendingCount > 0 && (
-                <Badge 
-                  variant="destructive" 
-                  className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
-                >
-                  {pendingCount}
-                </Badge>
+                <span className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-destructive" />
               )}
             </div>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
+          <DropdownMenuContent align="end" className="w-52">
             <DropdownMenuLabel>
               <div className="flex flex-col space-y-1">
                 <p className="text-sm font-medium leading-none">
@@ -79,47 +68,36 @@ export const Header = ({ onStartOnboarding }: HeaderProps) => {
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => navigate("/account-settings")}>
-              <User className="mr-2 h-4 w-4" />
               Account Settings
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => navigate("/settings")}>
-              <Settings className="mr-2 h-4 w-4" />
               Household Settings
             </DropdownMenuItem>
             {isAdmin && (
               <>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => navigate("/members")}>
-                  <Users className="mr-2 h-4 w-4" />
                   Manage Members
                 </DropdownMenuItem>
                 {pendingCount > 0 && (
                   <DropdownMenuItem onClick={() => navigate("/invitations")}>
-                    <Bell className="mr-2 h-4 w-4" />
-                    Pending Invitations
-                    <Badge variant="destructive" className="ml-auto">
-                      {pendingCount}
-                    </Badge>
+                    Pending Invitations ({pendingCount})
                   </DropdownMenuItem>
                 )}
               </>
             )}
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={onStartOnboarding}>
-              <HelpCircle className="mr-2 h-4 w-4" />
               User Guide
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => navigate("/terms")}>
-              <FileText className="mr-2 h-4 w-4" />
               Terms of Service
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => navigate("/privacy")}>
-              <Shield className="mr-2 h-4 w-4" />
               Privacy Policy
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={signOut} className="text-destructive">
-              <LogOut className="mr-2 h-4 w-4" />
               Sign Out
             </DropdownMenuItem>
           </DropdownMenuContent>

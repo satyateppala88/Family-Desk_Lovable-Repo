@@ -1,53 +1,18 @@
-import { Clock, Lightbulb, HeartHandshake, Zap, Trophy } from "lucide-react";
-
 const benefits = [
-  {
-    icon: Clock,
-    title: "Save Time",
-    description: "Automate meal planning and grocery lists",
-  },
-  {
-    icon: HeartHandshake,
-    title: "Stay Organized",
-    description: "Keep everyone on the same page",
-  },
-  {
-    icon: Lightbulb,
-    title: "Reduce Stress",
-    description: "Never forget important tasks again",
-  },
-  {
-    icon: Zap,
-    title: "AI-Powered",
-    description: "Smart suggestions tailored to you",
-  },
-  {
-    icon: Trophy,
-    title: "Family Engagement",
-    description: "Gamified habits with streaks & leaderboards",
-  },
+  { title: "Save time", description: "Automate planning and lists." },
+  { title: "Stay aligned", description: "Everyone on the same page." },
+  { title: "Reduce stress", description: "Nothing falls through the cracks." },
 ];
 
 export const Benefits = () => {
   return (
-    <section className="py-16 bg-landing-bg-secondary">
+    <section className="py-24">
       <div className="container mx-auto px-4">
-        <h2 className="text-4xl md:text-5xl font-bold text-center mb-12 text-landing-text">
-          Why Choose Family Desk?
-        </h2>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-3xl mx-auto text-center">
           {benefits.map((benefit, index) => (
-            <div
-              key={index}
-              className="group p-6 rounded-2xl bg-white border border-landing-accent/10 hover:border-landing-accent transition-all duration-300 hover:translate-y-[-2px] shadow-sm hover:shadow-md"
-            >
-              <div className="w-14 h-14 mb-6 rounded-xl bg-landing-highlight/20 flex items-center justify-center group-hover:bg-landing-highlight/30 transition-colors">
-                <benefit.icon className="w-7 h-7 text-landing-highlight" strokeWidth={1.5} />
-              </div>
-              
-              <h3 className="text-2xl font-bold mb-3 text-landing-text">{benefit.title}</h3>
-              <p className="text-landing-text-muted text-lg">{benefit.description}</p>
+            <div key={index}>
+              <h3 className="text-base font-medium mb-1 text-foreground">{benefit.title}</h3>
+              <p className="text-sm text-muted-foreground">{benefit.description}</p>
             </div>
           ))}
         </div>
