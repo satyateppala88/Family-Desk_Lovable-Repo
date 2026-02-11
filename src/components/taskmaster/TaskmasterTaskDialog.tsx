@@ -106,10 +106,10 @@ export const TaskmasterTaskDialog = ({
           <div className="grid grid-cols-2 gap-4">
             <div className="grid gap-2">
               <Label>Project</Label>
-              <Select value={projectId} onValueChange={setProjectId}>
+              <Select value={projectId || "none"} onValueChange={(v) => setProjectId(v === "none" ? "" : v)}>
                 <SelectTrigger><SelectValue placeholder="No project" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">No project</SelectItem>
+                  <SelectItem value="none">No project</SelectItem>
                   {projects.map((p) => (<SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>))}
                 </SelectContent>
               </Select>
