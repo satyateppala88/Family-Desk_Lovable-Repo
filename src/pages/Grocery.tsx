@@ -438,8 +438,8 @@ const Grocery = () => {
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <Header onStartOnboarding={handleStartOnboarding} />
-      <main className="container px-4 py-6 pb-20 flex-1">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+      <main className="container px-4 py-3 sm:py-4 pb-20 flex-1">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
           <h1 className="text-xl sm:text-2xl font-bold">Grocery Management</h1>
           <div className="flex flex-wrap gap-2">
             <Button
@@ -472,7 +472,7 @@ const Grocery = () => {
           </div>
         </div>
 
-        <Tabs defaultValue="pantry" className="space-y-6">
+        <Tabs defaultValue="pantry" className="space-y-4">
           <TabsList>
             <TabsTrigger value="pantry" className="gap-2">
               <Package className="h-4 w-4" />

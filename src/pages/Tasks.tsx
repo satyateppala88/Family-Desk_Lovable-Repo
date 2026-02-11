@@ -136,8 +136,8 @@ const Tasks = () => {
     <div className="min-h-screen bg-background">
       <Header onStartOnboarding={handleStartOnboarding} />
 
-      <main className="container px-4 sm:px-6 py-6 pb-24">
-        <div className="flex items-center justify-between mb-6">
+      <main className="container px-4 sm:px-6 py-3 sm:py-4 pb-24">
+        <div className="flex items-center justify-between mb-3 sm:mb-4">
           <h1 className="text-xl sm:text-2xl font-bold">Tasks</h1>
           <Button onClick={handleCreateTask} size="sm" data-tour="add-task-button">
             <Plus className="w-4 h-4 sm:mr-2" />
@@ -145,7 +145,7 @@ const Tasks = () => {
           </Button>
         </div>
 
-        <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3 mb-6" data-tour="task-filters">
+        <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2.5 mb-4" data-tour="task-filters">
           <div className="flex items-center gap-2 w-full sm:w-auto">
             <Filter className="w-4 h-4 text-muted-foreground" />
             <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -184,7 +184,7 @@ const Tasks = () => {
             </Button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" data-tour="task-list">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5 sm:gap-3 stagger-fade-in" data-tour="task-list">
             {filteredTasks.map((task) => (
               <TaskCard
                 key={task.id}
