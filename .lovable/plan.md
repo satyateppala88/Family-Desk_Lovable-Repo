@@ -1,112 +1,60 @@
 
 
-# Fix Email Function Issues
+# Fix: Blank Page on Tasks Navigation
 
-Four distinct issues to resolve across the edge functions.
+## Root Cause
 
----
+There are two issues causing blank pages across the app:
 
-## 1. Replace `getClaims()` with `getUser()` in 3 functions
-
-The `getClaims()` method is not a standard Supabase JS method and may fail at runtime. Three functions use it:
-
-- `send-task-notification/index.ts` (line 52)
-- `send-household-invitation/index.ts` (line 49)
-- `send-invitation-response/index.ts` (line 44)
-
-**Fix:** Replace the `getClaims()` call with `supabase.auth.getUser()` which is the standard, supported method.
-
-```typescript
-// Before:
-const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
-if (claimsError || !claimsData?.claims) { ... }
-
-// After:
-const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
-if (authError || !authUser) { ... }
-```
-
----
-
-## 2. Fix pantry alerts email preference check
-
-The `user_email_preferences` table has no `pantry_alerts` column. The function currently checks `meal_summaries` on line 114, which is wrong.
-
-**Fix:** Add a `pantry_alerts` column to the table (defaulting to `true`) and update the function to check it.
-
-**Database migration:**
+### Issue 1: Broken RLS Policy (Critical)
+The `household_invitations` table has an RLS SELECT policy called **"Users can view invitations by email"** that contains a subquery referencing `auth.users` directly:
 ```sql
-ALTER TABLE public.user_email_preferences
-ADD COLUMN IF NOT EXISTS pantry_alerts BOOLEAN DEFAULT true;
+invitee_email = (SELECT users.email FROM auth.users WHERE users.id = auth.uid())::text
+```
+The `authenticated` role does not have SELECT permission on `auth.users`, causing `permission denied for table users` (HTTP 403) every time this policy is evaluated.
+
+This policy is hit by:
+- `usePendingInvitations` hook (used in the **Header** component on every page)
+- `PendingInvitationBanner` component (used on the Dashboard)
+
+Since both hooks throw errors on failure and there is **no React Error Boundary** in the app, the unhandled error crashes the entire component tree, producing a blank page.
+
+### Issue 2: Missing Error Resilience
+The hooks that query `household_invitations` throw on error without graceful fallbacks, and the app has no Error Boundary to catch rendering failures.
+
+## Plan
+
+### Step 1: Fix the RLS Policy (Database Migration)
+Replace the broken RLS policy with one that uses `auth.jwt()` instead of querying `auth.users`:
+
+```sql
+DROP POLICY "Users can view invitations by email" ON household_invitations;
+
+CREATE POLICY "Users can view invitations by email"
+  ON household_invitations
+  FOR SELECT
+  USING (
+    invitee_email = (auth.jwt() ->> 'email')::text
+  );
 ```
 
-**Code change in `send-pantry-alerts/index.ts`:**
-```typescript
-// Before (line 109):
-.select("meal_summaries, pantry_alerts_whatsapp")
+This extracts the email from the JWT token directly, which is always available and requires no table access.
 
-// After:
-.select("pantry_alerts, pantry_alerts_whatsapp")
+### Step 2: Add Error Resilience to Hooks
+Update `usePendingInvitations` and `PendingInvitationBanner` to handle errors gracefully instead of throwing -- return empty arrays on error so the rest of the page still renders.
 
-// Before (line 114):
-if (prefs?.meal_summaries !== false) {
+### Step 3: Add a Global React Error Boundary
+Wrap the app in an Error Boundary component so that if any component crashes, users see a friendly fallback UI with a "Reload" button instead of a blank page.
 
-// After:
-if (prefs?.pantry_alerts !== false) {
-```
+## Technical Details
 
-The notification preferences UI will also need updating to expose this new toggle.
+### Files to Modify
+1. **Database migration** -- fix the `household_invitations` RLS policy
+2. `src/hooks/usePendingInvitations.ts` -- catch errors gracefully, return `[]` instead of throwing
+3. `src/components/household/PendingInvitationBanner.tsx` -- handle query errors gracefully
+4. `src/App.tsx` -- add a React Error Boundary wrapper
+5. New file: `src/components/layout/ErrorBoundary.tsx` -- Error Boundary component
 
----
-
-## 3. Update hardcoded URLs to `familydesk.in`
-
-13 files contain `familydesk.lovable.app` URLs. All link URLs in emails/WhatsApp messages should point to the production domain `familydesk.in`.
-
-**Files to update:**
-
-| File | Hardcoded URL |
-|------|--------------|
-| `_shared/email-templates.ts` | Logo URL and footer link |
-| `send-task-notification/index.ts` | Task URL |
-| `send-household-invitation/index.ts` | Accept URL |
-| `send-task-reminders/index.ts` | Today URL |
-| `send-habit-reminders/index.ts` | Habits URL (2 places) |
-| `send-pantry-alerts/index.ts` | Grocery URL (2 places) |
-| `send-weekly-digest/index.ts` | Dashboard URL |
-| `send-meal-plan-summary/index.ts` | Meals URL |
-| `send-access-decision/index.ts` | Auth URL |
-| `send-join-request-notification/index.ts` | Members URL |
-| `send-daily-plan-whatsapp/index.ts` | Today URL |
-| `verify-email-token/index.ts` | Fallback URL |
-
-All instances of `https://familydesk.lovable.app` will be replaced with `https://familydesk.in`.
-
----
-
-## 4. Set up pg_cron scheduled jobs
-
-The `pg_cron` extension is not yet enabled. Four functions need automated scheduling:
-
-| Function | Schedule | Description |
-|----------|----------|-------------|
-| `send-task-reminders` | Daily at 8:00 AM IST (2:30 AM UTC) | Tasks due tomorrow |
-| `send-habit-reminders` | Daily at 7:00 AM IST (1:30 AM UTC) | Incomplete habits for the day |
-| `send-pantry-alerts` | Daily at 9:00 AM IST (3:30 AM UTC) | Items expiring within 3 days |
-| `send-weekly-digest` | Sundays at 9:00 AM IST (3:30 AM UTC) | Weekly activity summary |
-
-**Steps:**
-1. Enable `pg_cron` and `pg_net` extensions via migration
-2. Insert cron schedules using the data insert tool (since they contain project-specific URLs and keys)
-
----
-
-## Summary of changes
-
-| Type | What |
-|------|------|
-| Database migration | Add `pantry_alerts` column, enable `pg_cron` and `pg_net` extensions |
-| Database insert | Create 4 cron job schedules |
-| Edge function edits | 13 files -- fix `getClaims()`, fix preference check, update URLs |
-| UI update | Add pantry alerts toggle to notification preferences |
+### Production Impact
+After publishing, the RLS fix will automatically apply to the Live database, resolving the 403 errors. No manual SQL needed for this change.
 
