@@ -1,153 +1,96 @@
 
-# Extract Logo and Improve Sign-in Page
+# Minimalistic Design + Edge Function Error Fixes
 
-## Overview
+## Three Areas of Work
 
-Two changes are needed:
-1. **Generate a transparent-background version of the logo** using AI image editing
-2. **Increase logo size on the Auth page** from 64px to 96-112px
+### 1. Fix Edge Function Errors (Calendar + Meal Plan Generation)
 
----
+**Root Cause Found:** The `supabase/config.toml` file only contains `project_id` and has NO `verify_jwt = false` settings for any edge function. With Lovable Cloud's ES256 token signing, the default `verify_jwt = true` causes JWT verification failures, resulting in "edge server error" responses.
 
-## Part 1: Create Transparent Logo
+**Fix:** Add `verify_jwt = false` to `supabase/config.toml` for all edge functions that need it. The functions already handle authentication manually in their code (via `supabase.auth.getUser(token)`), so this is safe.
 
-### Current Problem
+**File: `supabase/config.toml`**
 
-The current logo has a dark blue (#0F3A4D) solid background which:
-- Looks jarring on light-themed pages (Auth, HouseholdSetup)
-- Creates a blue square instead of a clean logo mark
-- Doesn't blend with the app's light backgrounds
-
-### Solution
-
-Use Lovable AI's image generation capability to create a version of the logo with a transparent background.
-
-**Process:**
-1. Create a new edge function `remove-logo-background` that uses the Nano banana pro model to extract the logo
-2. Generate a new logo image with transparent background
-3. Save the result to the assets folder
-
-**Alternative (Simpler):**
-Since AI image generation outputs can be unpredictable for background removal, a more reliable approach is to use CSS to create a consistent visual treatment:
-- Add a white/light background container behind the logo with rounded corners
-- This ensures the logo always looks clean regardless of page background
-
-### Recommended Approach: CSS Container
-
-Add a subtle light background container to the logo in all locations:
-
-```tsx
-// Before
-<img src={logoImg} alt="Family Desk Logo" className="h-16 w-16 object-contain" />
-
-// After - with light background container
-<div className="bg-white rounded-xl p-2 shadow-sm">
-  <img src={logoImg} alt="Family Desk Logo" className="h-20 w-20 object-contain" />
-</div>
-```
-
-This approach:
-- Works immediately without regenerating the logo
-- Creates a consistent "logo card" look
-- The white background makes the colorful logo elements pop
+Add verify_jwt = false entries for all edge functions:
+- google-calendar-auth
+- fetch-calendar-events
+- generate-meal-suggestions
+- regenerate-meals
+- ai-chat
+- ai-pantry-import
+- create-household
+- dev-reset-account
+- dev-seed-test-user
+- extract-calendar-tasks
+- generate-daily-plan
+- generate-shopping-list
+- parse-task-input
+- send-access-decision
+- send-access-request-confirmation
+- send-daily-plan-whatsapp
+- send-habit-reminders
+- send-household-invitation
+- send-invitation-response
+- send-join-request-notification
+- send-meal-plan-summary
+- send-pantry-alerts
+- send-task-notification
+- send-task-reminders
+- send-verification-email
+- send-weekly-digest
+- verify-email-token
+- whatsapp-notify
+- whatsapp-send-otp
+- whatsapp-verify-otp
 
 ---
 
-## Part 2: Increase Auth Page Logo Size
+### 2. Minimalistic Design Theme
 
-### File: `src/pages/Auth.tsx`
+Apply a clean, minimal aesthetic across the dashboard and global UI components by reducing visual noise, tightening spacing, and simplifying decorative elements.
 
-**Current (line 342):**
-```tsx
-className="h-16 w-16 object-contain"
-```
+**File: `src/pages/Index.tsx`**
+- Reduce main padding: `py-4 sm:py-6` to `py-3 sm:py-4`
+- Reduce welcome section margin: `mb-4 sm:mb-6` to `mb-3`
+- Reduce grid gap: `gap-3 sm:gap-4` to `gap-2.5 sm:gap-3`
+- Simplify onboarding card: reduce margin from `mb-6` to `mb-4`, simplify gradient
 
-**New:**
-```tsx
-className="h-24 w-24 sm:h-28 sm:w-28 object-contain"
-```
+**File: `src/components/ui/card.tsx`**
+- Simplify Card: reduce from `rounded-xl border border-border/50 bg-card shadow-xs hover:shadow-sm` to `rounded-lg border border-border/40 bg-card shadow-none hover:shadow-xs`
+- Tighten CardHeader padding: `p-4 sm:p-5` to `p-3 sm:p-4`
+- Tighten CardContent padding: `px-4 pb-4 sm:px-5 sm:pb-5` to `px-3 pb-3 sm:px-4 sm:pb-4`
+- Reduce CardTitle size: `text-lg sm:text-xl` to `text-base sm:text-lg`
+- Tighten CardFooter similarly
 
-Size comparison:
-| Device | Current | New |
-|--------|---------|-----|
-| Mobile | 64px | 96px |
-| Desktop | 64px | 112px |
+**File: `src/components/dashboard/DashboardTaskWidget.tsx`**
+- Reduce task item spacing: `space-y-2` to `space-y-1.5`
 
----
+**File: `src/components/dashboard/DashboardMealWidget.tsx`**
+- Reduce meal group spacing: `space-y-2` to `space-y-1.5`
 
-## Part 3: Apply Consistent Logo Treatment
+**File: `src/components/dashboard/DashboardGroceryWidget.tsx`**
+- Reduce stat box padding: `p-1.5` to `p-1`
 
-Update all logo usages with the same pattern for consistency:
-
-### Files to Update
-
-| File | Current Size | New Size | Add Container |
-|------|-------------|----------|---------------|
-| `src/pages/Auth.tsx` | h-16 w-16 | h-24 w-24 sm:h-28 | Yes |
-| `src/pages/HouseholdSetup.tsx` | h-16 w-16 | h-20 w-20 | Yes |
-| `src/components/layout/Header.tsx` | h-12 w-12 | h-10 w-10 | Yes (smaller) |
-| `src/components/landing/LandingNav.tsx` | h-12 w-12 | h-10 w-10 | Yes (smaller) |
-| `src/pages/VerifyEmail.tsx` | TBD | h-20 w-20 | Yes |
-
-### Container Style Pattern
-
-```tsx
-// For Auth/Setup pages (larger, more prominent)
-<div className="bg-white/90 rounded-2xl p-3 shadow-lg ring-1 ring-black/5">
-  <img src={logoImg} alt="Family Desk Logo" className="h-24 w-24 sm:h-28 sm:w-28 object-contain" />
-</div>
-
-// For Header/Nav (compact)
-<div className="bg-white/80 rounded-lg p-1.5 shadow-sm">
-  <img src={logoImg} alt="Family Desk Logo" className="h-10 w-10 object-contain" />
-</div>
-```
+**File: `src/components/dashboard/DashboardCalendarWidget.tsx`**
+- No changes needed (already compact)
 
 ---
 
-## Visual Comparison
+### 3. Summary of All Files to Modify
 
-### Auth Page - Before vs After
-
-```text
-BEFORE                              AFTER
-+-------------------+               +-------------------+
-|                   |               |                   |
-|  +--------+       |               |  +-----------+    |
-|  | [Blue  |       |               |  | [White    |    |
-|  | square |       |               |  |  rounded  |    |
-|  | 64x64] |       |               |  |  112x112] |    |
-|  +--------+       |               |  +-----------+    |
-|   Family Desk     |               |    Family Desk    |
-|                   |               |                   |
-+-------------------+               +-------------------+
-```
-
-### Header - Before vs After
-
-```text
-BEFORE                              AFTER
-[Blue square] Family Desk           [Rounded white] Family Desk
-```
+| File | Change Type |
+|------|-------------|
+| `supabase/config.toml` | Add verify_jwt = false for all edge functions |
+| `src/components/ui/card.tsx` | Reduce padding, borders, shadows globally |
+| `src/pages/Index.tsx` | Tighten dashboard spacing |
+| `src/components/dashboard/DashboardTaskWidget.tsx` | Reduce item spacing |
+| `src/components/dashboard/DashboardMealWidget.tsx` | Reduce item spacing |
+| `src/components/dashboard/DashboardGroceryWidget.tsx` | Reduce stat padding |
 
 ---
 
-## Files to Modify
+### Expected Outcomes
 
-| File | Changes |
-|------|---------|
-| `src/pages/Auth.tsx` | Add white container, increase size to h-24 sm:h-28 |
-| `src/pages/HouseholdSetup.tsx` | Add white container, increase size to h-20 |
-| `src/pages/VerifyEmail.tsx` | Add white container, adjust size |
-| `src/components/layout/Header.tsx` | Add compact white container |
-| `src/components/landing/LandingNav.tsx` | Add compact white container |
-
----
-
-## Expected Outcomes
-
-1. **Clean Logo Appearance**: White background container eliminates the jarring blue square
-2. **Larger Auth Logo**: 75% larger logo creates better first impression
-3. **Brand Consistency**: Same treatment across all pages
-4. **No Asset Regeneration**: Works with existing logo file
-5. **Professional Look**: Rounded corners and subtle shadow add polish
+1. **Calendar errors fixed**: Google Calendar connection and event fetching will work because JWT verification is handled in code rather than at the gateway level
+2. **Meal plan generation fixed**: The generate-meal-suggestions and regenerate-meals functions will no longer return edge server errors
+3. **Cleaner UI**: Reduced padding, lighter shadows, and tighter spacing create a minimalistic feel with ~25% less vertical whitespace
