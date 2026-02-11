@@ -220,8 +220,8 @@ const Meals = () => {
     <div className="min-h-screen flex flex-col bg-background">
       <Header onStartOnboarding={handleStartOnboarding} />
 
-      <main className="container px-4 sm:px-6 py-6 pb-24">
-        <div className="mb-6 space-y-4">
+      <main className="container px-4 sm:px-6 py-3 sm:py-4 pb-24">
+        <div className="mb-4 space-y-3">
           <h1 className="text-xl sm:text-2xl font-bold">Meal Planning</h1>
           <div className="flex flex-wrap gap-2">
             <Button 
@@ -255,7 +255,7 @@ const Meals = () => {
           </div>
         </div>
 
-        <Tabs value={view} onValueChange={(v) => setView(v as any)} className="space-y-6">
+        <Tabs value={view} onValueChange={(v) => setView(v as any)} className="space-y-4">
           <TabsList className="w-full grid grid-cols-2">
             <TabsTrigger value="calendar" className="gap-2">
               <Calendar className="w-4 h-4" />
@@ -269,7 +269,7 @@ const Meals = () => {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="calendar" className="space-y-6">
+          <TabsContent value="calendar" className="space-y-4">
             <div data-tour="week-navigator">
               <WeekNavigator
                 weekStart={currentWeekStart}
@@ -319,7 +319,7 @@ const Meals = () => {
           </TabsContent>
 
           <TabsContent value="recipes">
-            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-2.5 sm:gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 stagger-fade-in">
               {recipes.map((recipe) => (
                 <RecipeCard
                   key={recipe.id}

@@ -126,11 +126,11 @@ const Habits = () => {
     <div className="min-h-screen flex flex-col bg-background">
       <Header onStartOnboarding={handleStartOnboarding} />
 
-      <main className="flex-1 container max-w-4xl mx-auto px-4 py-6 pb-24">
+      <main className="flex-1 container max-w-4xl mx-auto px-4 py-3 sm:py-4 pb-24">
         {/* Header with date and view toggle */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
           <div>
-            <h1 className="text-2xl font-bold">Habits</h1>
+            <h1 className="text-xl sm:text-2xl font-bold">Habits</h1>
             <p className="text-muted-foreground">
               {format(today, "EEEE, MMMM d, yyyy")}
             </p>
@@ -153,7 +153,7 @@ const Habits = () => {
 
         {view === "personal" ? (
           /* Personal View */
-          <div className="space-y-4">
+          <div className="space-y-3">
             {/* Progress summary */}
             <div className="flex items-center justify-between p-4 bg-accent/10 rounded-lg" data-tour="progress-summary">
               <div>
@@ -218,7 +218,7 @@ const Habits = () => {
           </div>
         ) : (
           /* Household View */
-          <div className="space-y-6">
+          <div className="space-y-4">
             {statsLoading || !householdStats ? (
               <div className="space-y-4">
                 <Skeleton className="h-24 w-full" />
