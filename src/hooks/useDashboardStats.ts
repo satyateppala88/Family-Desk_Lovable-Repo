@@ -43,6 +43,7 @@ export const useDashboardStats = (householdId: string | null) => {
         .eq("household_id", householdId)
         .lte("week_start_date", format(today, "yyyy-MM-dd"))
         .order("week_start_date", { ascending: false })
+        .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
 
