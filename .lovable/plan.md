@@ -1,111 +1,217 @@
 
 
-# Website Performance Optimization Plan
+# Apple-Inspired Minimalist Redesign for FamilyDesk
 
-## Issues Identified
+## Design Philosophy
 
-After reviewing the codebase, network requests, and session replay, here are the root causes of the slowness:
-
-### 1. Repeated Failing Network Requests (Most Impactful)
-- **`household_invitations` returns 403 on every load** -- "permission denied for table users". This request fires repeatedly (visible in network logs -- 8+ times) due to React Query retries. The RLS policy on `household_invitations` likely references the `users` table without proper permissions.
-- **`task_assignees` returns 400** -- "Could not find a relationship between task_assignees and profiles". This fails every time tasks are loaded, adding wasted network roundtrips.
-
-### 2. No Caching / staleTime on Key Queries
-Most hooks have **no `staleTime`**, meaning React Query refetches data on every component mount and window focus:
-- `useTaskmaster` -- fetches ALL tasks every time any Taskmaster page mounts
-- `useProjects` -- refetches on every mount
-- `useHousehold` -- refetches on every mount (called by Header, MobileNav, AIChatWidget, and the page)
-- `usePendingInvitations` -- refetches on every mount (and fails with 403)
-- `useIsHouseholdAdmin` -- uses raw `useEffect` instead of React Query, so it re-runs on every render and has no caching at all
-
-### 3. No Code Splitting
-All 20+ page components are eagerly imported in `App.tsx`. The entire Recharts library, jsPDF, react-joyride, and every page's code is loaded upfront -- even if the user only visits the dashboard.
-
-### 4. Fetching ALL Tasks Without Limits
-`useTaskmaster` fetches every task in the household with no pagination or limit. As tasks grow, this query becomes increasingly slow.
-
-### 5. Waterfall Requests
-On the Dashboard page, the request chain is:
-1. Auth session check
-2. `useHousehold` (2 sequential queries: household_members then households)
-3. Only then: tasks, projects, invitations, enabled products, admin check -- all in parallel but delayed
+Transform FamilyDesk from a colorful, badge-heavy "ERP for home" into a calm, intentional interface inspired by Apple's design language: generous white space, a neutral palette with one subtle accent, restrained typography, and no visual clutter.
 
 ---
 
-## Optimization Plan
+## Phase 1: Design System Overhaul
 
-### Step 1: Fix Failing Requests (Biggest Win)
+### 1a. Color Palette (`src/index.css`)
 
-**File: `src/hooks/usePendingInvitations.ts`**
-- Add error handling so the 403 failure doesn't trigger React Query's default 3 retries
-- Set `retry: false` and add `staleTime: 5 * 60 * 1000`
+Replace the current teal/orange multi-accent palette with a neutral, monochromatic system using a single warm accent.
 
-**File: `src/hooks/useTaskmaster.ts`**
-- Guard the `task_assignees` query: if `taskIds` is empty, skip the query
-- The current code sends `task_id=in.()` (empty list) which causes the 400 error
+**Light mode:**
+- Background: pure white (#FFFFFF) / very light gray (#FAFAFA)
+- Foreground: near-black (#1D1D1F) -- Apple's signature text color
+- Accent: a single muted blue (210, 10%, 45%) -- calm, not loud
+- Cards: white with no visible border, ultra-subtle shadow on hover only
+- Muted text: medium gray (#86868B) -- Apple's secondary text color
+- Borders: barely visible (#F5F5F7)
+- Remove all landing-specific color variables (simplify to use the core palette)
+- Remove orange, teal, warning, success color noise from the base theme
 
-### Step 2: Add staleTime to All Core Hooks
+**Dark mode:**
+- Background: #1D1D1F
+- Cards: #2C2C2E
+- Same single accent, slightly brighter for contrast
 
-| Hook | Current staleTime | Proposed staleTime |
-|------|-------------------|-------------------|
-| `useTaskmaster` | 0 (default) | 30 seconds |
-| `useProjects` | 0 (default) | 60 seconds |
-| `useHousehold` | 0 (default) | 5 minutes |
-| `usePendingInvitations` | 0 (default) | 5 minutes |
-| `useIsHouseholdAdmin` | N/A (useEffect) | Convert to React Query, 10 minutes |
+### 1b. Typography & Spacing
 
-### Step 3: Convert useIsHouseholdAdmin to React Query
+- Font: Keep Inter (already Apple-like), but tighten letter-spacing for headings (-0.02em)
+- Remove serif and mono font families from the system (unused, adds complexity)
+- Increase base line-height slightly for readability
+- Remove all gradient, glow-pulse, float, and decorative keyframe animations
+- Keep only fade-in and accordion animations
 
-**File: `src/hooks/useIsHouseholdAdmin.ts`**
-- Replace the raw `useState`/`useEffect` pattern with `useQuery`
-- This gives automatic caching, deduplication, and avoids redundant fetches
+### 1c. Shadows
 
-### Step 4: Add Code Splitting with React.lazy
-
-**File: `src/App.tsx`**
-- Wrap all page imports with `React.lazy()` and `Suspense`
-- This ensures Recharts, jsPDF, react-joyride, and heavy page components are only loaded when navigated to
-
-Example:
-```typescript
-const TaskmasterDashboard = lazy(() => import("./pages/TaskmasterDashboard"));
-const Meals = lazy(() => import("./pages/Meals"));
-// etc.
-```
-
-### Step 5: Limit Task Fetching
-
-**File: `src/hooks/useTaskmaster.ts`**
-- Add a reasonable limit (e.g., 500 tasks) to prevent unbounded queries
-- For the Dashboard specifically, only open tasks are needed -- consider a separate lightweight query
-
-### Step 6: Optimize useHousehold
-
-**File: `src/hooks/useHousehold.ts`**
-- Add `staleTime: 5 * 60 * 1000` -- household membership rarely changes during a session
-- This alone prevents 4+ redundant fetches per page load (Header + MobileNav + AIChatWidget + page)
+Replace all shadow variables with Apple-style ultra-subtle shadows:
+- Default: none
+- Hover: `0 2px 8px rgba(0,0,0,0.04)`
+- Elevated (modals/dropdowns): `0 4px 16px rgba(0,0,0,0.08)`
 
 ---
 
-## Expected Impact
+## Phase 2: Core UI Components
 
-| Change | Impact |
-|--------|--------|
-| Fix 403/400 errors | Eliminates 10+ wasted requests per page load |
-| Add staleTime | Prevents 15+ redundant fetches on navigation |
-| Code splitting | Reduces initial bundle by ~40-50% (Recharts alone is ~200KB) |
-| Convert useIsHouseholdAdmin | Removes 1 raw fetch per page, adds caching |
-| Limit tasks | Prevents slow queries as data grows |
+### 2a. Card (`src/components/ui/card.tsx`)
+- Remove border entirely (or use `border-transparent`)
+- Remove hover shadow transition (cards should feel flat, not interactive unless clickable)
+- Increase padding slightly for breathing room
+- Remove `border-l-4` accent strips from dashboard widgets
+
+### 2b. Button (`src/components/ui/button.tsx`)
+- Reduce border-radius to `rounded-lg` (8px) -- Apple uses slightly rounded, not pill-shaped
+- Remove `active:scale[0.97]` -- Apple buttons don't shrink
+- Default height: `h-10` instead of `h-12` (less chunky)
+- Primary: solid dark background (#1D1D1F) with white text (Apple style)
+- Ghost/outline: no border change on hover, just subtle background tint
+- Remove "accent" variant entirely
+
+### 2c. Badge
+- Simplify to just `default` and `secondary` usage
+- Use pill shape with very light background tints instead of solid colored badges (no red/orange/yellow priority pills)
+
+### 2d. Input (`src/components/ui/input.tsx`)
+- Lighter border, slightly taller (h-11), more horizontal padding
+- Focus ring: thin, muted accent color -- not bold
 
 ---
 
-## Technical Details
+## Phase 3: Layout Components
 
-### Files to modify:
-1. **`src/App.tsx`** -- Add `React.lazy` + `Suspense` for all page imports
-2. **`src/hooks/useTaskmaster.ts`** -- Add staleTime, guard empty task_assignees query, add limit
-3. **`src/hooks/useProjects.ts`** -- Add staleTime
-4. **`src/hooks/useHousehold.ts`** -- Add staleTime
-5. **`src/hooks/usePendingInvitations.ts`** -- Add staleTime, retry: false
-6. **`src/hooks/useIsHouseholdAdmin.ts`** -- Rewrite with useQuery
+### 3a. Header (`src/components/layout/Header.tsx`)
+- Remove logo image background wrapper (white/80 rounded-lg shadow)
+- Show just the wordmark "FamilyDesk" in semibold, no logo image
+- Remove `border-b` -- use a subtle backdrop-blur with no visible line (Apple nav style)
+- Avatar: smaller (h-8 w-8), lighter background, no badge overlay for pending count (move to a dot indicator)
+- Simplify dropdown menu: remove icons from every item, use clean text-only menu
+
+### 3b. MobileNav (`src/components/layout/MobileNav.tsx`)
+- Remove `scale-110` animation on active icon
+- Use a simple dot indicator below the active icon instead of color change + scale
+- Reduce icon size from `w-6 h-6` to `w-5 h-5`
+- Remove the ChevronUp submenu indicator -- use a simple long-press or separate page for Taskmaster sub-navigation
+
+### 3c. Footer (`src/components/layout/Footer.tsx`)
+- Minimal: just copyright line centered, no flags or emojis
+- Move legal links to Settings page instead of footer
+
+---
+
+## Phase 4: Landing Page
+
+### 4a. LandingNav (`src/components/landing/LandingNav.tsx`)
+- Remove backdrop-blur tiers -- just a clean white bar
+- Remove uppercase tracking-wider nav links -- use normal case
+- "Get Started" button: dark solid (not orange), no hover shadow/scale
+
+### 4b. Hero (`src/components/landing/Hero.tsx`)
+- Remove all floating gradient blobs (the animated circles with blur)
+- Remove `animate-float`, `animate-bounce` on chevron
+- Simple centered layout: large heading + one-line subtitle + single CTA button
+- No "Request Early Access" -- just "Get Started"
+- Remove secondary "Learn More" button (simplify to one action)
+- Background: plain white, no gradient
+
+### 4c. FeaturesScroll (`src/components/landing/FeaturesScroll.tsx`)
+- Replace horizontal scroll cards with a clean vertical grid (2x3 on desktop, 1 column on mobile)
+- Remove hover translate animations and gradient overlays
+- Each feature: small icon + title + one-line description, no card borders
+- Remove the inline `<style>` scrollbar-hide hack
+
+### 4d. HowItWorks (`src/components/landing/HowItWorks.tsx`)
+- Replace large 100px numbers and floating icon boxes with a simple numbered list
+- Three steps, vertically stacked, minimal -- just number + text
+
+### 4e. Benefits (`src/components/landing/Benefits.tsx`)
+- Merge into Features section or simplify to a single row of 3 key stats/benefits
+- Remove card hover effects
+
+### 4f. FinalCTA (`src/components/landing/FinalCTA.tsx`)
+- Remove gradient blobs
+- Simple: one heading + one button + one line of subtext on white background
+
+### 4g. Landing page (`src/pages/Landing.tsx`)
+- Remove the "Made for Indian Households" colored banner section (move to a subtle footer note if needed)
+
+---
+
+## Phase 5: Dashboard & Feature Pages
+
+### 5a. Dashboard (`src/pages/Index.tsx`)
+- Remove onboarding tour overlay (simplify to an inline checklist card if incomplete)
+- Welcome text: just the household name as a large heading, no subtitle paragraph
+- Widget grid: 2 columns on desktop, clean cards with no left border accents
+- Each widget: title + key number + brief list, no decorative icons next to titles
+
+### 5b. Dashboard Widgets (all 4 files)
+- Remove `border-l-4` color accents
+- Remove `hover:scale[1.02]` transform on card links
+- Remove emoji icons (sun/moon in meal widget)
+- Simplify to: section title, data, subtle "View all" text link (no ArrowRight icon)
+
+### 5c. TaskmasterDashboard (`src/pages/TaskmasterDashboard.tsx`)
+- Remove LayoutDashboard and CalendarSearch icons from the header
+- Summary cards: just the number and label, no icon
+- Charts: keep but use monochromatic color scheme (grays + one accent)
+- Task lists: remove colored priority badges, use P1/P2 as plain text with subtle weight differences
+
+### 5d. TaskmasterToday (`src/pages/TaskmasterToday.tsx`)
+- Remove badge soup on each task (currently showing priority + status + category + date + age + AI reasoning -- 6 badges per task)
+- Show: task title, due date if set, one subtle status indicator
+- AI reasoning: hide behind a small "i" icon, not a badge
+- Action buttons: simplify to a single checkbox to mark done
+
+### 5e. Tasks page (`src/pages/Tasks.tsx`)
+- Clean filter row with simple segmented controls instead of Select dropdowns
+- Task cards in a simple list layout (not grid), one line per task
+
+---
+
+## Phase 6: Cleanup
+
+- Remove `src/App.css` (unused Vite boilerplate)
+- Remove all `stagger-fade-in` utility classes
+- Remove all `animate-gradient-shift`, `animate-float`, `animate-glow-pulse` classes
+- Remove unused logo image assets (keep only one if still needed)
+
+---
+
+## Files to Modify (estimated ~25 files)
+
+| File | Change |
+|------|--------|
+| `src/index.css` | Complete palette + animation overhaul |
+| `tailwind.config.ts` | Remove unused color aliases, simplify shadows |
+| `src/components/ui/card.tsx` | Remove borders, adjust padding |
+| `src/components/ui/button.tsx` | New variants, smaller sizes |
+| `src/components/ui/input.tsx` | Subtle styling |
+| `src/components/ui/badge.tsx` | Simplify variants |
+| `src/components/layout/Header.tsx` | Minimal nav bar |
+| `src/components/layout/MobileNav.tsx` | Dot indicator, smaller icons |
+| `src/components/layout/Footer.tsx` | Minimal copyright |
+| `src/components/landing/LandingNav.tsx` | Clean nav |
+| `src/components/landing/Hero.tsx` | Remove blobs, simplify |
+| `src/components/landing/FeaturesScroll.tsx` | Vertical grid |
+| `src/components/landing/HowItWorks.tsx` | Simple numbered list |
+| `src/components/landing/Benefits.tsx` | Merge/simplify |
+| `src/components/landing/FinalCTA.tsx` | Remove decorations |
+| `src/pages/Landing.tsx` | Remove colored banner |
+| `src/pages/Index.tsx` | Clean dashboard |
+| `src/components/dashboard/DashboardTaskWidget.tsx` | Remove accents |
+| `src/components/dashboard/DashboardMealWidget.tsx` | Remove accents |
+| `src/components/dashboard/DashboardGroceryWidget.tsx` | Remove accents |
+| `src/components/dashboard/DashboardCalendarWidget.tsx` | Remove accents |
+| `src/pages/TaskmasterDashboard.tsx` | Monochrome charts |
+| `src/pages/TaskmasterToday.tsx` | Reduce badge clutter |
+| `src/pages/Tasks.tsx` | List layout, clean filters |
+| `src/App.css` | Delete (unused) |
+
+---
+
+## Implementation Approach
+
+Due to the scope, this will be implemented in batches:
+
+1. **Batch 1**: Design system (CSS variables, tailwind config, core UI components) -- this cascades to everything
+2. **Batch 2**: Layout shell (Header, MobileNav, Footer)
+3. **Batch 3**: Landing page (all 6 landing components)
+4. **Batch 4**: Dashboard and feature pages
+
+Each batch builds on the previous one, so the visual transformation will be progressive and consistent.
 
