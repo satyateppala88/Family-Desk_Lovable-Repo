@@ -22,6 +22,7 @@ export const useProjects = (householdId: string | null) => {
       return data as Project[];
     },
     enabled: !!householdId,
+    staleTime: 60 * 1000,
   });
 
   const createProject = useMutation({

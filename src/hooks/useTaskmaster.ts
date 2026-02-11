@@ -27,13 +27,14 @@ export const useTaskmaster = (householdId: string | null) => {
 
       // Fetch assignees for all tasks
       const taskIds = data.map((t: any) => t.id);
-      const { data: assignees } = await supabase
-        .from("task_assignees")
-        .select(`
-          *,
-          profile:profiles(id, display_name, avatar_url)
-        `)
-        .in("task_id", taskIds);
+      let assignees: any[] = [];
+      if (taskIds.length > 0) {
+        const { data: assigneeData } = await supabase
+          .from("task_assignees")
+          .select("*")
+          .in("task_id", taskIds);
+        assignees = assigneeData || [];
+      }
 
       // Map assignees to tasks
       return data.map((task: any) => ({
@@ -42,6 +43,7 @@ export const useTaskmaster = (householdId: string | null) => {
       })) as TaskmasterTask[];
     },
     enabled: !!householdId,
+    staleTime: 30 * 1000,
   });
 
   const createTask = useMutation({
