@@ -10,8 +10,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { CheckCircle, XCircle, Clock, AlertCircle } from "lucide-react";
+import { CheckCircle, XCircle, Clock, AlertCircle, ShieldAlert } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { useIsPlatformAdmin } from "@/hooks/useIsPlatformAdmin";
 import {
   Dialog,
   DialogContent,
@@ -37,6 +38,7 @@ const AdminAccessRequests = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { isPlatformAdmin, isLoading: isAdminLoading } = useIsPlatformAdmin();
   const [selectedRequest, setSelectedRequest] = useState<AccessRequest | null>(null);
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [rejectionReason, setRejectionReason] = useState("");
@@ -193,6 +195,36 @@ const AdminAccessRequests = () => {
   const pendingCount = requests.filter((r) => r.status === "pending").length;
   const approvedCount = requests.filter((r) => r.status === "approved").length;
   const rejectedCount = requests.filter((r) => r.status === "rejected").length;
+
+  if (isAdminLoading) {
+    return (
+      <div className="min-h-screen flex flex-col bg-background">
+        <Header />
+        <main className="flex-1 container mx-auto px-4 py-8">
+          <p className="text-center text-muted-foreground">Loading...</p>
+        </main>
+      </div>
+    );
+  }
+
+  if (!isPlatformAdmin) {
+    return (
+      <div className="min-h-screen flex flex-col bg-background">
+        <Header />
+        <main className="flex-1 container mx-auto px-4 py-8">
+          <Card>
+            <CardContent className="py-12">
+              <div className="text-center">
+                <ShieldAlert className="h-12 w-12 mx-auto mb-4 text-destructive" />
+                <h2 className="text-xl font-semibold mb-2">Unauthorized</h2>
+                <p className="text-muted-foreground">You don't have permission to access this page.</p>
+              </div>
+            </CardContent>
+          </Card>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-background">

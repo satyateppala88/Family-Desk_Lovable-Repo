@@ -12,6 +12,7 @@ import {
 import { useHousehold } from "@/hooks/useHousehold";
 import { useIsHouseholdAdmin } from "@/hooks/useIsHouseholdAdmin";
 import { usePendingInvitations } from "@/hooks/usePendingInvitations";
+import { useIsPlatformAdmin } from "@/hooks/useIsPlatformAdmin";
 
 interface HeaderProps {
   onStartOnboarding?: () => void;
@@ -24,6 +25,7 @@ export const Header = ({ onStartOnboarding }: HeaderProps) => {
   const { isAdmin } = useIsHouseholdAdmin(householdId);
   const { data: pendingInvitations = [] } = usePendingInvitations(householdId);
   const pendingCount = isAdmin ? pendingInvitations.length : 0;
+  const { isPlatformAdmin } = useIsPlatformAdmin();
 
   const getInitials = () => {
     if (!user?.user_metadata?.display_name) return "U";
@@ -84,6 +86,14 @@ export const Header = ({ onStartOnboarding }: HeaderProps) => {
                     Pending Invitations ({pendingCount})
                   </DropdownMenuItem>
                 )}
+              </>
+            )}
+            {isPlatformAdmin && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => navigate("/admin/access-requests")}>
+                  Admin Panel
+                </DropdownMenuItem>
               </>
             )}
             <DropdownMenuSeparator />
