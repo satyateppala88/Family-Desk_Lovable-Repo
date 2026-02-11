@@ -1,91 +1,111 @@
 
 
-# Calendar-to-Tasks: Smart Task Extraction Button
+# Website Performance Optimization Plan
 
-Add a "Scan Calendar" button to the Taskmaster Dashboard that reviews upcoming calendar events and generates a preview of suggested tasks for the user to approve before they are created.
+## Issues Identified
 
----
+After reviewing the codebase, network requests, and session replay, here are the root causes of the slowness:
 
-## Current Behavior
+### 1. Repeated Failing Network Requests (Most Impactful)
+- **`household_invitations` returns 403 on every load** -- "permission denied for table users". This request fires repeatedly (visible in network logs -- 8+ times) due to React Query retries. The RLS policy on `household_invitations` likely references the `users` table without proper permissions.
+- **`task_assignees` returns 400** -- "Could not find a relationship between task_assignees and profiles". This fails every time tasks are loaded, adding wasted network roundtrips.
 
-The existing `extract-calendar-tasks` edge function already does the heavy lifting: it fetches calendar events, uses AI to identify actionable items (e.g., "Call dentist"), filters out meetings/appointments, and inserts tasks directly into the database. However, it only runs silently as part of the daily plan generation -- users have no direct control and no chance to review before tasks are created.
+### 2. No Caching / staleTime on Key Queries
+Most hooks have **no `staleTime`**, meaning React Query refetches data on every component mount and window focus:
+- `useTaskmaster` -- fetches ALL tasks every time any Taskmaster page mounts
+- `useProjects` -- refetches on every mount
+- `useHousehold` -- refetches on every mount (called by Header, MobileNav, AIChatWidget, and the page)
+- `usePendingInvitations` -- refetches on every mount (and fails with 403)
+- `useIsHouseholdAdmin` -- uses raw `useEffect` instead of React Query, so it re-runs on every render and has no caching at all
 
-## What Changes
+### 3. No Code Splitting
+All 20+ page components are eagerly imported in `App.tsx`. The entire Recharts library, jsPDF, react-joyride, and every page's code is loaded upfront -- even if the user only visits the dashboard.
 
-### 1. Two-Step Flow: Preview, Then Confirm
+### 4. Fetching ALL Tasks Without Limits
+`useTaskmaster` fetches every task in the household with no pagination or limit. As tasks grow, this query becomes increasingly slow.
 
-Instead of auto-creating tasks, introduce a review step:
-
-1. User clicks **"Scan Calendar"** button on the Dashboard
-2. A dialog opens showing a loading state while the AI analyzes calendar events
-3. The dialog displays suggested tasks with title, priority, category, and AI reasoning
-4. User can **check/uncheck** individual tasks, **edit titles**, or **change priority/category** before confirming
-5. Only confirmed tasks are created in the database
-
-### 2. Date Range Selection
-
-Rather than only scanning today, let users pick a date range (Today, This Week, Next 7 Days) to catch upcoming actionable items early -- e.g., "Renew car insurance" scheduled for next Thursday can become a task today.
-
-### 3. Duplicate Detection Badge
-
-Show a "Already imported" badge on events that were previously converted to tasks (using the existing `source_calendar_event_id` tracking), so users know what has already been handled.
-
-### 4. Calendar Connection Check
-
-If no Google Calendar is connected, the button shows a helpful prompt to connect one first, linking to the Calendar page.
+### 5. Waterfall Requests
+On the Dashboard page, the request chain is:
+1. Auth session check
+2. `useHousehold` (2 sequential queries: household_members then households)
+3. Only then: tasks, projects, invitations, enabled products, admin check -- all in parallel but delayed
 
 ---
 
-## Technical Plan
+## Optimization Plan
 
-### New Edge Function: `extract-calendar-tasks-preview`
+### Step 1: Fix Failing Requests (Biggest Win)
 
-A variant of the existing function that returns suggested tasks **without inserting them** into the database. This keeps the existing auto-insert function untouched.
+**File: `src/hooks/usePendingInvitations.ts`**
+- Add error handling so the 403 failure doesn't trigger React Query's default 3 retries
+- Set `retry: false` and add `staleTime: 5 * 60 * 1000`
 
-- Accepts `{ householdId, startDate, endDate }`
-- Fetches events via `fetch-calendar-events`
-- Checks existing `source_calendar_event_id` for duplicates
-- Calls AI to identify actionable tasks
-- Returns `{ suggestions: [...], alreadyImported: [...] }` without any database writes
+**File: `src/hooks/useTaskmaster.ts`**
+- Guard the `task_assignees` query: if `taskIds` is empty, skip the query
+- The current code sends `task_id=in.()` (empty list) which causes the 400 error
 
-### New Component: `CalendarTaskScanDialog`
+### Step 2: Add staleTime to All Core Hooks
 
-**File: `src/components/taskmaster/CalendarTaskScanDialog.tsx`**
+| Hook | Current staleTime | Proposed staleTime |
+|------|-------------------|-------------------|
+| `useTaskmaster` | 0 (default) | 30 seconds |
+| `useProjects` | 0 (default) | 60 seconds |
+| `useHousehold` | 0 (default) | 5 minutes |
+| `usePendingInvitations` | 0 (default) | 5 minutes |
+| `useIsHouseholdAdmin` | N/A (useEffect) | Convert to React Query, 10 minutes |
 
-A dialog with:
-- Date range selector (Today / This Week / Next 7 Days)
-- Loading state with "Scanning your calendar..." message
-- List of suggested tasks, each with:
-  - Checkbox (default checked)
-  - Editable title field
-  - Priority dropdown (P1-P4)
-  - Category dropdown (Home/Work/Kid/Other)
-  - AI reasoning shown as a subtle tooltip
-  - "Already imported" badge for duplicates (unchecked by default)
-- "Create X Tasks" confirmation button
-- "Cancel" button
+### Step 3: Convert useIsHouseholdAdmin to React Query
 
-### Update: `TaskmasterDashboard.tsx`
+**File: `src/hooks/useIsHouseholdAdmin.ts`**
+- Replace the raw `useState`/`useEffect` pattern with `useQuery`
+- This gives automatic caching, deduplication, and avoids redundant fetches
 
-- Add a "Scan Calendar" button in the header area next to the Dashboard title
-- Button shows a Calendar + Sparkles icon
-- Opens the `CalendarTaskScanDialog`
-- After tasks are created, invalidates the `taskmaster-tasks` query to refresh stats
+### Step 4: Add Code Splitting with React.lazy
 
-### Update: `useTaskmaster.ts`
+**File: `src/App.tsx`**
+- Wrap all page imports with `React.lazy()` and `Suspense`
+- This ensures Recharts, jsPDF, react-joyride, and heavy page components are only loaded when navigated to
 
-- Add a `createMultipleTasks` mutation that batch-inserts the confirmed tasks
-- Reuses the existing insert logic but accepts an array
+Example:
+```typescript
+const TaskmasterDashboard = lazy(() => import("./pages/TaskmasterDashboard"));
+const Meals = lazy(() => import("./pages/Meals"));
+// etc.
+```
+
+### Step 5: Limit Task Fetching
+
+**File: `src/hooks/useTaskmaster.ts`**
+- Add a reasonable limit (e.g., 500 tasks) to prevent unbounded queries
+- For the Dashboard specifically, only open tasks are needed -- consider a separate lightweight query
+
+### Step 6: Optimize useHousehold
+
+**File: `src/hooks/useHousehold.ts`**
+- Add `staleTime: 5 * 60 * 1000` -- household membership rarely changes during a session
+- This alone prevents 4+ redundant fetches per page load (Header + MobileNav + AIChatWidget + page)
 
 ---
 
-## Summary
+## Expected Impact
 
-| Item | Details |
-|------|---------|
-| New edge function | `extract-calendar-tasks-preview` -- returns suggestions without DB writes |
-| New component | `CalendarTaskScanDialog` -- review dialog with edit capability |
-| Updated page | `TaskmasterDashboard.tsx` -- add Scan Calendar button |
-| Updated hook | `useTaskmaster.ts` -- add batch create mutation |
-| Config | Add function to `supabase/config.toml` with `verify_jwt = false` |
+| Change | Impact |
+|--------|--------|
+| Fix 403/400 errors | Eliminates 10+ wasted requests per page load |
+| Add staleTime | Prevents 15+ redundant fetches on navigation |
+| Code splitting | Reduces initial bundle by ~40-50% (Recharts alone is ~200KB) |
+| Convert useIsHouseholdAdmin | Removes 1 raw fetch per page, adds caching |
+| Limit tasks | Prevents slow queries as data grows |
+
+---
+
+## Technical Details
+
+### Files to modify:
+1. **`src/App.tsx`** -- Add `React.lazy` + `Suspense` for all page imports
+2. **`src/hooks/useTaskmaster.ts`** -- Add staleTime, guard empty task_assignees query, add limit
+3. **`src/hooks/useProjects.ts`** -- Add staleTime
+4. **`src/hooks/useHousehold.ts`** -- Add staleTime
+5. **`src/hooks/usePendingInvitations.ts`** -- Add staleTime, retry: false
+6. **`src/hooks/useIsHouseholdAdmin.ts`** -- Rewrite with useQuery
 
