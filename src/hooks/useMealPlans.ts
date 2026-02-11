@@ -67,6 +67,25 @@ export const useMealPlans = (householdId: string | null, weekStartDate?: string)
     }) => {
       if (!householdId) throw new Error("No household ID");
 
+      // Remove existing plans for this week to prevent duplicates
+      const { data: existingPlans } = await (supabase as any)
+        .from("meal_plans")
+        .select("id")
+        .eq("household_id", householdId)
+        .eq("week_start_date", weekStartDate);
+
+      if (existingPlans && existingPlans.length > 0) {
+        const existingIds = existingPlans.map((p: any) => p.id);
+        await (supabase as any)
+          .from("meal_plan_items")
+          .delete()
+          .in("meal_plan_id", existingIds);
+        await (supabase as any)
+          .from("meal_plans")
+          .delete()
+          .in("id", existingIds);
+      }
+
       // Create the meal plan
       const { data: mealPlan, error: planError } = await (supabase as any)
         .from("meal_plans")
