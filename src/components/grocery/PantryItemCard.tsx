@@ -2,6 +2,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Minus, Plus, Edit, Trash2, AlertTriangle } from "lucide-react";
+import { cn } from "@/lib/utils";
 import type { PantryItem } from "@/hooks/usePantryItems";
 
 interface PantryItemCardProps {
@@ -14,15 +15,13 @@ interface PantryItemCardProps {
 export const PantryItemCard = ({ item, onEdit, onDelete, onUpdateQuantity }: PantryItemCardProps) => {
   const getExpiryStatus = () => {
     if (!item.expiry_date) return null;
-    
     const now = new Date();
     const expiryDate = new Date(item.expiry_date);
     const diffDays = Math.ceil((expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-    
-    if (diffDays < 0) return { status: "expired", color: "bg-destructive", text: "Expired" };
-    if (diffDays <= 3) return { status: "expiring-soon", color: "bg-orange-500", text: `${diffDays}d left` };
-    if (diffDays <= 7) return { status: "expiring", color: "bg-yellow-500", text: `${diffDays}d left` };
-    return { status: "fresh", color: "bg-green-500", text: `${diffDays}d left` };
+    if (diffDays < 0) return { className: "text-destructive bg-destructive/10 border-destructive/20", text: "Expired" };
+    if (diffDays <= 3) return { className: "text-warning bg-warning/10 border-warning/20", text: `${diffDays}d left` };
+    if (diffDays <= 7) return { className: "text-muted-foreground bg-muted border-border", text: `${diffDays}d left` };
+    return null;
   };
 
   const isLowStock = () => {
@@ -34,90 +33,56 @@ export const PantryItemCard = ({ item, onEdit, onDelete, onUpdateQuantity }: Pan
   const expiryStatus = getExpiryStatus();
   const lowStock = isLowStock();
 
-  const handleIncrement = () => {
-    const newQuantity = (item.quantity || 0) + 1;
-    onUpdateQuantity(item.id, newQuantity);
-  };
-
-  const handleDecrement = () => {
-    const newQuantity = Math.max(0, (item.quantity || 0) - 1);
-    onUpdateQuantity(item.id, newQuantity);
-  };
-
   return (
-    <Card className="hover:shadow-md transition-shadow">
-      <CardContent className="p-4">
-        <div className="flex items-start justify-between mb-3">
-          <div className="flex-1">
-            <h3 className="font-semibold text-base mb-1">{item.name}</h3>
-            <div className="flex flex-wrap gap-2 items-center">
-              {item.category && (
-                <Badge variant="secondary" className="text-xs">
-                  {item.category}
+    <Card className={cn("transition-all hover:shadow-md group", lowStock && "border-warning/30")}>
+      <CardContent className="p-3 sm:p-4">
+        <div className="flex items-center gap-3">
+          {/* Quantity controls */}
+          <div className="flex items-center gap-1.5 shrink-0">
+            <Button size="icon" variant="outline" onClick={() => onUpdateQuantity(item.id, Math.max(0, (item.quantity || 0) - 1))}
+              className="h-8 w-8" style={{ minHeight: "32px" }}>
+              <Minus className="h-3 w-3" />
+            </Button>
+            <div className="text-center min-w-[3rem]">
+              <span className="text-sm font-semibold tabular-nums">{item.quantity || 0}</span>
+              {item.unit && <span className="text-[10px] text-muted-foreground block">{item.unit}</span>}
+            </div>
+            <Button size="icon" variant="outline" onClick={() => onUpdateQuantity(item.id, (item.quantity || 0) + 1)}
+              className="h-8 w-8" style={{ minHeight: "32px" }}>
+              <Plus className="h-3 w-3" />
+            </Button>
+          </div>
+
+          {/* Name and badges */}
+          <div className="flex-1 min-w-0">
+            <h3 className="text-sm font-medium truncate">{item.name}</h3>
+            <div className="flex flex-wrap items-center gap-1 mt-0.5">
+              {lowStock && (
+                <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-warning border-warning/30">
+                  <AlertTriangle className="h-2.5 w-2.5 mr-0.5" /> Low
+                </Badge>
+              )}
+              {expiryStatus && (
+                <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0", expiryStatus.className)}>
+                  {expiryStatus.text}
                 </Badge>
               )}
               {item.is_staple && (
-                <Badge variant="outline" className="text-xs">
-                  Staple
-                </Badge>
+                <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Staple</Badge>
               )}
             </div>
           </div>
-          <div className="flex gap-1">
-            <Button
-              size="icon"
-              variant="ghost"
-              onClick={() => onEdit(item)}
-              className="h-8 w-8"
-            >
-              <Edit className="h-4 w-4" />
-            </Button>
-            <Button
-              size="icon"
-              variant="ghost"
-              onClick={() => onDelete(item.id)}
-              className="h-8 w-8 text-destructive hover:text-destructive"
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
 
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Button
-              size="icon"
-              variant="outline"
-              onClick={handleDecrement}
-              className="h-8 w-8"
-            >
-              <Minus className="h-4 w-4" />
+          {/* Actions */}
+          <div className="flex gap-0.5 shrink-0 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+            <Button size="icon" variant="ghost" onClick={() => onEdit(item)}
+              className="h-7 w-7 text-muted-foreground" style={{ minHeight: "28px" }}>
+              <Edit className="h-3.5 w-3.5" />
             </Button>
-            <span className="font-semibold min-w-[60px] text-center">
-              {item.quantity || 0} {item.unit || ""}
-            </span>
-            <Button
-              size="icon"
-              variant="outline"
-              onClick={handleIncrement}
-              className="h-8 w-8"
-            >
-              <Plus className="h-4 w-4" />
+            <Button size="icon" variant="ghost" onClick={() => onDelete(item.id)}
+              className="h-7 w-7 text-muted-foreground hover:text-destructive" style={{ minHeight: "28px" }}>
+              <Trash2 className="h-3.5 w-3.5" />
             </Button>
-          </div>
-
-          <div className="flex gap-2 items-center">
-            {lowStock && (
-              <Badge variant="outline" className="text-orange-500 border-orange-500">
-                <AlertTriangle className="h-3 w-3 mr-1" />
-                Low Stock
-              </Badge>
-            )}
-            {expiryStatus && (
-              <Badge className={expiryStatus.color}>
-                {expiryStatus.text}
-              </Badge>
-            )}
           </div>
         </div>
       </CardContent>

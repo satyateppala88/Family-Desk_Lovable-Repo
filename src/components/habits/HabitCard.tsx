@@ -1,9 +1,10 @@
-import { Check, Flame, Plus, Minus } from "lucide-react";
+import { Check, Flame, Plus, Minus, Sparkles } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { HabitWithStreak } from "@/types/habits";
+import { useState } from "react";
 
 interface HabitCardProps {
   habit: HabitWithStreak;
@@ -16,18 +17,27 @@ export const HabitCard = ({ habit, onToggle, onUpdateValue }: HabitCardProps) =>
   const currentValue = habit.todayLog?.actual_value || 0;
   const hasTarget = habit.target_value && habit.target_unit;
   const streakCount = habit.streak?.current_streak || 0;
+  const longestStreak = habit.streak?.longest_streak || 0;
+  const [showCelebration, setShowCelebration] = useState(false);
 
   const handleToggle = () => {
     if (hasTarget) {
-      // For trackable habits, complete when target is reached
       const newValue = currentValue + 1;
       onUpdateValue?.(habit.id, newValue);
       if (newValue >= (habit.target_value || 0)) {
         onToggle(habit.id, true);
+        triggerCelebration();
       }
     } else {
-      onToggle(habit.id, !isCompleted);
+      const newState = !isCompleted;
+      onToggle(habit.id, newState);
+      if (newState) triggerCelebration();
     }
+  };
+
+  const triggerCelebration = () => {
+    setShowCelebration(true);
+    setTimeout(() => setShowCelebration(false), 1500);
   };
 
   const handleIncrement = () => {
@@ -35,6 +45,7 @@ export const HabitCard = ({ habit, onToggle, onUpdateValue }: HabitCardProps) =>
     onUpdateValue?.(habit.id, newValue);
     if (newValue >= (habit.target_value || 0)) {
       onToggle(habit.id, true);
+      triggerCelebration();
     }
   };
 
@@ -48,92 +59,95 @@ export const HabitCard = ({ habit, onToggle, onUpdateValue }: HabitCardProps) =>
     }
   };
 
+  const targetProgress = hasTarget && habit.target_value
+    ? Math.min(100, (currentValue / habit.target_value) * 100)
+    : 0;
+
   return (
     <Card
       className={cn(
-        "p-4 transition-all duration-200 cursor-pointer hover:shadow-md",
-        isCompleted && "bg-accent/30 border-accent"
+        "p-4 transition-all duration-200 relative overflow-hidden",
+        isCompleted && "bg-primary/5 border-primary/20",
+        !hasTarget && "cursor-pointer hover:shadow-md",
+        showCelebration && "ring-2 ring-primary/40"
       )}
       onClick={hasTarget ? undefined : handleToggle}
     >
-      <div className="flex items-center gap-4">
-        {/* Completion indicator */}
+      {showCelebration && (
+        <div className="absolute inset-0 flex items-center justify-center bg-primary/5 animate-fade-in pointer-events-none z-10">
+          <Sparkles className="w-6 h-6 text-primary animate-bounce" />
+        </div>
+      )}
+
+      <div className="flex items-center gap-3">
+        {/* Completion ring */}
         <button
           onClick={(e) => {
             e.stopPropagation();
             if (!hasTarget) handleToggle();
           }}
           className={cn(
-            "w-8 h-8 rounded-full border-2 flex items-center justify-center transition-all",
+            "w-9 h-9 rounded-full border-2 flex items-center justify-center transition-all shrink-0",
             isCompleted
-              ? "bg-accent border-accent text-accent-foreground"
-              : "border-muted-foreground/30 hover:border-accent"
+              ? "bg-primary border-primary text-primary-foreground scale-105"
+              : "border-border hover:border-primary/50"
           )}
-          style={{
-            backgroundColor: isCompleted ? habit.color : undefined,
-            borderColor: isCompleted ? habit.color : undefined,
-          }}
+          style={{ minHeight: "36px" }}
         >
-          {isCompleted && <Check className="h-4 w-4 text-white" />}
+          {isCompleted && <Check className="h-4 w-4" />}
         </button>
 
-        {/* Habit info */}
-        <div className="flex-1 min-w-0">
+        {/* Info */}
+        <div className="flex-1 min-w-0 space-y-1">
           <div className="flex items-center gap-2">
             <span
               className={cn(
-                "font-medium",
+                "text-sm font-medium leading-snug",
                 isCompleted && "line-through text-muted-foreground"
               )}
             >
               {habit.name}
             </span>
-            {streakCount >= 3 && (
-              <Badge variant="secondary" className="gap-1 text-xs">
-                <Flame className="h-3 w-3 text-primary" />
-                {streakCount}
-              </Badge>
+          </div>
+
+          {/* Streak display */}
+          <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
+            {streakCount > 0 && (
+              <span className="flex items-center gap-0.5 text-primary font-medium">
+                <Flame className="h-3 w-3" />
+                {streakCount}d streak
+              </span>
+            )}
+            {longestStreak > streakCount && longestStreak > 0 && (
+              <span>Best: {longestStreak}d</span>
+            )}
+            {habit.reminder_time && !hasTarget && (
+              <span>{habit.reminder_time.slice(0, 5)}</span>
             )}
           </div>
-          {habit.description && (
-            <p className="text-sm text-muted-foreground truncate">
-              {habit.description}
-            </p>
+
+          {/* Target progress bar */}
+          {hasTarget && (
+            <Progress value={targetProgress} className="h-1.5" />
           )}
         </div>
 
-        {/* Progress or time */}
-        <div className="flex items-center gap-2">
+        {/* Right: counter or time */}
+        <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
           {hasTarget ? (
-            <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-7 w-7"
-                onClick={handleDecrement}
-                disabled={currentValue === 0}
-              >
+            <>
+              <Button variant="outline" size="icon" className="h-8 w-8" onClick={handleDecrement} disabled={currentValue === 0} style={{ minHeight: "32px" }}>
                 <Minus className="h-3 w-3" />
               </Button>
-              <span className="text-sm font-medium w-12 text-center">
+              <span className="text-xs font-semibold w-14 text-center tabular-nums">
                 {currentValue}/{habit.target_value}
+                <span className="block text-[9px] text-muted-foreground font-normal">{habit.target_unit}</span>
               </span>
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-7 w-7"
-                onClick={handleIncrement}
-              >
+              <Button variant="outline" size="icon" className="h-8 w-8" onClick={handleIncrement} style={{ minHeight: "32px" }}>
                 <Plus className="h-3 w-3" />
               </Button>
-            </div>
-          ) : (
-            habit.reminder_time && (
-              <span className="text-sm text-muted-foreground">
-                {habit.reminder_time.slice(0, 5)}
-              </span>
-            )
-          )}
+            </>
+          ) : null}
         </div>
       </div>
     </Card>
