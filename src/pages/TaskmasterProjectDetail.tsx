@@ -136,7 +136,6 @@ const TaskmasterProjectDetail = () => {
             </CardContent>
           </Card>
         </main>
-        <MobileNav />
       </div>
     );
   }
