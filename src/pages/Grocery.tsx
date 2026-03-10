@@ -3,8 +3,10 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import { Header } from "@/components/layout/Header";
 import { OnboardingTour } from "@/components/onboarding/OnboardingTour";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Plus, ListChecks, Package, Sparkles, ShoppingCart } from "lucide-react";
 import { PantryItemCard } from "@/components/grocery/PantryItemCard";
 import { AddPantryItemDialog } from "@/components/grocery/AddPantryItemDialog";
@@ -37,33 +39,33 @@ import type { PantryItem } from "@/hooks/usePantryItems";
 const groceryTourSteps: Step[] = [
   {
     target: "body",
-    content: "Welcome to Grocery Management! Track your pantry and shopping lists.",
+    content: "Welcome to Grocery! Keep track of what's in your pantry and what you need to buy.",
     placement: "center",
     disableBeacon: true,
   },
   {
     target: "[data-tour='ai-import']",
-    content: "Use AI to quickly import multiple pantry items by describing what you have.",
+    content: "Describe what's in your kitchen and let AI organize it for you.",
     placement: "bottom",
   },
   {
     target: "[data-tour='quick-add']",
-    content: "Quick add common Indian pantry staples with one click.",
+    content: "Quickly add common pantry staples with one tap.",
     placement: "bottom",
   },
   {
     target: "[role='tablist']",
-    content: "Switch between Pantry to manage inventory, Shopping Lists for upcoming purchases, and Insights for usage analytics.",
+    content: "Switch between your pantry inventory, shopping lists, and usage insights.",
     placement: "bottom",
   },
   {
     target: "[data-tour='category-grid']",
-    content: "Browse items by category. Low stock and expiring items are highlighted.",
+    content: "Browse items by category. We'll flag anything that's running low or expiring soon.",
     placement: "top",
   },
   {
     target: ".user-menu",
-    content: "Access settings and restart this tour anytime from the User Guide menu.",
+    content: "You can restart this guide anytime from the menu.",
     placement: "bottom",
   },
 ];
@@ -88,23 +90,21 @@ const Grocery = () => {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedStatus, setSelectedStatus] = useState("all");
   const [isGeneratingList, setIsGeneratingList] = useState(false);
+  const [deleteItemId, setDeleteItemId] = useState<string | null>(null);
+  const [deleteListId, setDeleteListId] = useState<string | null>(null);
   
-  // New quick commerce UI state
   const [selectedCategoryDetail, setSelectedCategoryDetail] = useState<string | null>(null);
   const [cartItemCount, setCartItemCount] = useState(0);
 
-  // Feature-specific tour
   const { shouldShowTour, tourChecked, markTourComplete } = useFeatureTour("grocery");
   const [runOnboarding, setRunOnboarding] = useState(false);
 
-  // Start tour automatically if user hasn't seen it
   useEffect(() => {
     if (tourChecked && shouldShowTour && householdId) {
       setTimeout(() => setRunOnboarding(true), 500);
     }
   }, [tourChecked, shouldShowTour, householdId]);
 
-  // Initialize default categories if none exist
   useEffect(() => {
     if (householdId && categories.length === 0 && !categoriesLoading) {
       initializeDefaultCategories.mutate(householdId);
@@ -134,8 +134,13 @@ const Grocery = () => {
   };
 
   const handleDeleteItem = (id: string) => {
-    if (confirm("Are you sure you want to delete this item?")) {
-      deletePantryItem.mutate(id);
+    setDeleteItemId(id);
+  };
+
+  const confirmDeleteItem = () => {
+    if (deleteItemId) {
+      deletePantryItem.mutate(deleteItemId);
+      setDeleteItemId(null);
     }
   };
 
@@ -145,7 +150,6 @@ const Grocery = () => {
 
   const handleBulkAdd = (items: Partial<PantryItem>[]) => {
     if (!householdId || !user?.id) return;
-    
     const itemsWithRequired = items.map(item => ({
       ...item,
       household_id: householdId,
@@ -156,8 +160,6 @@ const Grocery = () => {
 
   const handleAIImport = (items: Partial<PantryItem>[]) => {
     if (!householdId || !user?.id) return;
-    
-    // Items from AI already have household_id and added_by set
     const itemsWithRequired = items.map(item => ({
       ...item,
       household_id: item.household_id || householdId,
@@ -180,7 +182,6 @@ const Grocery = () => {
     
     setIsGeneratingList(true);
     try {
-      // Get current week's meal plan
       const today = new Date();
       const sunday = new Date(today);
       sunday.setDate(today.getDate() - today.getDay());
@@ -196,7 +197,7 @@ const Grocery = () => {
       if (!mealPlans) {
         toast({
           title: "No meal plan found",
-          description: "Generate a meal plan for this week first.",
+          description: "Generate a meal plan for this week first, then we can create a shopping list from it.",
           variant: "destructive",
         });
         return;
@@ -215,14 +216,14 @@ const Grocery = () => {
       queryClient.invalidateQueries({ queryKey: ["shopping-lists", householdId] });
       
       toast({
-        title: "Shopping list created",
-        description: `Generated list with ${data.itemCount} items from your meal plan.`,
+        title: "Shopping list ready! 🛒",
+        description: `${data.itemCount} items added based on this week's meals.`,
       });
     } catch (error: any) {
       console.error("Error generating shopping list:", error);
       toast({
-        title: "Error",
-        description: error.message || "Failed to generate shopping list.",
+        title: "Something went wrong",
+        description: error.message || "We couldn't generate the shopping list. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -231,40 +232,29 @@ const Grocery = () => {
   };
 
   const handleCompleteList = (listId: string) => {
-    if (confirm("Mark this shopping list as completed?")) {
-      completeShoppingList.mutate(listId);
-    }
+    completeShoppingList.mutate(listId);
   };
 
   const handleDeleteList = (listId: string) => {
-    if (confirm("Delete this shopping list?")) {
-      deleteShoppingList.mutate(listId);
+    setDeleteListId(listId);
+  };
+
+  const confirmDeleteList = () => {
+    if (deleteListId) {
+      deleteShoppingList.mutate(deleteListId);
+      setDeleteListId(null);
     }
   };
 
-  // Filter items based on search and filters
   const filteredItems = pantryItems.filter((item) => {
-    // Search filter
-    if (searchQuery && !item.name.toLowerCase().includes(searchQuery.toLowerCase())) {
-      return false;
-    }
-
-    // Category filter
-    if (selectedCategory !== "all" && item.category !== selectedCategory) {
-      return false;
-    }
-
-    // Status filter
-    if (selectedStatus === "staples" && !item.is_staple) {
-      return false;
-    }
-
+    if (searchQuery && !item.name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+    if (selectedCategory !== "all" && item.category !== selectedCategory) return false;
+    if (selectedStatus === "staples" && !item.is_staple) return false;
     if (selectedStatus === "low-stock") {
       const qty = item.quantity || 0;
       const minQty = item.minimum_quantity || 0;
       if (minQty === 0 || qty > minQty) return false;
     }
-
     if (selectedStatus === "expiring") {
       if (!item.expiry_date) return false;
       const now = new Date();
@@ -272,11 +262,9 @@ const Grocery = () => {
       const diffDays = Math.ceil((expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
       if (diffDays > 7) return false;
     }
-
     return true;
   });
 
-  // Get expiring and low stock items for alerts
   const expiringItems = pantryItems.filter(item => {
     if (!item.expiry_date) return false;
     const expiryDate = new Date(item.expiry_date);
@@ -291,27 +279,22 @@ const Grocery = () => {
     return minQty > 0 && qty <= minQty;
   });
 
-  // Group items by category
   const groupedItems = useMemo(() => {
     const groups: Record<string, PantryItem[]> = {};
-    
     filteredItems.forEach((item) => {
       const category = item.category || "Other";
       if (!groups[category]) groups[category] = [];
       groups[category].push(item);
     });
-
     return groups;
   }, [filteredItems]);
 
-  // Get sorted categories
   const sortedCategories = useMemo(() => {
     return categories
       .filter((cat) => groupedItems[cat.name])
       .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
   }, [categories, groupedItems]);
 
-  // Shopping list detail view
   const selectedListId = searchParams.get("list");
   const selectedList = shoppingLists.find((list) => list.id === selectedListId);
 
@@ -324,7 +307,6 @@ const Grocery = () => {
     setSearchParams({});
   };
 
-  // Quick commerce UI handlers
   const handleSelectCategory = (categoryName: string) => {
     setSelectedCategoryDetail(categoryName);
   };
@@ -336,16 +318,14 @@ const Grocery = () => {
   const handleAddToCart = async (itemIds: string[]) => {
     if (!householdId || !user?.id) return;
     
-    // Find or create active shopping list
     let activeList = shoppingLists.find(list => list.status === "active");
     
     if (!activeList) {
-      // Create a new list
       const { data, error } = await supabase
         .from("shopping_lists")
         .insert([{
           household_id: householdId,
-          name: `Shopping List - ${new Date().toLocaleDateString()}`,
+          name: `Shopping List — ${new Date().toLocaleDateString()}`,
           created_by: user.id,
           status: "active",
         }])
@@ -353,11 +333,7 @@ const Grocery = () => {
         .single();
       
       if (error) {
-        toast({
-          title: "Error",
-          description: "Failed to create shopping list.",
-          variant: "destructive",
-        });
+        toast({ title: "Something went wrong", description: "Couldn't create a shopping list.", variant: "destructive" });
         return;
       }
       
@@ -365,10 +341,8 @@ const Grocery = () => {
       queryClient.invalidateQueries({ queryKey: ["shopping-lists", householdId] });
     }
     
-    // Get items to add
     const itemsToAdd = pantryItems.filter(item => itemIds.includes(item.id));
     
-    // Add items to shopping list
     const shoppingItems = itemsToAdd.map(item => ({
       list_id: activeList!.id,
       name: item.name,
@@ -385,11 +359,7 @@ const Grocery = () => {
       .insert(shoppingItems);
     
     if (itemsError) {
-      toast({
-        title: "Error",
-        description: "Failed to add items to shopping list.",
-        variant: "destructive",
-      });
+      toast({ title: "Something went wrong", description: "Couldn't add items to the list.", variant: "destructive" });
       return;
     }
     
@@ -397,8 +367,8 @@ const Grocery = () => {
     setCartItemCount(prev => prev + itemsToAdd.length);
     
     toast({
-      title: "Added to cart",
-      description: `${itemsToAdd.length} item${itemsToAdd.length !== 1 ? 's' : ''} added to shopping list.`,
+      title: "Added to shopping list",
+      description: `${itemsToAdd.length} item${itemsToAdd.length !== 1 ? 's' : ''} ready to buy.`,
     });
   };
 
@@ -409,7 +379,6 @@ const Grocery = () => {
     }
   };
 
-  // Get items for selected category
   const categoryItems = useMemo(() => {
     if (!selectedCategoryDetail) return [];
     return pantryItems.filter(item => 
@@ -418,14 +387,16 @@ const Grocery = () => {
     );
   }, [selectedCategoryDetail, pantryItems]);
 
-  // groceryTourSteps is now defined at the top of the file
-
   if (!user || !householdId) {
     return (
       <div className="page-container">
         <Header onStartOnboarding={handleStartOnboarding} />
         <main className="page-content">
-          <p className="text-muted-foreground">Please log in and join a household to access grocery management.</p>
+          <EmptyState
+            icon={Package}
+            title="Sign in to get started"
+            description="Log in and join a household to manage your pantry and shopping lists."
+          />
         </main>
       </div>
     );
@@ -436,7 +407,12 @@ const Grocery = () => {
       <Header onStartOnboarding={handleStartOnboarding} />
       <main className="page-content flex-1">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-          <h1 className="page-heading">Grocery Management</h1>
+          <div>
+            <h1 className="page-heading">Grocery</h1>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              {pantryItems.length > 0 ? `${pantryItems.length} items in your pantry` : "Start building your pantry inventory"}
+            </p>
+          </div>
           <div className="flex flex-wrap gap-2">
             <Button
               variant="outline"
@@ -445,7 +421,7 @@ const Grocery = () => {
               size="sm"
               data-tour="ai-import"
             >
-              <Sparkles className="h-4 w-4" />
+              <Sparkles className="h-4 w-4" aria-hidden="true" />
               <span className="hidden xs:inline">AI Import</span>
               <span className="xs:hidden">AI</span>
             </Button>
@@ -456,12 +432,12 @@ const Grocery = () => {
               size="sm"
               data-tour="quick-add"
             >
-              <ListChecks className="h-4 w-4" />
+              <ListChecks className="h-4 w-4" aria-hidden="true" />
               <span className="hidden xs:inline">Quick Add</span>
               <span className="xs:hidden">Quick</span>
             </Button>
             <Button onClick={() => setShowAddDialog(true)} className="gap-2 h-9" size="sm">
-              <Plus className="h-4 w-4" />
+              <Plus className="h-4 w-4" aria-hidden="true" />
               <span className="hidden xs:inline">Add Item</span>
               <span className="xs:hidden">Add</span>
             </Button>
@@ -471,12 +447,12 @@ const Grocery = () => {
         <Tabs defaultValue="pantry" className="space-y-4">
           <TabsList>
             <TabsTrigger value="pantry" className="gap-2">
-              <Package className="h-4 w-4" />
+              <Package className="h-4 w-4" aria-hidden="true" />
               Pantry
             </TabsTrigger>
             <TabsTrigger value="shopping" className="gap-2">
-              <ShoppingCart className="h-4 w-4" />
-              Shopping Lists
+              <ShoppingCart className="h-4 w-4" aria-hidden="true" />
+              Shopping
             </TabsTrigger>
             <TabsTrigger value="insights" className="gap-2">
               Insights
@@ -485,23 +461,16 @@ const Grocery = () => {
 
           <TabsContent value="pantry" className="space-y-6">
             {isLoading ? (
-              <p className="text-center text-muted-foreground">Loading pantry items...</p>
+              <EmptyState icon={Package} title="Loading your pantry..." />
             ) : pantryItems.length === 0 ? (
-              <div className="text-center py-12">
-                <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                <h3 className="text-lg font-semibold mb-2">No items in your pantry yet</h3>
-                <p className="text-muted-foreground mb-4">
-                  Start by adding items individually or use Quick Add for common items.
-                </p>
-                <div className="flex gap-2 justify-center">
-                  <Button variant="outline" onClick={() => setShowQuickAdd(true)}>
-                    Quick Add from Checklist
-                  </Button>
-                  <Button onClick={() => setShowAddDialog(true)}>
-                    Add Individual Item
-                  </Button>
-                </div>
-              </div>
+              <EmptyState
+                icon={Package}
+                title="Your pantry is empty"
+                description="Add items to track what you have at home and know what to buy."
+                encouragement="Try AI Import to add everything at once!"
+                action={{ label: "Add Item", onClick: () => setShowAddDialog(true) }}
+                secondaryAction={{ label: "Quick Add Staples", onClick: () => setShowQuickAdd(true) }}
+              />
             ) : selectedCategoryDetail ? (
               <PantryCategoryDetail
                 categoryName={selectedCategoryDetail}
@@ -540,30 +509,22 @@ const Grocery = () => {
               <>
                 <div className="flex items-center justify-between">
                   <p className="text-sm text-muted-foreground">
-                    Manage your shopping lists and generate them from your meal plans.
+                    Create lists manually or generate them from your meal plan.
                   </p>
                   <Button onClick={() => setShowCreateList(true)} className="gap-2">
-                    <ShoppingCart className="h-4 w-4" />
+                    <ShoppingCart className="h-4 w-4" aria-hidden="true" />
                     Create List
                   </Button>
                 </div>
 
                 {shoppingLists.length === 0 ? (
-                  <div className="text-center py-12">
-                    <ShoppingCart className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                    <h3 className="text-lg font-semibold mb-2">No shopping lists yet</h3>
-                    <p className="text-muted-foreground mb-4">
-                      Create a list manually or generate from your meal plan.
-                    </p>
-                    <div className="flex gap-2 justify-center">
-                      <Button variant="outline" onClick={() => setShowCreateList(true)}>
-                        Create Manual List
-                      </Button>
-                      <Button onClick={handleGenerateFromMealPlan} disabled={isGeneratingList}>
-                        {isGeneratingList ? "Generating..." : "Generate from Meal Plan"}
-                      </Button>
-                    </div>
-                  </div>
+                  <EmptyState
+                    icon={ShoppingCart}
+                    title="No shopping lists yet"
+                    description="Create a list for your next grocery run, or generate one from your meal plan."
+                    action={{ label: "Create List", onClick: () => setShowCreateList(true) }}
+                    secondaryAction={{ label: "From Meal Plan", onClick: handleGenerateFromMealPlan }}
+                  />
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {shoppingLists.map((list) => (
@@ -633,6 +594,26 @@ const Grocery = () => {
         onOpenChange={setShowCreateList}
         onSubmit={handleCreateList}
         onGenerateFromMealPlan={handleGenerateFromMealPlan}
+      />
+
+      <ConfirmDialog
+        open={!!deleteItemId}
+        onOpenChange={(open) => !open && setDeleteItemId(null)}
+        title="Remove this item?"
+        description="It will be removed from your pantry inventory."
+        confirmLabel="Remove"
+        variant="destructive"
+        onConfirm={confirmDeleteItem}
+      />
+
+      <ConfirmDialog
+        open={!!deleteListId}
+        onOpenChange={(open) => !open && setDeleteListId(null)}
+        title="Delete this shopping list?"
+        description="The list and all its items will be permanently removed."
+        confirmLabel="Delete List"
+        variant="destructive"
+        onConfirm={confirmDeleteList}
       />
 
       <OnboardingTour 

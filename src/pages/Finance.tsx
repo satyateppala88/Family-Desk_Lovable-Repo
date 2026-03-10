@@ -7,7 +7,7 @@ import { Progress } from "@/components/ui/progress";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageLoading } from "@/components/ui/page-loading";
 import { QuickActionButton } from "@/components/ui/quick-action-button";
-import { Plus, TrendingUp, TrendingDown, Wallet, PiggyBank } from "lucide-react";
+import { Plus, TrendingUp, TrendingDown, Wallet, PiggyBank, Shield } from "lucide-react";
 import { useHousehold } from "@/hooks/useHousehold";
 import {
   useFinanceMonthlySummary,
@@ -68,12 +68,18 @@ const Finance = () => {
 
         <FinanceNav />
 
+        {/* Privacy cue */}
+        <div className="trust-badge" role="status">
+          <Shield className="h-3 w-3" aria-hidden="true" />
+          <span>Your financial data stays private to your household</span>
+        </div>
+
         {/* Summary Cards */}
         <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
-                <TrendingUp className="w-3.5 h-3.5" /> Income
+                <TrendingUp className="w-3.5 h-3.5" aria-hidden="true" /> Income
               </div>
               <p className="text-lg font-bold">{formatINR(summary?.income || 0)}</p>
             </CardContent>
@@ -81,7 +87,7 @@ const Finance = () => {
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
-                <TrendingDown className="w-3.5 h-3.5" /> Spent
+                <TrendingDown className="w-3.5 h-3.5" aria-hidden="true" /> Spent
               </div>
               <p className="text-lg font-bold">{formatINR(summary?.expenses || 0)}</p>
             </CardContent>
@@ -89,9 +95,9 @@ const Finance = () => {
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
-                <PiggyBank className="w-3.5 h-3.5" /> Saved
+                <PiggyBank className="w-3.5 h-3.5" aria-hidden="true" /> Saved
               </div>
-              <p className={`text-lg font-bold ${(summary?.savings || 0) >= 0 ? "text-success" : "text-destructive"}`}>
+              <p className={`text-lg font-bold ${(summary?.savings || 0) >= 0 ? "text-[hsl(var(--success))]" : "text-destructive"}`}>
                 {formatINR(summary?.savings || 0)}
               </p>
             </CardContent>
@@ -99,7 +105,7 @@ const Finance = () => {
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
-                <Wallet className="w-3.5 h-3.5" /> Cash Left
+                <Wallet className="w-3.5 h-3.5" aria-hidden="true" /> Remaining
               </div>
               <p className="text-lg font-bold">{formatINR(summary?.cashLeft || 0)}</p>
             </CardContent>
@@ -107,9 +113,9 @@ const Finance = () => {
         </div>
 
         {overBudget.length > 0 && (
-          <Card className="border-destructive/20 bg-destructive/5">
+          <Card className="border-destructive/20 bg-destructive/5" role="alert">
             <CardContent className="p-4">
-              <p className="text-sm font-medium text-destructive mb-1">Over Budget</p>
+              <p className="text-sm font-medium text-destructive mb-1">⚠ Over Budget</p>
               <div className="space-y-1">
                 {overBudget.map((d) => (
                   <p key={d.category} className="text-xs text-muted-foreground">
@@ -147,7 +153,7 @@ const Finance = () => {
             </CardHeader>
             <CardContent className="space-y-3">
               {(!savingsGoals || savingsGoals.length === 0) ? (
-                <p className="text-sm text-muted-foreground">No savings goals yet</p>
+                <p className="text-sm text-muted-foreground">No savings goals yet — set one to stay motivated!</p>
               ) : (
                 savingsGoals.filter(g => g.status === "active").slice(0, 3).map((goal) => {
                   const pct = goal.target_amount > 0 ? Math.min(100, (Number(goal.current_amount) / Number(goal.target_amount)) * 100) : 0;
@@ -159,7 +165,7 @@ const Finance = () => {
                       </div>
                       <Progress value={pct} className="h-1.5" />
                       <p className="text-xs text-muted-foreground">
-                        {formatINR(Number(goal.current_amount))} / {formatINR(Number(goal.target_amount))}
+                        {formatINR(Number(goal.current_amount))} of {formatINR(Number(goal.target_amount))}
                       </p>
                     </div>
                   );
@@ -172,11 +178,11 @@ const Finance = () => {
         {/* Recent Transactions */}
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Recent Transactions</CardTitle>
+            <CardTitle className="text-sm">Recent Activity</CardTitle>
           </CardHeader>
           <CardContent className="space-y-0">
             {recentTransactions.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-4">No transactions yet</p>
+              <p className="text-sm text-muted-foreground py-4">No transactions yet — start tracking to see insights here.</p>
             ) : (
               recentTransactions.map((tx) => (
                 <div key={tx.id} className="flex items-center justify-between py-2.5 border-b border-border/50 last:border-0">
@@ -184,8 +190,8 @@ const Finance = () => {
                     <p className="text-sm font-medium truncate">{tx.description || CATEGORY_LABELS[tx.category] || tx.category}</p>
                     <p className="text-xs text-muted-foreground">{format(new Date(tx.transaction_date), "MMM d")}</p>
                   </div>
-                  <span className={`text-sm font-semibold flex-shrink-0 ml-3 ${tx.type === "income" ? "text-success" : "text-foreground"}`}>
-                    {tx.type === "income" ? "+" : "-"}{formatINR(Number(tx.amount))}
+                  <span className={`text-sm font-semibold flex-shrink-0 ml-3 ${tx.type === "income" ? "text-[hsl(var(--success))]" : "text-foreground"}`}>
+                    {tx.type === "income" ? "+" : "−"}{formatINR(Number(tx.amount))}
                   </span>
                 </div>
               ))

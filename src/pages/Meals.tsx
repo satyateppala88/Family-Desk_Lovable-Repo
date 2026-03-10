@@ -6,6 +6,7 @@ import { MealPlanCalendar } from "@/components/meals/MealPlanCalendar";
 import { WeekNavigator } from "@/components/meals/WeekNavigator";
 import { MealPlanDownload } from "@/components/meals/MealPlanDownload";
 import { MarkAsCookedDialog } from "@/components/meals/MarkAsCookedDialog";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useHousehold } from "@/hooks/useHousehold";
 import { useRecipes } from "@/hooks/useRecipes";
 import { useMealPlans } from "@/hooks/useMealPlans";
@@ -30,33 +31,33 @@ import type { Step } from "react-joyride";
 const mealsTourSteps: Step[] = [
   {
     target: "body",
-    content: "Welcome to Meal Planning! Plan your weekly meals with AI-powered suggestions.",
+    content: "Welcome to Meal Planning! Let AI help you plan nutritious meals for the whole family.",
     placement: "center",
     disableBeacon: true,
   },
   {
     target: "[data-tour='generate-full-week']",
-    content: "Generate a complete week of meals based on your dietary preferences and family size.",
+    content: "Generate a complete week of meals tailored to your family's preferences and dietary needs.",
     placement: "bottom",
   },
   {
     target: "[data-tour='generate-remaining']",
-    content: "Or just fill in the remaining days of the current week.",
+    content: "Or just fill in the rest of the week from today.",
     placement: "bottom",
   },
   {
     target: "[role='tablist']",
-    content: "Switch between Calendar View to see your weekly plan, or All Recipes to browse your collection.",
+    content: "Switch between your weekly calendar and your full recipe collection.",
     placement: "bottom",
   },
   {
     target: "[data-tour='week-navigator']",
-    content: "Navigate between weeks to plan ahead or review past meals.",
+    content: "Navigate between weeks to plan ahead or revisit past meals.",
     placement: "bottom",
   },
   {
     target: ".user-menu",
-    content: "Access settings and restart this tour anytime from the User Guide menu.",
+    content: "You can restart this guide anytime from the menu.",
     placement: "bottom",
   },
 ];
@@ -74,6 +75,7 @@ const Meals = () => {
   const [cookingRecipe, setCookingRecipe] = useState<Recipe | null>(null);
   const [generatingPlan, setGeneratingPlan] = useState(false);
   const [view, setView] = useState<"calendar" | "recipes">("calendar");
+  const [deleteRecipeId, setDeleteRecipeId] = useState<string | null>(null);
   const calendarRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const regenerateMeals = useRegenerateMeals();
@@ -115,16 +117,16 @@ const Meals = () => {
       if (error) throw error;
 
       toast({
-        title: "Meal plan generated!",
-        description: `Created ${data.meals?.length || 0} AI-powered recipes for your week.`,
+        title: "Meal plan ready! 🍽️",
+        description: `Created ${data.meals?.length || 0} recipes for your family this week.`,
       });
       
       window.location.reload();
     } catch (error: any) {
       console.error("Error generating meal plan:", error);
       toast({
-        title: "Error",
-        description: error.message || "Failed to generate meal plan",
+        title: "Something went wrong",
+        description: error.message || "We couldn't generate the meal plan. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -152,8 +154,13 @@ const Meals = () => {
   };
 
   const handleDeleteRecipe = (id: string) => {
-    if (confirm("Are you sure you want to delete this recipe?")) {
-      deleteRecipe.mutate(id);
+    setDeleteRecipeId(id);
+  };
+
+  const confirmDeleteRecipe = () => {
+    if (deleteRecipeId) {
+      deleteRecipe.mutate(deleteRecipeId);
+      setDeleteRecipeId(null);
     }
   };
 
@@ -186,14 +193,14 @@ const Meals = () => {
       }
 
       toast({
-        title: "Meal marked as cooked",
-        description: "Pantry has been updated with ingredient usage.",
+        title: "Marked as cooked! 👨‍🍳",
+        description: "Your pantry has been updated to reflect what was used.",
       });
     } catch (error: any) {
       console.error("Error updating pantry:", error);
       toast({
-        title: "Error",
-        description: "Failed to update pantry. Please adjust manually.",
+        title: "Pantry update issue",
+        description: "Some pantry items may not have been updated. You can adjust them manually.",
         variant: "destructive",
       });
     }
@@ -218,7 +225,9 @@ const Meals = () => {
         <div className="mb-4 space-y-3">
           <div>
             <h1 className="page-heading">Meal Planning</h1>
-            <p className="text-sm text-muted-foreground mt-0.5">{recipes.length} recipes</p>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              {recipes.length > 0 ? `${recipes.length} recipes in your collection` : "Let AI create your first meal plan"}
+            </p>
           </div>
           <div className="flex flex-wrap gap-2">
             <Button 
@@ -229,8 +238,8 @@ const Meals = () => {
               className="flex-1 sm:flex-none"
               data-tour="generate-remaining"
             >
-              <Sparkles className="w-4 h-4 sm:mr-1" />
-              <span className="hidden sm:inline">{generatingPlan ? "Generating..." : "Rest of Week"}</span>
+              <Sparkles className="w-4 h-4 sm:mr-1" aria-hidden="true" />
+              <span className="hidden sm:inline">{generatingPlan ? "Creating..." : "Rest of Week"}</span>
               <span className="sm:hidden">Rest</span>
             </Button>
             <Button 
@@ -240,8 +249,8 @@ const Meals = () => {
               className="flex-1 sm:flex-none"
               data-tour="generate-full-week"
             >
-              <Sparkles className="w-4 h-4 sm:mr-1" />
-              <span className="hidden sm:inline">{generatingPlan ? "Generating..." : "Full Week"}</span>
+              <Sparkles className="w-4 h-4 sm:mr-1" aria-hidden="true" />
+              <span className="hidden sm:inline">{generatingPlan ? "Creating..." : "Full Week"}</span>
               <span className="sm:hidden">Full</span>
             </Button>
             <MealPlanDownload 
@@ -255,12 +264,12 @@ const Meals = () => {
         <Tabs value={view} onValueChange={(v) => setView(v as any)} className="space-y-4">
           <TabsList className="w-full grid grid-cols-2">
             <TabsTrigger value="calendar" className="gap-2">
-              <Calendar className="w-4 h-4" />
+              <Calendar className="w-4 h-4" aria-hidden="true" />
               <span className="hidden sm:inline">Calendar View</span>
               <span className="sm:hidden">Calendar</span>
             </TabsTrigger>
             <TabsTrigger value="recipes" className="gap-2">
-              <LayoutGrid className="w-4 h-4" />
+              <LayoutGrid className="w-4 h-4" aria-hidden="true" />
               <span className="hidden sm:inline">All Recipes</span>
               <span className="sm:hidden">Recipes</span>
             </TabsTrigger>
@@ -282,7 +291,7 @@ const Meals = () => {
                 onRecipeClick={setSelectedRecipe}
                 onRateClick={setRatingRecipe}
                 onRemoveClick={(itemId) => deleteMealPlanItem.mutate(itemId)}
-                onAddClick={() => toast({ title: "Coming soon", description: "Manual recipe addition" })}
+                onAddClick={() => toast({ title: "Coming soon", description: "Manual recipe addition is on its way!" })}
                 onRegenerateMeal={(dayIndex, mealType) => {
                   if (!householdId) return;
                   regenerateMeals.mutate({
@@ -307,8 +316,9 @@ const Meals = () => {
             {!currentWeekPlan && (
               <EmptyState
                 icon={UtensilsCrossed}
-                title="No meal plan for this week"
-                description="Generate a meal plan using AI to get started"
+                title="No meals planned this week"
+                description="Let AI suggest recipes based on your family's preferences."
+                encouragement="Meal planning saves time and reduces food waste!"
                 action={{
                   label: "Generate Meal Plan",
                   onClick: () => handleGeneratePlan("full"),
@@ -321,8 +331,9 @@ const Meals = () => {
             {recipes.length === 0 ? (
               <EmptyState
                 icon={UtensilsCrossed}
-                title="No recipes yet"
-                description="Generate a meal plan to create your first recipes"
+                title="Your recipe collection is empty"
+                description="Generate a meal plan and your AI-created recipes will appear here."
+                encouragement="Each recipe is tailored to your household's dietary preferences."
                 action={{
                   label: "Generate Recipes",
                   onClick: () => handleGeneratePlan("full"),
@@ -368,6 +379,16 @@ const Meals = () => {
         recipeName={cookingRecipe?.title || ""}
         ingredients={cookingRecipe?.ingredients || []}
         onConfirm={handleMarkAsCooked}
+      />
+
+      <ConfirmDialog
+        open={!!deleteRecipeId}
+        onOpenChange={(open) => !open && setDeleteRecipeId(null)}
+        title="Delete this recipe?"
+        description="This recipe will be permanently removed from your collection. Any meal plan entries using it will also be affected."
+        confirmLabel="Delete Recipe"
+        variant="destructive"
+        onConfirm={confirmDeleteRecipe}
       />
 
       <OnboardingTour
