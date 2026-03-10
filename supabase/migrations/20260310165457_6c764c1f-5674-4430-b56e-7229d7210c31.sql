@@ -1,0 +1,2 @@
+ALTER TABLE public.household_enabled_products DROP CONSTRAINT household_enabled_products_product_name_check;
+ALTER TABLE public.household_enabled_products ADD CONSTRAINT household_enabled_products_product_name_check CHECK (product_name = ANY (ARRAY['tasks'::text, 'meals'::text, 'calendar'::text, 'grocery'::text, 'habits'::text, 'finance'::text]));
