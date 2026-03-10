@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { CheckSquare, ChefHat, Calendar, ShoppingCart, Leaf } from "lucide-react";
+import { CheckSquare, ChefHat, Calendar, ShoppingCart, Leaf, Wallet } from "lucide-react";
 import { ProductName } from "@/hooks/useEnabledProducts";
 
 interface ProductSelectionStepProps {
