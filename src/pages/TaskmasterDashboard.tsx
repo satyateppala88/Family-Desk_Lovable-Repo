@@ -151,7 +151,6 @@ const TaskmasterDashboard = () => {
             <Skeleton className="h-64" />
           </div>
         </main>
-        <MobileNav />
       </div>
     );
   }
