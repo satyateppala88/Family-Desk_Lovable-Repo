@@ -25,24 +25,6 @@ const Auth = () => {
   const [pendingUserId, setPendingUserId] = useState<string | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { loginAsTestUser, isLoading: devLoading, isDevEnvironment } = useDevAuth();
-
-  const handleDevLogin = async () => {
-    const result = await loginAsTestUser();
-    if (result.success) {
-      toast({
-        title: "Dev Mode Active",
-        description: "Logged in as test user",
-      });
-      navigate("/dashboard");
-    } else {
-      toast({
-        title: "Dev Login Failed",
-        description: result.error,
-        variant: "destructive",
-      });
-    }
-  };
 
   const sendVerificationEmail = async (userId: string, userEmail: string, userName?: string) => {
     try {
