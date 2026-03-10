@@ -64,7 +64,7 @@ export const FamilyPulse = ({ stats, enabledProducts }: FamilyPulseProps) => {
         )}
         <div className="flex-1 min-w-0">
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-            {signals.map((signal, i) => {
+            {displayed.map((signal, i) => {
               const Icon = signal.icon;
               return (
                 <span
