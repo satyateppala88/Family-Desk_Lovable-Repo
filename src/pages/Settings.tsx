@@ -72,13 +72,12 @@ export const Settings = () => {
     return (
       <>
         <Header />
-        <main className="container mx-auto py-8 px-4">
+        <main className="page-content">
           <div className="space-y-4">
             <Skeleton className="h-12 w-64" />
             <Skeleton className="h-96 w-full" />
           </div>
         </main>
-        <Footer />
       </>
     );
   }
