@@ -19,7 +19,7 @@ export const SubNav = ({ items, className }: SubNavProps) => {
   const location = useLocation();
 
   return (
-    <nav className={cn("flex gap-1 overflow-x-auto pb-0.5 -mx-1 px-1 scrollbar-hide", className)}>
+    <nav className={cn("flex gap-1 overflow-x-auto pb-0.5 -mx-1 px-1 scrollbar-hide snap-x snap-mandatory", className)} role="tablist">
       {items.map((item) => {
         const isActive = location.pathname === item.path;
         const Icon = item.icon;
