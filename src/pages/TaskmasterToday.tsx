@@ -92,7 +92,6 @@ const TaskmasterToday = () => {
             <Skeleton className="h-32" />
           </div>
         </main>
-        <MobileNav />
       </div>
     );
   }
