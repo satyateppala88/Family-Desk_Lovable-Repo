@@ -60,9 +60,8 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <DevModeProvider>
+
           <AuthProvider>
-            <DevModeBanner />
             <Suspense fallback={<PageLoader />}>
               <Routes>
                 <Route path="/" element={<Landing />} />
