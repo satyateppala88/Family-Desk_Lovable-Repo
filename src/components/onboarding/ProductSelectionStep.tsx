@@ -46,6 +46,13 @@ const products = [
     description: "Build healthy routines with streak tracking and household habit goals",
     color: "text-[hsl(142,70%,45%)]",
   },
+  {
+    name: "finance" as ProductName,
+    icon: Wallet,
+    label: "Finance",
+    description: "Track income, expenses, budgets, and savings goals for your household",
+    color: "text-[hsl(210,60%,50%)]",
+  },
 ];
 
 export const ProductSelectionStep = ({

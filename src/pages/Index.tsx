@@ -194,6 +194,11 @@ const Index = () => {
                   <DashboardCalendarWidget />
                 </div>
               )}
+              {isProductEnabled(enabledProducts, "finance") && (
+                <div data-tour="finance-card">
+                  <DashboardFinanceWidget />
+                </div>
+              )}
             </>
           )}
         </div>
