@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Header } from "@/components/layout/Header";
 import { OnboardingTour } from "@/components/onboarding/OnboardingTour";
-import { ResetOnboardingButton } from "@/components/development/ResetOnboardingButton";
+
 import { PendingInvitationBanner } from "@/components/household/PendingInvitationBanner";
 import { useHousehold } from "@/hooks/useHousehold";
 import { useOnboardingProgress } from "@/hooks/useOnboardingProgress";
@@ -130,7 +130,7 @@ const Index = () => {
         />
       )}
       <main className="flex-1 container mx-auto px-4 sm:px-6 py-6">
-        <ResetOnboardingButton />
+        
         <PendingInvitationBanner />
 
         {!onboardingCompleted && progressData && progressData.percentage < 100 && (

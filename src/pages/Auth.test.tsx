@@ -31,13 +31,6 @@ vi.mock("@/lib/supabase", () => ({
   },
 }));
 
-vi.mock("@/hooks/useDevAuth", () => ({
-  useDevAuth: () => ({
-    loginAsTestUser: vi.fn(),
-    isLoading: false,
-    isDevEnvironment: true,
-  }),
-}));
 
 vi.mock("@/hooks/use-toast", () => ({
   useToast: () => ({

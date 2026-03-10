@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { Separator } from "@/components/ui/separator";
 import { User, Lock, Globe, ArrowLeft, Bell } from "lucide-react";
-import { ResetOnboardingButton } from "@/components/development/ResetOnboardingButton";
+
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 
@@ -253,9 +253,6 @@ const AccountSettings = () => {
                 </Button>
               </div>
               
-              <Separator />
-              
-              <ResetOnboardingButton />
             </CardContent>
           </Card>
         </TabsContent>
