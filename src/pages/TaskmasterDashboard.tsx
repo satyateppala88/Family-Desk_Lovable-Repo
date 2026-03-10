@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Header } from "@/components/layout/Header";
-import { MobileNav } from "@/components/layout/MobileNav";
+
 import { useHousehold } from "@/hooks/useHousehold";
 import { useTaskmaster } from "@/hooks/useTaskmaster";
 import { useProjects } from "@/hooks/useProjects";
@@ -151,7 +151,6 @@ const TaskmasterDashboard = () => {
             <Skeleton className="h-64" />
           </div>
         </main>
-        <MobileNav />
       </div>
     );
   }
@@ -390,7 +389,7 @@ const TaskmasterDashboard = () => {
         )}
       </main>
 
-      <MobileNav />
+      
     </div>
   );
 };

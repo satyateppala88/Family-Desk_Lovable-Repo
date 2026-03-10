@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Header } from "@/components/layout/Header";
-import { MobileNav } from "@/components/layout/MobileNav";
+
 import { Footer } from "@/components/layout/Footer";
 import { FinanceNav } from "@/components/finance/FinanceNav";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -112,7 +112,7 @@ const FinanceBudget = () => {
       />
 
       <Footer />
-      <MobileNav />
+      
     </div>
   );
 };

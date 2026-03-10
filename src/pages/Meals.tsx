@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Header } from "@/components/layout/Header";
-import { MobileNav } from "@/components/layout/MobileNav";
+
 import { RecipeDetailDialog } from "@/components/meals/RecipeDetailDialog";
 import { RecipeRatingDialog } from "@/components/meals/RecipeRatingDialog";
 import { MealPlanCalendar } from "@/components/meals/MealPlanCalendar";
@@ -211,7 +211,6 @@ const Meals = () => {
           <Skeleton className="h-8 w-48 mb-6" />
           <Skeleton className="h-[400px]" />
         </main>
-        <MobileNav />
       </div>
     );
   }
@@ -335,7 +334,7 @@ const Meals = () => {
         </Tabs>
       </main>
 
-      <MobileNav />
+      
 
       <RecipeDetailDialog
         recipe={selectedRecipe}

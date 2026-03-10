@@ -13,7 +13,7 @@ import { User, Lock, Globe, ArrowLeft, Bell } from "lucide-react";
 import { ResetOnboardingButton } from "@/components/development/ResetOnboardingButton";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
-import { MobileNav } from "@/components/layout/MobileNav";
+
 import { PhoneVerificationSection } from "@/components/settings/PhoneVerificationSection";
 import { NotificationPreferencesSection } from "@/components/settings/NotificationPreferencesSection";
 
@@ -281,7 +281,7 @@ const AccountSettings = () => {
         </Tabs>
       </main>
       <Footer />
-      <MobileNav />
+      
     </>
   );
 };

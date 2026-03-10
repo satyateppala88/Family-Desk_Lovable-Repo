@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Header } from "@/components/layout/Header";
-import { MobileNav } from "@/components/layout/MobileNav";
+
 import { useHousehold } from "@/hooks/useHousehold";
 import { useDailyPlan } from "@/hooks/useDailyPlan";
 import { useTaskmaster } from "@/hooks/useTaskmaster";
@@ -92,7 +92,6 @@ const TaskmasterToday = () => {
             <Skeleton className="h-32" />
           </div>
         </main>
-        <MobileNav />
       </div>
     );
   }
@@ -294,7 +293,7 @@ const TaskmasterToday = () => {
         )}
       </main>
 
-      <MobileNav />
+      
     </div>
   );
 };

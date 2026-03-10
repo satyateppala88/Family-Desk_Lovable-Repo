@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { Users, User } from "lucide-react";
 import { Header } from "@/components/layout/Header";
-import { MobileNav } from "@/components/layout/MobileNav";
+
 import { Footer } from "@/components/layout/Footer";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -117,7 +117,6 @@ const Habits = () => {
           <Skeleton className="h-24 w-full" />
         </main>
         <Footer />
-        <MobileNav />
       </div>
     );
   }
@@ -269,7 +268,7 @@ const Habits = () => {
       </main>
 
       <Footer />
-      <MobileNav />
+      
 
       <OnboardingTour
         run={runOnboarding}

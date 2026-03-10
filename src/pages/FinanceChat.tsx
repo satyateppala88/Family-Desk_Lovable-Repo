@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Header } from "@/components/layout/Header";
-import { MobileNav } from "@/components/layout/MobileNav";
+
 import { Footer } from "@/components/layout/Footer";
 import { FinanceNav } from "@/components/finance/FinanceNav";
 import { Card, CardContent } from "@/components/ui/card";
@@ -211,7 +211,7 @@ const FinanceChat = () => {
         </div>
       </main>
       <Footer />
-      <MobileNav />
+      
     </div>
   );
 };

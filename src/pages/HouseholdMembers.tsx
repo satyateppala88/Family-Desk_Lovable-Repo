@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
-import { MobileNav } from "@/components/layout/MobileNav";
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -89,7 +89,6 @@ const HouseholdMembers = () => {
           <Skeleton className="h-96 w-full" />
         </main>
         <Footer />
-        <MobileNav />
       </>
     );
   }
@@ -107,7 +106,7 @@ const HouseholdMembers = () => {
           </Card>
         </main>
         <Footer />
-        <MobileNav />
+        
       </>
     );
   }
@@ -214,7 +213,6 @@ const HouseholdMembers = () => {
         </div>
       </main>
       <Footer />
-      <MobileNav />
     </>
   );
 };

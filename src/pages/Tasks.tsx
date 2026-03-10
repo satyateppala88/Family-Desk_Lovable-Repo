@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Header } from "@/components/layout/Header";
-import { MobileNav } from "@/components/layout/MobileNav";
+
 import { Footer } from "@/components/layout/Footer";
 import { TaskCard } from "@/components/tasks/TaskCard";
 import { TaskDialog } from "@/components/tasks/TaskDialog";
@@ -127,7 +127,6 @@ const Tasks = () => {
             <Skeleton className="h-32" />
           </div>
         </main>
-        <MobileNav />
       </div>
     );
   }
@@ -198,7 +197,7 @@ const Tasks = () => {
         )}
       </main>
 
-      <MobileNav />
+      
 
       <TaskDialog
         task={selectedTask}

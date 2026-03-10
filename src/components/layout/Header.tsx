@@ -1,5 +1,6 @@
 import { useAuth } from "@/contexts/AuthContext";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
+import { ChevronLeft } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -21,11 +22,14 @@ interface HeaderProps {
 export const Header = ({ onStartOnboarding }: HeaderProps) => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const { householdId } = useHousehold();
   const { isAdmin } = useIsHouseholdAdmin(householdId);
   const { data: pendingInvitations = [] } = usePendingInvitations(householdId);
   const pendingCount = isAdmin ? pendingInvitations.length : 0;
   const { isPlatformAdmin } = useIsPlatformAdmin();
+
+  const isHomePage = location.pathname === "/dashboard" || location.pathname === "/";
 
   const getInitials = () => {
     if (!user?.user_metadata?.display_name) return "U";
@@ -40,8 +44,22 @@ export const Header = ({ onStartOnboarding }: HeaderProps) => {
   return (
     <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-xl">
       <div className="container flex h-14 items-center justify-between px-4">
-        <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate("/dashboard")}>
-          <span className="text-lg font-semibold text-foreground tracking-tight">FamilyDesk</span>
+        <div className="flex items-center gap-1">
+          {!isHomePage && (
+            <button
+              onClick={() => navigate("/dashboard")}
+              className="p-1.5 -ml-1.5 rounded-md text-muted-foreground hover:text-foreground transition-colors"
+              aria-label="Back to home"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </button>
+          )}
+          <span
+            className="text-lg font-semibold text-foreground tracking-tight cursor-pointer"
+            onClick={() => navigate("/dashboard")}
+          >
+            FamilyDesk
+          </span>
         </div>
 
         <DropdownMenu>

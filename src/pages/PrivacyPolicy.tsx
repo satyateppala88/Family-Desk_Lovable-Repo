@@ -1,5 +1,5 @@
 import { Header } from "@/components/layout/Header";
-import { MobileNav } from "@/components/layout/MobileNav";
+
 import { Footer } from "@/components/layout/Footer";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -363,7 +363,7 @@ export default function PrivacyPolicy() {
         </Card>
       </main>
       <Footer />
-      <MobileNav />
+      
     </div>
   );
 }
