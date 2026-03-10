@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Header } from "@/components/layout/Header";
-import { MobileNav } from "@/components/layout/MobileNav";
+
 import { RecipeDetailDialog } from "@/components/meals/RecipeDetailDialog";
 import { RecipeRatingDialog } from "@/components/meals/RecipeRatingDialog";
 import { MealPlanCalendar } from "@/components/meals/MealPlanCalendar";
