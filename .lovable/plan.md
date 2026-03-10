@@ -1,60 +1,75 @@
 
 
-# Fix: Blank Page on Tasks Navigation
+# Redesign: Icon-based Homepage + Remove Bottom Nav
 
-## Root Cause
+## Summary
 
-There are two issues causing blank pages across the app:
+Replace the current bottom navigation bar and dashboard summary widgets with a **module icon grid on the homepage**. Each enabled module appears as a tappable card/icon. Remove `MobileNav` from every page. Add a back-to-home mechanism in the header for inner pages.
 
-### Issue 1: Broken RLS Policy (Critical)
-The `household_invitations` table has an RLS SELECT policy called **"Users can view invitations by email"** that contains a subquery referencing `auth.users` directly:
-```sql
-invitee_email = (SELECT users.email FROM auth.users WHERE users.id = auth.uid())::text
+## What Changes
+
+### 1. Remove MobileNav globally
+- Delete `src/components/layout/MobileNav.tsx`
+- Remove all `<MobileNav />` imports and usages from ~27 page files (Index, Tasks, Meals, Grocery, Calendar, Habits, Finance, Settings, Taskmaster pages, etc.)
+- Remove `pb-20` padding that was compensating for the fixed bottom bar
+
+### 2. Redesign the Homepage (`Index.tsx`)
+- Remove all `DashboardXxxWidget` components (TaskWidget, MealWidget, GroceryWidget, CalendarWidget, FinanceWidget)
+- Replace with a **module icon grid** showing only the household's enabled products
+- Each module tile: large icon + label, tappable, navigates to the module
+- Grid layout: 3 columns on mobile, adapts on larger screens
+- Module definitions (icon, label, path, color) reused from the existing `ProductSelectionStep` and `MobileNav` definitions
+- Keep: Header, onboarding progress banner, pending invitation banner, household name
+
+### 3. Add back/home navigation in Header
+- On inner pages (not `/dashboard`), show a left-arrow (ChevronLeft or ArrowLeft) next to "FamilyDesk" that navigates to `/dashboard`
+- On the homepage itself, no arrow shown
+
+### 4. Clean up related code
+- Can keep `useDashboardStats` hook (used elsewhere) but remove its import from Index
+- Remove `DashboardXxxWidget` component files if no longer used elsewhere
+- Remove the `Footer` from the homepage (cleaner look) — keep on legal/settings pages
+
+## Files to Modify
+
+| File | Action |
+|------|--------|
+| `src/components/layout/MobileNav.tsx` | **Delete** |
+| `src/pages/Index.tsx` | Rewrite: module icon grid instead of widgets |
+| `src/components/layout/Header.tsx` | Add back arrow on inner pages |
+| ~25 other page files | Remove `<MobileNav />` import and usage |
+| `src/components/dashboard/DashboardTaskWidget.tsx` | Delete (no longer used) |
+| `src/components/dashboard/DashboardMealWidget.tsx` | Delete (no longer used) |
+| `src/components/dashboard/DashboardGroceryWidget.tsx` | Delete (no longer used) |
+| `src/components/dashboard/DashboardCalendarWidget.tsx` | Delete (no longer used) |
+| `src/components/dashboard/DashboardFinanceWidget.tsx` | Delete (no longer used) |
+| `src/components/dashboard/DashboardHabitWidget.tsx` | Delete (if exists, no longer used) |
+
+## Homepage Module Grid Design
+
+```text
+┌─────────────────────────────────┐
+│  FamilyDesk            [Avatar] │  ← Header
+├─────────────────────────────────┤
+│  [Onboarding banner if needed]  │
+│                                 │
+│  Household Name                 │
+│                                 │
+│  ┌─────┐  ┌─────┐  ┌─────┐    │
+│  │ ✓   │  │ 🍽  │  │ 🛒  │    │
+│  │Tasks│  │Meals│  │Groc.│    │
+│  └─────┘  └─────┘  └─────┘    │
+│  ┌─────┐  ┌─────┐  ┌─────┐    │
+│  │ 📅  │  │ 🌿  │  │ 💰  │    │
+│  │Cal. │  │Habit│  │Fin. │    │
+│  └─────┘  └─────┘  └─────┘    │
+│                                 │
+└─────────────────────────────────┘
 ```
-The `authenticated` role does not have SELECT permission on `auth.users`, causing `permission denied for table users` (HTTP 403) every time this policy is evaluated.
 
-This policy is hit by:
-- `usePendingInvitations` hook (used in the **Header** component on every page)
-- `PendingInvitationBanner` component (used on the Dashboard)
+Each tile is a card with the module's Lucide icon (matching the colors from ProductSelectionStep), the module name, and a subtle description. Tapping navigates to the module's main page. Only enabled products are shown.
 
-Since both hooks throw errors on failure and there is **no React Error Boundary** in the app, the unhandled error crashes the entire component tree, producing a blank page.
+## No Database Changes Required
 
-### Issue 2: Missing Error Resilience
-The hooks that query `household_invitations` throw on error without graceful fallbacks, and the app has no Error Boundary to catch rendering failures.
-
-## Plan
-
-### Step 1: Fix the RLS Policy (Database Migration)
-Replace the broken RLS policy with one that uses `auth.jwt()` instead of querying `auth.users`:
-
-```sql
-DROP POLICY "Users can view invitations by email" ON household_invitations;
-
-CREATE POLICY "Users can view invitations by email"
-  ON household_invitations
-  FOR SELECT
-  USING (
-    invitee_email = (auth.jwt() ->> 'email')::text
-  );
-```
-
-This extracts the email from the JWT token directly, which is always available and requires no table access.
-
-### Step 2: Add Error Resilience to Hooks
-Update `usePendingInvitations` and `PendingInvitationBanner` to handle errors gracefully instead of throwing -- return empty arrays on error so the rest of the page still renders.
-
-### Step 3: Add a Global React Error Boundary
-Wrap the app in an Error Boundary component so that if any component crashes, users see a friendly fallback UI with a "Reload" button instead of a blank page.
-
-## Technical Details
-
-### Files to Modify
-1. **Database migration** -- fix the `household_invitations` RLS policy
-2. `src/hooks/usePendingInvitations.ts` -- catch errors gracefully, return `[]` instead of throwing
-3. `src/components/household/PendingInvitationBanner.tsx` -- handle query errors gracefully
-4. `src/App.tsx` -- add a React Error Boundary wrapper
-5. New file: `src/components/layout/ErrorBoundary.tsx` -- Error Boundary component
-
-### Production Impact
-After publishing, the RLS fix will automatically apply to the Live database, resolving the 403 errors. No manual SQL needed for this change.
+This is purely a frontend navigation redesign.
 
