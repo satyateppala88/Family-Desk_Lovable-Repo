@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { format } from "date-fns";
-import { Users, User, Leaf } from "lucide-react";
+import { Users, User, Leaf, PartyPopper } from "lucide-react";
 import { Header } from "@/components/layout/Header";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
@@ -20,12 +20,13 @@ import { HouseholdHabitSummary } from "@/components/habits/HouseholdHabitSummary
 import { MemberProgressCard } from "@/components/habits/MemberProgressCard";
 import { HabitLeaderboard } from "@/components/habits/HabitLeaderboard";
 import { HabitAssignmentType, HabitFrequencyType } from "@/types/habits";
+import { cn } from "@/lib/utils";
 import type { Step } from "react-joyride";
 
 const habitsTourSteps: Step[] = [
   {
     target: "body",
-    content: "Welcome to Habits! Build healthy routines for you and your family.",
+    content: "Welcome to Habits! Build healthy routines that stick — for yourself and your family.",
     placement: "center",
     disableBeacon: true,
   },
@@ -36,22 +37,22 @@ const habitsTourSteps: Step[] = [
   },
   {
     target: "[data-tour='progress-summary']",
-    content: "Track your daily progress and completion rate.",
+    content: "See how your day is going at a glance.",
     placement: "bottom",
   },
   {
     target: "[data-tour='habit-list']",
-    content: "Check off habits as you complete them. Track streaks and consistency.",
+    content: "Tap a habit to check it off. Watch your streaks grow!",
     placement: "top",
   },
   {
     target: "[data-tour='create-habit']",
-    content: "Create personal or household habits with reminders and target values.",
+    content: "Create habits for yourself or the whole household, with optional reminders.",
     placement: "top",
   },
   {
     target: ".user-menu",
-    content: "Access settings and restart this tour anytime from the User Guide menu.",
+    content: "You can restart this guide anytime from the menu.",
     placement: "bottom",
   },
 ];
@@ -84,6 +85,7 @@ const Habits = () => {
   const completedCount = todaysHabits.filter((h) => h.todayLog?.completed).length;
   const totalCount = todaysHabits.length;
   const completionPct = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+  const allDone = completedCount === totalCount && totalCount > 0;
 
   const handleToggleHabit = (habitId: string, completed: boolean) => {
     logHabit.mutate({ habitId, completed });
@@ -122,7 +124,6 @@ const Habits = () => {
       <Header onStartOnboarding={handleStartOnboarding} />
 
       <main className="page-content">
-        {/* Header with date and view toggle */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
           <div>
             <h1 className="page-heading">Habits</h1>
@@ -134,11 +135,11 @@ const Habits = () => {
             <Tabs value={view} onValueChange={(v) => setView(v as "personal" | "household")}>
               <TabsList>
                 <TabsTrigger value="personal" className="gap-1.5">
-                  <User className="h-4 w-4" />
+                  <User className="h-4 w-4" aria-hidden="true" />
                   Me
                 </TabsTrigger>
                 <TabsTrigger value="household" className="gap-1.5">
-                  <Users className="h-4 w-4" />
+                  <Users className="h-4 w-4" aria-hidden="true" />
                   Household
                 </TabsTrigger>
               </TabsList>
@@ -149,7 +150,7 @@ const Habits = () => {
         {view === "personal" ? (
           <div className="space-y-3">
             {/* Progress summary */}
-            <Card data-tour="progress-summary">
+            <Card data-tour="progress-summary" className={cn(allDone && "border-[hsl(var(--success))]/20 bg-[hsl(var(--success))]/3")}>
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
@@ -159,18 +160,30 @@ const Habits = () => {
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="text-label">Completion</p>
-                    <p className={`text-2xl font-bold mt-0.5 ${completionPct >= 80 ? "text-success" : completionPct >= 40 ? "text-primary" : "text-muted-foreground"}`}>
-                      {completionPct}%
-                    </p>
+                    {allDone ? (
+                      <div className="flex items-center gap-1.5 animate-celebrate-pop">
+                        <PartyPopper className="h-5 w-5 text-[hsl(var(--success))]" aria-hidden="true" />
+                        <span className="text-sm font-semibold text-[hsl(var(--success))]">All done!</span>
+                      </div>
+                    ) : (
+                      <>
+                        <p className="text-label">Completion</p>
+                        <p className={cn(
+                          "text-2xl font-bold mt-0.5",
+                          completionPct >= 80 ? "text-[hsl(var(--success))]" : completionPct >= 40 ? "text-primary" : "text-muted-foreground"
+                        )}>
+                          {completionPct}%
+                        </p>
+                      </>
+                    )}
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            {todaysHabits.length > 0 && completedCount < totalCount && (
+            {todaysHabits.length > 0 && completedCount < totalCount && completedCount > 0 && (
               <HabitCoachInsight
-                content="You're most consistent in the mornings. Try tackling your remaining habits early tomorrow!"
+                content="You're making progress! Keep the momentum going — every check-off counts."
                 onDismiss={() => {}}
               />
             )}
@@ -181,7 +194,8 @@ const Habits = () => {
               <EmptyState
                 icon={Leaf}
                 title="No habits yet"
-                description="Start building healthy routines for you and your family."
+                description="Small daily actions add up to big changes."
+                encouragement="What's one thing you'd like to do every day?"
               />
             ) : (
               <div className="space-y-3" data-tour="habit-list">
@@ -226,8 +240,8 @@ const Habits = () => {
                   {householdStats.memberStats.length === 0 ? (
                     <EmptyState
                       icon={Users}
-                      title="No member data"
-                      description="No household members with habits yet."
+                      title="No member data yet"
+                      description="Once household members start tracking habits, their progress will show here."
                     />
                   ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -240,7 +254,7 @@ const Habits = () => {
 
                 {householdStats.memberStats.length > 0 && (
                   <HabitCoachInsight
-                    content="Your household is showing great consistency! Consider adding a shared family habit like an evening walk."
+                    content="Your household is building great consistency! Consider adding a shared family habit like an evening walk or gratitude moment."
                     onDismiss={() => {}}
                   />
                 )}

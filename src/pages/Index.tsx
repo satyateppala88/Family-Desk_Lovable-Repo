@@ -11,11 +11,11 @@ import { useDashboardStats } from "@/hooks/useDashboardStats";
 import { supabase } from "@/lib/supabase";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
 import { PageLoadingGrid } from "@/components/ui/page-loading";
 import { Household } from "@/types/database";
 import { useEnabledProducts, isProductEnabled, ProductName } from "@/hooks/useEnabledProducts";
 import { OnboardingProgressIndicator } from "@/components/onboarding/OnboardingProgressIndicator";
+import { FamilyPulse } from "@/components/dashboard/FamilyPulse";
 import {
   CheckSquare,
   UtensilsCrossed,
@@ -34,24 +34,24 @@ const moduleDefinitions: {
   path: string;
   tintClass: string;
 }[] = [
-  { product: "tasks", icon: CheckSquare, label: "Tasks", description: "Manage to-dos", path: "/tasks", tintClass: "module-tint-tasks" },
-  { product: "meals", icon: UtensilsCrossed, label: "Meals", description: "Plan weekly meals", path: "/meals", tintClass: "module-tint-meals" },
+  { product: "tasks", icon: CheckSquare, label: "Tasks", description: "Family to-dos", path: "/tasks", tintClass: "module-tint-tasks" },
+  { product: "meals", icon: UtensilsCrossed, label: "Meals", description: "Weekly meal plans", path: "/meals", tintClass: "module-tint-meals" },
   { product: "grocery", icon: ShoppingCart, label: "Grocery", description: "Pantry & shopping", path: "/grocery", tintClass: "module-tint-grocery" },
-  { product: "calendar", icon: Calendar, label: "Calendar", description: "Events & schedules", path: "/calendar", tintClass: "module-tint-calendar" },
-  { product: "habits", icon: Leaf, label: "Habits", description: "Track daily habits", path: "/habits", tintClass: "module-tint-habits" },
-  { product: "finance", icon: Wallet, label: "Finance", description: "Budget & expenses", path: "/finance", tintClass: "module-tint-finance" },
+  { product: "calendar", icon: Calendar, label: "Calendar", description: "Family schedule", path: "/calendar", tintClass: "module-tint-calendar" },
+  { product: "habits", icon: Leaf, label: "Habits", description: "Daily routines", path: "/habits", tintClass: "module-tint-habits" },
+  { product: "finance", icon: Wallet, label: "Finance", description: "Budget & savings", path: "/finance", tintClass: "module-tint-finance" },
 ];
 
 const dashboardTourSteps: Step[] = [
   {
     target: "body",
-    content: "Welcome to FamilyDesk! Your central hub for managing household activities.",
+    content: "Welcome to FamilyDesk! This is your family's home base for staying organized together.",
     placement: "center",
     disableBeacon: true,
   },
   {
     target: ".module-grid",
-    content: "These are your enabled modules. Tap any to get started.",
+    content: "Each tile opens a different part of your household toolkit. Tap any to get started.",
     placement: "bottom",
   },
 ];
@@ -104,16 +104,15 @@ const Index = () => {
     isProductEnabled(enabledProducts, m.product)
   );
 
-  // Derive subtle context cues per module
   const getModuleHint = (product: ProductName): string | null => {
     if (!dashStats) return null;
     switch (product) {
       case "tasks":
-        return dashStats.pendingTasksCount > 0 ? `${dashStats.pendingTasksCount} pending` : null;
+        return dashStats.pendingTasksCount > 0 ? `${dashStats.pendingTasksCount} to do` : "All clear ✓";
       case "meals":
-        return dashStats.todayMeals?.length > 0 ? `${dashStats.todayMeals.length} today` : null;
+        return dashStats.todayMeals?.length > 0 ? `${dashStats.todayMeals.length} planned today` : null;
       case "grocery":
-        return dashStats.pantryItemsCount > 0 ? `${dashStats.pantryItemsCount} items` : null;
+        return dashStats.pantryItemsCount > 0 ? `${dashStats.pantryItemsCount} items tracked` : null;
       default:
         return null;
     }
@@ -129,6 +128,9 @@ const Index = () => {
       </div>
     );
   }
+
+  const firstName = user?.user_metadata?.display_name?.split(" ")[0] || "";
+  const greeting = getGreeting(firstName);
 
   return (
     <div className="page-container">
@@ -154,9 +156,9 @@ const Index = () => {
                   showLabel={false}
                 />
                 <div className="flex-1">
-                  <h3 className="font-medium text-sm">Complete your setup</h3>
+                  <h3 className="font-medium text-sm">Let's finish setting up</h3>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    {progressData.percentage}% complete
+                    {progressData.percentage}% done — just a few more steps
                   </p>
                 </div>
               </div>
@@ -165,27 +167,30 @@ const Index = () => {
                 size="sm"
                 className="w-full sm:w-auto"
               >
-                Continue
+                Continue Setup
               </Button>
             </CardContent>
           </Card>
         )}
 
         <div className="mb-5">
-          <h1 className="page-heading">{household.name}</h1>
-          <p className="text-sm text-muted-foreground mt-1">Your household at a glance</p>
+          <h1 className="page-heading">{greeting}</h1>
+          <p className="text-sm text-muted-foreground mt-1">{household.name}</p>
         </div>
 
-        {/* Module grid with context cues */}
+        {/* Family Pulse — lightweight weekly snapshot */}
+        <FamilyPulse stats={dashStats} enabledProducts={enabledProducts} />
+
+        {/* Module grid */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 module-grid">
           {visibleModules.map(({ product, icon: Icon, label, description, path, tintClass }) => {
             const hint = getModuleHint(product);
             return (
-              <Link key={product} to={path} className="block group">
+              <Link key={product} to={path} className="block group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-xl">
                 <Card className="h-full transition-all duration-200 hover:shadow-md group-hover:scale-[1.02] group-active:scale-[0.98]" style={{ minHeight: "var(--module-card-min-h)" }}>
                   <CardContent className="flex flex-col items-center justify-center text-center p-4 gap-2 h-full relative">
                     <div className={`rounded-xl p-3 ${tintClass}`}>
-                      <Icon style={{ width: "var(--module-icon-size)", height: "var(--module-icon-size)" }} />
+                      <Icon style={{ width: "var(--module-icon-size)", height: "var(--module-icon-size)" }} aria-hidden="true" />
                     </div>
                     <span className="text-sm font-medium text-foreground">{label}</span>
                     {hint ? (
@@ -205,5 +210,11 @@ const Index = () => {
     </div>
   );
 };
+
+function getGreeting(name: string): string {
+  const hour = new Date().getHours();
+  const prefix = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+  return name ? `${prefix}, ${name}` : prefix;
+}
 
 export default Index;
