@@ -72,6 +72,44 @@
 
     --tracking-normal: 0em;
     --spacing: 0.25rem;
+
+    /* Responsive design tokens */
+    --content-max-width: 1200px;
+    --page-padding-x: 1rem;
+    --page-padding-y: 0.75rem;
+    --section-gap: 1rem;
+    --card-padding: 1rem;
+    --heading-size: 1.25rem;
+    --icon-size: 1.25rem;
+    --module-icon-size: 1.5rem;
+    --module-card-min-h: 6rem;
+    --touch-target: 44px;
+  }
+
+  @media (min-width: 640px) {
+    :root {
+      --page-padding-x: 1.5rem;
+      --page-padding-y: 1rem;
+      --section-gap: 1.25rem;
+      --card-padding: 1.25rem;
+      --heading-size: 1.5rem;
+      --icon-size: 1.5rem;
+      --module-icon-size: 1.75rem;
+      --module-card-min-h: 7rem;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    :root {
+      --page-padding-x: 2rem;
+      --page-padding-y: 1.5rem;
+      --section-gap: 1.5rem;
+      --card-padding: 1.5rem;
+      --heading-size: 1.75rem;
+      --icon-size: 1.75rem;
+      --module-icon-size: 2rem;
+      --module-card-min-h: 8rem;
+    }
   }
 
   .dark {
