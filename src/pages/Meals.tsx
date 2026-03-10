@@ -211,7 +211,6 @@ const Meals = () => {
           <Skeleton className="h-8 w-48 mb-6" />
           <Skeleton className="h-[400px]" />
         </main>
-        <MobileNav />
       </div>
     );
   }
