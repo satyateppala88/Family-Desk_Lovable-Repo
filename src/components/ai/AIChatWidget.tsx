@@ -114,7 +114,7 @@ export const AIChatWidget = () => {
 
   const houseName = householdName || "your household";
 
-  const greeting = `${getTimeGreeting()}, ${displayName}. How can I help ${householdName} today?`;
+  const greeting = `${getTimeGreeting()}, ${displayName}. How can I help ${houseName} today?`;
 
   const clearConversation = () => {
     setMessages([]);
