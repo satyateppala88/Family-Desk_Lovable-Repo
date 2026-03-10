@@ -8,9 +8,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { Eye, EyeOff, Mail, RefreshCw, FlaskConical } from "lucide-react";
+import { Eye, EyeOff, Mail, RefreshCw } from "lucide-react";
 import logoImg from "@/assets/logo-family-desk-primary.png";
-import { useDevAuth } from "@/hooks/useDevAuth";
 
 type AuthState = "form" | "verification-pending";
 
