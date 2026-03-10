@@ -185,7 +185,7 @@ const App = () => (
             </Suspense>
             <AIChatWidget />
           </AuthProvider>
-        </DevModeProvider>
+        
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>

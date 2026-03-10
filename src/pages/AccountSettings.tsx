@@ -253,9 +253,6 @@ const AccountSettings = () => {
                 </Button>
               </div>
               
-              <Separator />
-              
-              <ResetOnboardingButton />
             </CardContent>
           </Card>
         </TabsContent>

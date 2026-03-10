@@ -130,7 +130,7 @@ const Index = () => {
         />
       )}
       <main className="flex-1 container mx-auto px-4 sm:px-6 py-6">
-        <ResetOnboardingButton />
+        
         <PendingInvitationBanner />
 
         {!onboardingCompleted && progressData && progressData.percentage < 100 && (
