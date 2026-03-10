@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Header } from "@/components/layout/Header";
-import { MobileNav } from "@/components/layout/MobileNav";
+
 import { Footer } from "@/components/layout/Footer";
 import { TaskCard } from "@/components/tasks/TaskCard";
 import { TaskDialog } from "@/components/tasks/TaskDialog";
