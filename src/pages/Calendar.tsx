@@ -11,6 +11,8 @@ import { useCalendarConnections } from "@/hooks/useCalendarConnections";
 import { useHousehold } from "@/hooks/useHousehold";
 import { useFeatureTour } from "@/hooks/useFeatureTour";
 import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/ui/empty-state";
+import { CalendarDays, Plus } from "lucide-react";
 import type { Step } from "react-joyride";
 
 const calendarTourSteps: Step[] = [
