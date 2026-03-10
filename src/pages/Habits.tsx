@@ -2,8 +2,6 @@ import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { Users, User } from "lucide-react";
 import { Header } from "@/components/layout/Header";
-
-import { Footer } from "@/components/layout/Footer";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { OnboardingTour } from "@/components/onboarding/OnboardingTour";
@@ -65,11 +63,9 @@ const Habits = () => {
   const { data: leaderboardEntries, isLoading: leaderboardLoading } = useHabitLeaderboard(householdId);
   const { data: householdMembers } = useHouseholdMembers(householdId);
 
-  // Feature-specific tour
   const { shouldShowTour, tourChecked, markTourComplete } = useFeatureTour("habits");
   const [runOnboarding, setRunOnboarding] = useState(false);
 
-  // Start tour automatically if user hasn't seen it
   useEffect(() => {
     if (tourChecked && shouldShowTour && householdId) {
       setTimeout(() => setRunOnboarding(true), 500);
@@ -109,28 +105,27 @@ const Habits = () => {
 
   if (householdLoading) {
     return (
-      <div className="min-h-screen flex flex-col bg-background">
+      <div className="page-container">
         <Header />
-        <main className="flex-1 container max-w-4xl mx-auto px-4 py-6 pb-24">
+        <main className="page-content">
           <Skeleton className="h-8 w-48 mb-4" />
           <Skeleton className="h-24 w-full mb-4" />
           <Skeleton className="h-24 w-full" />
         </main>
-        <Footer />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
+    <div className="page-container">
       <Header onStartOnboarding={handleStartOnboarding} />
 
-      <main className="flex-1 container max-w-4xl mx-auto px-4 py-3 sm:py-4 pb-24">
+      <main className="page-content">
         {/* Header with date and view toggle */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold">Habits</h1>
-            <p className="text-muted-foreground">
+            <h1 className="page-heading">Habits</h1>
+            <p className="text-muted-foreground text-sm">
               {format(today, "EEEE, MMMM d, yyyy")}
             </p>
           </div>
@@ -151,7 +146,6 @@ const Habits = () => {
         </div>
 
         {view === "personal" ? (
-          /* Personal View */
           <div className="space-y-3">
             {/* Progress summary */}
             <div className="flex items-center justify-between p-4 bg-accent/10 rounded-lg" data-tour="progress-summary">
@@ -169,7 +163,6 @@ const Habits = () => {
               </div>
             </div>
 
-            {/* AI Coach Insight */}
             {todaysHabits.length > 0 && completedCount < totalCount && (
               <HabitCoachInsight
                 content="You're most consistent in the mornings. Try tackling your remaining habits early tomorrow!"
@@ -177,7 +170,6 @@ const Habits = () => {
               />
             )}
 
-            {/* Habits list */}
             {habitsLoading ? (
               <div className="space-y-3">
                 <Skeleton className="h-20 w-full" />
@@ -206,7 +198,6 @@ const Habits = () => {
               </div>
             )}
 
-            {/* Create Habit Dialog */}
             <div data-tour="create-habit">
               <HabitCreateDialog
                 onCreateHabit={handleCreateHabit}
@@ -216,7 +207,6 @@ const Habits = () => {
             </div>
           </div>
         ) : (
-          /* Household View */
           <div className="space-y-4">
             {statsLoading || !householdStats ? (
               <div className="space-y-4">
@@ -225,20 +215,17 @@ const Habits = () => {
               </div>
             ) : (
               <>
-                {/* Household summary */}
                 <div>
                   <h2 className="text-lg font-semibold mb-3">Today's Summary</h2>
                   <HouseholdHabitSummary stats={householdStats} />
                 </div>
 
-                {/* Leaderboard */}
                 <HabitLeaderboard
                   entries={leaderboardEntries || []}
                   isLoading={leaderboardLoading}
                   period="weekly"
                 />
 
-                {/* Member progress */}
                 <div>
                   <h2 className="text-lg font-semibold mb-3">Member Progress</h2>
                   {householdStats.memberStats.length === 0 ? (
@@ -246,7 +233,7 @@ const Habits = () => {
                       No household members with habits yet.
                     </p>
                   ) : (
-                    <div className="flex gap-3 overflow-x-auto pb-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                       {householdStats.memberStats.map((member) => (
                         <MemberProgressCard key={member.userId} member={member} />
                       ))}
@@ -254,7 +241,6 @@ const Habits = () => {
                   )}
                 </div>
 
-                {/* Household coach insight */}
                 {householdStats.memberStats.length > 0 && (
                   <HabitCoachInsight
                     content="Your household is showing great consistency! Consider adding a shared family habit like an evening walk."
@@ -266,9 +252,6 @@ const Habits = () => {
           </div>
         )}
       </main>
-
-      <Footer />
-      
 
       <OnboardingTour
         run={runOnboarding}

@@ -42,14 +42,15 @@ export const Header = ({ onStartOnboarding }: HeaderProps) => {
   };
 
   return (
-    <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-xl">
-      <div className="container flex h-14 items-center justify-between px-4">
+    <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-xl border-b border-border">
+      <div className="w-full mx-auto flex h-14 items-center justify-between" style={{ maxWidth: 'var(--content-max-width)', paddingLeft: 'var(--page-padding-x)', paddingRight: 'var(--page-padding-x)' }}>
         <div className="flex items-center gap-1">
           {!isHomePage && (
             <button
               onClick={() => navigate("/dashboard")}
-              className="p-1.5 -ml-1.5 rounded-md text-muted-foreground hover:text-foreground transition-colors"
+              className="p-2 -ml-2 rounded-md text-muted-foreground hover:text-foreground transition-colors"
               aria-label="Back to home"
+              style={{ minHeight: 'var(--touch-target)' }}
             >
               <ChevronLeft className="h-5 w-5" />
             </button>
