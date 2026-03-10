@@ -3,6 +3,8 @@ import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { FinanceNav } from "@/components/finance/FinanceNav";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import { useHousehold } from "@/hooks/useHousehold";
 import {
   useFinanceMonthlySummary,
@@ -12,7 +14,7 @@ import {
 } from "@/hooks/useFinance";
 import { formatINR } from "@/lib/formatINR";
 import { format } from "date-fns";
-import { TrendingUp, TrendingDown, AlertTriangle, CheckCircle } from "lucide-react";
+import { TrendingUp, TrendingDown, AlertTriangle, CheckCircle, Lightbulb, PartyPopper } from "lucide-react";
 
 const FinanceMonthlyReview = () => {
   const { householdId } = useHousehold();
@@ -25,7 +27,6 @@ const FinanceMonthlyReview = () => {
     ? Math.round(((summary.income - summary.expenses) / summary.income) * 100)
     : 0;
 
-  // Identify wins and risks
   const overBudgetCategories = (budgets || []).filter((b) => {
     const actual = summary?.categoryBreakdown?.[b.category] || 0;
     return actual > Number(b.planned_amount);
@@ -36,7 +37,6 @@ const FinanceMonthlyReview = () => {
     return actual <= Number(b.planned_amount) * 0.8 && Number(b.planned_amount) > 0;
   });
 
-  // Top spending categories
   const categoryEntries = Object.entries(summary?.categoryBreakdown || {})
     .sort(([, a], [, b]) => (b as number) - (a as number))
     .slice(0, 5);
@@ -44,55 +44,60 @@ const FinanceMonthlyReview = () => {
   const activeGoals = (goals || []).filter((g) => g.status === "active");
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
+    <div className="page-container">
       <Header />
-      <main className="flex-1 container mx-auto px-4 sm:px-6 py-6 pb-20 space-y-4">
-        <h1 className="text-2xl font-semibold tracking-tight">Monthly Review</h1>
-        <p className="text-sm text-muted-foreground">{format(new Date(), "MMMM yyyy")}</p>
+      <main className="page-content space-y-4 animate-fade-in">
+        <div>
+          <h1 className="page-heading">Monthly Review</h1>
+          <p className="text-sm text-muted-foreground mt-1">{format(new Date(), "MMMM yyyy")}</p>
+        </div>
 
         <FinanceNav />
 
-        {/* Summary */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Month at a Glance</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <div className="grid grid-cols-3 gap-3 text-center">
-              <div>
-                <p className="text-xs text-muted-foreground">Income</p>
-                <p className="text-sm font-semibold">{formatINR(summary?.income || 0)}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Spent</p>
-                <p className="text-sm font-semibold">{formatINR(summary?.expenses || 0)}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Savings Rate</p>
-                <p className={`text-sm font-semibold ${savingsRate >= 20 ? "text-[hsl(var(--success))]" : savingsRate >= 0 ? "text-[hsl(var(--warning))]" : "text-destructive"}`}>
-                  {savingsRate}%
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        {/* Summary Cards */}
+        <div className="grid grid-cols-3 gap-3">
+          <Card>
+            <CardContent className="p-4 text-center">
+              <p className="text-label mb-1">Income</p>
+              <p className="text-lg font-bold text-foreground">{formatINR(summary?.income || 0)}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4 text-center">
+              <p className="text-label mb-1">Spent</p>
+              <p className="text-lg font-bold text-foreground">{formatINR(summary?.expenses || 0)}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4 text-center">
+              <p className="text-label mb-1">Saved</p>
+              <p className={`text-lg font-bold ${savingsRate >= 20 ? "text-success" : savingsRate >= 0 ? "text-warning" : "text-destructive"}`}>
+                {savingsRate}%
+              </p>
+            </CardContent>
+          </Card>
+        </div>
 
         {/* Wins */}
         {underBudgetCategories.length > 0 && (
-          <Card>
+          <Card className="border-success/20">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-2">
-                <CheckCircle className="w-4 h-4 text-[hsl(var(--success))]" /> Wins
+                <CheckCircle className="w-4 h-4 text-success" /> Wins This Month
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-1">
+            <CardContent className="space-y-2">
               {underBudgetCategories.map((b) => (
-                <p key={b.id} className="text-sm text-muted-foreground">
-                  ✓ {CATEGORY_LABELS[b.category]} stayed well under budget
-                </p>
+                <div key={b.id} className="flex items-start gap-2 text-sm">
+                  <Badge variant="success" className="mt-0.5 shrink-0">Under</Badge>
+                  <span className="text-muted-foreground">{CATEGORY_LABELS[b.category]} stayed well under budget</span>
+                </div>
               ))}
               {savingsRate >= 20 && (
-                <p className="text-sm text-muted-foreground">✓ Saved {savingsRate}% of income — great discipline!</p>
+                <div className="flex items-start gap-2 text-sm">
+                  <Badge variant="success" className="mt-0.5 shrink-0">{savingsRate}%</Badge>
+                  <span className="text-muted-foreground">Saved {savingsRate}% of income — great discipline!</span>
+                </div>
               )}
             </CardContent>
           </Card>
@@ -100,19 +105,22 @@ const FinanceMonthlyReview = () => {
 
         {/* Risks */}
         {overBudgetCategories.length > 0 && (
-          <Card className="border-destructive/30">
+          <Card className="border-destructive/20">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-2">
                 <AlertTriangle className="w-4 h-4 text-destructive" /> Areas to Watch
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-1">
+            <CardContent className="space-y-2">
               {overBudgetCategories.map((b) => {
                 const actual = summary?.categoryBreakdown?.[b.category] || 0;
                 return (
-                  <p key={b.id} className="text-sm text-muted-foreground">
-                    ⚠ {CATEGORY_LABELS[b.category]}: spent {formatINR(actual)} vs {formatINR(Number(b.planned_amount))} budget
-                  </p>
+                  <div key={b.id} className="flex items-start gap-2 text-sm">
+                    <Badge variant="destructive" className="mt-0.5 shrink-0">Over</Badge>
+                    <span className="text-muted-foreground">
+                      {CATEGORY_LABELS[b.category]}: spent {formatINR(actual)} vs {formatINR(Number(b.planned_amount))} budget
+                    </span>
+                  </div>
                 );
               })}
             </CardContent>
@@ -124,16 +132,23 @@ const FinanceMonthlyReview = () => {
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-2">
-                <TrendingDown className="w-4 h-4" /> Top Spending
+                <TrendingDown className="w-4 h-4 text-muted-foreground" /> Top Spending
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2">
-              {categoryEntries.map(([cat, amount]) => (
-                <div key={cat} className="flex justify-between text-sm">
-                  <span>{CATEGORY_LABELS[cat] || cat}</span>
-                  <span className="font-medium">{formatINR(amount as number)}</span>
-                </div>
-              ))}
+            <CardContent className="space-y-3">
+              {categoryEntries.map(([cat, amount]) => {
+                const budget = (budgets || []).find(b => b.category === cat);
+                const pct = budget ? Math.min(100, Math.round(((amount as number) / Number(budget.planned_amount)) * 100)) : 0;
+                return (
+                  <div key={cat} className="space-y-1">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-foreground font-medium">{CATEGORY_LABELS[cat] || cat}</span>
+                      <span className="text-muted-foreground">{formatINR(amount as number)}</span>
+                    </div>
+                    {budget && <Progress value={pct} className="h-1.5" />}
+                  </div>
+                );
+              })}
             </CardContent>
           </Card>
         )}
@@ -143,18 +158,22 @@ const FinanceMonthlyReview = () => {
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-2">
-                <TrendingUp className="w-4 h-4" /> Savings Progress
+                <TrendingUp className="w-4 h-4 text-primary" /> Savings Progress
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2">
+            <CardContent className="space-y-3">
               {activeGoals.map((g) => {
                 const pct = Number(g.target_amount) > 0
                   ? Math.round((Number(g.current_amount) / Number(g.target_amount)) * 100)
                   : 0;
                 return (
-                  <div key={g.id} className="flex justify-between text-sm">
-                    <span>{g.name}</span>
-                    <span className="text-muted-foreground">{pct}% ({formatINR(Number(g.current_amount))})</span>
+                  <div key={g.id} className="space-y-1.5">
+                    <div className="flex justify-between text-sm">
+                      <span className="font-medium text-foreground">{g.name}</span>
+                      <span className="text-muted-foreground">{pct}%</span>
+                    </div>
+                    <Progress value={pct} className="h-1.5" />
+                    <p className="text-xs text-muted-foreground">{formatINR(Number(g.current_amount))} of {formatINR(Number(g.target_amount))}</p>
                   </div>
                 );
               })}
@@ -165,29 +184,33 @@ const FinanceMonthlyReview = () => {
         {/* Recommendations */}
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm">Recommendations</CardTitle>
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Lightbulb className="w-4 h-4 text-module-finance" /> Recommendations
+            </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2 text-sm text-muted-foreground">
+          <CardContent className="space-y-3">
             {savingsRate < 10 && (
-              <p>💡 Try to increase your savings rate to at least 20% by reducing non-essential spending.</p>
+              <p className="text-sm text-muted-foreground">Try to increase your savings rate to at least 20% by reducing non-essential spending.</p>
             )}
             {overBudgetCategories.length > 0 && (
-              <p>💡 Review your {overBudgetCategories.map((b) => CATEGORY_LABELS[b.category]).join(", ")} spending — consider setting stricter limits.</p>
+              <p className="text-sm text-muted-foreground">Review your {overBudgetCategories.map((b) => CATEGORY_LABELS[b.category]).join(", ")} spending — consider setting stricter limits.</p>
             )}
             {activeGoals.length === 0 && (
-              <p>💡 Set a savings goal to stay motivated — even a small emergency fund helps.</p>
+              <p className="text-sm text-muted-foreground">Set a savings goal to stay motivated — even a small emergency fund helps.</p>
             )}
             {summary && summary.transactionCount === 0 && (
-              <p>💡 Start tracking your transactions to get meaningful insights next month.</p>
+              <p className="text-sm text-muted-foreground">Start tracking your transactions to get meaningful insights next month.</p>
             )}
             {savingsRate >= 20 && overBudgetCategories.length === 0 && (
-              <p>🎉 You're doing great! Budget discipline is strong and savings are healthy.</p>
+              <div className="flex items-center gap-2 text-sm text-success">
+                <PartyPopper className="w-4 h-4 shrink-0" />
+                <span>You're doing great! Budget discipline is strong and savings are healthy.</span>
+              </div>
             )}
           </CardContent>
         </Card>
       </main>
       <Footer />
-      
     </div>
   );
 };
