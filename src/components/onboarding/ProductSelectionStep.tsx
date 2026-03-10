@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { CheckSquare, ChefHat, Calendar, ShoppingCart, Leaf } from "lucide-react";
+import { CheckSquare, ChefHat, Calendar, ShoppingCart, Leaf, Wallet } from "lucide-react";
 import { ProductName } from "@/hooks/useEnabledProducts";
 
 interface ProductSelectionStepProps {
@@ -45,6 +45,13 @@ const products = [
     label: "Habits",
     description: "Build healthy routines with streak tracking and household habit goals",
     color: "text-[hsl(142,70%,45%)]",
+  },
+  {
+    name: "finance" as ProductName,
+    icon: Wallet,
+    label: "Finance",
+    description: "Track income, expenses, budgets, and savings goals for your household",
+    color: "text-[hsl(210,60%,50%)]",
   },
 ];
 

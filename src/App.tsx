@@ -34,6 +34,12 @@ const Meals = lazy(() => import("./pages/Meals"));
 const Grocery = lazy(() => import("./pages/Grocery"));
 const Calendar = lazy(() => import("./pages/Calendar"));
 const Habits = lazy(() => import("./pages/Habits"));
+const Finance = lazy(() => import("./pages/Finance"));
+const FinanceTransactions = lazy(() => import("./pages/FinanceTransactions"));
+const FinanceBudget = lazy(() => import("./pages/FinanceBudget"));
+const FinanceSavings = lazy(() => import("./pages/FinanceSavings"));
+const FinanceChat = lazy(() => import("./pages/FinanceChat"));
+const FinanceMonthlyReview = lazy(() => import("./pages/FinanceMonthlyReview"));
 const TermsOfService = lazy(() => import("./pages/TermsOfService"));
 const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
 const HouseholdInvitations = lazy(() => import("./pages/HouseholdInvitations"));
@@ -168,6 +174,12 @@ const App = () => (
                     <Habits />
                   </ProtectedRoute>
                 } />
+                <Route path="/finance" element={<ProtectedRoute><Finance /></ProtectedRoute>} />
+                <Route path="/finance/transactions" element={<ProtectedRoute><FinanceTransactions /></ProtectedRoute>} />
+                <Route path="/finance/budget" element={<ProtectedRoute><FinanceBudget /></ProtectedRoute>} />
+                <Route path="/finance/savings" element={<ProtectedRoute><FinanceSavings /></ProtectedRoute>} />
+                <Route path="/finance/chat" element={<ProtectedRoute><FinanceChat /></ProtectedRoute>} />
+                <Route path="/finance/review" element={<ProtectedRoute><FinanceMonthlyReview /></ProtectedRoute>} />
                 <Route path="/terms" element={<TermsOfService />} />
                 <Route path="/privacy" element={<PrivacyPolicy />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

@@ -10,7 +10,8 @@ import {
   Folder,
   LayoutDashboard,
   Sun,
-  Leaf
+  Leaf,
+  Wallet
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useHousehold } from "@/hooks/useHousehold";
@@ -29,6 +30,7 @@ const allNavItems = [
   { path: "/meals", icon: UtensilsCrossed, label: "Meals", product: "meals" as ProductName },
   { path: "/grocery", icon: ShoppingCart, label: "Grocery", product: "grocery" as ProductName },
   { path: "/calendar", icon: Calendar, label: "Calendar", product: "calendar" as ProductName },
+  { path: "/finance", icon: Wallet, label: "Finance", product: "finance" as ProductName },
 ];
 
 const taskmasterSubmenu = [

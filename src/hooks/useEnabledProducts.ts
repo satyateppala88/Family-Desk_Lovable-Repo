@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 
-export type ProductName = "tasks" | "meals" | "calendar" | "grocery" | "habits";
+export type ProductName = "tasks" | "meals" | "calendar" | "grocery" | "habits" | "finance";
 
 export const useEnabledProducts = (householdId: string | null) => {
   return useQuery({

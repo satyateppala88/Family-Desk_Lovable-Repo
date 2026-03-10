@@ -409,6 +409,318 @@ export type Database = {
         }
         Relationships: []
       }
+      finance_accounts: {
+        Row: {
+          balance: number
+          created_at: string
+          created_by: string
+          currency: string
+          household_id: string
+          id: string
+          is_active: boolean
+          name: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          balance?: number
+          created_at?: string
+          created_by: string
+          currency?: string
+          household_id: string
+          id?: string
+          is_active?: boolean
+          name: string
+          type?: string
+          updated_at?: string
+        }
+        Update: {
+          balance?: number
+          created_at?: string
+          created_by?: string
+          currency?: string
+          household_id?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_accounts_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      finance_budgets: {
+        Row: {
+          category: string
+          created_at: string
+          created_by: string
+          household_id: string
+          id: string
+          month: string
+          planned_amount: number
+          updated_at: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          created_by: string
+          household_id: string
+          id?: string
+          month: string
+          planned_amount?: number
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          created_by?: string
+          household_id?: string
+          id?: string
+          month?: string
+          planned_amount?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_budgets_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      finance_chat_messages: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          role: string
+          session_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          role: string
+          session_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          role?: string
+          session_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_chat_messages_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "finance_chat_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      finance_chat_sessions: {
+        Row: {
+          created_at: string
+          household_id: string
+          id: string
+          title: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          household_id: string
+          id?: string
+          title?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          household_id?: string
+          id?: string
+          title?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_chat_sessions_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      finance_monthly_snapshots: {
+        Row: {
+          budget_health_score: number | null
+          created_at: string
+          household_id: string
+          id: string
+          month: string
+          savings_actual: number
+          total_income: number
+          total_spend: number
+        }
+        Insert: {
+          budget_health_score?: number | null
+          created_at?: string
+          household_id: string
+          id?: string
+          month: string
+          savings_actual?: number
+          total_income?: number
+          total_spend?: number
+        }
+        Update: {
+          budget_health_score?: number | null
+          created_at?: string
+          household_id?: string
+          id?: string
+          month?: string
+          savings_actual?: number
+          total_income?: number
+          total_spend?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_monthly_snapshots_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      finance_savings_goals: {
+        Row: {
+          created_at: string
+          created_by: string
+          current_amount: number
+          household_id: string
+          id: string
+          name: string
+          status: string
+          target_amount: number
+          target_date: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          current_amount?: number
+          household_id: string
+          id?: string
+          name: string
+          status?: string
+          target_amount: number
+          target_date?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          current_amount?: number
+          household_id?: string
+          id?: string
+          name?: string
+          status?: string
+          target_amount?: number
+          target_date?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_savings_goals_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      finance_transactions: {
+        Row: {
+          account_id: string | null
+          amount: number
+          category: string
+          created_at: string
+          created_by: string
+          description: string | null
+          household_id: string
+          id: string
+          is_recurring: boolean
+          notes: string | null
+          recurring_pattern: Json | null
+          tagged_member: string | null
+          transaction_date: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          account_id?: string | null
+          amount: number
+          category?: string
+          created_at?: string
+          created_by: string
+          description?: string | null
+          household_id: string
+          id?: string
+          is_recurring?: boolean
+          notes?: string | null
+          recurring_pattern?: Json | null
+          tagged_member?: string | null
+          transaction_date?: string
+          type?: string
+          updated_at?: string
+        }
+        Update: {
+          account_id?: string | null
+          amount?: number
+          category?: string
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          household_id?: string
+          id?: string
+          is_recurring?: boolean
+          notes?: string | null
+          recurring_pattern?: Json | null
+          tagged_member?: string | null
+          transaction_date?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_transactions_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "finance_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_transactions_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       habit_assignees: {
         Row: {
           created_at: string | null
