@@ -195,6 +195,39 @@
   h1, h2, h3, h4, h5, h6 {
     letter-spacing: -0.02em;
   }
+
+  /* Ensure minimum touch targets */
+  button, a, [role="button"], input, select, textarea {
+    min-height: var(--touch-target, 44px);
+  }
+
+  /* Prevent horizontal overflow globally */
+  html, body {
+    overflow-x: hidden;
+  }
+}
+
+/* Reusable responsive page layout */
+.page-container {
+  @apply min-h-screen flex flex-col bg-background;
+}
+
+.page-content {
+  @apply flex-1 w-full mx-auto;
+  max-width: var(--content-max-width);
+  padding-left: var(--page-padding-x);
+  padding-right: var(--page-padding-x);
+  padding-top: var(--page-padding-y);
+  padding-bottom: 6rem;
+}
+
+.page-heading {
+  font-size: var(--heading-size);
+  @apply font-bold tracking-tight;
+}
+
+.section-gap {
+  gap: var(--section-gap);
 }
 
 @keyframes fade-up {
