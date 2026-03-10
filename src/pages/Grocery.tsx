@@ -430,7 +430,6 @@ const Grocery = () => {
           <p className="text-muted-foreground">Please log in and join a household to access grocery management.</p>
         </main>
         <Footer />
-        <MobileNav />
       </div>
     );
   }
