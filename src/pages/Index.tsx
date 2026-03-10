@@ -20,6 +20,7 @@ import { DashboardTaskWidget } from "@/components/dashboard/DashboardTaskWidget"
 import { DashboardMealWidget } from "@/components/dashboard/DashboardMealWidget";
 import { DashboardGroceryWidget } from "@/components/dashboard/DashboardGroceryWidget";
 import { DashboardCalendarWidget } from "@/components/dashboard/DashboardCalendarWidget";
+import { DashboardFinanceWidget } from "@/components/dashboard/DashboardFinanceWidget";
 import { useEnabledProducts, isProductEnabled } from "@/hooks/useEnabledProducts";
 import { OnboardingProgressIndicator } from "@/components/onboarding/OnboardingProgressIndicator";
 import type { Step } from "react-joyride";
