@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { Header } from "@/components/layout/Header";
-import { MobileNav } from "@/components/layout/MobileNav";
+
 import { useHousehold } from "@/hooks/useHousehold";
 import { useTaskmaster } from "@/hooks/useTaskmaster";
 import { useDailyPlan } from "@/hooks/useDailyPlan";
