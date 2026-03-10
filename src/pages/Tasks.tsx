@@ -1,7 +1,5 @@
 import { useState, useEffect } from "react";
 import { Header } from "@/components/layout/Header";
-
-import { Footer } from "@/components/layout/Footer";
 import { TaskCard } from "@/components/tasks/TaskCard";
 import { TaskDialog } from "@/components/tasks/TaskDialog";
 import { OnboardingTour } from "@/components/onboarding/OnboardingTour";
@@ -58,11 +56,9 @@ const Tasks = () => {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [priorityFilter, setPriorityFilter] = useState<string>("all");
   
-  // Feature-specific tour
   const { shouldShowTour, tourChecked, markTourComplete } = useFeatureTour("tasks");
   const [runOnboarding, setRunOnboarding] = useState(false);
 
-  // Start tour automatically if user hasn't seen it
   useEffect(() => {
     if (tourChecked && shouldShowTour && householdId) {
       setTimeout(() => setRunOnboarding(true), 500);
@@ -116,10 +112,10 @@ const Tasks = () => {
   });
 
   if (loadingHousehold || isLoading) {
-  return (
-    <div className="min-h-screen flex flex-col bg-background">
-      <Header />
-        <main className="container px-4 py-6 pb-20">
+    return (
+      <div className="page-container">
+        <Header />
+        <main className="page-content">
           <Skeleton className="h-8 w-48 mb-6" />
           <div className="space-y-4">
             <Skeleton className="h-32" />
@@ -132,12 +128,12 @@ const Tasks = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="page-container">
       <Header onStartOnboarding={handleStartOnboarding} />
 
-      <main className="container px-4 sm:px-6 py-3 sm:py-4 pb-24">
-        <div className="flex items-center justify-between mb-3 sm:mb-4">
-          <h1 className="text-xl sm:text-2xl font-bold">Tasks</h1>
+      <main className="page-content">
+        <div className="flex items-center justify-between mb-4">
+          <h1 className="page-heading">Tasks</h1>
           <Button onClick={handleCreateTask} size="sm" data-tour="add-task-button">
             <Plus className="w-4 h-4 sm:mr-2" />
             <span className="hidden sm:inline">Add Task</span>
@@ -146,7 +142,7 @@ const Tasks = () => {
 
         <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2.5 mb-4" data-tour="task-filters">
           <div className="flex items-center gap-2 w-full sm:w-auto">
-            <Filter className="w-4 h-4 text-muted-foreground" />
+            <Filter className="w-4 h-4 text-muted-foreground flex-shrink-0" />
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="flex-1 sm:w-[140px]">
                 <SelectValue placeholder="Status" />
@@ -183,7 +179,7 @@ const Tasks = () => {
             </Button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5 sm:gap-3 stagger-fade-in" data-tour="task-list">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 stagger-fade-in" data-tour="task-list">
             {filteredTasks.map((task) => (
               <TaskCard
                 key={task.id}
@@ -196,8 +192,6 @@ const Tasks = () => {
           </div>
         )}
       </main>
-
-      
 
       <TaskDialog
         task={selectedTask}

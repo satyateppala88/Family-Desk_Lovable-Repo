@@ -1,7 +1,5 @@
 import { useState } from "react";
 import { Header } from "@/components/layout/Header";
-
-import { Footer } from "@/components/layout/Footer";
 import { FinanceNav } from "@/components/finance/FinanceNav";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -32,23 +30,20 @@ const Finance = () => {
   const createTransaction = useCreateTransaction(householdId);
   const [showAddTx, setShowAddTx] = useState(false);
 
-  // Budget vs actual chart data
   const budgetChartData = (budgets || []).map((b) => ({
     category: CATEGORY_LABELS[b.category] || b.category,
     planned: Number(b.planned_amount),
     actual: summary?.categoryBreakdown?.[b.category] || 0,
   }));
 
-  // Over-budget categories
   const overBudget = budgetChartData.filter((d) => d.actual > d.planned);
-
   const recentTransactions = (transactions || []).slice(0, 5);
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex flex-col bg-background">
+      <div className="page-container">
         <Header />
-        <main className="flex-1 container mx-auto px-4 sm:px-6 py-6 pb-20">
+        <main className="page-content">
           <Skeleton className="h-8 w-48 mb-4" />
           <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
             {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-24" />)}
@@ -59,11 +54,11 @@ const Finance = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
+    <div className="page-container">
       <Header />
-      <main className="flex-1 container mx-auto px-4 sm:px-6 py-6 pb-20 space-y-6">
+      <main className="page-content space-y-4">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-semibold tracking-tight">Finance</h1>
+          <h1 className="page-heading">Finance</h1>
           <Button size="sm" onClick={() => setShowAddTx(true)}>
             <Plus className="w-4 h-4 mr-1" /> Add
           </Button>
@@ -72,7 +67,7 @@ const Finance = () => {
         <FinanceNav />
 
         {/* Summary Cards */}
-        <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
+        <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
@@ -109,7 +104,6 @@ const Finance = () => {
           </Card>
         </div>
 
-        {/* Over-budget alerts */}
         {overBudget.length > 0 && (
           <Card className="border-destructive/30">
             <CardContent className="p-4">
@@ -125,8 +119,7 @@ const Finance = () => {
           </Card>
         )}
 
-        <div className="grid gap-4 md:grid-cols-2">
-          {/* Budget vs Actual chart */}
+        <div className="grid gap-4 lg:grid-cols-2">
           {budgetChartData.length > 0 && (
             <Card>
               <CardHeader className="pb-2">
@@ -146,7 +139,6 @@ const Finance = () => {
             </Card>
           )}
 
-          {/* Savings Goals */}
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm">Savings Goals</CardTitle>
@@ -175,7 +167,7 @@ const Finance = () => {
           </Card>
         </div>
 
-        {/* Recent Transactions */}
+        {/* Recent Transactions - card list on mobile */}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm">Recent Transactions</CardTitle>
@@ -185,12 +177,12 @@ const Finance = () => {
               <p className="text-sm text-muted-foreground">No transactions yet</p>
             ) : (
               recentTransactions.map((tx) => (
-                <div key={tx.id} className="flex items-center justify-between py-1.5 border-b border-border last:border-0">
-                  <div>
-                    <p className="text-sm">{tx.description || CATEGORY_LABELS[tx.category] || tx.category}</p>
+                <div key={tx.id} className="flex items-center justify-between py-2 border-b border-border last:border-0">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm truncate">{tx.description || CATEGORY_LABELS[tx.category] || tx.category}</p>
                     <p className="text-xs text-muted-foreground">{format(new Date(tx.transaction_date), "MMM d")}</p>
                   </div>
-                  <span className={`text-sm font-medium ${tx.type === "income" ? "text-[hsl(var(--success))]" : ""}`}>
+                  <span className={`text-sm font-medium flex-shrink-0 ml-3 ${tx.type === "income" ? "text-[hsl(var(--success))]" : ""}`}>
                     {tx.type === "income" ? "+" : "-"}{formatINR(Number(tx.amount))}
                   </span>
                 </div>
@@ -205,9 +197,6 @@ const Finance = () => {
         onOpenChange={setShowAddTx}
         onSave={(data) => createTransaction.mutate(data)}
       />
-
-      <Footer />
-      
     </div>
   );
 };

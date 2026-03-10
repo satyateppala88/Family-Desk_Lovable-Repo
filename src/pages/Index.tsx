@@ -104,11 +104,11 @@ const Index = () => {
 
   if (isLoading || !household) {
     return (
-      <div className="min-h-screen flex flex-col bg-background">
+      <div className="page-container">
         <Header onStartOnboarding={handleStartOnboarding} />
-        <main className="flex-1 container mx-auto px-4 py-8">
+        <main className="page-content">
           <Skeleton className="h-8 w-48 mb-6" />
-          <div className="grid gap-4 grid-cols-3">
+          <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
             {[1, 2, 3, 4, 5, 6].map((i) => (
               <Skeleton key={i} className="h-28 rounded-xl" />
             ))}
@@ -119,7 +119,7 @@ const Index = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
+    <div className="page-container">
       <Header onStartOnboarding={handleStartOnboarding} />
       {tourChecked && (
         <OnboardingTour
@@ -129,13 +129,13 @@ const Index = () => {
           featureName="dashboard"
         />
       )}
-      <main className="flex-1 container mx-auto px-4 sm:px-6 py-6">
+      <main className="page-content">
         
         <PendingInvitationBanner />
 
         {!onboardingCompleted && progressData && progressData.percentage < 100 && (
-          <Card className="mb-6 border border-border">
-            <CardContent className="flex flex-col sm:flex-row items-center justify-between gap-4 p-5">
+          <Card className="mb-4 border border-border">
+            <CardContent className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4">
               <div className="flex items-center gap-4">
                 <OnboardingProgressIndicator
                   percentage={progressData.percentage}
@@ -152,6 +152,7 @@ const Index = () => {
               <Button
                 onClick={() => navigate("/onboarding/preferences")}
                 size="sm"
+                className="w-full sm:w-auto"
               >
                 Continue
               </Button>
@@ -159,20 +160,21 @@ const Index = () => {
           </Card>
         )}
 
-        <div className="mb-6">
-          <h1 className="text-2xl font-semibold tracking-tight">{household.name}</h1>
+        <div className="mb-4">
+          <h1 className="page-heading">{household.name}</h1>
         </div>
 
-        <div className="grid grid-cols-3 gap-3 sm:gap-4 module-grid">
+        {/* Responsive module grid: 2 cols small, 3 cols tablet, 4-5 cols desktop */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 module-grid">
           {visibleModules.map(({ product, icon: Icon, label, description, path }) => (
             <Link key={product} to={path} className="block">
-              <Card className="h-full hover:shadow-md transition-all hover:scale-[1.02] active:scale-[0.98] border border-border">
-                <CardContent className="flex flex-col items-center justify-center text-center p-4 sm:p-6 gap-2">
+              <Card className="h-full hover:shadow-md transition-all hover:scale-[1.02] active:scale-[0.98] border border-border" style={{ minHeight: 'var(--module-card-min-h)' }}>
+                <CardContent className="flex flex-col items-center justify-center text-center p-4 gap-2 h-full">
                   <div className="rounded-xl bg-primary/10 p-3">
-                    <Icon className="h-6 w-6 sm:h-7 sm:w-7 text-primary" />
+                    <Icon style={{ width: 'var(--module-icon-size)', height: 'var(--module-icon-size)' }} className="text-primary" />
                   </div>
                   <span className="text-sm font-medium text-foreground">{label}</span>
-                  <span className="text-[10px] sm:text-xs text-muted-foreground leading-tight hidden sm:block">
+                  <span className="text-[11px] text-muted-foreground leading-tight hidden sm:block">
                     {description}
                   </span>
                 </CardContent>

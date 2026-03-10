@@ -72,13 +72,12 @@ export const Settings = () => {
     return (
       <>
         <Header />
-        <main className="container mx-auto py-8 px-4">
+        <main className="page-content">
           <div className="space-y-4">
             <Skeleton className="h-12 w-64" />
             <Skeleton className="h-96 w-full" />
           </div>
         </main>
-        <Footer />
       </>
     );
   }
@@ -86,12 +85,12 @@ export const Settings = () => {
   return (
     <>
       <Header />
-      <main className="container mx-auto py-3 sm:py-4 px-4 sm:px-6 min-h-screen pb-24">
+      <main className="page-content">
         <div className="max-w-4xl mx-auto space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div className="flex items-center gap-3">
-              <SettingsIcon className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
-              <h1 className="text-xl sm:text-2xl font-bold">Household Preferences</h1>
+              <SettingsIcon className="h-5 w-5 text-primary" />
+              <h1 className="page-heading">Household Preferences</h1>
             </div>
             <Button onClick={handleRerunOnboarding} variant="outline" className="w-full sm:w-auto">
               <RefreshCw className="h-4 w-4 mr-2" />
@@ -384,8 +383,6 @@ export const Settings = () => {
           )}
         </div>
       </main>
-      <Footer />
-      
     </>
   );
 };

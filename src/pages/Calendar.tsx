@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Header } from "@/components/layout/Header";
-
 import { Footer } from "@/components/layout/Footer";
 import { CalendarGrid } from "@/components/calendar/CalendarGrid";
 import { CalendarHeader } from "@/components/calendar/CalendarHeader";
@@ -54,11 +53,9 @@ const Calendar = () => {
   const { data: events, isLoading } = useCalendarEvents(currentDate, "month");
   const { handleOAuthCallback } = useCalendarConnections();
 
-  // Feature-specific tour
   const { shouldShowTour, tourChecked, markTourComplete } = useFeatureTour("calendar");
   const [runOnboarding, setRunOnboarding] = useState(false);
 
-  // Start tour automatically if user hasn't seen it
   useEffect(() => {
     if (tourChecked && shouldShowTour && householdId) {
       setTimeout(() => setRunOnboarding(true), 500);
@@ -71,24 +68,22 @@ const Calendar = () => {
     markTourComplete();
   };
 
-  // Handle OAuth callback
   useEffect(() => {
     const code = searchParams.get("code");
     const state = searchParams.get("state");
 
     if (code && state) {
       handleOAuthCallback.mutate({ code, state });
-      // Clear URL params
       setSearchParams({});
     }
   }, [searchParams, handleOAuthCallback, setSearchParams]);
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
+    <div className="page-container">
       <Header onStartOnboarding={handleStartOnboarding} />
       
       <main className="flex-1 flex flex-col pb-20">
-        <div data-tour="calendar-nav">
+        <div data-tour="calendar-nav" style={{ maxWidth: 'var(--content-max-width)', width: '100%', margin: '0 auto', paddingLeft: 'var(--page-padding-x)', paddingRight: 'var(--page-padding-x)' }}>
           <CalendarHeader
             currentDate={currentDate}
             onDateChange={setCurrentDate}
@@ -96,14 +91,13 @@ const Calendar = () => {
           />
         </div>
 
-        {/* Main calendar area - now full width */}
-        <div className="flex-1 flex flex-col">
+        <div className="flex-1 flex flex-col overflow-x-auto">
           {isLoading ? (
             <div className="flex-1 p-4">
               <Skeleton className="h-full w-full" />
             </div>
           ) : (
-            <div data-tour="calendar-grid">
+            <div data-tour="calendar-grid" style={{ maxWidth: 'var(--content-max-width)', width: '100%', margin: '0 auto', paddingLeft: 'var(--page-padding-x)', paddingRight: 'var(--page-padding-x)' }}>
               <CalendarGrid
                 currentDate={currentDate}
                 events={events || []}
@@ -115,17 +109,12 @@ const Calendar = () => {
         </div>
       </main>
 
-      <Footer />
-      
-
-      {/* Event detail dialog */}
       <CalendarEventDialog
         event={selectedEvent}
         open={!!selectedEvent}
         onOpenChange={(open) => !open && setSelectedEvent(null)}
       />
 
-      {/* Connect calendar dialog */}
       <ConnectCalendarDialog
         open={showConnectDialog}
         onOpenChange={setShowConnectDialog}

@@ -72,6 +72,44 @@
 
     --tracking-normal: 0em;
     --spacing: 0.25rem;
+
+    /* Responsive design tokens */
+    --content-max-width: 1200px;
+    --page-padding-x: 1rem;
+    --page-padding-y: 0.75rem;
+    --section-gap: 1rem;
+    --card-padding: 1rem;
+    --heading-size: 1.25rem;
+    --icon-size: 1.25rem;
+    --module-icon-size: 1.5rem;
+    --module-card-min-h: 6rem;
+    --touch-target: 44px;
+  }
+
+  @media (min-width: 640px) {
+    :root {
+      --page-padding-x: 1.5rem;
+      --page-padding-y: 1rem;
+      --section-gap: 1.25rem;
+      --card-padding: 1.25rem;
+      --heading-size: 1.5rem;
+      --icon-size: 1.5rem;
+      --module-icon-size: 1.75rem;
+      --module-card-min-h: 7rem;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    :root {
+      --page-padding-x: 2rem;
+      --page-padding-y: 1.5rem;
+      --section-gap: 1.5rem;
+      --card-padding: 1.5rem;
+      --heading-size: 1.75rem;
+      --icon-size: 1.75rem;
+      --module-icon-size: 2rem;
+      --module-card-min-h: 8rem;
+    }
   }
 
   .dark {
@@ -157,6 +195,39 @@
   h1, h2, h3, h4, h5, h6 {
     letter-spacing: -0.02em;
   }
+
+  /* Ensure minimum touch targets */
+  button, a, [role="button"], input, select, textarea {
+    min-height: var(--touch-target, 44px);
+  }
+
+  /* Prevent horizontal overflow globally */
+  html, body {
+    overflow-x: hidden;
+  }
+}
+
+/* Reusable responsive page layout */
+.page-container {
+  @apply min-h-screen flex flex-col bg-background;
+}
+
+.page-content {
+  @apply flex-1 w-full mx-auto;
+  max-width: var(--content-max-width);
+  padding-left: var(--page-padding-x);
+  padding-right: var(--page-padding-x);
+  padding-top: var(--page-padding-y);
+  padding-bottom: 6rem;
+}
+
+.page-heading {
+  font-size: var(--heading-size);
+  @apply font-bold tracking-tight;
+}
+
+.section-gap {
+  gap: var(--section-gap);
 }
 
 @keyframes fade-up {

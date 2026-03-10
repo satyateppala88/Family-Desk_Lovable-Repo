@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect } from "react";
 import { Header } from "@/components/layout/Header";
-
 import { RecipeDetailDialog } from "@/components/meals/RecipeDetailDialog";
 import { RecipeRatingDialog } from "@/components/meals/RecipeRatingDialog";
 import { MealPlanCalendar } from "@/components/meals/MealPlanCalendar";
@@ -78,11 +77,9 @@ const Meals = () => {
   const { toast } = useToast();
   const regenerateMeals = useRegenerateMeals();
   
-  // Feature-specific tour
   const { shouldShowTour, tourChecked, markTourComplete } = useFeatureTour("meals");
   const [runOnboarding, setRunOnboarding] = useState(false);
 
-  // Start tour automatically if user hasn't seen it
   useEffect(() => {
     if (tourChecked && shouldShowTour && householdId) {
       setTimeout(() => setRunOnboarding(true), 500);
@@ -165,12 +162,10 @@ const Meals = () => {
     try {
       const ingredients = cookingRecipe.ingredients || [];
       
-      // Deduct ingredients from pantry
       for (const ingredient of ingredients) {
         const itemName = ingredient.name.toLowerCase().trim();
         const qty = parseFloat(ingredient.quantity) || 0;
 
-        // Find matching pantry item
         const { data: pantryItems } = await supabase
           .from("pantry_items")
           .select("id, quantity, unit")
@@ -205,9 +200,9 @@ const Meals = () => {
 
   if (loadingHousehold || loadingRecipes) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="page-container">
         <Header />
-        <main className="container px-4 py-6 pb-20">
+        <main className="page-content">
           <Skeleton className="h-8 w-48 mb-6" />
           <Skeleton className="h-[400px]" />
         </main>
@@ -216,12 +211,12 @@ const Meals = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
+    <div className="page-container">
       <Header onStartOnboarding={handleStartOnboarding} />
 
-      <main className="container px-4 sm:px-6 py-3 sm:py-4 pb-24">
+      <main className="page-content">
         <div className="mb-4 space-y-3">
-          <h1 className="text-xl sm:text-2xl font-bold">Meal Planning</h1>
+          <h1 className="page-heading">Meal Planning</h1>
           <div className="flex flex-wrap gap-2">
             <Button 
               onClick={() => handleGeneratePlan("remaining")} 
@@ -277,7 +272,7 @@ const Meals = () => {
               />
             </div>
             
-            <div ref={calendarRef}>
+            <div ref={calendarRef} className="overflow-x-auto -mx-[var(--page-padding-x)] px-[var(--page-padding-x)]">
               <MealPlanCalendar
                 mealPlan={currentWeekPlan}
                 weekStart={currentWeekStart}
@@ -318,7 +313,7 @@ const Meals = () => {
           </TabsContent>
 
           <TabsContent value="recipes">
-            <div className="grid gap-2.5 sm:gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 stagger-fade-in">
+            <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 stagger-fade-in">
               {recipes.map((recipe) => (
                 <RecipeCard
                   key={recipe.id}
@@ -333,8 +328,6 @@ const Meals = () => {
           </TabsContent>
         </Tabs>
       </main>
-
-      
 
       <RecipeDetailDialog
         recipe={selectedRecipe}
