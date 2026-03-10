@@ -45,6 +45,7 @@ export const useHousehold = () => {
   return {
     householdId: data?.householdId || null,
     onboardingCompleted: data?.onboardingCompleted || false,
+    householdName: data?.householdName || null,
     isLoading,
   };
 };
