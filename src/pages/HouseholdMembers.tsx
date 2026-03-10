@@ -89,7 +89,6 @@ const HouseholdMembers = () => {
           <Skeleton className="h-96 w-full" />
         </main>
         <Footer />
-        <MobileNav />
       </>
     );
   }
