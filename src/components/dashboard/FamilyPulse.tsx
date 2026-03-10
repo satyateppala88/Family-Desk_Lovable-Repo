@@ -1,5 +1,5 @@
 import { Card, CardContent } from "@/components/ui/card";
-import { CheckCircle2, UtensilsCrossed, Sparkles } from "lucide-react";
+import { CheckCircle2, UtensilsCrossed, ShoppingCart, Sparkles } from "lucide-react";
 import { isProductEnabled, ProductName } from "@/hooks/useEnabledProducts";
 import { cn } from "@/lib/utils";
 
@@ -21,9 +21,9 @@ export const FamilyPulse = ({ stats, enabledProducts }: FamilyPulseProps) => {
   // Tasks signal
   if (isProductEnabled(enabledProducts, "tasks" as ProductName)) {
     if (stats.pendingTasksCount === 0) {
-      signals.push({ icon: CheckCircle2, text: "All tasks complete — nice work!", mood: "good" });
+      signals.push({ icon: CheckCircle2, text: "All tasks done — great teamwork!", mood: "good" });
     } else if (stats.pendingTasksCount <= 3) {
-      signals.push({ icon: CheckCircle2, text: `${stats.pendingTasksCount} tasks left today`, mood: "neutral" });
+      signals.push({ icon: CheckCircle2, text: `${stats.pendingTasksCount} task${stats.pendingTasksCount === 1 ? '' : 's'} left today`, mood: "neutral" });
     } else {
       signals.push({ icon: CheckCircle2, text: `${stats.pendingTasksCount} tasks need attention`, mood: "attention" });
     }
@@ -32,13 +32,27 @@ export const FamilyPulse = ({ stats, enabledProducts }: FamilyPulseProps) => {
   // Meals signal
   if (isProductEnabled(enabledProducts, "meals" as ProductName)) {
     if (stats.todayMeals?.length > 0) {
-      signals.push({ icon: UtensilsCrossed, text: `${stats.todayMeals.length} meals planned today`, mood: "good" });
+      signals.push({ icon: UtensilsCrossed, text: `${stats.todayMeals.length} meal${stats.todayMeals.length === 1 ? '' : 's'} planned today`, mood: "good" });
+    } else {
+      signals.push({ icon: UtensilsCrossed, text: "No meals planned yet — add one?", mood: "neutral" });
+    }
+  }
+
+  // Grocery signal
+  if (isProductEnabled(enabledProducts, "grocery" as ProductName)) {
+    if (stats.pantryItemsCount > 0) {
+      signals.push({ icon: ShoppingCart, text: `${stats.pantryItemsCount} pantry items tracked`, mood: "good" });
     }
   }
 
   if (signals.length === 0) return null;
 
-  const allGood = signals.every(s => s.mood === "good");
+  // Pick top 2 most relevant signals (prioritise attention > neutral > good)
+  const priorityOrder = { attention: 0, neutral: 1, good: 2 };
+  const sorted = [...signals].sort((a, b) => priorityOrder[a.mood] - priorityOrder[b.mood]);
+  const displayed = sorted.slice(0, 2);
+
+  const allGood = displayed.every(s => s.mood === "good");
 
   return (
     <Card className={cn("mb-4 border-border/60", allGood && "border-[hsl(var(--success))]/15 bg-[hsl(var(--success))]/3")}>
