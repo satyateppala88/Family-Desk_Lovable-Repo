@@ -434,11 +434,11 @@ const Grocery = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
+    <div className="page-container">
       <Header onStartOnboarding={handleStartOnboarding} />
-      <main className="container px-4 py-3 sm:py-4 pb-20 flex-1">
+      <main className="page-content flex-1">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-          <h1 className="text-xl sm:text-2xl font-bold">Grocery Management</h1>
+          <h1 className="page-heading">Grocery Management</h1>
           <div className="flex flex-wrap gap-2">
             <Button
               variant="outline"
