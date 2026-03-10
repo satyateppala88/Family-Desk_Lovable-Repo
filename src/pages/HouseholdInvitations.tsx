@@ -106,7 +106,6 @@ const HouseholdInvitations = () => {
           </Card>
         </main>
         <Footer />
-        <MobileNav />
       </>
     );
   }
