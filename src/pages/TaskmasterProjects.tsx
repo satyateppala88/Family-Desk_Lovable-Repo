@@ -128,7 +128,6 @@ const TaskmasterProjects = () => {
             <Skeleton className="h-40" />
           </div>
         </main>
-        <MobileNav />
       </div>
     );
   }
