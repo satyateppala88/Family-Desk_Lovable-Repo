@@ -383,8 +383,6 @@ export const Settings = () => {
           )}
         </div>
       </main>
-      <Footer />
-      
     </>
   );
 };
