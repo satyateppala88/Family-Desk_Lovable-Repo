@@ -15,6 +15,7 @@ export default {
   	extend: {
 		fontFamily: {
 			sans: [
+				'DM Sans',
 				'Inter',
 				'ui-sans-serif',
 				'system-ui',
@@ -79,7 +80,14 @@ export default {
   				'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
   				border: 'hsl(var(--sidebar-border))',
   				ring: 'hsl(var(--sidebar-ring))'
-  			}
+  			},
+  			// Module accent colors
+  			'module-tasks': 'hsl(var(--module-tasks))',
+  			'module-meals': 'hsl(var(--module-meals))',
+  			'module-grocery': 'hsl(var(--module-grocery))',
+  			'module-calendar': 'hsl(var(--module-calendar))',
+  			'module-habits': 'hsl(var(--module-habits))',
+  			'module-finance': 'hsl(var(--module-finance))',
   		},
   		borderRadius: {
   			lg: 'var(--radius)',
