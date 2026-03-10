@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Header } from "@/components/layout/Header";
-import { Footer } from "@/components/layout/Footer";
 import { CalendarGrid } from "@/components/calendar/CalendarGrid";
 import { CalendarHeader } from "@/components/calendar/CalendarHeader";
 import { CalendarEventDialog } from "@/components/calendar/CalendarEventDialog";
@@ -94,7 +93,7 @@ const Calendar = () => {
         <div className="flex-1 flex flex-col overflow-x-auto">
           {isLoading ? (
             <div className="flex-1 p-4">
-              <Skeleton className="h-full w-full" />
+              <Skeleton className="h-full w-full rounded-xl" />
             </div>
           ) : (
             <div data-tour="calendar-grid" style={{ maxWidth: 'var(--content-max-width)', width: '100%', margin: '0 auto', paddingLeft: 'var(--page-padding-x)', paddingRight: 'var(--page-padding-x)' }}>

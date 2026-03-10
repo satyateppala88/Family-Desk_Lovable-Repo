@@ -4,7 +4,9 @@ import { FinanceNav } from "@/components/finance/FinanceNav";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/ui/empty-state";
+import { PageLoading } from "@/components/ui/page-loading";
+import { QuickActionButton } from "@/components/ui/quick-action-button";
 import { Plus, TrendingUp, TrendingDown, Wallet, PiggyBank } from "lucide-react";
 import { useHousehold } from "@/hooks/useHousehold";
 import {
@@ -44,10 +46,7 @@ const Finance = () => {
       <div className="page-container">
         <Header />
         <main className="page-content">
-          <Skeleton className="h-8 w-48 mb-4" />
-          <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
-            {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-24" />)}
-          </div>
+          <PageLoading cards={4} />
         </main>
       </div>
     );
@@ -58,8 +57,11 @@ const Finance = () => {
       <Header />
       <main className="page-content space-y-4">
         <div className="flex items-center justify-between">
-          <h1 className="page-heading">Finance</h1>
-          <Button size="sm" onClick={() => setShowAddTx(true)}>
+          <div>
+            <h1 className="page-heading">Finance</h1>
+            <p className="text-sm text-muted-foreground mt-0.5">{format(new Date(), "MMMM yyyy")}</p>
+          </div>
+          <Button size="sm" onClick={() => setShowAddTx(true)} className="hidden sm:flex">
             <Plus className="w-4 h-4 mr-1" /> Add
           </Button>
         </div>
@@ -73,7 +75,7 @@ const Finance = () => {
               <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
                 <TrendingUp className="w-3.5 h-3.5" /> Income
               </div>
-              <p className="text-lg font-semibold">{formatINR(summary?.income || 0)}</p>
+              <p className="text-lg font-bold">{formatINR(summary?.income || 0)}</p>
             </CardContent>
           </Card>
           <Card>
@@ -81,7 +83,7 @@ const Finance = () => {
               <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
                 <TrendingDown className="w-3.5 h-3.5" /> Spent
               </div>
-              <p className="text-lg font-semibold">{formatINR(summary?.expenses || 0)}</p>
+              <p className="text-lg font-bold">{formatINR(summary?.expenses || 0)}</p>
             </CardContent>
           </Card>
           <Card>
@@ -89,7 +91,7 @@ const Finance = () => {
               <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
                 <PiggyBank className="w-3.5 h-3.5" /> Saved
               </div>
-              <p className={`text-lg font-semibold ${(summary?.savings || 0) >= 0 ? "text-[hsl(var(--success))]" : "text-destructive"}`}>
+              <p className={`text-lg font-bold ${(summary?.savings || 0) >= 0 ? "text-success" : "text-destructive"}`}>
                 {formatINR(summary?.savings || 0)}
               </p>
             </CardContent>
@@ -99,15 +101,15 @@ const Finance = () => {
               <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
                 <Wallet className="w-3.5 h-3.5" /> Cash Left
               </div>
-              <p className="text-lg font-semibold">{formatINR(summary?.cashLeft || 0)}</p>
+              <p className="text-lg font-bold">{formatINR(summary?.cashLeft || 0)}</p>
             </CardContent>
           </Card>
         </div>
 
         {overBudget.length > 0 && (
-          <Card className="border-destructive/30">
+          <Card className="border-destructive/20 bg-destructive/5">
             <CardContent className="p-4">
-              <p className="text-sm font-medium text-destructive mb-1">⚠ Over Budget</p>
+              <p className="text-sm font-medium text-destructive mb-1">Over Budget</p>
               <div className="space-y-1">
                 {overBudget.map((d) => (
                   <p key={d.category} className="text-xs text-muted-foreground">
@@ -132,7 +134,7 @@ const Finance = () => {
                     <YAxis dataKey="category" type="category" width={80} tick={{ fontSize: 11 }} />
                     <Tooltip formatter={(v: number) => formatINR(v)} />
                     <Bar dataKey="planned" fill="hsl(var(--secondary))" name="Planned" radius={[0, 2, 2, 0]} />
-                    <Bar dataKey="actual" fill="hsl(var(--foreground))" name="Actual" radius={[0, 2, 2, 0]} />
+                    <Bar dataKey="actual" fill="hsl(var(--primary))" name="Actual" radius={[0, 2, 2, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -152,7 +154,7 @@ const Finance = () => {
                   return (
                     <div key={goal.id} className="space-y-1">
                       <div className="flex justify-between text-sm">
-                        <span>{goal.name}</span>
+                        <span className="font-medium">{goal.name}</span>
                         <span className="text-muted-foreground text-xs">{Math.round(pct)}%</span>
                       </div>
                       <Progress value={pct} className="h-1.5" />
@@ -167,22 +169,22 @@ const Finance = () => {
           </Card>
         </div>
 
-        {/* Recent Transactions - card list on mobile */}
+        {/* Recent Transactions */}
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm">Recent Transactions</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2">
+          <CardContent className="space-y-0">
             {recentTransactions.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No transactions yet</p>
+              <p className="text-sm text-muted-foreground py-4">No transactions yet</p>
             ) : (
               recentTransactions.map((tx) => (
-                <div key={tx.id} className="flex items-center justify-between py-2 border-b border-border last:border-0">
+                <div key={tx.id} className="flex items-center justify-between py-2.5 border-b border-border/50 last:border-0">
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm truncate">{tx.description || CATEGORY_LABELS[tx.category] || tx.category}</p>
+                    <p className="text-sm font-medium truncate">{tx.description || CATEGORY_LABELS[tx.category] || tx.category}</p>
                     <p className="text-xs text-muted-foreground">{format(new Date(tx.transaction_date), "MMM d")}</p>
                   </div>
-                  <span className={`text-sm font-medium flex-shrink-0 ml-3 ${tx.type === "income" ? "text-[hsl(var(--success))]" : ""}`}>
+                  <span className={`text-sm font-semibold flex-shrink-0 ml-3 ${tx.type === "income" ? "text-success" : "text-foreground"}`}>
                     {tx.type === "income" ? "+" : "-"}{formatINR(Number(tx.amount))}
                   </span>
                 </div>
@@ -191,6 +193,11 @@ const Finance = () => {
           </CardContent>
         </Card>
       </main>
+
+      <QuickActionButton
+        items={[{ label: "Add Expense", icon: Plus, onClick: () => setShowAddTx(true) }]}
+        className="sm:hidden"
+      />
 
       <TransactionDialog
         open={showAddTx}

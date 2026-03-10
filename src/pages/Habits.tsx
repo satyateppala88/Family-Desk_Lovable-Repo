@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
 import { format } from "date-fns";
-import { Users, User } from "lucide-react";
+import { Users, User, Leaf } from "lucide-react";
 import { Header } from "@/components/layout/Header";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent } from "@/components/ui/card";
 import { OnboardingTour } from "@/components/onboarding/OnboardingTour";
+import { EmptyState } from "@/components/ui/empty-state";
+import { PageLoading } from "@/components/ui/page-loading";
 import { useHousehold } from "@/hooks/useHousehold";
 import { useHabits } from "@/hooks/useHabits";
 import { useHouseholdHabitStats } from "@/hooks/useHouseholdHabitStats";
@@ -81,6 +83,7 @@ const Habits = () => {
   const today = new Date();
   const completedCount = todaysHabits.filter((h) => h.todayLog?.completed).length;
   const totalCount = todaysHabits.length;
+  const completionPct = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
 
   const handleToggleHabit = (habitId: string, completed: boolean) => {
     logHabit.mutate({ habitId, completed });
@@ -108,9 +111,7 @@ const Habits = () => {
       <div className="page-container">
         <Header />
         <main className="page-content">
-          <Skeleton className="h-8 w-48 mb-4" />
-          <Skeleton className="h-24 w-full mb-4" />
-          <Skeleton className="h-24 w-full" />
+          <PageLoading cards={3} />
         </main>
       </div>
     );
@@ -126,17 +127,17 @@ const Habits = () => {
           <div>
             <h1 className="page-heading">Habits</h1>
             <p className="text-muted-foreground text-sm">
-              {format(today, "EEEE, MMMM d, yyyy")}
+              {format(today, "EEEE, MMMM d")}
             </p>
           </div>
           <div data-tour="view-toggle">
             <Tabs value={view} onValueChange={(v) => setView(v as "personal" | "household")}>
               <TabsList>
-                <TabsTrigger value="personal" className="gap-2">
+                <TabsTrigger value="personal" className="gap-1.5">
                   <User className="h-4 w-4" />
                   Me
                 </TabsTrigger>
-                <TabsTrigger value="household" className="gap-2">
+                <TabsTrigger value="household" className="gap-1.5">
                   <Users className="h-4 w-4" />
                   Household
                 </TabsTrigger>
@@ -148,20 +149,24 @@ const Habits = () => {
         {view === "personal" ? (
           <div className="space-y-3">
             {/* Progress summary */}
-            <div className="flex items-center justify-between p-4 bg-accent/10 rounded-lg" data-tour="progress-summary">
-              <div>
-                <p className="text-sm text-muted-foreground">Today's Progress</p>
-                <p className="text-2xl font-bold">
-                  {completedCount}/{totalCount}
-                </p>
-              </div>
-              <div className="text-right">
-                <p className="text-sm text-muted-foreground">Completion</p>
-                <p className="text-2xl font-bold text-primary">
-                  {totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0}%
-                </p>
-              </div>
-            </div>
+            <Card data-tour="progress-summary">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-label">Today's Progress</p>
+                    <p className="text-2xl font-bold mt-0.5">
+                      {completedCount}/{totalCount}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-label">Completion</p>
+                    <p className={`text-2xl font-bold mt-0.5 ${completionPct >= 80 ? "text-success" : completionPct >= 40 ? "text-primary" : "text-muted-foreground"}`}>
+                      {completionPct}%
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
             {todaysHabits.length > 0 && completedCount < totalCount && (
               <HabitCoachInsight
@@ -171,20 +176,13 @@ const Habits = () => {
             )}
 
             {habitsLoading ? (
-              <div className="space-y-3">
-                <Skeleton className="h-20 w-full" />
-                <Skeleton className="h-20 w-full" />
-                <Skeleton className="h-20 w-full" />
-              </div>
+              <PageLoading cards={3} heading={false} />
             ) : todaysHabits.length === 0 ? (
-              <div className="text-center py-12">
-                <p className="text-muted-foreground mb-4">
-                  You haven't created any habits yet.
-                </p>
-                <p className="text-sm text-muted-foreground mb-6">
-                  Start building healthy routines for you and your family.
-                </p>
-              </div>
+              <EmptyState
+                icon={Leaf}
+                title="No habits yet"
+                description="Start building healthy routines for you and your family."
+              />
             ) : (
               <div className="space-y-3" data-tour="habit-list">
                 {todaysHabits.map((habit) => (
@@ -209,14 +207,11 @@ const Habits = () => {
         ) : (
           <div className="space-y-4">
             {statsLoading || !householdStats ? (
-              <div className="space-y-4">
-                <Skeleton className="h-24 w-full" />
-                <Skeleton className="h-32 w-full" />
-              </div>
+              <PageLoading cards={3} heading={false} />
             ) : (
               <>
                 <div>
-                  <h2 className="text-lg font-semibold mb-3">Today's Summary</h2>
+                  <h2 className="text-section-title mb-3">Today's Summary</h2>
                   <HouseholdHabitSummary stats={householdStats} />
                 </div>
 
@@ -227,11 +222,13 @@ const Habits = () => {
                 />
 
                 <div>
-                  <h2 className="text-lg font-semibold mb-3">Member Progress</h2>
+                  <h2 className="text-section-title mb-3">Member Progress</h2>
                   {householdStats.memberStats.length === 0 ? (
-                    <p className="text-muted-foreground text-center py-8">
-                      No household members with habits yet.
-                    </p>
+                    <EmptyState
+                      icon={Users}
+                      title="No member data"
+                      description="No household members with habits yet."
+                    />
                   ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                       {householdStats.memberStats.map((member) => (

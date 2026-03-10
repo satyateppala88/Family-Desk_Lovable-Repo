@@ -1,6 +1,6 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate, useLocation } from "react-router-dom";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, Home } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -41,32 +41,67 @@ export const Header = ({ onStartOnboarding }: HeaderProps) => {
       .slice(0, 2);
   };
 
+  // Derive the current module name from path
+  const getPageTitle = () => {
+    const path = location.pathname;
+    if (path.startsWith("/tasks")) return "Tasks";
+    if (path.startsWith("/meals")) return "Meals";
+    if (path.startsWith("/grocery")) return "Grocery";
+    if (path.startsWith("/calendar")) return "Calendar";
+    if (path.startsWith("/habits")) return "Habits";
+    if (path.startsWith("/finance")) return "Finance";
+    if (path.startsWith("/settings")) return "Settings";
+    if (path.startsWith("/account-settings")) return "Account";
+    if (path.startsWith("/members")) return "Members";
+    if (path.startsWith("/invitations")) return "Invitations";
+    if (path.startsWith("/taskmaster")) return "Taskmaster";
+    return null;
+  };
+
+  const pageTitle = getPageTitle();
+
   return (
-    <header className="sticky top-0 z-40 bg-background/85 backdrop-blur-xl border-b border-border">
-      <div className="w-full mx-auto flex h-14 items-center justify-between" style={{ maxWidth: 'var(--content-max-width)', paddingLeft: 'var(--page-padding-x)', paddingRight: 'var(--page-padding-x)' }}>
-        <div className="flex items-center gap-1">
-          {!isHomePage && (
+    <header className="sticky top-0 z-40 bg-background/90 backdrop-blur-xl border-b border-border/60">
+      <div
+        className="w-full mx-auto flex h-14 items-center justify-between gap-3"
+        style={{
+          maxWidth: "var(--content-max-width)",
+          paddingLeft: "var(--page-padding-x)",
+          paddingRight: "var(--page-padding-x)",
+        }}
+      >
+        {/* Left: Back + Brand / Page title */}
+        <div className="flex items-center gap-0.5 min-w-0">
+          {!isHomePage ? (
             <button
               onClick={() => navigate("/dashboard")}
-              className="p-2 -ml-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+              className="flex items-center gap-1 p-2 -ml-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors shrink-0"
               aria-label="Back to home"
-              style={{ minHeight: 'var(--touch-target)' }}
+              style={{ minHeight: "var(--touch-target)" }}
             >
               <ChevronLeft className="h-5 w-5" />
+              <Home className="h-4 w-4 hidden sm:block" />
             </button>
-          )}
-          <span
-            className="text-lg font-semibold text-foreground tracking-tight cursor-pointer"
-            onClick={() => navigate("/dashboard")}
-          >
-            FamilyDesk
-          </span>
+          ) : null}
+
+          <div className="flex items-center gap-2 min-w-0">
+            <span
+              className="text-lg font-semibold text-foreground tracking-tight cursor-pointer truncate"
+              onClick={() => navigate("/dashboard")}
+            >
+              {isHomePage ? "FamilyDesk" : pageTitle || "FamilyDesk"}
+            </span>
+          </div>
         </div>
 
+        {/* Right: Avatar / Profile */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <div className="relative">
-              <Avatar className="h-8 w-8 cursor-pointer hover:opacity-80 transition-opacity ring-2 ring-border">
+            <button
+              className="relative flex items-center gap-2 rounded-full p-0.5 hover:bg-accent transition-colors user-menu"
+              style={{ minHeight: "var(--touch-target)" }}
+            >
+              <Avatar className="h-8 w-8 ring-2 ring-border/50 transition-all hover:ring-primary/30">
                 <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
                   {getInitials()}
                 </AvatarFallback>
@@ -74,9 +109,9 @@ export const Header = ({ onStartOnboarding }: HeaderProps) => {
               {pendingCount > 0 && (
                 <span className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-destructive ring-2 ring-background" />
               )}
-            </div>
+            </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-52">
+          <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuLabel>
               <div className="flex flex-col space-y-1">
                 <p className="text-sm font-medium leading-none">
@@ -102,7 +137,10 @@ export const Header = ({ onStartOnboarding }: HeaderProps) => {
                 </DropdownMenuItem>
                 {pendingCount > 0 && (
                   <DropdownMenuItem onClick={() => navigate("/invitations")}>
-                    Pending Invitations ({pendingCount})
+                    Pending Invitations
+                    <span className="ml-auto text-xs bg-destructive/10 text-destructive px-1.5 py-0.5 rounded-full">
+                      {pendingCount}
+                    </span>
                   </DropdownMenuItem>
                 )}
               </>
@@ -126,7 +164,7 @@ export const Header = ({ onStartOnboarding }: HeaderProps) => {
               Privacy Policy
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={signOut} className="text-destructive">
+            <DropdownMenuItem onClick={signOut} className="text-destructive focus:text-destructive">
               Sign Out
             </DropdownMenuItem>
           </DropdownMenuContent>

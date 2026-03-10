@@ -13,8 +13,9 @@ import { useRecipeRating } from "@/hooks/useRecipeRating";
 import { useFeatureTour } from "@/hooks/useFeatureTour";
 import { Recipe } from "@/types/database";
 import { Button } from "@/components/ui/button";
-import { Sparkles, Calendar, LayoutGrid } from "lucide-react";
-import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/ui/empty-state";
+import { PageLoading } from "@/components/ui/page-loading";
+import { Sparkles, Calendar, LayoutGrid, UtensilsCrossed } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
@@ -203,8 +204,7 @@ const Meals = () => {
       <div className="page-container">
         <Header />
         <main className="page-content">
-          <Skeleton className="h-8 w-48 mb-6" />
-          <Skeleton className="h-[400px]" />
+          <PageLoading cards={3} />
         </main>
       </div>
     );
@@ -216,7 +216,10 @@ const Meals = () => {
 
       <main className="page-content">
         <div className="mb-4 space-y-3">
-          <h1 className="page-heading">Meal Planning</h1>
+          <div>
+            <h1 className="page-heading">Meal Planning</h1>
+            <p className="text-sm text-muted-foreground mt-0.5">{recipes.length} recipes</p>
+          </div>
           <div className="flex flex-wrap gap-2">
             <Button 
               onClick={() => handleGeneratePlan("remaining")} 
@@ -226,7 +229,7 @@ const Meals = () => {
               className="flex-1 sm:flex-none"
               data-tour="generate-remaining"
             >
-              <Sparkles className="w-4 h-4 sm:mr-2" />
+              <Sparkles className="w-4 h-4 sm:mr-1" />
               <span className="hidden sm:inline">{generatingPlan ? "Generating..." : "Rest of Week"}</span>
               <span className="sm:hidden">Rest</span>
             </Button>
@@ -234,10 +237,10 @@ const Meals = () => {
               onClick={() => handleGeneratePlan("full")} 
               size="sm"
               disabled={generatingPlan}
-              className="bg-gradient-to-r from-purple-500 to-pink-500 flex-1 sm:flex-none"
+              className="flex-1 sm:flex-none"
               data-tour="generate-full-week"
             >
-              <Sparkles className="w-4 h-4 sm:mr-2" />
+              <Sparkles className="w-4 h-4 sm:mr-1" />
               <span className="hidden sm:inline">{generatingPlan ? "Generating..." : "Full Week"}</span>
               <span className="sm:hidden">Full</span>
             </Button>
@@ -302,29 +305,43 @@ const Meals = () => {
             </div>
 
             {!currentWeekPlan && (
-              <div className="text-center py-12">
-                <p className="text-muted-foreground mb-4">No meal plan for this week yet.</p>
-                <Button onClick={() => handleGeneratePlan("full")} disabled={generatingPlan}>
-                  <Sparkles className="w-4 h-4 mr-2" />
-                  Generate Meal Plan
-                </Button>
-              </div>
+              <EmptyState
+                icon={UtensilsCrossed}
+                title="No meal plan for this week"
+                description="Generate a meal plan using AI to get started"
+                action={{
+                  label: "Generate Meal Plan",
+                  onClick: () => handleGeneratePlan("full"),
+                }}
+              />
             )}
           </TabsContent>
 
           <TabsContent value="recipes">
-            <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 stagger-fade-in">
-              {recipes.map((recipe) => (
-                <RecipeCard
-                  key={recipe.id}
-                  recipe={recipe}
-                  onToggleFavorite={handleToggleFavorite}
-                  onDelete={handleDeleteRecipe}
-                  onClick={setSelectedRecipe}
-                  onRate={setRatingRecipe}
-                />
-              ))}
-            </div>
+            {recipes.length === 0 ? (
+              <EmptyState
+                icon={UtensilsCrossed}
+                title="No recipes yet"
+                description="Generate a meal plan to create your first recipes"
+                action={{
+                  label: "Generate Recipes",
+                  onClick: () => handleGeneratePlan("full"),
+                }}
+              />
+            ) : (
+              <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+                {recipes.map((recipe) => (
+                  <RecipeCard
+                    key={recipe.id}
+                    recipe={recipe}
+                    onToggleFavorite={handleToggleFavorite}
+                    onDelete={handleDeleteRecipe}
+                    onClick={setSelectedRecipe}
+                    onRate={setRatingRecipe}
+                  />
+                ))}
+              </div>
+            )}
           </TabsContent>
         </Tabs>
       </main>
