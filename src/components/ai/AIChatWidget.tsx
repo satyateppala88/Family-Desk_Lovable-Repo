@@ -112,7 +112,7 @@ export const AIChatWidget = () => {
     return user?.user_metadata?.display_name || user?.email?.split("@")[0] || "there";
   }, [user]);
 
-  const householdName = household?.name || "your household";
+  const houseName = householdName || "your household";
 
   const greeting = `${getTimeGreeting()}, ${displayName}. How can I help ${householdName} today?`;
 
