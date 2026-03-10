@@ -1,16 +1,15 @@
 import { useState, useRef, useEffect } from "react";
 import { Header } from "@/components/layout/Header";
-
-import { Footer } from "@/components/layout/Footer";
 import { FinanceNav } from "@/components/finance/FinanceNav";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Send, Bot, User } from "lucide-react";
+import { Send, Bot, User, Sparkles } from "lucide-react";
 import { useHousehold } from "@/hooks/useHousehold";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -18,9 +17,9 @@ interface ChatMessage {
 }
 
 const STARTER_PROMPTS = [
-  "Where did we overspend this month?",
-  "Can we afford this purchase?",
-  "How do we save ₹10K faster?",
+  "Where did we overspend?",
+  "Can we afford a new purchase?",
+  "How to save ₹10K faster?",
   "What should we cut first?",
 ];
 
@@ -60,10 +59,7 @@ const FinanceChat = () => {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify({
-            messages: newMessages,
-            householdId,
-          }),
+          body: JSON.stringify({ messages: newMessages, householdId }),
         }
       );
 
@@ -105,41 +101,45 @@ const FinanceChat = () => {
                 return [...prev, { role: "assistant", content: assistantContent }];
               });
             }
-          } catch {
-            // partial JSON, wait for more
-          }
+          } catch { /* partial JSON */ }
         }
       }
     } catch (e: any) {
       toast.error(e.message || "Failed to get response");
-      // Remove the user message if we got no response
-      if (!assistantContent) {
-        setMessages((prev) => prev.slice(0, -1));
-      }
+      if (!assistantContent) setMessages((prev) => prev.slice(0, -1));
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
+    <div className="page-container">
       <Header />
-      <main className="flex-1 container mx-auto px-4 sm:px-6 py-6 pb-20 flex flex-col">
-        <h1 className="text-2xl font-semibold tracking-tight mb-2">AI Finance Advisor</h1>
+      <main className="page-content flex flex-col" style={{ paddingBottom: "1rem" }}>
+        <div className="mb-3">
+          <h1 className="page-heading">AI Advisor</h1>
+          <p className="text-xs text-muted-foreground mt-0.5">Ask anything about your household finances</p>
+        </div>
         <FinanceNav />
 
+        {/* Chat area */}
         <div
           ref={scrollRef}
-          className="flex-1 overflow-y-auto mt-4 space-y-4 min-h-0"
-          style={{ maxHeight: "calc(100vh - 320px)" }}
+          className="flex-1 overflow-y-auto mt-3 space-y-3 min-h-0"
+          style={{ maxHeight: "calc(100vh - 300px)" }}
         >
           {messages.length === 0 && (
-            <div className="text-center py-8 space-y-4">
-              <Bot className="w-10 h-10 mx-auto text-muted-foreground" />
-              <p className="text-sm text-muted-foreground">
-                Ask me anything about your household finances. I can see your actual spending data.
-              </p>
-              <div className="flex flex-wrap justify-center gap-2">
+            <div className="flex flex-col items-center justify-center py-12 text-center space-y-4">
+              <div className="rounded-2xl bg-primary/10 p-4">
+                <Sparkles className="w-8 h-8 text-primary" />
+              </div>
+              <div>
+                <p className="text-sm font-medium">Your personal finance advisor</p>
+                <p className="text-xs text-muted-foreground mt-1 max-w-xs">
+                  I can see your actual spending data and help you make better financial decisions.
+                </p>
+              </div>
+              <div className="flex flex-wrap justify-center gap-2 max-w-sm">
                 {STARTER_PROMPTS.map((prompt) => (
                   <Button
                     key={prompt}
@@ -158,60 +158,55 @@ const FinanceChat = () => {
           {messages.map((msg, i) => (
             <div
               key={i}
-              className={`flex gap-2 ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+              className={cn("flex gap-2", msg.role === "user" ? "justify-end" : "justify-start")}
             >
               {msg.role === "assistant" && (
-                <div className="w-6 h-6 rounded-full bg-secondary flex items-center justify-center flex-shrink-0 mt-1">
-                  <Bot className="w-3.5 h-3.5" />
+                <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
+                  <Bot className="w-4 h-4 text-primary" />
                 </div>
               )}
-              <Card className={`max-w-[80%] ${msg.role === "user" ? "bg-primary text-primary-foreground" : ""}`}>
-                <CardContent className="p-3">
-                  <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
-                </CardContent>
-              </Card>
-              {msg.role === "user" && (
-                <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center flex-shrink-0 mt-1">
-                  <User className="w-3.5 h-3.5 text-primary-foreground" />
-                </div>
-              )}
+              <div className={cn(
+                "max-w-[85%] rounded-2xl px-4 py-2.5",
+                msg.role === "user"
+                  ? "bg-primary text-primary-foreground rounded-br-md"
+                  : "bg-muted rounded-bl-md"
+              )}>
+                <p className="text-sm whitespace-pre-wrap leading-relaxed">{msg.content}</p>
+              </div>
             </div>
           ))}
 
           {isLoading && messages[messages.length - 1]?.role !== "assistant" && (
             <div className="flex gap-2">
-              <div className="w-6 h-6 rounded-full bg-secondary flex items-center justify-center flex-shrink-0">
-                <Bot className="w-3.5 h-3.5" />
+              <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                <Bot className="w-4 h-4 text-primary" />
               </div>
-              <Card>
-                <CardContent className="p-3">
-                  <div className="flex gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground animate-bounce" />
-                    <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground animate-bounce [animation-delay:0.15s]" />
-                    <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground animate-bounce [animation-delay:0.3s]" />
-                  </div>
-                </CardContent>
-              </Card>
+              <div className="bg-muted rounded-2xl rounded-bl-md px-4 py-3">
+                <div className="flex gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground animate-bounce" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground animate-bounce [animation-delay:0.15s]" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-muted-foreground animate-bounce [animation-delay:0.3s]" />
+                </div>
+              </div>
             </div>
           )}
         </div>
 
         {/* Input */}
-        <div className="flex gap-2 mt-4">
+        <div className="flex gap-2 mt-3 pt-3 border-t border-border/50">
           <Input
             placeholder="Ask about your finances..."
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && sendMessage(input)}
             disabled={isLoading}
+            className="rounded-full"
           />
-          <Button onClick={() => sendMessage(input)} disabled={isLoading || !input.trim()} size="icon">
+          <Button onClick={() => sendMessage(input)} disabled={isLoading || !input.trim()} size="icon" className="rounded-full shrink-0">
             <Send className="w-4 h-4" />
           </Button>
         </div>
       </main>
-      <Footer />
-      
     </div>
   );
 };
