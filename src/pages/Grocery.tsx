@@ -424,12 +424,11 @@ const Grocery = () => {
 
   if (!user || !householdId) {
     return (
-      <div className="min-h-screen flex flex-col bg-background">
+      <div className="page-container">
         <Header onStartOnboarding={handleStartOnboarding} />
-        <main className="container px-4 py-6 pb-20">
+        <main className="page-content">
           <p className="text-muted-foreground">Please log in and join a household to access grocery management.</p>
         </main>
-        <Footer />
       </div>
     );
   }
