@@ -2,17 +2,17 @@ import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Header } from "@/components/layout/Header";
 import { OnboardingTour } from "@/components/onboarding/OnboardingTour";
-
 import { PendingInvitationBanner } from "@/components/household/PendingInvitationBanner";
 import { useHousehold } from "@/hooks/useHousehold";
 import { useOnboardingProgress } from "@/hooks/useOnboardingProgress";
 import { useAuth } from "@/contexts/AuthContext";
 import { useFeatureTour } from "@/hooks/useFeatureTour";
+import { useDashboardStats } from "@/hooks/useDashboardStats";
 import { supabase } from "@/lib/supabase";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import { PageLoadingGrid } from "@/components/ui/page-loading";
 import { Household } from "@/types/database";
 import { useEnabledProducts, isProductEnabled, ProductName } from "@/hooks/useEnabledProducts";
 import { OnboardingProgressIndicator } from "@/components/onboarding/OnboardingProgressIndicator";
@@ -63,6 +63,7 @@ const Index = () => {
   const [household, setHousehold] = useState<Household | null>(null);
   const { data: enabledProducts } = useEnabledProducts(householdId);
   const { data: progressData } = useOnboardingProgress(householdId);
+  const { data: dashStats } = useDashboardStats(householdId);
 
   const { shouldShowTour, tourChecked, markTourComplete } = useFeatureTour("dashboard");
   const [runOnboarding, setRunOnboarding] = useState(false);
@@ -87,7 +88,6 @@ const Index = () => {
           .select("*")
           .eq("id", householdId)
           .single();
-
         if (data) setHousehold(data);
       }
     };
@@ -104,17 +104,27 @@ const Index = () => {
     isProductEnabled(enabledProducts, m.product)
   );
 
+  // Derive subtle context cues per module
+  const getModuleHint = (product: ProductName): string | null => {
+    if (!dashStats) return null;
+    switch (product) {
+      case "tasks":
+        return dashStats.pendingTasksCount > 0 ? `${dashStats.pendingTasksCount} pending` : null;
+      case "meals":
+        return dashStats.todayMeals?.length > 0 ? `${dashStats.todayMeals.length} today` : null;
+      case "grocery":
+        return dashStats.pantryItemsCount > 0 ? `${dashStats.pantryItemsCount} items` : null;
+      default:
+        return null;
+    }
+  };
+
   if (isLoading || !household) {
     return (
       <div className="page-container">
         <Header onStartOnboarding={handleStartOnboarding} />
         <main className="page-content">
-          <Skeleton className="h-8 w-48 mb-6" />
-          <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-            {[1, 2, 3, 4, 5, 6].map((i) => (
-              <Skeleton key={i} className="h-28 rounded-xl" />
-            ))}
-          </div>
+          <PageLoadingGrid columns={2} cards={6} />
         </main>
       </div>
     );
@@ -132,11 +142,10 @@ const Index = () => {
         />
       )}
       <main className="page-content animate-fade-in">
-        
         <PendingInvitationBanner />
 
         {!onboardingCompleted && progressData && progressData.percentage < 100 && (
-          <Card className="mb-4">
+          <Card className="mb-4 border-primary/15">
             <CardContent className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4">
               <div className="flex items-center gap-4 flex-1 w-full sm:w-auto">
                 <OnboardingProgressIndicator
@@ -167,23 +176,30 @@ const Index = () => {
           <p className="text-sm text-muted-foreground mt-1">Your household at a glance</p>
         </div>
 
-        {/* Responsive module grid with module-level tinting */}
+        {/* Module grid with context cues */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 module-grid">
-          {visibleModules.map(({ product, icon: Icon, label, description, path, tintClass }) => (
-            <Link key={product} to={path} className="block group">
-              <Card className="h-full transition-all duration-200 hover:shadow-md group-hover:scale-[1.02] group-active:scale-[0.98]" style={{ minHeight: 'var(--module-card-min-h)' }}>
-                <CardContent className="flex flex-col items-center justify-center text-center p-4 gap-2.5 h-full">
-                  <div className={`rounded-xl p-3 ${tintClass}`}>
-                    <Icon style={{ width: 'var(--module-icon-size)', height: 'var(--module-icon-size)' }} />
-                  </div>
-                  <span className="text-sm font-medium text-foreground">{label}</span>
-                  <span className="text-[11px] text-muted-foreground leading-tight hidden sm:block">
-                    {description}
-                  </span>
-                </CardContent>
-              </Card>
-            </Link>
-          ))}
+          {visibleModules.map(({ product, icon: Icon, label, description, path, tintClass }) => {
+            const hint = getModuleHint(product);
+            return (
+              <Link key={product} to={path} className="block group">
+                <Card className="h-full transition-all duration-200 hover:shadow-md group-hover:scale-[1.02] group-active:scale-[0.98]" style={{ minHeight: "var(--module-card-min-h)" }}>
+                  <CardContent className="flex flex-col items-center justify-center text-center p-4 gap-2 h-full relative">
+                    <div className={`rounded-xl p-3 ${tintClass}`}>
+                      <Icon style={{ width: "var(--module-icon-size)", height: "var(--module-icon-size)" }} />
+                    </div>
+                    <span className="text-sm font-medium text-foreground">{label}</span>
+                    {hint ? (
+                      <span className="text-[10px] font-medium text-primary bg-primary/8 rounded-full px-2 py-0.5">{hint}</span>
+                    ) : (
+                      <span className="text-[11px] text-muted-foreground leading-tight hidden sm:block">
+                        {description}
+                      </span>
+                    )}
+                  </CardContent>
+                </Card>
+              </Link>
+            );
+          })}
         </div>
       </main>
     </div>

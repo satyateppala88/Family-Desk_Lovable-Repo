@@ -1,6 +1,4 @@
 import { Header } from "@/components/layout/Header";
-
-import { Footer } from "@/components/layout/Footer";
 import { FinanceNav } from "@/components/finance/FinanceNav";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -210,7 +208,6 @@ const FinanceMonthlyReview = () => {
           </CardContent>
         </Card>
       </main>
-      <Footer />
     </div>
   );
 };

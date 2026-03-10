@@ -8,8 +8,10 @@ import { useTasks } from "@/hooks/useTasks";
 import { useFeatureTour } from "@/hooks/useFeatureTour";
 import { Task } from "@/types/database";
 import { Button } from "@/components/ui/button";
-import { Plus, Filter } from "lucide-react";
-import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/ui/empty-state";
+import { PageLoading } from "@/components/ui/page-loading";
+import { QuickActionButton } from "@/components/ui/quick-action-button";
+import { Plus, Filter, CheckSquare } from "lucide-react";
 import { Step } from "react-joyride";
 import {
   Select,
@@ -116,12 +118,7 @@ const Tasks = () => {
       <div className="page-container">
         <Header />
         <main className="page-content">
-          <Skeleton className="h-8 w-48 mb-6" />
-          <div className="space-y-4">
-            <Skeleton className="h-32" />
-            <Skeleton className="h-32" />
-            <Skeleton className="h-32" />
-          </div>
+          <PageLoading cards={4} />
         </main>
       </div>
     );
@@ -133,10 +130,13 @@ const Tasks = () => {
 
       <main className="page-content">
         <div className="flex items-center justify-between mb-4">
-          <h1 className="page-heading">Tasks</h1>
-          <Button onClick={handleCreateTask} size="sm" data-tour="add-task-button">
-            <Plus className="w-4 h-4 sm:mr-2" />
-            <span className="hidden sm:inline">Add Task</span>
+          <div>
+            <h1 className="page-heading">Tasks</h1>
+            <p className="text-sm text-muted-foreground mt-0.5">{tasks.length} total · {tasks.filter(t => t.status !== "completed").length} active</p>
+          </div>
+          <Button onClick={handleCreateTask} size="sm" data-tour="add-task-button" className="hidden sm:flex">
+            <Plus className="w-4 h-4 mr-1" />
+            Add Task
           </Button>
         </div>
 
@@ -171,15 +171,14 @@ const Tasks = () => {
         </div>
 
         {filteredTasks.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-muted-foreground mb-4">No tasks found</p>
-            <Button onClick={handleCreateTask} variant="outline">
-              <Plus className="w-4 h-4 mr-2" />
-              Create Your First Task
-            </Button>
-          </div>
+          <EmptyState
+            icon={CheckSquare}
+            title="No tasks found"
+            description={statusFilter !== "all" || priorityFilter !== "all" ? "Try adjusting your filters" : "Create your first task to get started"}
+            action={{ label: "Create Task", onClick: handleCreateTask }}
+          />
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 stagger-fade-in" data-tour="task-list">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3" data-tour="task-list">
             {filteredTasks.map((task) => (
               <TaskCard
                 key={task.id}
@@ -192,6 +191,12 @@ const Tasks = () => {
           </div>
         )}
       </main>
+
+      {/* Mobile FAB */}
+      <QuickActionButton
+        items={[{ label: "Add Task", icon: Plus, onClick: handleCreateTask }]}
+        className="sm:hidden"
+      />
 
       <TaskDialog
         task={selectedTask}
