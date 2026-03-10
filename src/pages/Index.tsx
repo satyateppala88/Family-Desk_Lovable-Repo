@@ -12,6 +12,7 @@ import { supabase } from "@/lib/supabase";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
 import { Household } from "@/types/database";
 import { useEnabledProducts, isProductEnabled, ProductName } from "@/hooks/useEnabledProducts";
 import { OnboardingProgressIndicator } from "@/components/onboarding/OnboardingProgressIndicator";
@@ -31,13 +32,14 @@ const moduleDefinitions: {
   label: string;
   description: string;
   path: string;
+  tintClass: string;
 }[] = [
-  { product: "tasks", icon: CheckSquare, label: "Tasks", description: "Manage to-dos", path: "/tasks" },
-  { product: "meals", icon: UtensilsCrossed, label: "Meals", description: "Plan weekly meals", path: "/meals" },
-  { product: "grocery", icon: ShoppingCart, label: "Grocery", description: "Pantry & shopping", path: "/grocery" },
-  { product: "calendar", icon: Calendar, label: "Calendar", description: "Events & schedules", path: "/calendar" },
-  { product: "habits", icon: Leaf, label: "Habits", description: "Track daily habits", path: "/habits" },
-  { product: "finance", icon: Wallet, label: "Finance", description: "Budget & expenses", path: "/finance" },
+  { product: "tasks", icon: CheckSquare, label: "Tasks", description: "Manage to-dos", path: "/tasks", tintClass: "module-tint-tasks" },
+  { product: "meals", icon: UtensilsCrossed, label: "Meals", description: "Plan weekly meals", path: "/meals", tintClass: "module-tint-meals" },
+  { product: "grocery", icon: ShoppingCart, label: "Grocery", description: "Pantry & shopping", path: "/grocery", tintClass: "module-tint-grocery" },
+  { product: "calendar", icon: Calendar, label: "Calendar", description: "Events & schedules", path: "/calendar", tintClass: "module-tint-calendar" },
+  { product: "habits", icon: Leaf, label: "Habits", description: "Track daily habits", path: "/habits", tintClass: "module-tint-habits" },
+  { product: "finance", icon: Wallet, label: "Finance", description: "Budget & expenses", path: "/finance", tintClass: "module-tint-finance" },
 ];
 
 const dashboardTourSteps: Step[] = [
@@ -129,22 +131,22 @@ const Index = () => {
           featureName="dashboard"
         />
       )}
-      <main className="page-content">
+      <main className="page-content animate-fade-in">
         
         <PendingInvitationBanner />
 
         {!onboardingCompleted && progressData && progressData.percentage < 100 && (
-          <Card className="mb-4 border border-border">
+          <Card className="mb-4">
             <CardContent className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4">
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-4 flex-1 w-full sm:w-auto">
                 <OnboardingProgressIndicator
                   percentage={progressData.percentage}
                   size="small"
                   showLabel={false}
                 />
-                <div>
+                <div className="flex-1">
                   <h3 className="font-medium text-sm">Complete your setup</h3>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-muted-foreground mt-0.5">
                     {progressData.percentage}% complete
                   </p>
                 </div>
@@ -160,18 +162,19 @@ const Index = () => {
           </Card>
         )}
 
-        <div className="mb-4">
+        <div className="mb-5">
           <h1 className="page-heading">{household.name}</h1>
+          <p className="text-sm text-muted-foreground mt-1">Your household at a glance</p>
         </div>
 
-        {/* Responsive module grid: 2 cols small, 3 cols tablet, 4-5 cols desktop */}
+        {/* Responsive module grid with module-level tinting */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 module-grid">
-          {visibleModules.map(({ product, icon: Icon, label, description, path }) => (
-            <Link key={product} to={path} className="block">
-              <Card className="h-full hover:shadow-md transition-all hover:scale-[1.02] active:scale-[0.98] border border-border" style={{ minHeight: 'var(--module-card-min-h)' }}>
-                <CardContent className="flex flex-col items-center justify-center text-center p-4 gap-2 h-full">
-                  <div className="rounded-xl bg-primary/10 p-3">
-                    <Icon style={{ width: 'var(--module-icon-size)', height: 'var(--module-icon-size)' }} className="text-primary" />
+          {visibleModules.map(({ product, icon: Icon, label, description, path, tintClass }) => (
+            <Link key={product} to={path} className="block group">
+              <Card className="h-full transition-all duration-200 hover:shadow-md group-hover:scale-[1.02] group-active:scale-[0.98]" style={{ minHeight: 'var(--module-card-min-h)' }}>
+                <CardContent className="flex flex-col items-center justify-center text-center p-4 gap-2.5 h-full">
+                  <div className={`rounded-xl p-3 ${tintClass}`}>
+                    <Icon style={{ width: 'var(--module-icon-size)', height: 'var(--module-icon-size)' }} />
                   </div>
                   <span className="text-sm font-medium text-foreground">{label}</span>
                   <span className="text-[11px] text-muted-foreground leading-tight hidden sm:block">
