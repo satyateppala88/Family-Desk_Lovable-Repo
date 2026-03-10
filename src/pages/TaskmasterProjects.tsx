@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Header } from "@/components/layout/Header";
-import { MobileNav } from "@/components/layout/MobileNav";
+
 import { useHousehold } from "@/hooks/useHousehold";
 import { useProjects } from "@/hooks/useProjects";
 import { useTaskmaster } from "@/hooks/useTaskmaster";
