@@ -297,7 +297,6 @@ const TaskmasterProjectDetail = () => {
         )}
       </main>
 
-      <MobileNav />
 
       <TaskmasterTaskDialog
         task={selectedTask}

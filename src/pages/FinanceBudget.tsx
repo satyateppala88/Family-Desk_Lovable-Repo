@@ -112,7 +112,7 @@ const FinanceBudget = () => {
       />
 
       <Footer />
-      <MobileNav />
+      
     </div>
   );
 };

@@ -602,7 +602,7 @@ const Grocery = () => {
         </Tabs>
       </main>
       <Footer />
-      <MobileNav />
+      
       
       <AddPantryItemDialog
         open={showAddDialog}

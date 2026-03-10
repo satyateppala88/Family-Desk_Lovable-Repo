@@ -222,7 +222,6 @@ const HouseholdInvitations = () => {
         </div>
       </main>
       <Footer />
-      <MobileNav />
     </>
   );
 };

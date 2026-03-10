@@ -268,7 +268,7 @@ const Habits = () => {
       </main>
 
       <Footer />
-      <MobileNav />
+      
 
       <OnboardingTour
         run={runOnboarding}

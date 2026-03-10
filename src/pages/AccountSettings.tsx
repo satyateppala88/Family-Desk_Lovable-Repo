@@ -281,7 +281,7 @@ const AccountSettings = () => {
         </Tabs>
       </main>
       <Footer />
-      <MobileNav />
+      
     </>
   );
 };

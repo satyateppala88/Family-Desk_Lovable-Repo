@@ -141,7 +141,7 @@ const FinanceTransactions = () => {
       )}
 
       <Footer />
-      <MobileNav />
+      
     </div>
   );
 };

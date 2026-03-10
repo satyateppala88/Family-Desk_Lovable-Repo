@@ -277,7 +277,7 @@ const TaskmasterProjects = () => {
         )}
       </main>
 
-      <MobileNav />
+      
 
       <ProjectDialog
         project={selectedProject}

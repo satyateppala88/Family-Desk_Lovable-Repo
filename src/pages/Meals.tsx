@@ -334,7 +334,7 @@ const Meals = () => {
         </Tabs>
       </main>
 
-      <MobileNav />
+      
 
       <RecipeDetailDialog
         recipe={selectedRecipe}

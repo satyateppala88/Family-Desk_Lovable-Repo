@@ -214,7 +214,6 @@ const HouseholdMembers = () => {
         </div>
       </main>
       <Footer />
-      <MobileNav />
     </>
   );
 };

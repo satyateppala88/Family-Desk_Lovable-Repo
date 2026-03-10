@@ -363,7 +363,7 @@ export default function PrivacyPolicy() {
         </Card>
       </main>
       <Footer />
-      <MobileNav />
+      
     </div>
   );
 }

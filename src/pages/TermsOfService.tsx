@@ -268,7 +268,7 @@ export default function TermsOfService() {
         </Card>
       </main>
       <Footer />
-      <MobileNav />
+      
     </div>
   );
 }

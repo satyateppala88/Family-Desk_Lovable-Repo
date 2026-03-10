@@ -352,7 +352,7 @@ const AdminAccessRequests = () => {
         )}
       </main>
       <Footer />
-      <MobileNav />
+      
 
       <Dialog open={rejectDialogOpen} onOpenChange={setRejectDialogOpen}>
         <DialogContent>

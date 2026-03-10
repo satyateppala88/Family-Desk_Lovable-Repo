@@ -375,7 +375,7 @@ const TaskmasterTasks = () => {
         </Card>
       </main>
 
-      <MobileNav />
+      
 
       <TaskmasterTaskDialog
         task={selectedTask}

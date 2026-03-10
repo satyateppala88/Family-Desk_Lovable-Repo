@@ -205,7 +205,7 @@ export default function HouseholdProductSettings() {
         </div>
       </main>
       <Footer />
-      <MobileNav />
+      
 
       <AlertDialog open={!!productToDisable} onOpenChange={() => setProductToDisable(null)}>
         <AlertDialogContent>

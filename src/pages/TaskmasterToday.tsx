@@ -293,7 +293,7 @@ const TaskmasterToday = () => {
         )}
       </main>
 
-      <MobileNav />
+      
     </div>
   );
 };

@@ -116,7 +116,7 @@ const Calendar = () => {
       </main>
 
       <Footer />
-      <MobileNav />
+      
 
       {/* Event detail dialog */}
       <CalendarEventDialog

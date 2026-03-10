@@ -187,7 +187,7 @@ const FinanceMonthlyReview = () => {
         </Card>
       </main>
       <Footer />
-      <MobileNav />
+      
     </div>
   );
 };

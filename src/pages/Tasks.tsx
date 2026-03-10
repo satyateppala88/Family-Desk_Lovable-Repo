@@ -197,7 +197,7 @@ const Tasks = () => {
         )}
       </main>
 
-      <MobileNav />
+      
 
       <TaskDialog
         task={selectedTask}

@@ -207,7 +207,7 @@ const Finance = () => {
       />
 
       <Footer />
-      <MobileNav />
+      
     </div>
   );
 };

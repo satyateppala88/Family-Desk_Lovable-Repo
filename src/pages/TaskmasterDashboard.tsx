@@ -389,7 +389,7 @@ const TaskmasterDashboard = () => {
         )}
       </main>
 
-      <MobileNav />
+      
     </div>
   );
 };

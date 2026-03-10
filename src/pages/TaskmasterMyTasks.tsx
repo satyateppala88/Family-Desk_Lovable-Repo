@@ -240,7 +240,7 @@ const TaskmasterMyTasks = () => {
         )}
       </main>
 
-      <MobileNav />
+      
     </div>
   );
 };

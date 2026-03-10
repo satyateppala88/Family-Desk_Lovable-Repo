@@ -211,7 +211,7 @@ const FinanceChat = () => {
         </div>
       </main>
       <Footer />
-      <MobileNav />
+      
     </div>
   );
 };
