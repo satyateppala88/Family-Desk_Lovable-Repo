@@ -1,4 +1,3 @@
-import { useRef } from "react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -6,10 +5,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Download, FileText, Image, Table } from "lucide-react";
+import { Share, FileText, ShoppingCart } from "lucide-react";
 import { MealPlan } from "@/hooks/useMealPlans";
-import { exportMealPlanAsPDF, exportMealPlanAsImage, exportMealPlanAsCSV } from "@/lib/mealPlanExport";
+import { exportMealPlanAsPDF } from "@/lib/mealPlanExport";
 import { useToast } from "@/hooks/use-toast";
+import { useNavigate } from "react-router-dom";
 
 interface MealPlanDownloadProps {
   mealPlan: MealPlan | null;
@@ -19,88 +19,36 @@ interface MealPlanDownloadProps {
 
 export const MealPlanDownload = ({ mealPlan, weekStart, calendarRef }: MealPlanDownloadProps) => {
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const handleDownloadPDF = () => {
     if (!mealPlan) {
-      toast({
-        title: "No meal plan",
-        description: "Generate a meal plan first to download it.",
-        variant: "destructive",
-      });
+      toast({ title: "No meal plan", description: "Generate a meal plan first.", variant: "destructive" });
       return;
     }
-
     try {
       exportMealPlanAsPDF(mealPlan, weekStart);
-      toast({
-        title: "Downloaded",
-        description: "Meal plan exported as PDF successfully.",
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to export meal plan as PDF.",
-        variant: "destructive",
-      });
+      toast({ title: "Exported", description: "Meal plan saved as PDF." });
+    } catch {
+      toast({ title: "Error", description: "Failed to export as PDF.", variant: "destructive" });
     }
   };
 
-  const handleDownloadImage = async () => {
-    if (!mealPlan || !calendarRef.current) {
-      toast({
-        title: "No meal plan",
-        description: "Generate a meal plan first to download it.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      await exportMealPlanAsImage(calendarRef.current);
-      toast({
-        title: "Downloaded",
-        description: "Meal plan exported as image successfully.",
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to export meal plan as image.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleDownloadCSV = () => {
+  const handleSendToGrocery = () => {
     if (!mealPlan) {
-      toast({
-        title: "No meal plan",
-        description: "Generate a meal plan first to download it.",
-        variant: "destructive",
-      });
+      toast({ title: "No meal plan", description: "Generate a meal plan first.", variant: "destructive" });
       return;
     }
-
-    try {
-      exportMealPlanAsCSV(mealPlan);
-      toast({
-        title: "Downloaded",
-        description: "Meal plan exported as CSV successfully.",
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to export meal plan as CSV.",
-        variant: "destructive",
-      });
-    }
+    navigate("/grocery");
+    toast({ title: "Opening Grocery", description: "Generate a shopping list from your meal plan." });
   };
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="outline" size="sm">
-          <Download className="w-4 h-4 mr-2" />
-          Download
+          <Share className="w-4 h-4 mr-1.5" />
+          Export
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
@@ -108,13 +56,9 @@ export const MealPlanDownload = ({ mealPlan, weekStart, calendarRef }: MealPlanD
           <FileText className="w-4 h-4 mr-2" />
           Download as PDF
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={handleDownloadImage}>
-          <Image className="w-4 h-4 mr-2" />
-          Download as Image
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={handleDownloadCSV}>
-          <Table className="w-4 h-4 mr-2" />
-          Download as CSV
+        <DropdownMenuItem onClick={handleSendToGrocery}>
+          <ShoppingCart className="w-4 h-4 mr-2" />
+          Send to Grocery List
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

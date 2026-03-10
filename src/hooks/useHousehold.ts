@@ -8,7 +8,7 @@ export const useHousehold = () => {
   const { data, isLoading } = useQuery({
     queryKey: ["household", user?.id],
     queryFn: async () => {
-      if (!user) return { householdId: null, onboardingCompleted: false };
+      if (!user) return { householdId: null, onboardingCompleted: false, householdName: null };
 
       const { data: memberData, error: memberError } = await (supabase as any)
         .from("household_members")
@@ -22,19 +22,20 @@ export const useHousehold = () => {
       const householdId = memberData?.household_id || null;
       
       if (!householdId) {
-        return { householdId: null, onboardingCompleted: false };
+        return { householdId: null, onboardingCompleted: false, householdName: null };
       }
 
-      // Fetch household onboarding status
+      // Fetch household onboarding status and name
       const { data: householdData } = await supabase
         .from("households")
-        .select("onboarding_completed")
+        .select("onboarding_completed, name")
         .eq("id", householdId)
         .single();
 
       return {
         householdId,
         onboardingCompleted: householdData?.onboarding_completed || false,
+        householdName: householdData?.name || null,
       };
     },
     enabled: !!user,
@@ -44,6 +45,7 @@ export const useHousehold = () => {
   return {
     householdId: data?.householdId || null,
     onboardingCompleted: data?.onboardingCompleted || false,
+    householdName: data?.householdName || null,
     isLoading,
   };
 };
