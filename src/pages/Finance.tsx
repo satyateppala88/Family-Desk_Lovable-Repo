@@ -54,7 +54,6 @@ const Finance = () => {
             {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-24" />)}
           </div>
         </main>
-        <MobileNav />
       </div>
     );
   }
