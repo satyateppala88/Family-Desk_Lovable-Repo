@@ -600,8 +600,6 @@ const Grocery = () => {
           </TabsContent>
         </Tabs>
       </main>
-      <Footer />
-      
       
       <AddPantryItemDialog
         open={showAddDialog}
