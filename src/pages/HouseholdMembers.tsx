@@ -106,7 +106,7 @@ const HouseholdMembers = () => {
           </Card>
         </main>
         <Footer />
-        <MobileNav />
+        
       </>
     );
   }
