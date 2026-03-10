@@ -117,7 +117,6 @@ const Habits = () => {
           <Skeleton className="h-24 w-full" />
         </main>
         <Footer />
-        <MobileNav />
       </div>
     );
   }
