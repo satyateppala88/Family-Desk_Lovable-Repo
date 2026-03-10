@@ -10,7 +10,8 @@ import {
   Folder,
   LayoutDashboard,
   Sun,
-  Leaf
+  Leaf,
+  Wallet
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useHousehold } from "@/hooks/useHousehold";
