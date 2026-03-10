@@ -3,10 +3,10 @@ import { SubNav, type SubNavItem } from "@/components/ui/sub-nav";
 
 const navItems: SubNavItem[] = [
   { path: "/finance", label: "Overview", icon: LayoutDashboard },
-  { path: "/finance/transactions", label: "Transactions", icon: ArrowLeftRight },
+  { path: "/finance/transactions", label: "Txns", icon: ArrowLeftRight },
   { path: "/finance/budget", label: "Budget", icon: Target },
   { path: "/finance/savings", label: "Savings", icon: PiggyBank },
-  { path: "/finance/chat", label: "AI Advisor", icon: Bot },
+  { path: "/finance/chat", label: "AI", icon: Bot },
   { path: "/finance/review", label: "Review", icon: BarChart3 },
 ];
 

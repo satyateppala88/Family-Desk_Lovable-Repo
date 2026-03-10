@@ -11,6 +11,8 @@ import { useCalendarConnections } from "@/hooks/useCalendarConnections";
 import { useHousehold } from "@/hooks/useHousehold";
 import { useFeatureTour } from "@/hooks/useFeatureTour";
 import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/ui/empty-state";
+import { CalendarDays, Plus } from "lucide-react";
 import type { Step } from "react-joyride";
 
 const calendarTourSteps: Step[] = [
@@ -94,6 +96,16 @@ const Calendar = () => {
           {isLoading ? (
             <div className="flex-1 p-4">
               <Skeleton className="h-full w-full rounded-xl" />
+            </div>
+          ) : (events || []).length === 0 ? (
+            <div style={{ maxWidth: 'var(--content-max-width)', width: '100%', margin: '0 auto', paddingLeft: 'var(--page-padding-x)', paddingRight: 'var(--page-padding-x)' }}>
+              <EmptyState
+                icon={CalendarDays}
+                title="No events this week"
+                description="Your calendar is wide open — a perfect chance to plan something fun or just enjoy the quiet."
+                encouragement="Add a family event, sync your Google Calendar, or simply take it easy."
+                action={{ label: "Add Event", onClick: () => setShowConnectDialog(true) }}
+              />
             </div>
           ) : (
             <div data-tour="calendar-grid" style={{ maxWidth: 'var(--content-max-width)', width: '100%', margin: '0 auto', paddingLeft: 'var(--page-padding-x)', paddingRight: 'var(--page-padding-x)' }}>

@@ -65,9 +65,10 @@ const FinanceMonthlyReview = () => {
         {hasNoData ? (
           <EmptyState
             icon={BarChart3}
-            title="Not enough data yet"
-            description="Start logging transactions to unlock your monthly review."
-            encouragement="Even a few entries will help us show you useful patterns."
+            title="Your monthly review is almost ready"
+            description="Add 3 or more transactions this month and we'll generate a personalised spending review with trends, wins, and tips."
+            encouragement="Even a few entries will unlock useful patterns for your household."
+            action={{ label: "Add Transactions", onClick: () => window.location.href = "/finance/transactions" }}
           />
         ) : (
           <>
