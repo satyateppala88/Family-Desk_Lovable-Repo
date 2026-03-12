@@ -106,24 +106,6 @@ const Auth = () => {
     setLoading(true);
 
     try {
-      // Check if email is approved for signup
-      const { data: isApproved, error: checkError } = await supabase.rpc(
-        "is_email_approved",
-        { user_email: email }
-      );
-
-      if (checkError) throw checkError;
-
-      if (!isApproved) {
-        toast({
-          title: "Access Not Approved",
-          description: "Your email hasn't been approved yet. Please request access first.",
-          variant: "destructive",
-        });
-        setLoading(false);
-        return;
-      }
-
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
