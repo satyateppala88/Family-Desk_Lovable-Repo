@@ -1,60 +1,66 @@
 
 
-# Fix: Blank Page on Tasks Navigation
+# Plan: Mobile-First App Launch Flow
 
-## Root Cause
+## Overview
+Replace the landing page with a native-app-style launch flow: Splash → Onboarding carousel (first launch only) → Auth → existing post-auth flows. Remove the invite-only signup restriction.
 
-There are two issues causing blank pages across the app:
+## New Components
 
-### Issue 1: Broken RLS Policy (Critical)
-The `household_invitations` table has an RLS SELECT policy called **"Users can view invitations by email"** that contains a subquery referencing `auth.users` directly:
-```sql
-invitee_email = (SELECT users.email FROM auth.users WHERE users.id = auth.uid())::text
-```
-The `authenticated` role does not have SELECT permission on `auth.users`, causing `permission denied for table users` (HTTP 403) every time this policy is evaluated.
+### 1. `src/components/launch/SplashScreen.tsx`
+- Full-screen branded splash with Family Desk logo and name
+- Auto-dismisses after ~1.5s via a timeout, calling an `onComplete` callback
+- Warm gradient background matching existing design system
 
-This policy is hit by:
-- `usePendingInvitations` hook (used in the **Header** component on every page)
-- `PendingInvitationBanner` component (used on the Dashboard)
+### 2. `src/components/launch/OnboardingIntro.tsx`
+- 3-screen horizontal carousel using simple state-based pagination (no heavy library)
+- Dot indicators at bottom, "Skip" button top-right on all screens
+- Screen content as specified (titles + body copy)
+- Final screen: primary "Get Started" CTA → navigates to `/auth?tab=signup`, secondary "I already have an account" → `/auth?tab=signin`
+- On Skip or completing: sets `localStorage.setItem("familydesk_has_seen_intro", "true")`
 
-Since both hooks throw errors on failure and there is **no React Error Boundary** in the app, the unhandled error crashes the entire component tree, producing a blank page.
+### 3. `src/components/launch/AppEntryGate.tsx`
+- Wraps the app's route decision logic
+- Launch sequence:
+  1. Show SplashScreen (always, ~1.5s)
+  2. After splash: check `useAuth()` — if authenticated → render children (normal routes)
+  3. If not authenticated: check `localStorage.getItem("familydesk_has_seen_intro")` — if not seen → show `OnboardingIntro`; if seen → navigate to `/auth`
 
-### Issue 2: Missing Error Resilience
-The hooks that query `household_invitations` throw on error without graceful fallbacks, and the app has no Error Boundary to catch rendering failures.
+## File Changes
 
-## Plan
+### `src/App.tsx`
+- Remove `Landing` import
+- Change `"/"` route: instead of `<Landing />`, render `<AppEntryGate>` which handles splash → onboarding → auth redirect
+- Keep all other routes unchanged
 
-### Step 1: Fix the RLS Policy (Database Migration)
-Replace the broken RLS policy with one that uses `auth.jwt()` instead of querying `auth.users`:
+### `src/pages/Auth.tsx`
+- **Remove lines 107-123** (the `is_email_approved` RPC check) so signup is open to everyone
+- **Remove lines 464-469** (the "Request early access" link)
+- Read `?tab=signup` or `?tab=signin` from URL search params to set default tab, so onboarding CTAs can deep-link to the right tab
 
-```sql
-DROP POLICY "Users can view invitations by email" ON household_invitations;
+## Persistence Logic
+- Key: `familydesk_has_seen_intro` in localStorage
+- Set to `"true"` when user completes or skips onboarding
+- Abstracted into a small helper (`src/lib/launchStorage.ts`) with `getHasSeenIntro()` / `setHasSeenIntro()` so it can be swapped for native storage later
 
-CREATE POLICY "Users can view invitations by email"
-  ON household_invitations
-  FOR SELECT
-  USING (
-    invitee_email = (auth.jwt() ->> 'email')::text
-  );
-```
+## What stays unchanged
+- All authenticated routes and ProtectedRoute logic
+- Homepage module grid, header navigation
+- Email verification flow
+- Household setup and onboarding preferences flow
+- All other pages and components
 
-This extracts the email from the JWT token directly, which is always available and requires no table access.
+## Files to create
+| File | Purpose |
+|------|---------|
+| `src/lib/launchStorage.ts` | localStorage helpers for intro flag |
+| `src/components/launch/SplashScreen.tsx` | Branded splash screen |
+| `src/components/launch/OnboardingIntro.tsx` | 3-screen intro carousel |
+| `src/components/launch/AppEntryGate.tsx` | Launch state router |
 
-### Step 2: Add Error Resilience to Hooks
-Update `usePendingInvitations` and `PendingInvitationBanner` to handle errors gracefully instead of throwing -- return empty arrays on error so the rest of the page still renders.
-
-### Step 3: Add a Global React Error Boundary
-Wrap the app in an Error Boundary component so that if any component crashes, users see a friendly fallback UI with a "Reload" button instead of a blank page.
-
-## Technical Details
-
-### Files to Modify
-1. **Database migration** -- fix the `household_invitations` RLS policy
-2. `src/hooks/usePendingInvitations.ts` -- catch errors gracefully, return `[]` instead of throwing
-3. `src/components/household/PendingInvitationBanner.tsx` -- handle query errors gracefully
-4. `src/App.tsx` -- add a React Error Boundary wrapper
-5. New file: `src/components/layout/ErrorBoundary.tsx` -- Error Boundary component
-
-### Production Impact
-After publishing, the RLS fix will automatically apply to the Live database, resolving the 403 errors. No manual SQL needed for this change.
+## Files to edit
+| File | Change |
+|------|--------|
+| `src/App.tsx` | Replace Landing route with AppEntryGate |
+| `src/pages/Auth.tsx` | Remove invite-only check, remove "request access" link, support `?tab` param |
 
