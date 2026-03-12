@@ -9,9 +9,9 @@ import { ProtectedRoute } from "@/components/layout/ProtectedRoute";
 import { ErrorBoundary } from "@/components/layout/ErrorBoundary";
 import { AIChatWidget } from "./components/ai/AIChatWidget";
 
-// Eagerly loaded (landing/auth flow)
-import Landing from "./pages/Landing";
+// Eagerly loaded (auth flow)
 import Auth from "./pages/Auth";
+import { AppEntryGate } from "./components/launch/AppEntryGate";
 import NotFound from "./pages/NotFound";
 
 // Lazy loaded pages
@@ -64,7 +64,7 @@ const App = () => (
           <AuthProvider>
             <Suspense fallback={<PageLoader />}>
               <Routes>
-                <Route path="/" element={<Landing />} />
+                <Route path="/" element={<AppEntryGate />} />
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/verify-email" element={<VerifyEmail />} />
                 <Route path="/request-access" element={<RequestAccess />} />

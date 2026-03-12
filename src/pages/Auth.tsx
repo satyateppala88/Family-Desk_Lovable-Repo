@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,7 +24,9 @@ const Auth = () => {
   const [resendCooldown, setResendCooldown] = useState(0);
   const [pendingUserId, setPendingUserId] = useState<string | null>(null);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { toast } = useToast();
+  const defaultTab = searchParams.get("tab") === "signup" ? "signup" : "signin";
 
   const sendVerificationEmail = async (userId: string, userEmail: string, userName?: string) => {
     try {
@@ -104,24 +106,6 @@ const Auth = () => {
     setLoading(true);
 
     try {
-      // Check if email is approved for signup
-      const { data: isApproved, error: checkError } = await supabase.rpc(
-        "is_email_approved",
-        { user_email: email }
-      );
-
-      if (checkError) throw checkError;
-
-      if (!isApproved) {
-        toast({
-          title: "Access Not Approved",
-          description: "Your email hasn't been approved yet. Please request access first.",
-          variant: "destructive",
-        });
-        setLoading(false);
-        return;
-      }
-
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -331,7 +315,7 @@ const Auth = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Tabs defaultValue="signin" className="w-full">
+          <Tabs defaultValue={defaultTab} className="w-full">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="signin">Sign In</TabsTrigger>
               <TabsTrigger value="signup">Sign Up</TabsTrigger>
@@ -461,12 +445,6 @@ const Auth = () => {
                   {loading ? "Creating account..." : "Sign Up"}
                 </Button>
                 
-                <div className="text-center text-sm mt-4">
-                  <span className="text-muted-foreground">Don't have access? </span>
-                  <Link to="/request-access" className="text-primary hover:underline">
-                    Request early access
-                  </Link>
-                </div>
               </form>
             </TabsContent>
           </Tabs>
