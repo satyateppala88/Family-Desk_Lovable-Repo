@@ -24,7 +24,9 @@ const Auth = () => {
   const [resendCooldown, setResendCooldown] = useState(0);
   const [pendingUserId, setPendingUserId] = useState<string | null>(null);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { toast } = useToast();
+  const defaultTab = searchParams.get("tab") === "signup" ? "signup" : "signin";
 
   const sendVerificationEmail = async (userId: string, userEmail: string, userName?: string) => {
     try {
