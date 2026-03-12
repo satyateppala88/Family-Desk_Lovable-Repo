@@ -9,9 +9,9 @@ import { ProtectedRoute } from "@/components/layout/ProtectedRoute";
 import { ErrorBoundary } from "@/components/layout/ErrorBoundary";
 import { AIChatWidget } from "./components/ai/AIChatWidget";
 
-// Eagerly loaded (landing/auth flow)
-import Landing from "./pages/Landing";
+// Eagerly loaded (auth flow)
 import Auth from "./pages/Auth";
+import { AppEntryGate } from "./components/launch/AppEntryGate";
 import NotFound from "./pages/NotFound";
 
 // Lazy loaded pages
