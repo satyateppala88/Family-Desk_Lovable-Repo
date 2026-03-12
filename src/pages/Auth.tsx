@@ -445,12 +445,6 @@ const Auth = () => {
                   {loading ? "Creating account..." : "Sign Up"}
                 </Button>
                 
-                <div className="text-center text-sm mt-4">
-                  <span className="text-muted-foreground">Don't have access? </span>
-                  <Link to="/request-access" className="text-primary hover:underline">
-                    Request early access
-                  </Link>
-                </div>
               </form>
             </TabsContent>
           </Tabs>

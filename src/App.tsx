@@ -64,7 +64,7 @@ const App = () => (
           <AuthProvider>
             <Suspense fallback={<PageLoader />}>
               <Routes>
-                <Route path="/" element={<Landing />} />
+                <Route path="/" element={<AppEntryGate />} />
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/verify-email" element={<VerifyEmail />} />
                 <Route path="/request-access" element={<RequestAccess />} />
