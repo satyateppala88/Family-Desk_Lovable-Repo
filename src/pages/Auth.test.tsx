@@ -72,10 +72,9 @@ describe("Auth Page", () => {
     expect(screen.getByRole("button", { name: /sign in/i })).toBeInTheDocument();
   });
 
-  it("renders dev mode login in dev environment", () => {
+  it("renders subtitle text", () => {
     renderAuth();
-    // Dev mode card has "Login as Test User" button
-    expect(screen.getByRole("button", { name: /login as test user/i })).toBeInTheDocument();
+    expect(screen.getByText("Manage your household with ease")).toBeInTheDocument();
   });
 
   it("renders the app logo", () => {
