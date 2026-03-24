@@ -26,7 +26,7 @@ export default function TermsOfService() {
           <CardHeader>
             <CardTitle className="text-3xl">Terms of Service</CardTitle>
             <p className="text-sm text-muted-foreground">
-              Last Updated: February 3, 2026
+              Last Updated: March 24, 2026
             </p>
           </CardHeader>
           <CardContent className="prose prose-sm max-w-none space-y-6">
