@@ -150,6 +150,7 @@ const FinanceTransactions = () => {
         open={showAdd}
         onOpenChange={setShowAdd}
         onSave={(data) => createTx.mutate(data)}
+        userCardIds={userCardIds}
       />
 
       {editTx && (
@@ -157,6 +158,7 @@ const FinanceTransactions = () => {
           open={!!editTx}
           onOpenChange={(open) => !open && setEditTx(null)}
           initialData={editTx}
+          userCardIds={userCardIds}
           onSave={(data) => {
             updateTx.mutate({ id: editTx.id, ...data });
             setEditTx(null);
