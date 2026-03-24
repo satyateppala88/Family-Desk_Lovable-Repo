@@ -26,7 +26,7 @@ export default function PrivacyPolicy() {
             <CardTitle className="text-3xl">Privacy Policy</CardTitle>
             <p className="text-muted-foreground text-sm">Family Desk</p>
             <p className="text-sm text-muted-foreground">
-              Effective Date: March 12, 2026
+              Effective Date: March 24, 2026
             </p>
           </CardHeader>
           <CardContent className="prose prose-sm max-w-none space-y-6">
@@ -59,6 +59,8 @@ export default function PrivacyPolicy() {
                 <li>Meal plans, recipes, grocery lists, pantry items</li>
                 <li>Calendar entries and habits</li>
                 <li>Budget, savings, spending, and finance-related planning entries</li>
+                <li>Subscription and recurring expense details (names, amounts, frequencies, categories)</li>
+                <li>Credit card selections from our pre-built catalog (no card numbers or payment credentials are stored)</li>
                 <li>Preferences, settings, and onboarding selections</li>
               </ul>
 
@@ -184,9 +186,18 @@ export default function PrivacyPolicy() {
             <section>
               <h2 className="text-xl font-semibold mb-3">11. Security</h2>
               <p className="text-muted-foreground mb-2">
-                We use reasonable administrative, technical, and organizational safeguards to protect personal information. These may include access controls, encrypted transmission, secure authentication, and monitoring for misuse.
+                We use reasonable administrative, technical, and organizational safeguards to protect personal information. These include:
               </p>
-              <p className="text-muted-foreground">
+              <ul className="list-disc pl-6 space-y-1 text-muted-foreground">
+                <li>Role-based access controls enforced at the database level</li>
+                <li>Row-level security policies restricting data visibility to authorized users</li>
+                <li>Rate limiting on AI and sensitive API endpoints to prevent abuse</li>
+                <li>JWT-based authentication with server-side validation on all backend functions</li>
+                <li>Input validation on both frontend and backend to prevent injection attacks</li>
+                <li>Encrypted data transmission (HTTPS/TLS)</li>
+                <li>Structured logging and monitoring for anomaly detection</li>
+              </ul>
+              <p className="text-muted-foreground mt-2">
                 No system is completely secure, and we cannot guarantee absolute security.
               </p>
             </section>

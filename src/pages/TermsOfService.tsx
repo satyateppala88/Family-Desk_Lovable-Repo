@@ -61,7 +61,9 @@ export default function TermsOfService() {
                 <li>Use the Service only for lawful purposes and in accordance with these Terms</li>
                 <li>Not use the Service in any way that could damage, disable, or impair the Service</li>
                 <li>Not attempt to gain unauthorized access to any portion of the Service</li>
+                <li>Not attempt to escalate privileges, bypass access controls, or exploit security vulnerabilities</li>
                 <li>Not upload or transmit any harmful code, viruses, or malicious software</li>
+                <li>Not abuse API rate limits or attempt automated bulk access beyond normal usage</li>
                 <li>Respect the intellectual property rights of others</li>
               </ul>
               
@@ -171,6 +173,38 @@ export default function TermsOfService() {
                 <li>You maintain full control over accepting or modifying AI-suggested plans</li>
               </ul>
             </section>
+
+            <section>
+              <h2 className="text-xl font-semibold mb-3">5A. Finance Features</h2>
+              
+              <h3 className="text-lg font-medium mb-2">5A.1 Financial Data</h3>
+              <p className="text-muted-foreground mb-2">
+                The Finance module allows you to track transactions, budgets, savings goals, subscriptions, and credit card rewards. You acknowledge that:
+              </p>
+              <ul className="list-disc pl-6 space-y-2 text-muted-foreground">
+                <li>Financial data you enter is stored securely and shared only within your household</li>
+                <li>We do not connect to bank accounts or process real payments</li>
+                <li>Budget and spending insights are for informational purposes only and do not constitute financial advice</li>
+                <li>You are responsible for the accuracy of transaction and budget data you enter</li>
+              </ul>
+
+              <h3 className="text-lg font-medium mb-2 mt-4">5A.2 Credit Card Recommender</h3>
+              <p className="text-muted-foreground mb-2">
+                The credit card recommendation feature uses a pre-built catalog of popular Indian credit cards:
+              </p>
+              <ul className="list-disc pl-6 space-y-2 text-muted-foreground">
+                <li>Card benefit data (cashback rates, reward multipliers, lounge access) is maintained by Family Desk and may not always reflect the latest bank terms</li>
+                <li>Recommendations are suggestive and not binding; always verify benefits with your card issuer</li>
+                <li>We do not store your card numbers, CVVs, or any payment credentials</li>
+                <li>Card catalog information may be updated periodically without notice</li>
+              </ul>
+
+              <h3 className="text-lg font-medium mb-2 mt-4">5A.3 Subscriptions & Recurring Expenses</h3>
+              <ul className="list-disc pl-6 space-y-2 text-muted-foreground">
+                <li>Subscription tracking is manual; we do not auto-detect or cancel subscriptions</li>
+                <li>Due date reminders are informational; we are not liable for missed payments</li>
+                <li>AMC and recurring expense data is visible to all household members</li>
+              </ul>
 
             <section>
               <h2 className="text-xl font-semibold mb-3">6. Google Calendar Integration</h2>
