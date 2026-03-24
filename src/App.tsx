@@ -46,6 +46,7 @@ const HouseholdInvitations = lazy(() => import("./pages/HouseholdInvitations"));
 const HouseholdMembers = lazy(() => import("./pages/HouseholdMembers"));
 const HouseholdProductSettings = lazy(() => import("./pages/HouseholdProductSettings"));
 const VerifyEmail = lazy(() => import("./pages/VerifyEmail"));
+const Install = lazy(() => import("./pages/Install"));
 
 const queryClient = new QueryClient();
 
@@ -184,6 +185,7 @@ const App = () => (
                 <Route path="/finance/cards" element={<ProtectedRoute><FinanceCards /></ProtectedRoute>} />
                 <Route path="/terms" element={<TermsOfService />} />
                 <Route path="/privacy" element={<PrivacyPolicy />} />
+                <Route path="/install" element={<Install />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
