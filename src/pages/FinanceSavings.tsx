@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Header } from "@/components/layout/Header";
-import { FinanceNav } from "@/components/finance/FinanceNav";
+
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -57,7 +57,7 @@ const FinanceSavings = () => {
           </Button>
         </div>
 
-        <FinanceNav />
+        
 
         {isLoading ? (
           <div className="space-y-3">

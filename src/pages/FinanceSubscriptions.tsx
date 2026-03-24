@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Header } from "@/components/layout/Header";
-import { FinanceNav } from "@/components/finance/FinanceNav";
+
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -80,7 +80,7 @@ const FinanceSubscriptions = () => {
           </Button>
         </div>
 
-        <FinanceNav />
+        
 
         {/* Summary */}
         <Card className="bg-primary/5 border-primary/10">

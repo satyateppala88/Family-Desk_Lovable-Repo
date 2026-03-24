@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Header } from "@/components/layout/Header";
-import { FinanceNav } from "@/components/finance/FinanceNav";
+
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -120,7 +120,7 @@ const FinanceChat = () => {
           <h1 className="page-heading">AI Advisor</h1>
           <p className="text-xs text-muted-foreground mt-0.5">Ask anything about your household finances</p>
         </div>
-        <FinanceNav />
+        
 
         {/* Chat area */}
         <div
