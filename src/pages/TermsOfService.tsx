@@ -205,6 +205,7 @@ export default function TermsOfService() {
                 <li>Due date reminders are informational; we are not liable for missed payments</li>
                 <li>AMC and recurring expense data is visible to all household members</li>
               </ul>
+            </section>
 
             <section>
               <h2 className="text-xl font-semibold mb-3">6. Google Calendar Integration</h2>
