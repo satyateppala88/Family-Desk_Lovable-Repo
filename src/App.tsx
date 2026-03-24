@@ -39,6 +39,7 @@ const FinanceSavings = lazy(() => import("./pages/FinanceSavings"));
 const FinanceChat = lazy(() => import("./pages/FinanceChat"));
 const FinanceMonthlyReview = lazy(() => import("./pages/FinanceMonthlyReview"));
 const FinanceSubscriptions = lazy(() => import("./pages/FinanceSubscriptions"));
+const FinanceCards = lazy(() => import("./pages/FinanceCards"));
 const TermsOfService = lazy(() => import("./pages/TermsOfService"));
 const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
 const HouseholdInvitations = lazy(() => import("./pages/HouseholdInvitations"));
@@ -180,6 +181,7 @@ const App = () => (
                 <Route path="/finance/savings" element={<ProtectedRoute><FinanceSavings /></ProtectedRoute>} />
                 <Route path="/finance/chat" element={<ProtectedRoute><FinanceChat /></ProtectedRoute>} />
                 <Route path="/finance/review" element={<ProtectedRoute><FinanceMonthlyReview /></ProtectedRoute>} />
+                <Route path="/finance/cards" element={<ProtectedRoute><FinanceCards /></ProtectedRoute>} />
                 <Route path="/terms" element={<TermsOfService />} />
                 <Route path="/privacy" element={<PrivacyPolicy />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
