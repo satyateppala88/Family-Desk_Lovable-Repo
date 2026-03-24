@@ -65,6 +65,8 @@ serve(async (req) => {
     }
 
     log.info("Parsing task input");
+
+    const today = new Date().toISOString().split("T")[0];
     
     const systemPrompt = `You are a task parser that extracts structured task information from natural language input.
 
