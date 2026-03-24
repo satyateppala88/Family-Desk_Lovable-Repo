@@ -40,6 +40,8 @@ const FinanceTransactions = () => {
     type: typeFilter,
     search: search || undefined,
   });
+  const { data: userCards } = useUserCards(householdId);
+  const userCardIds = userCards?.map((c) => c.card_catalog_id) || [];
   const createTx = useCreateTransaction(householdId);
   const updateTx = useUpdateTransaction();
   const deleteMut = useDeleteTransaction();
