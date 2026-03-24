@@ -786,6 +786,47 @@ export type Database = {
           },
         ]
       }
+      finance_user_cards: {
+        Row: {
+          added_by: string
+          card_catalog_id: string
+          created_at: string
+          household_id: string
+          id: string
+          is_active: boolean
+          nickname: string | null
+          updated_at: string
+        }
+        Insert: {
+          added_by: string
+          card_catalog_id: string
+          created_at?: string
+          household_id: string
+          id?: string
+          is_active?: boolean
+          nickname?: string | null
+          updated_at?: string
+        }
+        Update: {
+          added_by?: string
+          card_catalog_id?: string
+          created_at?: string
+          household_id?: string
+          id?: string
+          is_active?: boolean
+          nickname?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_user_cards_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       habit_assignees: {
         Row: {
           created_at: string | null
