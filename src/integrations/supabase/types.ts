@@ -652,6 +652,71 @@ export type Database = {
           },
         ]
       }
+      finance_subscriptions: {
+        Row: {
+          amount: number
+          category: string
+          created_at: string
+          created_by: string
+          currency: string
+          end_date: string | null
+          frequency: string
+          household_id: string
+          id: string
+          is_active: boolean
+          name: string
+          next_due_date: string | null
+          notes: string | null
+          start_date: string
+          tags: string[] | null
+          updated_at: string
+        }
+        Insert: {
+          amount?: number
+          category?: string
+          created_at?: string
+          created_by: string
+          currency?: string
+          end_date?: string | null
+          frequency?: string
+          household_id: string
+          id?: string
+          is_active?: boolean
+          name: string
+          next_due_date?: string | null
+          notes?: string | null
+          start_date?: string
+          tags?: string[] | null
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          category?: string
+          created_at?: string
+          created_by?: string
+          currency?: string
+          end_date?: string | null
+          frequency?: string
+          household_id?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          next_due_date?: string | null
+          notes?: string | null
+          start_date?: string
+          tags?: string[] | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finance_subscriptions_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       finance_transactions: {
         Row: {
           account_id: string | null
