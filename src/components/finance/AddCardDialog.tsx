@@ -1,11 +1,10 @@
 import { useState, useMemo } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Search, CreditCard, Plus, Check } from "lucide-react";
+import { Search, CreditCard, Plus, Check, Loader2 } from "lucide-react";
 import { CREDIT_CARD_CATALOG, getUniqueBanks, type CreditCard as CreditCardType } from "@/data/creditCardCatalog";
-import { formatINR } from "@/lib/formatINR";
 import { cn } from "@/lib/utils";
 
 interface AddCardDialogProps {
@@ -13,11 +12,13 @@ interface AddCardDialogProps {
   onOpenChange: (open: boolean) => void;
   onAdd: (cardId: string) => void;
   existingCardIds: string[];
+  isAdding?: boolean;
 }
 
-export const AddCardDialog = ({ open, onOpenChange, onAdd, existingCardIds }: AddCardDialogProps) => {
+export const AddCardDialog = ({ open, onOpenChange, onAdd, existingCardIds, isAdding }: AddCardDialogProps) => {
   const [search, setSearch] = useState("");
   const [bankFilter, setBankFilter] = useState<string | null>(null);
+  const [justAdded, setJustAdded] = useState<string | null>(null);
 
   const banks = useMemo(() => getUniqueBanks(), []);
 
@@ -34,7 +35,10 @@ export const AddCardDialog = ({ open, onOpenChange, onAdd, existingCardIds }: Ad
 
   const handleAdd = (card: CreditCardType) => {
     if (existingCardIds.includes(card.id)) return;
+    setJustAdded(card.id);
     onAdd(card.id);
+    // Brief visual feedback, then allow adding more
+    setTimeout(() => setJustAdded(null), 1500);
   };
 
   return (
@@ -43,8 +47,11 @@ export const AddCardDialog = ({ open, onOpenChange, onAdd, existingCardIds }: Ad
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <CreditCard className="w-5 h-5" />
-            Add a Credit Card
+            Add Credit Cards
           </DialogTitle>
+          <DialogDescription>
+            Pick cards from the catalog. You can add multiple cards at once.
+          </DialogDescription>
         </DialogHeader>
 
         <div className="relative">
@@ -83,12 +90,14 @@ export const AddCardDialog = ({ open, onOpenChange, onAdd, existingCardIds }: Ad
           ) : (
             filtered.map((card) => {
               const isAdded = existingCardIds.includes(card.id);
+              const isBeingAdded = justAdded === card.id || (isAdding && justAdded === card.id);
               return (
                 <div
                   key={card.id}
                   className={cn(
-                    "flex items-start gap-3 p-3 rounded-xl border transition-colors",
-                    isAdded ? "bg-muted/50 border-primary/20" : "hover:bg-accent/30"
+                    "flex items-start gap-3 p-3 rounded-xl border transition-all",
+                    isAdded ? "bg-muted/50 border-primary/20" : "hover:bg-accent/30",
+                    isBeingAdded && "ring-1 ring-primary/30 bg-primary/5"
                   )}
                 >
                   <div
@@ -113,10 +122,16 @@ export const AddCardDialog = ({ open, onOpenChange, onAdd, existingCardIds }: Ad
                     size="sm"
                     variant={isAdded ? "outline" : "default"}
                     className="shrink-0 h-8"
-                    disabled={isAdded}
+                    disabled={isAdded || isBeingAdded}
                     onClick={() => handleAdd(card)}
                   >
-                    {isAdded ? <Check className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
+                    {isAdded ? (
+                      <Check className="w-3.5 h-3.5" />
+                    ) : isBeingAdded ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Plus className="w-3.5 h-3.5" />
+                    )}
                   </Button>
                 </div>
               );

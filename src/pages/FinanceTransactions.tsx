@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Header } from "@/components/layout/Header";
-
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageLoading } from "@/components/ui/page-loading";
 import { QuickActionButton } from "@/components/ui/quick-action-button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Trash2, Pencil, ArrowLeftRight, Search } from "lucide-react";
 import { useHousehold } from "@/hooks/useHousehold";
@@ -32,6 +32,7 @@ const FinanceTransactions = () => {
   const [typeFilter, setTypeFilter] = useState("all");
   const [showAdd, setShowAdd] = useState(false);
   const [editTx, setEditTx] = useState<FinanceTransaction | null>(null);
+  const [deleteTx, setDeleteTx] = useState<FinanceTransaction | null>(null);
 
   const { data: transactions, isLoading } = useFinanceTransactions(householdId, {
     category: catFilter,
@@ -40,7 +41,7 @@ const FinanceTransactions = () => {
   });
   const createTx = useCreateTransaction(householdId);
   const updateTx = useUpdateTransaction();
-  const deleteTx = useDeleteTransaction();
+  const deleteMut = useDeleteTransaction();
 
   return (
     <div className="page-container">
@@ -52,8 +53,6 @@ const FinanceTransactions = () => {
             <Plus className="w-4 h-4 mr-1" /> Add
           </Button>
         </div>
-
-        
 
         {/* Filters */}
         <div className="flex flex-col sm:flex-row gap-2">
@@ -93,8 +92,11 @@ const FinanceTransactions = () => {
         ) : !transactions?.length ? (
           <EmptyState
             icon={ArrowLeftRight}
-            title="No transactions found"
-            description={search || catFilter !== "all" || typeFilter !== "all" ? "Try adjusting your filters" : "Start tracking your spending"}
+            title={search || catFilter !== "all" || typeFilter !== "all" ? "No matches found" : "No transactions yet"}
+            description={search || catFilter !== "all" || typeFilter !== "all"
+              ? "Try adjusting your filters to see more results."
+              : "Start tracking where your money goes — every entry helps build the full picture."}
+            encouragement={!(search || catFilter !== "all" || typeFilter !== "all") ? "Even small purchases count!" : undefined}
             action={{ label: "Add Transaction", onClick: () => setShowAdd(true) }}
           />
         ) : (
@@ -125,7 +127,7 @@ const FinanceTransactions = () => {
                       <Pencil className="w-3 h-3" />
                     </Button>
                     <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                      onClick={() => deleteTx.mutate(tx.id)} style={{ minHeight: "28px" }}>
+                      onClick={() => setDeleteTx(tx)} style={{ minHeight: "28px" }}>
                       <Trash2 className="w-3 h-3" />
                     </Button>
                   </div>
@@ -158,6 +160,19 @@ const FinanceTransactions = () => {
           }}
         />
       )}
+
+      <ConfirmDialog
+        open={!!deleteTx}
+        onOpenChange={(open) => !open && setDeleteTx(null)}
+        title="Delete transaction?"
+        description={`This will permanently remove this ${deleteTx?.type === "income" ? "income" : "expense"} of ${deleteTx ? formatINR(Number(deleteTx.amount)) : ""}.`}
+        confirmLabel="Delete"
+        variant="destructive"
+        onConfirm={() => {
+          if (deleteTx) deleteMut.mutate(deleteTx.id);
+          setDeleteTx(null);
+        }}
+      />
     </div>
   );
 };

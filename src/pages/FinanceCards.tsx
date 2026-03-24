@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { Header } from "@/components/layout/Header";
-
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageLoading } from "@/components/ui/page-loading";
 import { QuickActionButton } from "@/components/ui/quick-action-button";
-import { Plus, CreditCard, Trash2, Sparkles, Award, Gift, Plane } from "lucide-react";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { Plus, CreditCard, Trash2, Sparkles, Award, Gift } from "lucide-react";
 import { useHousehold } from "@/hooks/useHousehold";
 import { useUserCards, useAddUserCard, useRemoveUserCard } from "@/hooks/useUserCards";
 import { CREDIT_CARD_CATALOG } from "@/data/creditCardCatalog";
@@ -23,6 +23,7 @@ const FinanceCards = () => {
   const removeCard = useRemoveUserCard(householdId);
   const [showAdd, setShowAdd] = useState(false);
   const [expandedCard, setExpandedCard] = useState<string | null>(null);
+  const [deleteCard, setDeleteCard] = useState<{ id: string; name: string } | null>(null);
 
   const userCardIds = userCards?.map((c) => c.card_catalog_id) || [];
   const enrichedCards = userCards?.map((uc) => ({
@@ -41,8 +42,6 @@ const FinanceCards = () => {
           </Button>
         </div>
 
-        
-
         {/* Recommender */}
         <CardRecommender userCardIds={userCardIds} />
 
@@ -57,8 +56,9 @@ const FinanceCards = () => {
         ) : enrichedCards.length === 0 ? (
           <EmptyState
             icon={CreditCard}
-            title="No cards added yet"
-            description="Add your credit cards to get personalized recommendations on which card to use for every purchase."
+            title="Your wallet is empty"
+            description="Add the credit cards you use so we can recommend the best one for every purchase."
+            encouragement="Start with the card you use most often"
             action={{ label: "Add Your First Card", onClick: () => setShowAdd(true) }}
           />
         ) : (
@@ -69,14 +69,25 @@ const FinanceCards = () => {
               return (
                 <Card
                   key={id}
-                  className={cn("transition-all cursor-pointer", isExpanded && "ring-1 ring-primary/20")}
+                  className={cn(
+                    "transition-all cursor-pointer overflow-hidden",
+                    isExpanded && "ring-1 ring-primary/20"
+                  )}
                   onClick={() => setExpandedCard(isExpanded ? null : id)}
                 >
-                  <CardContent className="p-3">
-                    <div className="flex items-center gap-3">
+                  <CardContent className="p-0">
+                    {/* Card header with gradient */}
+                    <div
+                      className="px-4 py-3 flex items-center gap-3"
+                      style={{
+                        background: `linear-gradient(135deg, ${catalog.color}15, ${catalog.color}05)`,
+                      }}
+                    >
                       <div
-                        className="w-12 h-8 rounded-lg flex items-center justify-center text-[10px] font-bold text-white shrink-0"
-                        style={{ backgroundColor: catalog.color }}
+                        className="w-12 h-8 rounded-lg flex items-center justify-center text-[10px] font-bold text-white shrink-0 shadow-sm"
+                        style={{
+                          background: `linear-gradient(135deg, ${catalog.color}, ${catalog.color}cc)`,
+                        }}
                       >
                         {catalog.network.slice(0, 2).toUpperCase()}
                       </div>
@@ -92,7 +103,10 @@ const FinanceCards = () => {
                         variant="ghost"
                         size="icon"
                         className="h-7 w-7 text-muted-foreground hover:text-destructive shrink-0"
-                        onClick={(e) => { e.stopPropagation(); removeCard.mutate(id); }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDeleteCard({ id, name: `${catalog.bank} ${catalog.name}` });
+                        }}
                         style={{ minHeight: "28px" }}
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -100,7 +114,7 @@ const FinanceCards = () => {
                     </div>
 
                     {isExpanded && (
-                      <div className="mt-3 pt-3 border-t border-border/50 space-y-3">
+                      <div className="px-4 pb-4 pt-3 border-t border-border/50 space-y-3">
                         {/* Benefits */}
                         <div>
                           <p className="text-xs font-semibold text-muted-foreground mb-1.5 flex items-center gap-1">
@@ -153,6 +167,16 @@ const FinanceCards = () => {
                 </Card>
               );
             })}
+
+            {/* Add more cards nudge */}
+            <Button
+              variant="outline"
+              className="w-full border-dashed h-12 text-muted-foreground"
+              onClick={() => setShowAdd(true)}
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Add another card
+            </Button>
           </div>
         )}
       </main>
@@ -167,6 +191,20 @@ const FinanceCards = () => {
         onOpenChange={setShowAdd}
         onAdd={(cardId) => addCard.mutate({ card_catalog_id: cardId })}
         existingCardIds={userCardIds}
+        isAdding={addCard.isPending}
+      />
+
+      <ConfirmDialog
+        open={!!deleteCard}
+        onOpenChange={(open) => !open && setDeleteCard(null)}
+        title="Remove card?"
+        description={`This will remove "${deleteCard?.name}" from your wallet. You can always add it back later.`}
+        confirmLabel="Remove"
+        variant="destructive"
+        onConfirm={() => {
+          if (deleteCard) removeCard.mutate(deleteCard.id);
+          setDeleteCard(null);
+        }}
       />
     </div>
   );
