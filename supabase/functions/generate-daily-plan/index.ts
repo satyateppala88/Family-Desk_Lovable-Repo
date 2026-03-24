@@ -1,6 +1,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders } from "../_shared/cors.ts";
+import { checkRateLimit, AI_RATE_LIMIT } from "../_shared/rate-limit.ts";
+import { Logger } from "../_shared/logger.ts";
 
 interface TaskWithScore {
   task: any;
@@ -348,6 +350,7 @@ For each selected task, provide a brief, friendly reasoning (under 12 words) tha
 }
 
 serve(async (req) => {
+  const log = new Logger("generate-daily-plan");
   const corsHeaders = getCorsHeaders(req.headers.get("origin"));
 
   if (req.method === "OPTIONS") {
@@ -366,6 +369,7 @@ serve(async (req) => {
     const { data: { user }, error: userError } = await supabase.auth.getUser(token);
 
     if (userError || !user) {
+      log.warn("Unauthorized request");
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -373,6 +377,18 @@ serve(async (req) => {
     }
 
     const { date, forceRegenerate, householdId } = await req.json();
+    log.setContext({ userId: user.id, householdId });
+
+    // Rate limiting
+    const rateCheck = checkRateLimit(user.id, "generate-daily-plan", AI_RATE_LIMIT);
+    if (!rateCheck.allowed) {
+      log.warn("Rate limit exceeded");
+      return new Response(JSON.stringify({ error: "Too many requests. Please try again later." }), {
+        status: 429,
+        headers: { ...corsHeaders, "Content-Type": "application/json", "Retry-After": String(Math.ceil((rateCheck.resetAt - Date.now()) / 1000)) },
+      });
+    }
+
     const targetDate = date || new Date().toISOString().split("T")[0];
     const today = new Date(targetDate);
 
