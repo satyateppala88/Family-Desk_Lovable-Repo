@@ -1,5 +1,5 @@
 import { Header } from "@/components/layout/Header";
-import { FinanceNav } from "@/components/finance/FinanceNav";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -54,7 +54,7 @@ const FinanceMonthlyReview = () => {
           <p className="text-sm text-muted-foreground mt-1">{format(new Date(), "MMMM yyyy")} — your household's financial health</p>
         </div>
 
-        <FinanceNav />
+        
 
         {/* Privacy cue */}
         <div className="trust-badge" role="status">
