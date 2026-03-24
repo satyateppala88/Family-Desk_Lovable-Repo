@@ -175,6 +175,7 @@ const App = () => (
                 } />
                 <Route path="/finance" element={<ProtectedRoute><Finance /></ProtectedRoute>} />
                 <Route path="/finance/transactions" element={<ProtectedRoute><FinanceTransactions /></ProtectedRoute>} />
+                <Route path="/finance/subscriptions" element={<ProtectedRoute><FinanceSubscriptions /></ProtectedRoute>} />
                 <Route path="/finance/budget" element={<ProtectedRoute><FinanceBudget /></ProtectedRoute>} />
                 <Route path="/finance/savings" element={<ProtectedRoute><FinanceSavings /></ProtectedRoute>} />
                 <Route path="/finance/chat" element={<ProtectedRoute><FinanceChat /></ProtectedRoute>} />
