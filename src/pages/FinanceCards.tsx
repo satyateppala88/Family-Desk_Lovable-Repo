@@ -1,0 +1,175 @@
+import { useState } from "react";
+import { Header } from "@/components/layout/Header";
+import { FinanceNav } from "@/components/finance/FinanceNav";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/ui/empty-state";
+import { PageLoading } from "@/components/ui/page-loading";
+import { QuickActionButton } from "@/components/ui/quick-action-button";
+import { Plus, CreditCard, Trash2, Sparkles, Award, Gift, Plane } from "lucide-react";
+import { useHousehold } from "@/hooks/useHousehold";
+import { useUserCards, useAddUserCard, useRemoveUserCard } from "@/hooks/useUserCards";
+import { CREDIT_CARD_CATALOG } from "@/data/creditCardCatalog";
+import { AddCardDialog } from "@/components/finance/AddCardDialog";
+import { CardRecommender } from "@/components/finance/CardRecommender";
+import { formatINR } from "@/lib/formatINR";
+import { cn } from "@/lib/utils";
+
+const FinanceCards = () => {
+  const { householdId } = useHousehold();
+  const { data: userCards, isLoading } = useUserCards(householdId);
+  const addCard = useAddUserCard(householdId);
+  const removeCard = useRemoveUserCard(householdId);
+  const [showAdd, setShowAdd] = useState(false);
+  const [expandedCard, setExpandedCard] = useState<string | null>(null);
+
+  const userCardIds = userCards?.map((c) => c.card_catalog_id) || [];
+  const enrichedCards = userCards?.map((uc) => ({
+    ...uc,
+    catalog: CREDIT_CARD_CATALOG.find((c) => c.id === uc.card_catalog_id),
+  })).filter((c) => c.catalog) || [];
+
+  return (
+    <div className="page-container">
+      <Header />
+      <main className="page-content space-y-4">
+        <div className="flex items-center justify-between">
+          <h1 className="page-heading">Cards</h1>
+          <Button size="sm" onClick={() => setShowAdd(true)} className="hidden sm:flex">
+            <Plus className="w-4 h-4 mr-1" /> Add Card
+          </Button>
+        </div>
+
+        <FinanceNav />
+
+        {/* Recommender */}
+        <CardRecommender userCardIds={userCardIds} />
+
+        {/* My Cards */}
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-foreground">My Wallet</h2>
+          <span className="text-xs text-muted-foreground">{enrichedCards.length} card{enrichedCards.length !== 1 ? "s" : ""}</span>
+        </div>
+
+        {isLoading ? (
+          <PageLoading cards={3} heading={false} />
+        ) : enrichedCards.length === 0 ? (
+          <EmptyState
+            icon={CreditCard}
+            title="No cards added yet"
+            description="Add your credit cards to get personalized recommendations on which card to use for every purchase."
+            action={{ label: "Add Your First Card", onClick: () => setShowAdd(true) }}
+          />
+        ) : (
+          <div className="space-y-2">
+            {enrichedCards.map(({ id, card_catalog_id, catalog }) => {
+              if (!catalog) return null;
+              const isExpanded = expandedCard === id;
+              return (
+                <Card
+                  key={id}
+                  className={cn("transition-all cursor-pointer", isExpanded && "ring-1 ring-primary/20")}
+                  onClick={() => setExpandedCard(isExpanded ? null : id)}
+                >
+                  <CardContent className="p-3">
+                    <div className="flex items-center gap-3">
+                      <div
+                        className="w-12 h-8 rounded-lg flex items-center justify-center text-[10px] font-bold text-white shrink-0"
+                        style={{ backgroundColor: catalog.color }}
+                      >
+                        {catalog.network.slice(0, 2).toUpperCase()}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold truncate">{catalog.bank} {catalog.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {catalog.annualFee === 0 ? "Lifetime Free" : `₹${catalog.annualFee}/yr`}
+                          {" · "}
+                          {catalog.network}
+                        </p>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-muted-foreground hover:text-destructive shrink-0"
+                        onClick={(e) => { e.stopPropagation(); removeCard.mutate(id); }}
+                        style={{ minHeight: "28px" }}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
+
+                    {isExpanded && (
+                      <div className="mt-3 pt-3 border-t border-border/50 space-y-3">
+                        {/* Benefits */}
+                        <div>
+                          <p className="text-xs font-semibold text-muted-foreground mb-1.5 flex items-center gap-1">
+                            <Sparkles className="w-3 h-3" /> Benefits
+                          </p>
+                          <div className="space-y-1">
+                            {catalog.benefits.map((b, i) => (
+                              <div key={i} className="flex items-center justify-between text-xs">
+                                <span className="text-muted-foreground">{b.description}</span>
+                                <Badge variant="outline" className="text-[10px] px-1.5 py-0 shrink-0 ml-2">
+                                  {b.type === "cashback" ? `${b.value}%` : `${b.value}×`}
+                                </Badge>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Milestones */}
+                        {catalog.milestones.length > 0 && (
+                          <div>
+                            <p className="text-xs font-semibold text-muted-foreground mb-1.5 flex items-center gap-1">
+                              <Award className="w-3 h-3" /> Milestones
+                            </p>
+                            <div className="space-y-1">
+                              {catalog.milestones.map((m, i) => (
+                                <div key={i} className="text-xs text-muted-foreground">
+                                  Spend {formatINR(m.threshold)}/month → {m.reward}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Perks */}
+                        {catalog.perks.length > 0 && (
+                          <div>
+                            <p className="text-xs font-semibold text-muted-foreground mb-1.5 flex items-center gap-1">
+                              <Gift className="w-3 h-3" /> Perks
+                            </p>
+                            <div className="flex flex-wrap gap-1">
+                              {catalog.perks.map((p, i) => (
+                                <Badge key={i} variant="secondary" className="text-[10px]">{p}</Badge>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        )}
+      </main>
+
+      <QuickActionButton
+        items={[{ label: "Add Card", icon: Plus, onClick: () => setShowAdd(true) }]}
+        className="sm:hidden"
+      />
+
+      <AddCardDialog
+        open={showAdd}
+        onOpenChange={setShowAdd}
+        onAdd={(cardId) => addCard.mutate({ card_catalog_id: cardId })}
+        existingCardIds={userCardIds}
+      />
+    </div>
+  );
+};
+
+export default FinanceCards;
