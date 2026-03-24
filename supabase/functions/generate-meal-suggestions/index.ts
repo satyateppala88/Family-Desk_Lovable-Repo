@@ -2,6 +2,9 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { z } from "https://deno.land/x/zod@v3.23.8/mod.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
+import { authenticateRequest, verifyHouseholdMembership } from "../_shared/auth.ts";
+import { checkRateLimit, AI_HEAVY_RATE_LIMIT } from "../_shared/rate-limit.ts";
+import { Logger } from "../_shared/logger.ts";
 
 // Input validation schema
 const GenerateMealSuggestionsSchema = z.object({
@@ -13,6 +16,7 @@ const GenerateMealSuggestionsSchema = z.object({
 });
 
 serve(async (req) => {
+  const log = new Logger("generate-meal-suggestions");
   const corsHeaders = getCorsHeaders(req.headers.get("origin"));
 
   if (req.method === "OPTIONS") {
@@ -20,36 +24,70 @@ serve(async (req) => {
   }
 
   try {
+    // Authenticate request
+    const auth = await authenticateRequest(req);
+    if (!auth) {
+      log.warn("Unauthorized request");
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    log.setContext({ userId: auth.user.id });
+
+    // Rate limiting
+    const rateCheck = checkRateLimit(auth.user.id, "generate-meal-suggestions", AI_HEAVY_RATE_LIMIT);
+    if (!rateCheck.allowed) {
+      log.warn("Rate limit exceeded");
+      return new Response(
+        JSON.stringify({ error: "Too many requests. Please try again later." }),
+        { 
+          status: 429, 
+          headers: { 
+            ...corsHeaders, 
+            "Content-Type": "application/json",
+            "Retry-After": String(Math.ceil((rateCheck.resetAt - Date.now()) / 1000)),
+          } 
+        }
+      );
+    }
+
     // Parse and validate request body
     const requestBody = await req.json();
     const validationResult = GenerateMealSuggestionsSchema.safeParse(requestBody);
     
     if (!validationResult.success) {
-      console.error("Validation error:", validationResult.error.errors);
+      log.warn("Validation error", { errors: validationResult.error.errors });
       return new Response(
         JSON.stringify({ 
           error: "Invalid input",
           details: validationResult.error.errors 
         }),
-        { 
-          status: 400, 
-          headers: { ...corsHeaders, "Content-Type": "application/json" } 
-        }
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     const { householdId, userId, numDays, weekStartDate, generateFrom } = validationResult.data;
+    log.setContext({ userId: auth.user.id, householdId });
+
+    // Verify household membership
+    const isMember = await verifyHouseholdMembership(auth.supabase, auth.user.id, householdId);
+    if (!isMember) {
+      log.warn("Not a household member");
+      return new Response(
+        JSON.stringify({ error: "Not a member of this household" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     // Calculate which day of the week to start from
     const weekStart = new Date(weekStartDate);
     weekStart.setHours(0, 0, 0, 0);
-    let startDayIndex = 0; // Default to Sunday (0)
+    let startDayIndex = 0;
 
     if (generateFrom === "today") {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      
-      // Calculate days difference between today and week start
       const daysDiff = Math.floor((today.getTime() - weekStart.getTime()) / (1000 * 60 * 60 * 24));
       startDayIndex = Math.max(0, Math.min(6, daysDiff));
     }
@@ -58,14 +96,11 @@ serve(async (req) => {
     const startDayName = dayNames[startDayIndex];
     
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
-    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
-    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) throw new Error("Supabase credentials not configured");
 
-    // Use service role key to bypass RLS for backend operations
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    // Use the authenticated supabase client (service role) for data fetching
+    const supabase = auth.supabase;
+
     const { data: householdPrefs } = await supabase
       .from("household_preferences")
       .select("*")
@@ -78,7 +113,6 @@ serve(async (req) => {
       .eq("household_id", householdId)
       .eq("hidden", true);
 
-    // Fetch pantry inventory to consider available ingredients
     const { data: pantryItems } = await supabase
       .from("pantry_items")
       .select("name, quantity, unit, category, expiry_date")
@@ -141,7 +175,6 @@ serve(async (req) => {
     // Build pantry inventory context
     let pantryContext = "";
     if (pantryItems && pantryItems.length > 0) {
-      // Group items by category for better readability
       const itemsByCategory: Record<string, any[]> = {};
       pantryItems.forEach(item => {
         const category = item.category || "Other";
@@ -149,7 +182,6 @@ serve(async (req) => {
           itemsByCategory[category] = [];
         }
         
-        // Check if item is expiring soon (within 7 days)
         let expiryNote = "";
         if (item.expiry_date) {
           const expiryDate = new Date(item.expiry_date);
@@ -245,6 +277,8 @@ Each recipe MUST include detailed nutritional information per serving:
 Calculate nutritional values based on the ingredients and their quantities.
 Example: If a recipe serves 4, calculate the nutritional info for 1/4 of the total ingredients.`;
 
+    log.info("Calling AI gateway for meal suggestions", { numDays, startDayIndex });
+
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -320,22 +354,10 @@ Example: If a recipe serves 4, calculate the nutritional info for 1/4 of the tot
                               type: "object",
                               description: "Nutritional information per serving",
                               properties: {
-                                calories: { 
-                                  type: "number",
-                                  description: "Total calories per serving"
-                                },
-                                protein: { 
-                                  type: "number",
-                                  description: "Grams of protein per serving"
-                                },
-                                carbs: { 
-                                  type: "number",
-                                  description: "Grams of carbohydrates per serving"
-                                },
-                                fat: { 
-                                  type: "number",
-                                  description: "Grams of fat per serving"
-                                }
+                                calories: { type: "number", description: "Total calories per serving" },
+                                protein: { type: "number", description: "Grams of protein per serving" },
+                                carbs: { type: "number", description: "Grams of carbohydrates per serving" },
+                                fat: { type: "number", description: "Grams of fat per serving" }
                               },
                               required: ["calories"]
                             }
@@ -358,6 +380,7 @@ Example: If a recipe serves 4, calculate the nutritional info for 1/4 of the tot
 
     if (!response.ok) {
       if (response.status === 429) {
+        log.warn("AI gateway rate limit");
         return new Response(
           JSON.stringify({ error: "Rate limit exceeded. Please try again later." }), 
           { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -370,14 +393,11 @@ Example: If a recipe serves 4, calculate the nutritional info for 1/4 of the tot
         );
       }
       const errorText = await response.text();
-      console.error("AI gateway error:", response.status, errorText);
+      log.error("AI gateway error", new Error(errorText), { status: response.status });
       throw new Error("AI gateway request failed");
     }
 
     const data = await response.json();
-    console.log("AI Response:", JSON.stringify(data, null, 2));
-
-    // Extract the tool call response
     const toolCall = data.choices[0]?.message?.tool_calls?.[0];
     if (!toolCall) {
       throw new Error("No tool call in response");
@@ -391,17 +411,17 @@ Example: If a recipe serves 4, calculate the nutritional info for 1/4 of the tot
       .insert({
         household_id: householdId,
         week_start_date: weekStartDate || new Date().toISOString().split('T')[0],
-        created_by: userId,
+        created_by: auth.user.id,
       })
       .select()
       .single();
 
     if (planError) {
-      console.error("Error creating meal plan:", planError);
+      log.error("Error creating meal plan", planError);
       throw new Error("Failed to create meal plan in database");
     }
 
-    console.log("Created meal plan:", createdPlan.id);
+    log.info("Created meal plan", { planId: createdPlan.id });
 
     // Create recipes and meal plan items
     const createdRecipes = [];
@@ -409,7 +429,6 @@ Example: If a recipe serves 4, calculate the nutritional info for 1/4 of the tot
       const meal = mealPlan.meals[i];
       
       try {
-        // Insert recipe
         const { data: recipe, error: recipeError } = await supabase
           .from("recipes")
           .insert({
@@ -418,68 +437,63 @@ Example: If a recipe serves 4, calculate the nutritional info for 1/4 of the tot
             prep_time: meal.recipe.prep_time || null,
             cook_time: meal.recipe.cook_time || null,
             servings: meal.recipe.servings || 4,
-            difficulty: meal.recipe.difficulty || 'medium',
-            cuisine_type: meal.recipe.cuisine_type || 'Indian',
+            difficulty: meal.recipe.difficulty || "medium",
+            cuisine_type: meal.recipe.cuisine_type || null,
             ingredients: meal.recipe.ingredients || [],
             instructions: meal.recipe.instructions || [],
             nutritional_info: meal.recipe.nutritional_info || null,
-            tags: meal.recipe.tags || [],
+            tags: [],
+            source: "ai_generated",
             household_id: householdId,
-            created_by: userId,
-            source: 'ai_generated',
-            is_favorite: false,
+            created_by: auth.user.id,
           })
           .select()
           .single();
 
         if (recipeError) {
-          console.error(`Error creating recipe ${i}:`, recipeError);
+          log.error("Error creating recipe", recipeError, { mealIndex: i });
           continue;
         }
 
-        createdRecipes.push(recipe);
-
-        // Insert meal plan item
-        const dayIndex = meal.day;
-        const mealType = meal.meal_type;
-
-        // Calculate the actual scheduled date for this meal
+        // Calculate scheduled date
         const scheduledDate = new Date(weekStartDate);
-        scheduledDate.setDate(scheduledDate.getDate() + dayIndex);
+        scheduledDate.setDate(scheduledDate.getDate() + meal.day);
 
         const { error: itemError } = await supabase
           .from("meal_plan_items")
           .insert({
             meal_plan_id: createdPlan.id,
             recipe_id: recipe.id,
-            day_of_week: dayIndex,
-            meal_type: mealType,
+            day_of_week: meal.day,
+            meal_type: meal.meal_type,
             scheduled_date: scheduledDate.toISOString().split('T')[0],
           });
 
         if (itemError) {
-          console.error(`Error creating meal plan item ${i}:`, itemError);
+          log.error("Error creating meal plan item", itemError);
         }
+
+        createdRecipes.push(recipe);
       } catch (err) {
-        console.error(`Error processing meal ${i}:`, err);
-        continue;
+        log.error("Error processing meal", err, { mealIndex: i });
       }
     }
 
-    console.log(`Successfully created ${createdRecipes.length} recipes and meal plan items`);
-    
+    log.info("Meal generation complete", { recipesCreated: createdRecipes.length });
+    log.done(200);
+
     return new Response(JSON.stringify({ 
       mealPlanId: createdPlan.id,
-      meals: mealPlan.meals,
-      recipesCreated: createdRecipes.length 
+      recipes: createdRecipes 
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
 
   } catch (error: any) {
-    console.error("Error generating meal suggestions:", error);
+    log.error("Error in generate-meal-suggestions", error);
+    const corsHeaders = getCorsHeaders(req.headers.get("origin"));
     return new Response(
-      JSON.stringify({ error: error.message || "Failed to generate meal suggestions" }), 
+      JSON.stringify({ error: error.message || "Failed to generate meals" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
