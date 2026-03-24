@@ -20,6 +20,7 @@ import {
   FINANCE_CATEGORIES,
   FinanceTransaction,
 } from "@/hooks/useFinance";
+import { useUserCards } from "@/hooks/useUserCards";
 import { formatINR } from "@/lib/formatINR";
 import { TransactionDialog } from "@/components/finance/TransactionDialog";
 import { format } from "date-fns";
