@@ -1,14 +1,13 @@
 import { useState } from "react";
 import { Header } from "@/components/layout/Header";
-
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { EmptyState } from "@/components/ui/empty-state";
 import { QuickActionButton } from "@/components/ui/quick-action-button";
-import { Plus, Trash2, Target, PartyPopper } from "lucide-react";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { Plus, Trash2, Target, PartyPopper, Loader2 } from "lucide-react";
 import { useHousehold } from "@/hooks/useHousehold";
 import {
   useFinanceSavingsGoals,
@@ -29,6 +28,7 @@ const FinanceSavings = () => {
   const deleteGoal = useDeleteSavingsGoal();
   const [showAdd, setShowAdd] = useState(false);
   const [addAmounts, setAddAmounts] = useState<Record<string, string>>({});
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
 
   const activeGoals = (goals || []).filter((g) => g.status === "active");
   const completedGoals = (goals || []).filter((g) => g.status === "completed");
@@ -57,8 +57,6 @@ const FinanceSavings = () => {
           </Button>
         </div>
 
-        
-
         {isLoading ? (
           <div className="space-y-3">
             {[1,2].map(i => <Card key={i}><CardContent className="p-4 h-28" /></Card>)}
@@ -66,9 +64,10 @@ const FinanceSavings = () => {
         ) : activeGoals.length === 0 && completedGoals.length === 0 ? (
           <EmptyState
             icon={Target}
-            title="No savings goals"
-            description="Set a target and start saving towards it"
-            action={{ label: "Create Goal", onClick: () => setShowAdd(true) }}
+            title="No savings goals yet"
+            description="Whether it's a vacation, emergency fund, or a big purchase — setting a goal makes it real."
+            encouragement="Start with something small and build from there"
+            action={{ label: "Create Your First Goal", onClick: () => setShowAdd(true) }}
           />
         ) : (
           <div className="space-y-3">
@@ -99,7 +98,7 @@ const FinanceSavings = () => {
                       <Button
                         variant="ghost" size="icon"
                         className="h-7 w-7 text-muted-foreground hover:text-destructive shrink-0"
-                        onClick={() => deleteGoal.mutate(goal.id)}
+                        onClick={() => setDeleteTarget({ id: goal.id, name: goal.name })}
                         style={{ minHeight: "28px" }}
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -126,8 +125,9 @@ const FinanceSavings = () => {
                       <Button
                         size="sm" variant="outline"
                         onClick={() => handleAddFunds(goal.id, Number(goal.current_amount))}
+                        disabled={updateGoal.isPending}
                       >
-                        Add
+                        {updateGoal.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Add"}
                       </Button>
                     </div>
                   </CardContent>
@@ -164,6 +164,19 @@ const FinanceSavings = () => {
         open={showAdd}
         onOpenChange={setShowAdd}
         onSave={(data) => createGoal.mutate(data)}
+      />
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+        title="Delete savings goal?"
+        description={`This will permanently remove "${deleteTarget?.name}" and its progress.`}
+        confirmLabel="Delete"
+        variant="destructive"
+        onConfirm={() => {
+          if (deleteTarget) deleteGoal.mutate(deleteTarget.id);
+          setDeleteTarget(null);
+        }}
       />
     </div>
   );
