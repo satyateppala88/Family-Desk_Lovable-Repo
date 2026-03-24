@@ -1,6 +1,9 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { z } from "https://deno.land/x/zod@v3.23.8/mod.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
+import { authenticateRequest } from "../_shared/auth.ts";
+import { checkRateLimit, AI_RATE_LIMIT } from "../_shared/rate-limit.ts";
+import { Logger } from "../_shared/logger.ts";
 
 // Input validation schema
 const MAX_INPUT_LENGTH = 500;
@@ -12,6 +15,7 @@ const ParseTaskInputSchema = z.object({
 });
 
 serve(async (req) => {
+  const log = new Logger("parse-task-input");
   const corsHeaders = getCorsHeaders(req.headers.get("origin"));
   
   if (req.method === "OPTIONS") {
@@ -19,6 +23,26 @@ serve(async (req) => {
   }
 
   try {
+    // Authenticate request
+    const auth = await authenticateRequest(req);
+    if (!auth) {
+      log.warn("Unauthorized request");
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    log.setContext({ userId: auth.user.id });
+
+    // Rate limiting
+    const rateCheck = checkRateLimit(auth.user.id, "parse-task-input", AI_RATE_LIMIT);
+    if (!rateCheck.allowed) {
+      log.warn("Rate limit exceeded");
+      return new Response(
+        JSON.stringify({ error: "Too many requests. Please try again later." }),
+        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json", "Retry-After": String(Math.ceil((rateCheck.resetAt - Date.now()) / 1000)) } }
+      );
+    }
     // Parse and validate request body
     const requestBody = await req.json();
     const validationResult = ParseTaskInputSchema.safeParse(requestBody);
@@ -40,7 +64,7 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    const today = new Date().toISOString().split("T")[0];
+    log.info("Parsing task input");
     
     const systemPrompt = `You are a task parser that extracts structured task information from natural language input.
 
