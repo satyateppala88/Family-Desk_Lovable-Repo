@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.95.0";
 import { sendPush } from "../_shared/push.ts";
+import { todayIST } from "../_shared/time.ts";
 
 /**
  * Cron (~5pm local): pings households with a dinner planned for tonight so
@@ -22,7 +23,7 @@ Deno.serve(async (req) => {
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE);
 
   try {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = todayIST();
 
     const { data: items, error } = await admin
       .from("meal_plan_items")

@@ -7,6 +7,7 @@ import {
 } from "../_shared/email-templates.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
 import { sendPush } from "../_shared/push.ts";
+import { nextISTMidnightUTC } from "../_shared/time.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -24,13 +25,9 @@ const handler = async (req: Request): Promise<Response> => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Get tomorrow's date range
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    tomorrow.setHours(0, 0, 0, 0);
-    
-    const dayAfterTomorrow = new Date(tomorrow);
-    dayAfterTomorrow.setDate(dayAfterTomorrow.getDate() + 1);
+    // Get tomorrow's date range, anchored to IST midnight.
+    const tomorrow = nextISTMidnightUTC();
+    const dayAfterTomorrow = new Date(tomorrow.getTime() + 86_400_000);
 
     // Get tasks due tomorrow that aren't completed
     const { data: tasks, error: tasksError } = await supabaseAdmin
