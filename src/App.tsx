@@ -12,6 +12,7 @@ import ScrollToTop from "./components/ScrollToTop";
 import { OfflineBanner } from "@/components/layout/OfflineBanner";
 import { createPersistedQueryClient } from "@/lib/query-client";
 import { NotificationPermissionPrompt } from "@/components/notifications/NotificationPermissionPrompt";
+import { InstallPrompt } from "@/components/install/InstallPrompt";
 
 // Eagerly loaded (auth flow)
 import Auth from "./pages/Auth";
@@ -198,6 +199,7 @@ const App = () => (
             </Suspense>
             <AIChatWidget />
             <NotificationPermissionPrompt />
+            <InstallPrompt />
           </AuthProvider>
         
       </BrowserRouter>
