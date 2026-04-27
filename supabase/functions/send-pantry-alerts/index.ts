@@ -6,6 +6,7 @@ import {
   getPantryAlertContent 
 } from "../_shared/email-templates.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
+import { todayIST, istDateOffset } from "../_shared/time.ts";
 import { sendWhatsAppTemplate, WHATSAPP_TEMPLATES } from "../_shared/whatsapp.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
@@ -24,10 +25,9 @@ const handler = async (req: Request): Promise<Response> => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Get items expiring within 3 days
-    const today = new Date();
-    const threeDaysFromNow = new Date(today);
-    threeDaysFromNow.setDate(threeDaysFromNow.getDate() + 3);
+    // Get items expiring within 3 days (IST calendar day).
+    const todayStr = todayIST();
+    const horizonStr = istDateOffset(3);
 
     const { data: expiringItems, error: itemsError } = await supabaseAdmin
       .from("pantry_items")
@@ -39,8 +39,8 @@ const handler = async (req: Request): Promise<Response> => {
         expiry_date,
         household_id
       `)
-      .gte("expiry_date", today.toISOString().split("T")[0])
-      .lte("expiry_date", threeDaysFromNow.toISOString().split("T")[0])
+      .gte("expiry_date", todayStr)
+      .lte("expiry_date", horizonStr)
       .gt("quantity", 0);
 
     if (itemsError) throw itemsError;
