@@ -12,6 +12,7 @@ import {
   suppressSoftPromptForever,
 } from "@/lib/notification-permission";
 import { useNotificationPermission } from "@/hooks/useNotificationPermission";
+import { ensurePushSubscription } from "@/lib/push-subscription";
 
 /**
  * Soft permission prompt shown BEFORE the browser's native dialog.
@@ -86,17 +87,32 @@ export const NotificationPermissionPrompt = () => {
   const handleEnable = async () => {
     setRequesting(true);
     const result = await requestNativePermission();
-    setRequesting(false);
 
     if (result === "granted") {
-      toast.success("Notifications enabled — you'll get reminders for tasks, habits and more.");
+      const sub = await ensurePushSubscription();
+      setRequesting(false);
+      if (sub.ok) {
+        toast.success(
+          "Notifications enabled — you'll get reminders for tasks, habits and more."
+        );
+      } else {
+        toast.success(
+          "Notifications enabled. We'll finish setup the next time you open the app."
+        );
+        console.warn(
+          "[push] subscription setup failed:",
+          (sub as { reason: string }).reason
+        );
+      }
       suppressSoftPromptForever();
     } else if (result === "denied") {
+      setRequesting(false);
       toast.error(
         "Notifications blocked. You can re-enable them from your browser's site settings."
       );
       suppressSoftPromptForever();
     } else {
+      setRequesting(false);
       // "default" means the user closed the prompt without choosing.
       markSoftPromptDismissed();
     }
