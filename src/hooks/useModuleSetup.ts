@@ -63,7 +63,7 @@ export const useModuleSetup = (key: ModuleSetupKey) => {
     if (!preferences) return false;
     const fields = MODULE_SETUP_FIELDS[key];
     return fields.every((f) => {
-      const v = (preferences as Record<string, unknown>)[f as string];
+      const v = (preferences as unknown as Record<string, unknown>)[f as string];
       return v !== null && v !== undefined && v !== "";
     });
   }, [preferences, key]);
