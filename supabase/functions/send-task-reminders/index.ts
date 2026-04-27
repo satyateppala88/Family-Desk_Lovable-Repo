@@ -6,6 +6,7 @@ import {
   getTaskReminderContent 
 } from "../_shared/email-templates.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
+import { sendPush } from "../_shared/push.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -72,6 +73,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     const emailsSent: string[] = [];
     const errors: string[] = [];
+    const pushUserIds: string[] = [];
 
     // Send emails to each assignee
     for (const [userId, userTasks] of Object.entries(tasksByAssignee)) {
@@ -127,9 +129,43 @@ const handler = async (req: Request): Promise<Response> => {
 
         console.log(`Task reminder sent to ${userData.user.email}:`, emailResponse);
         emailsSent.push(userData.user.email);
+        // Queue this user for a Web Push fan-out below (filtered by
+        // notification_preferences.tasks inside send-push).
+        pushUserIds.push(userId);
       } catch (error: any) {
         console.error(`Error sending reminder to user ${userId}:`, error);
         errors.push(`User ${userId}: ${error.message}`);
+      }
+    }
+
+    // Fire one batched push fan-out so users with installed PWAs get a native
+    // notification too. Failures are logged but never fail the email job.
+    let pushResult = { ok: true, sent: 0, pruned: 0 } as Awaited<
+      ReturnType<typeof sendPush>
+    >;
+    if (pushUserIds.length > 0) {
+      const totalTasks = pushUserIds.reduce(
+        (n, uid) => n + (tasksByAssignee[uid]?.length ?? 0),
+        0
+      );
+      pushResult = await sendPush({
+        user_ids: pushUserIds,
+        channel: "tasks",
+        title:
+          pushUserIds.length === 1
+            ? `${tasksByAssignee[pushUserIds[0]].length} task${
+                tasksByAssignee[pushUserIds[0]].length > 1 ? "s" : ""
+              } due tomorrow`
+            : `Tasks due tomorrow`,
+        body:
+          totalTasks === 1
+            ? "Open FamilyDesk to plan your day."
+            : "Tap to review and plan your day.",
+        url: "/taskmaster/today",
+        tag: "task-reminders",
+      });
+      if (!pushResult.ok) {
+        console.warn("[send-task-reminders] push fan-out failed", pushResult.error);
       }
     }
 
@@ -138,6 +174,8 @@ const handler = async (req: Request): Promise<Response> => {
         success: true, 
         emailsSent: emailsSent.length,
         recipients: emailsSent,
+        pushSent: pushResult.sent ?? 0,
+        pushPruned: pushResult.pruned ?? 0,
         errors: errors.length > 0 ? errors : undefined
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
