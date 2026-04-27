@@ -11,6 +11,7 @@ import { AIChatWidget } from "./components/ai/AIChatWidget";
 import ScrollToTop from "./components/ScrollToTop";
 import { OfflineBanner } from "@/components/layout/OfflineBanner";
 import { createPersistedQueryClient } from "@/lib/query-client";
+import { NotificationPermissionPrompt } from "@/components/notifications/NotificationPermissionPrompt";
 
 // Eagerly loaded (auth flow)
 import Auth from "./pages/Auth";
@@ -196,6 +197,7 @@ const App = () => (
               </Routes>
             </Suspense>
             <AIChatWidget />
+            <NotificationPermissionPrompt />
           </AuthProvider>
         
       </BrowserRouter>
