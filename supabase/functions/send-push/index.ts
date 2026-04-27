@@ -186,10 +186,18 @@ Deno.serve(async (req) => {
             staleIds.push(s.id);
             pruned += 1;
           } else {
+            // Defensive: scrub any token-like material from the error message
+            // before it lands in logs or the response body. VAPID keys must
+            // never round-trip out of this function.
+            const rawMsg = (err as Error)?.message ?? "unknown push error";
+            const safeMsg = rawMsg
+              .replace(/Bearer\s+[A-Za-z0-9._\-=]+/gi, "Bearer [redacted]")
+              .replace(/vapid\s*[a-z]=[A-Za-z0-9._\-=]+/gi, "vapid [redacted]")
+              .replace(/[A-Za-z0-9_-]{40,}/g, "[redacted-token]");
             failures.push({
               endpoint: s.endpoint,
               status,
-              error: (err as Error).message,
+              error: safeMsg,
             });
           }
         }
@@ -213,8 +221,12 @@ Deno.serve(async (req) => {
 
     return json({ ok: true, sent, pruned, failures });
   } catch (e) {
-    console.error("send-push error", e);
-    return json({ error: (e as Error).message }, 500);
+    // Log only name + message — never the full error object, which on some
+    // runtimes serialises request headers (Authorization JWT) and may leak
+    // sensitive material to the log stream.
+    const err = e as Error;
+    console.error("send-push error:", err?.name, err?.message);
+    return json({ error: "Internal error sending push" }, 500);
   }
 
   function json(payload: unknown, status = 200) {
