@@ -518,8 +518,38 @@ const Question = ({
     const container = ctx?.scrollContainerRef.current;
     if (!el || !container) return;
     // Scroll within the dialog's container only — don't move the page.
+    //
+    // Anti-jitter: only scroll when the target question is NOT already
+    // comfortably inside the visible viewport. A small `MARGIN` keeps a
+    // little breathing room at the top/bottom edges so we don't bother
+    // scrolling for questions that are already in view, and don't
+    // re-trigger smooth-scroll animations when the user is mid-interaction.
+    const MARGIN = 8;
     const elTop = el.offsetTop - container.offsetTop;
-    const top = Math.max(0, elTop - 8);
+    const elBottom = elTop + el.offsetHeight;
+    const viewTop = container.scrollTop;
+    const viewBottom = viewTop + container.clientHeight;
+    const fullyVisible = elTop >= viewTop + MARGIN && elBottom <= viewBottom - MARGIN;
+    // If the question fits entirely on screen with margin, do nothing —
+    // this is the common case after a tap and is the source of jitter.
+    if (fullyVisible) return;
+
+    // Otherwise, bring it into view via the shortest move:
+    //  - scroll DOWN just enough to reveal it from below, or
+    //  - scroll UP just enough to reveal it from above.
+    // For tall questions (taller than the viewport), align the top.
+    let top: number;
+    if (el.offsetHeight + MARGIN * 2 >= container.clientHeight) {
+      top = Math.max(0, elTop - MARGIN);
+    } else if (elTop < viewTop + MARGIN) {
+      top = Math.max(0, elTop - MARGIN);
+    } else {
+      top = elBottom - container.clientHeight + MARGIN;
+    }
+    // Avoid scheduling a scroll that wouldn't move the container at all
+    // (sub-pixel drift can cause repeated micro-animations).
+    if (Math.abs(top - container.scrollTop) < 1) return;
+
     if (typeof container.scrollTo === "function") {
       container.scrollTo({ top, behavior: "smooth" });
     } else {
