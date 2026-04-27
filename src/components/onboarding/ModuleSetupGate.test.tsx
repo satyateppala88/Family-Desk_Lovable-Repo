@@ -89,6 +89,7 @@ describe("ModuleSetupDialog — scroll & footer layout", () => {
     cleanup();
     updatePreferencesMock.mockClear();
     markCompleteMock.mockClear();
+    prefsStore.reset();
   });
 
   it("renders the form body inside an overflow-y-auto scroll container", () => {
