@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Bell,
@@ -123,10 +123,10 @@ export default function NotificationSettings() {
       if (sub.ok) {
         toast.success("Notifications enabled — you're all set.");
       } else {
-        toast.warning(
+        toast(
           "Permission granted, but we couldn't register this device for push. We'll retry next time you open the app."
         );
-        console.warn("[push] subscription setup failed:", sub.reason);
+        console.warn("[push] subscription setup failed:", (sub as { reason: string }).reason);
       }
     } else if (result === "denied") {
       setRequesting(false);
@@ -147,8 +147,11 @@ export default function NotificationSettings() {
     (async () => {
       const result = await ensurePushSubscription();
       if (cancelled) return;
-      if (!result.ok && result.reason !== "no-service-worker") {
-        console.warn("[push] background subscription setup failed:", result.reason);
+      if (!result.ok) {
+        const reason = (result as { reason: string }).reason;
+        if (reason !== "no-service-worker") {
+          console.warn("[push] background subscription setup failed:", reason);
+        }
       }
     })();
     return () => {

@@ -99,7 +99,10 @@ export const NotificationPermissionPrompt = () => {
         toast.success(
           "Notifications enabled. We'll finish setup the next time you open the app."
         );
-        console.warn("[push] subscription setup failed:", sub.reason);
+        console.warn(
+          "[push] subscription setup failed:",
+          (sub as { reason: string }).reason
+        );
       }
       suppressSoftPromptForever();
     } else if (result === "denied") {
