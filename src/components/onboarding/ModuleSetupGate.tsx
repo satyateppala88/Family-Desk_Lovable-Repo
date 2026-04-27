@@ -777,7 +777,7 @@ const Question = ({
  * The total is read live from a ref so applicability changes don't push
  * focus past the current end of the list.
  */
-const useQuestionFocus = (
+export const useQuestionFocus = (
   householdId: string | null | undefined,
   module: ModuleSetupKey,
   applicableKeys: readonly string[],
