@@ -4,6 +4,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import {
+  PRIVACY_VERSION,
+  PRIVACY_EFFECTIVE_DATE,
+  PRIVACY_CHANGELOG,
+  formatVersionDate,
+} from "@/lib/versioning";
+import { VersionHistory } from "@/components/settings/VersionHistory";
 
 export default function PrivacyPolicy() {
   const navigate = useNavigate();
@@ -25,9 +33,12 @@ export default function PrivacyPolicy() {
           <CardHeader>
             <CardTitle className="text-3xl">Privacy Policy</CardTitle>
             <p className="text-muted-foreground text-sm">Family Desk</p>
-            <p className="text-sm text-muted-foreground">
-              Effective Date: March 24, 2026
-            </p>
+            <div className="flex items-center gap-2 flex-wrap pt-1">
+              <Badge variant="secondary">Version {PRIVACY_VERSION}</Badge>
+              <span className="text-sm text-muted-foreground">
+                Effective {formatVersionDate(PRIVACY_EFFECTIVE_DATE)}
+              </span>
+            </div>
           </CardHeader>
           <CardContent className="prose prose-sm max-w-none space-y-6">
             <p className="text-muted-foreground">
@@ -234,6 +245,8 @@ export default function PrivacyPolicy() {
                 Website: <strong>familydesk.in</strong>
               </p>
             </section>
+
+            <VersionHistory entries={PRIVACY_CHANGELOG} />
           </CardContent>
         </Card>
       </main>
