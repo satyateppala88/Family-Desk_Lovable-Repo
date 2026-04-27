@@ -2,18 +2,46 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Sparkles, FileText, ShieldCheck } from "lucide-react";
+import { Sparkles, FileText, ShieldCheck, ArrowRight, PlayCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   APP_CHANGELOG,
   APP_VERSION,
   PRIVACY_VERSION,
   TERMS_VERSION,
   formatVersionDate,
+  type ChangelogLink,
 } from "@/lib/versioning";
 
 export const WhatsNewSection = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  const handleLinkClick = async (link: ChangelogLink) => {
+    // If this link replays a feature tour, clear its completion flag first.
+    if (link.tour && user?.id) {
+      try {
+        const { data } = await supabase
+          .from("profiles")
+          .select("completed_tours")
+          .eq("id", user.id)
+          .single();
+        const tours = (data?.completed_tours as Record<string, boolean>) || {};
+        await supabase
+          .from("profiles")
+          .update({ completed_tours: { ...tours, [link.tour]: false } })
+          .eq("id", user.id);
+        queryClient.invalidateQueries({ queryKey: ["completed-tours", user.id] });
+      } catch (err) {
+        console.error("Failed to reset tour", err);
+      }
+    }
+    navigate(link.to);
+  };
 
   return (
     <Card>
@@ -54,6 +82,30 @@ export const WhatsNewSection = () => {
                     <li key={i}>{c}</li>
                   ))}
                 </ul>
+                {entry.links && entry.links.length > 0 && (
+                  <div className="mt-4 space-y-2">
+                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      Try it now
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {entry.links.map((link, i) => (
+                        <Button
+                          key={i}
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleLinkClick(link)}
+                        >
+                          {link.tour ? (
+                            <PlayCircle className="h-3 w-3 mr-2" />
+                          ) : (
+                            <ArrowRight className="h-3 w-3 mr-2" />
+                          )}
+                          {link.label}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </AccordionContent>
             </AccordionItem>
           ))}

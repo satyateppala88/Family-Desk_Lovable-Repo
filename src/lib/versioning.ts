@@ -15,12 +15,31 @@
 
 export type ChangeType = "major" | "minor";
 
+export type FeatureTourName =
+  | "dashboard"
+  | "tasks"
+  | "meals"
+  | "grocery"
+  | "habits"
+  | "calendar"
+  | "taskmaster";
+
+export interface ChangelogLink {
+  label: string;
+  /** In-app route to navigate to. */
+  to: string;
+  /** If set, resets the named feature tour so it replays on arrival. */
+  tour?: FeatureTourName;
+}
+
 export interface ChangelogEntry {
   version: string;
   date: string; // ISO yyyy-mm-dd
   type: ChangeType;
   title: string;
   changes: string[];
+  /** Optional setup screens / feature tours related to this release. */
+  links?: ChangelogLink[];
 }
 
 // ----- Current versions ---------------------------------------------------
@@ -80,6 +99,17 @@ export const APP_CHANGELOG: ChangelogEntry[] = [
       "WhatsApp OTP login, phone verification and notification preferences",
       "Installable Progressive Web App (PWA) with offline caching",
       "Privacy Policy and Terms of Service v1.0 published",
+    ],
+    links: [
+      { label: "Set up household", to: "/household-setup" },
+      { label: "Run onboarding", to: "/onboarding/preferences" },
+      { label: "Tour the dashboard", to: "/dashboard", tour: "dashboard" },
+      { label: "Tour Taskmaster", to: "/taskmaster/today", tour: "taskmaster" },
+      { label: "Tour Meals", to: "/meals", tour: "meals" },
+      { label: "Tour Grocery", to: "/grocery", tour: "grocery" },
+      { label: "Tour Calendar", to: "/calendar", tour: "calendar" },
+      { label: "Tour Habits", to: "/habits", tour: "habits" },
+      { label: "Install as app", to: "/install" },
     ],
   },
 ];
