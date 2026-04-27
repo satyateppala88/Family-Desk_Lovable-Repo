@@ -39,7 +39,10 @@ interface SendPayload {
     | "meals"
     | "pantry"
     | "invites"
-    | "daily_plan";
+    | "daily_plan"
+    | "finance"
+    | "calendar"
+    | "ai_suggestions";
   title: string;
   body: string;
   url?: string;
