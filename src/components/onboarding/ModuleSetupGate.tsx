@@ -284,7 +284,13 @@ const Question = ({
     if (!el || !container) return;
     // Scroll within the dialog's container only — don't move the page.
     const elTop = el.offsetTop - container.offsetTop;
-    container.scrollTo({ top: Math.max(0, elTop - 8), behavior: "smooth" });
+    const top = Math.max(0, elTop - 8);
+    if (typeof container.scrollTo === "function") {
+      container.scrollTo({ top, behavior: "smooth" });
+    } else {
+      // Fallback for environments without scrollTo (older browsers, jsdom).
+      container.scrollTop = top;
+    }
   }, [activeIndex, index, ctx]);
   return <div ref={ref}>{children}</div>;
 };
