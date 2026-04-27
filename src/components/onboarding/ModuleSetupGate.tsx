@@ -452,6 +452,35 @@ export const ModuleSetupDialog = ({
               </div>
             </div>
             {/*
+              Status line — explains, in plain language, where the
+              currently-shown progress is coming from:
+                • "Setup complete" if this module is already marked done
+                  (any answers the user changes here will overwrite their
+                  saved profile).
+                • "Restored your in-progress answers" if a draft was
+                  hydrated from a previous visit (so progress > 0 isn't
+                  confusing on a fresh dialog open).
+              We deliberately render NOTHING for a brand-new questionnaire
+              with no draft and no completion — to avoid noise.
+            */}
+            {isComplete ? (
+              <p className="mt-1.5 flex items-start gap-1.5 text-[11px] leading-snug text-emerald-600 dark:text-emerald-400">
+                <CheckCircle2 className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                <span>
+                  Setup complete for this module — any changes you make here will
+                  overwrite your saved answers.
+                </span>
+              </p>
+            ) : restoredFromDraft ? (
+              <p className="mt-1.5 flex items-start gap-1.5 text-[11px] leading-snug text-muted-foreground">
+                <History className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                <span>
+                  Restored your in-progress answers from your last visit — pick up
+                  where you left off.
+                </span>
+              </p>
+            ) : null}
+            {/*
               Screen-reader-only live region. We announce progress changes
               here (instead of on the progressbar itself) because aria-live
               on role=progressbar is inconsistently supported across SRs.
