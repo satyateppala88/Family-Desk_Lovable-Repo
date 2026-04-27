@@ -75,6 +75,9 @@ export const ModuleSetupDialog = ({
   const saveRef = useRef<(() => void) | null>(null);
   const skipRef = useRef<(() => void) | null>(null);
   const isSaving = isUpdating || isMarking;
+  // Form-reported progress (total questions / answered count).
+  const [progress, setProgress] = useState<{ total: number; answered: number }>({ total: 0, answered: 0 });
+  const pct = progress.total > 0 ? Math.round((progress.answered / progress.total) * 100) : 0;
 
   return (
     <Dialog open={open} onOpenChange={(next) => { if (dismissible) onOpenChange?.(next); }}>
@@ -87,7 +90,28 @@ export const ModuleSetupDialog = ({
           <DialogTitle>{meta.title}</DialogTitle>
           <DialogDescription>{meta.description}</DialogDescription>
         </DialogHeader>
-        <FormActionContext.Provider value={{ saveRef, skipRef }}>
+        {progress.total > 0 && (
+          <div
+            className="-mt-1"
+            role="progressbar"
+            aria-valuenow={pct}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-label="Setup completion"
+          >
+            <div className="flex items-center justify-between text-[11px] text-muted-foreground mb-1.5">
+              <span>Answered {progress.answered} of {progress.total}</span>
+              <span className="tabular-nums">{pct}%</span>
+            </div>
+            <div className="h-1 w-full rounded-full bg-muted overflow-hidden">
+              <div
+                className="h-full bg-primary transition-all duration-300 ease-out"
+                style={{ width: `${pct}%` }}
+              />
+            </div>
+          </div>
+        )}
+        <FormActionContext.Provider value={{ saveRef, skipRef, setProgress }}>
           <div className="flex-1 min-h-0 overflow-y-auto -mx-6 px-6">
             <ModuleSetupForm
               module={module}
@@ -135,7 +159,19 @@ export const ModuleSetupDialog = ({
 const FormActionContext = createContext<{
   saveRef: React.MutableRefObject<(() => void) | null>;
   skipRef: React.MutableRefObject<(() => void) | null>;
+  setProgress: (p: { total: number; answered: number }) => void;
 } | null>(null);
+
+/**
+ * Each *SetupForm calls this with its current answered/total counts so the
+ * dialog can render a step-progress indicator above the scroll area.
+ */
+const useReportProgress = (answered: number, total: number) => {
+  const ctx = useContext(FormActionContext);
+  useEffect(() => {
+    ctx?.setProgress({ answered, total });
+  }, [ctx, answered, total]);
+};
 
 // ---------------------------------------------------------------------------
 // Per-module forms
@@ -216,6 +252,14 @@ const FormShell = ({
 const toggle = (arr: string[], v: string) =>
   arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v];
 
+/** Count "answered" questions: a non-empty string or non-empty array. */
+const countAnswered = (values: unknown[]) =>
+  values.reduce<number>((n, v) => {
+    if (Array.isArray(v)) return n + (v.length > 0 ? 1 : 0);
+    if (typeof v === "string") return n + (v.trim().length > 0 ? 1 : 0);
+    return n + (v != null ? 1 : 0);
+  }, 0);
+
 // ---- Meals --------------------------------------------------------------
 const MealsSetupForm = ({ preferences, onSubmit, onSkip, isSaving }: Omit<FormProps, "module">) => {
   const [data, setData] = useState({
@@ -225,6 +269,10 @@ const MealsSetupForm = ({ preferences, onSubmit, onSkip, isSaving }: Omit<FormPr
     regional_cuisines: (preferences?.regional_cuisines ?? []) as string[],
     weekday_cooking_time: preferences?.weekday_cooking_time ?? "30_to_60",
   });
+  useReportProgress(
+    countAnswered([data.diet_type, data.spice_level, data.weekday_cooking_time, data.food_allergies, data.regional_cuisines]),
+    5,
+  );
   return (
     <FormShell onSave={() => onSubmit(data)} onSkip={onSkip} isSaving={isSaving}>
       <div>
@@ -302,6 +350,10 @@ const GrocerySetupForm = ({ preferences, onSubmit, onSkip, isSaving }: Omit<Form
     shopping_frequency: preferences?.shopping_frequency ?? "weekly",
     organic_preference: preferences?.organic_preference ?? "sometimes",
   });
+  useReportProgress(
+    countAnswered([data.pantry_size, data.shopping_frequency, data.organic_preference]),
+    3,
+  );
   return (
     <FormShell onSave={() => onSubmit(data)} onSkip={onSkip} isSaving={isSaving}>
       <div>
@@ -339,6 +391,10 @@ const FinanceSetupForm = ({ preferences, onSubmit, onSkip, isSaving }: Omit<Form
     monthly_grocery_budget: preferences?.monthly_grocery_budget ?? "5000_to_10000",
     budget_consciousness: preferences?.budget_consciousness ?? "somewhat",
   });
+  useReportProgress(
+    countAnswered([data.monthly_grocery_budget, data.budget_consciousness]),
+    2,
+  );
   return (
     <FormShell onSave={() => onSubmit(data)} onSkip={onSkip} isSaving={isSaving}>
       <div>
@@ -368,6 +424,10 @@ const RoutineSetupForm = ({ preferences, onSubmit, onSkip, isSaving }: Omit<Form
     preferred_task_time: preferences?.preferred_task_time ?? "evening",
     household_concerns: (preferences?.household_concerns ?? []) as string[],
   });
+  useReportProgress(
+    countAnswered([data.preferred_task_time, data.household_concerns]),
+    2,
+  );
   return (
     <FormShell onSave={() => onSubmit(data)} onSkip={onSkip} isSaving={isSaving}>
       <div>
@@ -400,6 +460,10 @@ const CalendarSetupForm = ({ preferences, onSubmit, onSkip, isSaving }: Omit<For
     work_schedule: preferences?.work_schedule ?? "both_working",
     festival_importance: preferences?.festival_importance ?? "somewhat",
   });
+  useReportProgress(
+    countAnswered([data.work_schedule, data.festival_importance]),
+    2,
+  );
   return (
     <FormShell onSave={() => onSubmit(data)} onSkip={onSkip} isSaving={isSaving}>
       <div>
