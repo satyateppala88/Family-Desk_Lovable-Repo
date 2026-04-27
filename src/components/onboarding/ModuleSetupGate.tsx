@@ -11,6 +11,75 @@ import { useModuleSetup } from "@/hooks/useModuleSetup";
 import { MODULE_SETUP_META, type ModuleSetupKey } from "@/lib/moduleSetup";
 import { toast } from "sonner";
 
+// ---------------------------------------------------------------------------
+// Draft persistence (in-progress answers across dialog close / module switch)
+// ---------------------------------------------------------------------------
+
+const DRAFT_PREFIX = "familydesk:module-setup-draft";
+
+const draftKey = (householdId: string | null | undefined, module: ModuleSetupKey) =>
+  `${DRAFT_PREFIX}:${householdId ?? "_"}:${module}`;
+
+/** Safely read a draft from localStorage. */
+const readDraft = <T,>(householdId: string | null | undefined, module: ModuleSetupKey): Partial<T> | null => {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(draftKey(householdId, module));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<T>;
+    return parsed && typeof parsed === "object" ? parsed : null;
+  } catch {
+    return null;
+  }
+};
+
+/** Safely write a draft to localStorage. */
+const writeDraft = (householdId: string | null | undefined, module: ModuleSetupKey, value: unknown) => {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(draftKey(householdId, module), JSON.stringify(value));
+  } catch {
+    /* quota or disabled storage — silently ignore */
+  }
+};
+
+/** Wipe any saved draft for this household + module. */
+export const clearModuleSetupDraft = (
+  householdId: string | null | undefined,
+  module: ModuleSetupKey,
+) => {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.removeItem(draftKey(householdId, module));
+  } catch {
+    /* noop */
+  }
+};
+
+/**
+ * `useState` variant that hydrates from localStorage on mount and mirrors
+ * every change back to it. Use inside *SetupForm components so partially
+ * answered questionnaires survive dialog close, module switches, and page
+ * refresh — until the user successfully saves (which calls
+ * `clearModuleSetupDraft`).
+ */
+const useDraftState = <T extends object>(
+  householdId: string | null | undefined,
+  module: ModuleSetupKey,
+  initial: T,
+): [T, (next: T) => void] => {
+  const [data, setData] = useState<T>(() => {
+    const draft = readDraft<T>(householdId, module);
+    return draft ? { ...initial, ...draft } : initial;
+  });
+  // Persist on every change. We deliberately re-write on every render where
+  // `data` changes — the writes are tiny and synchronous.
+  useEffect(() => {
+    writeDraft(householdId, module, data);
+  }, [householdId, module, data]);
+  return [data, setData];
+};
+
 interface ModuleSetupGateProps {
   module: ModuleSetupKey;
   children: ReactNode;
@@ -134,6 +203,8 @@ export const ModuleSetupDialog = ({
                 try {
                   await updatePreferences(updates);
                   await markComplete();
+                // Successful save → wipe the in-progress draft.
+                clearModuleSetupDraft(householdId, module);
                   toast.success("Setup saved");
                   onComplete?.();
                 } catch (err: any) {
