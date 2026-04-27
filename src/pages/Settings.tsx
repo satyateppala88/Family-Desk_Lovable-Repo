@@ -23,6 +23,7 @@ import { EditBudgetPreferencesDialog } from "@/components/settings/EditBudgetPre
 import { supabase } from "@/lib/supabase";
 import { HowToUseSection } from "@/components/settings/HowToUseSection";
 import { WhatsNewSection } from "@/components/settings/WhatsNewSection";
+import { TermsSection, PrivacySection } from "@/components/settings/LegalDocsSection";
 
 export const Settings = () => {
   const { user } = useAuth();
@@ -386,6 +387,8 @@ export const Settings = () => {
 
           <HowToUseSection />
           <WhatsNewSection />
+          <TermsSection />
+          <PrivacySection />
         </div>
       </main>
     </>
