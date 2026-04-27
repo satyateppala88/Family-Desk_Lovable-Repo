@@ -1,115 +1,115 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
 
-interface NotificationPreferences {
-  // Email preferences
-  task_notifications: boolean;
-  meal_summaries: boolean;
-  pantry_alerts: boolean;
-  habit_reminders: boolean;
-  household_invitations: boolean;
-  weekly_digest: boolean;
-  access_updates: boolean;
-  // WhatsApp preferences
-  task_notifications_whatsapp: boolean;
-  daily_plan_whatsapp: boolean;
-  pantry_alerts_whatsapp: boolean;
-  habit_reminders_whatsapp: boolean;
-  household_invitations_whatsapp: boolean;
-  weekly_digest_whatsapp: boolean;
+export type NotificationChannel =
+  | "tasks"
+  | "habits"
+  | "meals"
+  | "pantry"
+  | "invites"
+  | "daily_plan";
+
+export interface NotificationPreferences {
+  user_id: string;
+  tasks: boolean;
+  habits: boolean;
+  meals: boolean;
+  pantry: boolean;
+  invites: boolean;
+  daily_plan: boolean;
+  updated_at: string;
 }
 
-const defaultPreferences: NotificationPreferences = {
-  task_notifications: true,
-  meal_summaries: true,
-  pantry_alerts: true,
-  habit_reminders: true,
-  household_invitations: true,
-  weekly_digest: true,
-  access_updates: true,
-  task_notifications_whatsapp: false,
-  daily_plan_whatsapp: false,
-  pantry_alerts_whatsapp: false,
-  habit_reminders_whatsapp: false,
-  household_invitations_whatsapp: false,
-  weekly_digest_whatsapp: false,
+const DEFAULTS: Omit<NotificationPreferences, "user_id" | "updated_at"> = {
+  tasks: true,
+  habits: true,
+  meals: true,
+  pantry: true,
+  invites: true,
+  daily_plan: true,
 };
 
 export function useNotificationPreferences() {
-  const { toast } = useToast();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
+  const userId = user?.id;
 
-  const { data: preferences, isLoading, error } = useQuery({
-    queryKey: ["notification-preferences"],
-    queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
-
+  const query = useQuery({
+    queryKey: ["notification-preferences", userId],
+    enabled: !!userId,
+    queryFn: async (): Promise<NotificationPreferences | null> => {
+      if (!userId) return null;
       const { data, error } = await supabase
-        .from("user_email_preferences")
+        .from("notification_preferences")
         .select("*")
-        .eq("user_id", user.id)
+        .eq("user_id", userId)
         .maybeSingle();
-
       if (error) throw error;
-
-      // If no preferences exist, create default ones
+      // Row is auto-created by the handle_new_user trigger, but fall back
+      // gracefully if it's missing (e.g. legacy accounts).
       if (!data) {
-        const { data: newData, error: insertError } = await supabase
-          .from("user_email_preferences")
-          .insert({ user_id: user.id })
-          .select()
-          .single();
-
-        if (insertError) throw insertError;
-        return { ...defaultPreferences, ...newData } as NotificationPreferences;
+        return {
+          user_id: userId,
+          ...DEFAULTS,
+          updated_at: new Date().toISOString(),
+        };
       }
-
-      return { ...defaultPreferences, ...data } as NotificationPreferences;
+      return data as NotificationPreferences;
     },
   });
 
-  const updatePreferences = useMutation({
-    mutationFn: async (updates: Partial<NotificationPreferences>) => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
-
+  const mutation = useMutation({
+    mutationFn: async (patch: Partial<Record<NotificationChannel, boolean>>) => {
+      if (!userId) throw new Error("Not signed in");
       const { error } = await supabase
-        .from("user_email_preferences")
-        .update({ ...updates, updated_at: new Date().toISOString() })
-        .eq("user_id", user.id);
-
+        .from("notification_preferences")
+        .upsert(
+          { user_id: userId, ...DEFAULTS, ...query.data, ...patch },
+          { onConflict: "user_id" }
+        );
       if (error) throw error;
-      return updates;
+      return patch;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["notification-preferences"] });
-      toast({
-        title: "Preferences Updated",
-        description: "Your notification preferences have been saved.",
+    onMutate: async (patch) => {
+      await queryClient.cancelQueries({
+        queryKey: ["notification-preferences", userId],
       });
+      const previous = queryClient.getQueryData<NotificationPreferences | null>([
+        "notification-preferences",
+        userId,
+      ]);
+      if (previous) {
+        queryClient.setQueryData<NotificationPreferences>(
+          ["notification-preferences", userId],
+          { ...previous, ...patch }
+        );
+      }
+      return { previous };
     },
-    onError: (error: any) => {
-      toast({
-        title: "Update Failed",
-        description: error.message || "Failed to update preferences",
-        variant: "destructive",
+    onError: (_err, _patch, ctx) => {
+      if (ctx?.previous) {
+        queryClient.setQueryData(
+          ["notification-preferences", userId],
+          ctx.previous
+        );
+      }
+      toast.error("Couldn't save your preference. Please try again.");
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["notification-preferences", userId],
       });
     },
   });
-
-  const togglePreference = (key: keyof NotificationPreferences) => {
-    if (!preferences) return;
-    updatePreferences.mutate({ [key]: !preferences[key] });
-  };
 
   return {
-    preferences: preferences || defaultPreferences,
-    isLoading,
-    error,
-    updatePreferences: updatePreferences.mutate,
-    togglePreference,
-    isUpdating: updatePreferences.isPending,
+    preferences: query.data ?? null,
+    isLoading: query.isLoading,
+    isError: query.isError,
+    setChannel: (channel: NotificationChannel, enabled: boolean) =>
+      mutation.mutate({ [channel]: enabled }),
+    isUpdating: mutation.isPending,
   };
 }
