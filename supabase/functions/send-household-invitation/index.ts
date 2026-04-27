@@ -6,6 +6,7 @@ import {
   getEmailWrapper, 
   getHouseholdInvitationContent 
 } from "../_shared/email-templates.ts";
+import { sendPush } from "../_shared/push.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -117,6 +118,19 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     console.log(`Household invitation email sent to ${inviteeEmail}:`, emailData);
+
+    // If the invitee already has an account, also push (channel: invites)
+    if (user) {
+      await sendPush({
+        user_ids: [user.id],
+        channel: "invites",
+        title: `Invitation to join ${householdName}`,
+        body: `${inviterName} invited you as ${displayRole}`,
+        url: "/dashboard",
+        tag: `invite-${householdId}-${user.id}`,
+        data: { householdId, type: "household_invitation" },
+      });
+    }
 
     return new Response(
       JSON.stringify({ success: true, messageId: emailData?.id }),

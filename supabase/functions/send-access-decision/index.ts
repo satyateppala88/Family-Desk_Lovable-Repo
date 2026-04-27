@@ -7,6 +7,7 @@ import {
   getAccessApprovedContent, 
   getAccessRejectedContent 
 } from "../_shared/email-templates.ts";
+import { sendPush } from "../_shared/push.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -132,6 +133,29 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     console.log(`Access ${decision} email sent to ${email}:`, emailData);
+
+    // If the requester already has an account, also push (channel: invites)
+    try {
+      const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
+      const targetUser = existingUsers?.users?.find((u) => u.email === email);
+      if (targetUser) {
+        await sendPush({
+          user_ids: [targetUser.id],
+          channel: "invites",
+          title: decision === "approved"
+            ? "🎉 Access request approved"
+            : "Access request update",
+          body: decision === "approved"
+            ? "You can now sign in to Family Desk"
+            : (rejectionReason || "Your access request was not approved"),
+          url: "/auth",
+          tag: `access-decision-${targetUser.id}`,
+          data: { decision, type: "access_decision" },
+        });
+      }
+    } catch (pushError) {
+      console.warn("Push fan-out for access decision failed:", pushError);
+    }
 
     return new Response(
       JSON.stringify({ success: true, messageId: emailData?.id }),
