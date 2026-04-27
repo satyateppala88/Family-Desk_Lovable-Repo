@@ -9,7 +9,10 @@ export type NotificationChannel =
   | "meals"
   | "pantry"
   | "invites"
-  | "daily_plan";
+  | "daily_plan"
+  | "finance"
+  | "calendar"
+  | "ai_suggestions";
 
 export interface NotificationPreferences {
   user_id: string;
@@ -19,6 +22,9 @@ export interface NotificationPreferences {
   pantry: boolean;
   invites: boolean;
   daily_plan: boolean;
+  finance: boolean;
+  calendar: boolean;
+  ai_suggestions: boolean;
   updated_at: string;
 }
 
@@ -29,6 +35,9 @@ const DEFAULTS: Omit<NotificationPreferences, "user_id" | "updated_at"> = {
   pantry: true,
   invites: true,
   daily_plan: true,
+  finance: true,
+  calendar: true,
+  ai_suggestions: true,
 };
 
 export function useNotificationPreferences() {
@@ -123,6 +132,9 @@ export function useNotificationPreferences() {
         "pantry",
         "invites",
         "daily_plan",
+        "finance",
+        "calendar",
+        "ai_suggestions",
       ];
       if ((valid as string[]).includes(key)) {
         const channel = key as NotificationChannel;
