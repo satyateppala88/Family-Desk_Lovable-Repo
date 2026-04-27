@@ -391,8 +391,8 @@ const countAnswered = (values: unknown[]) =>
   }, 0);
 
 // ---- Meals --------------------------------------------------------------
-const MealsSetupForm = ({ preferences, onSubmit, onSkip, isSaving }: Omit<FormProps, "module">) => {
-  const [data, setData] = useState({
+const MealsSetupForm = ({ module, householdId, preferences, onSubmit, onSkip, isSaving }: FormProps) => {
+  const [data, setData] = useDraftState(householdId, module, {
     diet_type: preferences?.diet_type ?? "vegetarian",
     spice_level: preferences?.spice_level ?? "medium",
     food_allergies: (preferences?.food_allergies ?? []) as string[],
@@ -475,8 +475,8 @@ const MealsSetupForm = ({ preferences, onSubmit, onSkip, isSaving }: Omit<FormPr
 };
 
 // ---- Grocery ------------------------------------------------------------
-const GrocerySetupForm = ({ preferences, onSubmit, onSkip, isSaving }: Omit<FormProps, "module">) => {
-  const [data, setData] = useState({
+const GrocerySetupForm = ({ module, householdId, preferences, onSubmit, onSkip, isSaving }: FormProps) => {
+  const [data, setData] = useDraftState(householdId, module, {
     pantry_size: preferences?.pantry_size ?? "medium",
     shopping_frequency: preferences?.shopping_frequency ?? "weekly",
     organic_preference: preferences?.organic_preference ?? "sometimes",
@@ -518,8 +518,8 @@ const GrocerySetupForm = ({ preferences, onSubmit, onSkip, isSaving }: Omit<Form
 };
 
 // ---- Finance ------------------------------------------------------------
-const FinanceSetupForm = ({ preferences, onSubmit, onSkip, isSaving }: Omit<FormProps, "module">) => {
-  const [data, setData] = useState({
+const FinanceSetupForm = ({ module, householdId, preferences, onSubmit, onSkip, isSaving }: FormProps) => {
+  const [data, setData] = useDraftState(householdId, module, {
     monthly_grocery_budget: preferences?.monthly_grocery_budget ?? "5000_to_10000",
     budget_consciousness: preferences?.budget_consciousness ?? "somewhat",
   });
@@ -552,8 +552,8 @@ const FinanceSetupForm = ({ preferences, onSubmit, onSkip, isSaving }: Omit<Form
 };
 
 // ---- Routine (Habits / Tasks) ------------------------------------------
-const RoutineSetupForm = ({ preferences, onSubmit, onSkip, isSaving }: Omit<FormProps, "module">) => {
-  const [data, setData] = useState({
+const RoutineSetupForm = ({ module, householdId, preferences, onSubmit, onSkip, isSaving }: FormProps) => {
+  const [data, setData] = useDraftState(householdId, module, {
     preferred_task_time: preferences?.preferred_task_time ?? "evening",
     household_concerns: (preferences?.household_concerns ?? []) as string[],
   });
@@ -589,8 +589,8 @@ const RoutineSetupForm = ({ preferences, onSubmit, onSkip, isSaving }: Omit<Form
 };
 
 // ---- Calendar -----------------------------------------------------------
-const CalendarSetupForm = ({ preferences, onSubmit, onSkip, isSaving }: Omit<FormProps, "module">) => {
-  const [data, setData] = useState({
+const CalendarSetupForm = ({ module, householdId, preferences, onSubmit, onSkip, isSaving }: FormProps) => {
+  const [data, setData] = useDraftState(householdId, module, {
     work_schedule: preferences?.work_schedule ?? "both_working",
     festival_importance: preferences?.festival_importance ?? "somewhat",
   });
