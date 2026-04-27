@@ -328,6 +328,11 @@ export const ModuleSetupDialog = ({
   const saveRef = useRef<(() => void) | null>(null);
   const skipRef = useRef<(() => void) | null>(null);
   const isSaving = isUpdating || isMarking;
+  // Inline save error. We surface this in the dialog body (in addition to
+  // the toast) so the user can retry without dismissing anything and
+  // without losing their selections — the form's draft state is preserved
+  // automatically because we only clear the draft on a successful save.
+  const [saveError, setSaveError] = useState<string | null>(null);
   // Form-reported progress (total questions / answered count).
   const [progress, setProgress] = useState<{ total: number; answered: number }>({ total: 0, answered: 0 });
   const pct = progress.total > 0 ? Math.round((progress.answered / progress.total) * 100) : 0;
@@ -420,6 +425,7 @@ export const ModuleSetupDialog = ({
               preferences={preferences}
               onSubmit={async (updates) => {
                 try {
+                  setSaveError(null);
                   await updatePreferences(updates);
                   await markComplete();
                 // Successful save → wipe the in-progress draft.
@@ -427,7 +433,9 @@ export const ModuleSetupDialog = ({
                   toast.success("Setup saved");
                   onComplete?.();
                 } catch (err: any) {
-                  toast.error(err.message ?? "Failed to save setup");
+                  const msg = err?.message ?? "Failed to save setup";
+                  setSaveError(msg);
+                  toast.error(msg);
                 }
               }}
               onSkip={async () => {
