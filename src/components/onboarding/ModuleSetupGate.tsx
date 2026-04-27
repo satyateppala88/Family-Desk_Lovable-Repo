@@ -524,8 +524,9 @@ const FormActionContext = createContext<{
   scrollContainerRef: React.MutableRefObject<HTMLDivElement | null>;
   /** Push a polite SR announcement (e.g. "Next: Spice level, step 2 of 5"). */
   announce: (msg: string) => void;
-  /** Current applicable question total (driven by the form's progress report). */
-  total: number;
+  /** Live ref to the current applicable question total (kept stable so
+   *  context identity doesn't change when the total updates). */
+  totalRef: React.MutableRefObject<number>;
 } | null>(null);
 
 /**
