@@ -517,6 +517,10 @@ const FormActionContext = createContext<{
   skipRef: React.MutableRefObject<(() => void) | null>;
   setProgress: (p: { total: number; answered: number }) => void;
   scrollContainerRef: React.MutableRefObject<HTMLDivElement | null>;
+  /** Push a polite SR announcement (e.g. "Next: Spice level, step 2 of 5"). */
+  announce: (msg: string) => void;
+  /** Current applicable question total (driven by the form's progress report). */
+  total: number;
 } | null>(null);
 
 /**
@@ -539,10 +543,17 @@ const useReportProgress = (answered: number, total: number) => {
 const Question = ({
   index,
   activeIndex,
+  label,
   children,
 }: {
   index: number;
   activeIndex: number | null;
+  /**
+   * Human-readable name of this question (e.g. "Spice level"). When the
+   * question becomes active, an SR announcement of the form
+   * "Now on: <label>, step X of Y" is pushed to the dialog's live region.
+   */
+  label?: string;
   children: ReactNode;
 }) => {
   const ref = useRef<HTMLDivElement | null>(null);
@@ -551,6 +562,19 @@ const Question = ({
     if (activeIndex !== index) return;
     const el = ref.current;
     const container = ctx?.scrollContainerRef.current;
+    // Announce the question by name BEFORE we (maybe) scroll. Done here
+    // (instead of on every render) so it only fires when the active step
+    // actually changes, and uses the parent's reported `total` so the
+    // step count stays accurate across applicability changes.
+    if (ctx && label) {
+      const total = ctx.total;
+      const stepNumber = index + 1;
+      ctx.announce(
+        total > 0
+          ? `Now on: ${label}, step ${stepNumber} of ${total}.`
+          : `Now on: ${label}.`,
+      );
+    }
     if (!el || !container) return;
     // Scroll within the dialog's container only — don't move the page.
     //
