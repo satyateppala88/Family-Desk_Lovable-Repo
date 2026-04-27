@@ -144,10 +144,16 @@ function clearTouched(
  * helper to record that a question was answered. Forms call `mark("diet")`
  * inside their onValueChange handlers so progress reflects user activity,
  * not prefilled defaults — and survives refresh / reopen.
+ *
+ * `applicableKeys` lets the caller scope the returned `count` to only the
+ * questions that are currently applicable for this module — supporting
+ * dynamic per-module totals where some questions can be skipped based on
+ * earlier answers.
  */
 const useTouchedQuestions = (
   householdId: string | null | undefined,
   module: ModuleSetupKey,
+  applicableKeys?: readonly string[],
 ) => {
   const [touched, setTouched] = useState<Set<string>>(
     () => new Set(readTouched(householdId, module)),
@@ -163,8 +169,45 @@ const useTouchedQuestions = (
       return next;
     });
   }, []);
-  const count = touched.size;
+  // When an applicability filter is provided, only count touches against
+  // questions that are currently applicable. This keeps "Step X of Y"
+  // honest when conditional questions disappear after the user touched them.
+  const count = applicableKeys
+    ? applicableKeys.reduce((n, k) => (touched.has(k) ? n + 1 : n), 0)
+    : touched.size;
   return { mark, count };
+};
+
+/**
+ * Each *SetupForm declares its questions as `{ key, applicable }` entries.
+ * The progress bar's TOTAL comes from the number of applicable entries,
+ * the ANSWERED count from how many of those have been touched, and the
+ * `<Question index>` ordering uses the applicable subset's positions —
+ * so "Step X of Y" stays accurate even when conditional questions are
+ * filtered out.
+ */
+type FormQuestion = { key: string; applicable: boolean };
+
+/**
+ * Reduces a form's question definitions into the bookkeeping a form needs
+ * to drive a dynamic progress bar:
+ *   - `applicableKeys`: ordered list of currently-applicable question keys.
+ *   - `total`: number of applicable questions (= progress bar denominator).
+ *   - `indexOf(key)`: position within the applicable subset (or -1) — used
+ *     by `<Question>` to scroll-into-view + by `advanceFrom` to step
+ *     forward by a stable key instead of a hardcoded numeric index.
+ */
+const useApplicableQuestions = (questions: readonly FormQuestion[]) => {
+  return useMemo(() => {
+    const applicable = questions.filter((q) => q.applicable);
+    const applicableKeys = applicable.map((q) => q.key);
+    const positions = new Map(applicableKeys.map((k, i) => [k, i] as const));
+    return {
+      applicableKeys,
+      total: applicable.length,
+      indexOf: (key: string) => positions.get(key) ?? -1,
+    };
+  }, [questions]);
 };
 
 interface ModuleSetupGateProps {
