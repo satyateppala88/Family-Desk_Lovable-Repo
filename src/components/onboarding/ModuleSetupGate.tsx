@@ -10,7 +10,7 @@ import { useHouseholdPreferences } from "@/hooks/useHouseholdPreferences";
 import { useModuleSetup } from "@/hooks/useModuleSetup";
 import { MODULE_SETUP_META, type ModuleSetupKey } from "@/lib/moduleSetup";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Loader2, AlertCircle, RotateCcw } from "lucide-react";
 
 // ---------------------------------------------------------------------------
 // Draft persistence (in-progress answers across dialog close / module switch)
@@ -328,6 +328,11 @@ export const ModuleSetupDialog = ({
   const saveRef = useRef<(() => void) | null>(null);
   const skipRef = useRef<(() => void) | null>(null);
   const isSaving = isUpdating || isMarking;
+  // Inline save error. We surface this in the dialog body (in addition to
+  // the toast) so the user can retry without dismissing anything and
+  // without losing their selections — the form's draft state is preserved
+  // automatically because we only clear the draft on a successful save.
+  const [saveError, setSaveError] = useState<string | null>(null);
   // Form-reported progress (total questions / answered count).
   const [progress, setProgress] = useState<{ total: number; answered: number }>({ total: 0, answered: 0 });
   const pct = progress.total > 0 ? Math.round((progress.answered / progress.total) * 100) : 0;
@@ -413,6 +418,43 @@ export const ModuleSetupDialog = ({
           </div>
         )}
         <FormActionContext.Provider value={ctxValue}>
+          {saveError && (
+            <div
+              role="alert"
+              aria-live="assertive"
+              className="mx-0 mt-1 flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+            >
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+              <div className="flex-1 min-w-0">
+                <p className="font-medium leading-snug">Couldn’t save your setup</p>
+                <p className="text-xs opacity-90 leading-snug break-words">{saveError}</p>
+                <p className="mt-1 text-[11px] opacity-80 leading-snug">
+                  Your selections are kept — try again when you’re ready.
+                </p>
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => { if (!isSaving) saveRef.current?.(); }}
+                disabled={isSaving}
+                aria-disabled={isSaving}
+                className="shrink-0 border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
+              >
+                {isSaving ? (
+                  <>
+                    <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+                    Retrying...
+                  </>
+                ) : (
+                  <>
+                    <RotateCcw className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
+                    Try again
+                  </>
+                )}
+              </Button>
+            </div>
+          )}
           <div ref={scrollContainerRef} className="flex-1 min-h-0 overflow-y-auto -mx-6 px-6 scroll-smooth">
             <ModuleSetupForm
               module={module}
@@ -420,6 +462,7 @@ export const ModuleSetupDialog = ({
               preferences={preferences}
               onSubmit={async (updates) => {
                 try {
+                  setSaveError(null);
                   await updatePreferences(updates);
                   await markComplete();
                 // Successful save → wipe the in-progress draft.
@@ -427,7 +470,9 @@ export const ModuleSetupDialog = ({
                   toast.success("Setup saved");
                   onComplete?.();
                 } catch (err: any) {
-                  toast.error(err.message ?? "Failed to save setup");
+                  const msg = err?.message ?? "Failed to save setup";
+                  setSaveError(msg);
+                  toast.error(msg);
                 }
               }}
               onSkip={async () => {
