@@ -320,13 +320,18 @@ describe("ModuleSetupDialog — scroll & footer layout", () => {
     expect(updated.getAttribute("aria-valuetext")).toBe("1 of 5 answered, 20% complete");
     expect(updated.getAttribute("aria-valuenow")).toBe("20");
 
-    // A polite live region exists alongside it so updates are announced
-    // without re-reading the whole dialog.
-    const live = screen.getByRole("status");
-    expect(live.getAttribute("aria-live")).toBe("polite");
-    expect(live.getAttribute("aria-atomic")).toBe("true");
-    expect(live.textContent).toContain("20% complete");
-    expect(live.textContent).toContain("1 of 5");
+    // A polite live region exists alongside the bar so progress updates
+    // are announced. (There may be other live regions in the dialog —
+    // e.g. the next-question announcer — so match by text content.)
+    const lives = screen.getAllByRole("status");
+    const progressLive = lives.find(
+      (el) => el.textContent?.includes("complete") && el.textContent?.includes("of 5"),
+    );
+    expect(progressLive).toBeDefined();
+    expect(progressLive!.getAttribute("aria-live")).toBe("polite");
+    expect(progressLive!.getAttribute("aria-atomic")).toBe("true");
+    expect(progressLive!.textContent).toContain("20% complete");
+    expect(progressLive!.textContent).toContain("1 of 5");
 
     clearModuleSetupDraft("hh-1", "meals_setup");
   });
