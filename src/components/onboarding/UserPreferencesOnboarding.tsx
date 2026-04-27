@@ -138,7 +138,11 @@ export const UserPreferencesOnboarding = () => {
     setSubmitting(true);
     try {
       // 1. profile display name
-      await supabase.from("profiles").update({ display_name: basics.display_name.trim() }).eq("id", user.id);
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .update({ display_name: basics.display_name.trim() })
+        .eq("id", user.id);
+      if (profileError) throw profileError;
 
       // 2. household basics only — module-specific fields stay null
       const { error: prefsError } = await supabase
@@ -156,15 +160,30 @@ export const UserPreferencesOnboarding = () => {
         );
       if (prefsError) throw prefsError;
 
-      // 3. enabled products
-      const productInserts = selectedProducts.map((p) => ({ household_id: householdId, product_name: p }));
-      const { error: productsError } = await supabase
-        .from("household_enabled_products")
-        .upsert(productInserts, { onConflict: "household_id,product_name" });
-      if (productsError) throw productsError;
+      // 3. enabled products — replace the full set so deselections take effect.
+      const deselected = previouslyEnabled.filter((p) => !selectedProducts.includes(p));
+      if (deselected.length > 0) {
+        const { error: deleteError } = await supabase
+          .from("household_enabled_products")
+          .delete()
+          .eq("household_id", householdId)
+          .in("product_name", deselected);
+        if (deleteError) throw deleteError;
+      }
+      if (selectedProducts.length > 0) {
+        const productInserts = selectedProducts.map((p) => ({
+          household_id: householdId,
+          product_name: p,
+          enabled_by: user.id,
+        }));
+        const { error: productsError } = await supabase
+          .from("household_enabled_products")
+          .upsert(productInserts, { onConflict: "household_id,product_name" });
+        if (productsError) throw productsError;
+      }
 
       // 4. mark household onboarding complete
-      await supabase
+      const { error: householdError } = await supabase
         .from("households")
         .update({
           onboarding_completed: true,
@@ -172,9 +191,10 @@ export const UserPreferencesOnboarding = () => {
           onboarding_completed_at: new Date().toISOString(),
         })
         .eq("id", householdId);
+      if (householdError) throw householdError;
 
       // 5. user onboarding progress
-      await supabase.from("user_onboarding_progress").upsert(
+      const { error: progressError } = await supabase.from("user_onboarding_progress").upsert(
         {
           user_id: user.id,
           current_step: TOTAL_STEPS,
@@ -184,10 +204,15 @@ export const UserPreferencesOnboarding = () => {
         },
         { onConflict: "user_id" }
       );
+      if (progressError) throw progressError;
 
-      queryClient.invalidateQueries({ queryKey: ["household"] });
-      queryClient.invalidateQueries({ queryKey: ["enabled-products"] });
-      queryClient.invalidateQueries({ queryKey: ["household-preferences"] });
+      // Wait for refetches so downstream pages see fresh data immediately.
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["household"] }),
+        queryClient.invalidateQueries({ queryKey: ["enabled-products"] }),
+        queryClient.invalidateQueries({ queryKey: ["household-preferences"] }),
+        queryClient.invalidateQueries({ queryKey: ["user-onboarding-progress"] }),
+      ]);
 
       toast.success("Welcome to Family Desk!");
 
@@ -199,7 +224,8 @@ export const UserPreferencesOnboarding = () => {
         navigate("/dashboard");
       }
     } catch (err: any) {
-      toast.error("Setup failed: " + err.message);
+      console.error("[Onboarding] Setup failed:", err);
+      toast.error("Setup failed: " + (err?.message ?? "Unknown error"));
     } finally {
       setSubmitting(false);
     }
