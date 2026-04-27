@@ -21,6 +21,7 @@ import { HowToUseSection } from "@/components/settings/HowToUseSection";
 import { WhatsNewSection } from "@/components/settings/WhatsNewSection";
 import { TermsSection, PrivacySection } from "@/components/settings/LegalDocsSection";
 import { ModulePreferencesSection } from "@/components/settings/ModulePreferencesSection";
+import { SetupProgressCard } from "@/components/settings/SetupProgressCard";
 
 export const Settings = () => {
   const { user } = useAuth();
@@ -228,6 +229,8 @@ export const Settings = () => {
                   </div>
                 </CardContent>
               </Card>
+
+              <SetupProgressCard />
 
               <ModulePreferencesSection />
 
