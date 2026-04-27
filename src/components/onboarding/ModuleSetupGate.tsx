@@ -606,6 +606,12 @@ export const ModuleSetupDialog = ({
                   const msg = err?.message ?? "Failed to save setup";
                   setSaveError(msg);
                   toast.error(msg);
+                } finally {
+                  // Always release the retry-button busy state, whether
+                  // the save succeeded or failed. (`isSaving` from
+                  // react-query also flips back here, so the footer
+                  // Save button re-enables on the same render.)
+                  setIsRetrying(false);
                 }
               }}
               onSkip={async () => {
