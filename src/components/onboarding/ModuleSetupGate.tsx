@@ -658,6 +658,11 @@ const Question = ({
   const ref = useRef<HTMLDivElement | null>(null);
   const ctx = useContext(FormActionContext);
   useEffect(() => {
+    // Inapplicable questions get index === -1 from `indexOf(key)`.
+    // The hook order must remain stable across renders, so we keep the
+    // useEffect/useContext calls above this guard and bail out here
+    // without scheduling any scroll work.
+    if (index < 0) return;
     if (activeIndex !== index) return;
     const el = ref.current;
     const container = ctx?.scrollContainerRef.current;
@@ -702,6 +707,12 @@ const Question = ({
       container.scrollTop = top;
     }
   }, [activeIndex, index, ctx]);
+  // Inapplicable questions render NOTHING — this removes their inputs
+  // from the DOM entirely so they can't receive tab/arrow-key focus and
+  // so the auto-scroll logic above never targets a non-rendered node.
+  // Keeping this filter centralized in <Question> means every form is
+  // consistent without needing per-form `indexOf(key) >= 0` guards.
+  if (index < 0) return null;
   return <div ref={ref}>{children}</div>;
 };
 
@@ -747,7 +758,13 @@ const useQuestionFocus = (
   const advanceFrom = useCallback(
     (i: number) => {
       const max = Math.max(0, totalRef.current - 1);
-      const next = Math.min(i + 1, max);
+      // Defensive: if the caller passes -1 (inapplicable question key), or
+      // any out-of-range value, normalize before stepping. `applicableKeys`
+      // already excludes inapplicable questions, so adding 1 here is the
+      // step within the applicable subset — guaranteed to skip any
+      // filtered-out questions.
+      const from = Number.isFinite(i) && i >= 0 ? Math.floor(i) : -1;
+      const next = Math.min(from + 1, max);
       setActiveIndex(next);
       const nextKey = keysRef.current[next];
       if (nextKey) writeActiveQuestion(householdId, module, nextKey);
