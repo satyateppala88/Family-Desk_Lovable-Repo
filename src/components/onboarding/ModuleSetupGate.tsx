@@ -10,6 +10,7 @@ import { useHouseholdPreferences } from "@/hooks/useHouseholdPreferences";
 import { useModuleSetup } from "@/hooks/useModuleSetup";
 import { MODULE_SETUP_META, type ModuleSetupKey } from "@/lib/moduleSetup";
 import { toast } from "sonner";
+import { Loader2 } from "lucide-react";
 
 // ---------------------------------------------------------------------------
 // Draft persistence (in-progress answers across dialog close / module switch)
@@ -166,8 +167,9 @@ export const ModuleSetupDialog = ({
     <Dialog open={open} onOpenChange={(next) => { if (dismissible) onOpenChange?.(next); }}>
       <DialogContent
         className="sm:max-w-md max-h-[90vh] flex flex-col"
-        onPointerDownOutside={(e) => { if (!dismissible) e.preventDefault(); }}
-        onEscapeKeyDown={(e) => { if (!dismissible) e.preventDefault(); }}
+        onPointerDownOutside={(e) => { if (!dismissible || isSaving) e.preventDefault(); }}
+        onEscapeKeyDown={(e) => { if (!dismissible || isSaving) e.preventDefault(); }}
+        aria-busy={isSaving}
       >
         <DialogHeader>
           <DialogTitle>{meta.title}</DialogTitle>
@@ -228,11 +230,28 @@ export const ModuleSetupDialog = ({
           </div>
         </FormActionContext.Provider>
         <DialogFooter className="flex-row justify-between sm:justify-between border-t border-border -mx-6 px-6 pt-3 mt-0 shrink-0">
-          <Button variant="ghost" onClick={() => skipRef.current?.()} disabled={isSaving}>
+          <Button
+            variant="ghost"
+            onClick={() => { if (!isSaving) skipRef.current?.(); }}
+            disabled={isSaving}
+            aria-disabled={isSaving}
+          >
             Skip for now
           </Button>
-          <Button onClick={() => saveRef.current?.()} disabled={isSaving}>
-            {isSaving ? "Saving..." : "Save & continue"}
+          <Button
+            onClick={() => { if (!isSaving) saveRef.current?.(); }}
+            disabled={isSaving}
+            aria-disabled={isSaving}
+            aria-busy={isSaving}
+          >
+            {isSaving ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
+                Saving...
+              </>
+            ) : (
+              "Save & continue"
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>
