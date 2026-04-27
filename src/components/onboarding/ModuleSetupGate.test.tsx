@@ -320,13 +320,18 @@ describe("ModuleSetupDialog — scroll & footer layout", () => {
     expect(updated.getAttribute("aria-valuetext")).toBe("1 of 5 answered, 20% complete");
     expect(updated.getAttribute("aria-valuenow")).toBe("20");
 
-    // A polite live region exists alongside it so updates are announced
-    // without re-reading the whole dialog.
-    const live = screen.getByRole("status");
-    expect(live.getAttribute("aria-live")).toBe("polite");
-    expect(live.getAttribute("aria-atomic")).toBe("true");
-    expect(live.textContent).toContain("20% complete");
-    expect(live.textContent).toContain("1 of 5");
+    // A polite live region exists alongside the bar so progress updates
+    // are announced. (There may be other live regions in the dialog —
+    // e.g. the next-question announcer — so match by text content.)
+    const lives = screen.getAllByRole("status");
+    const progressLive = lives.find(
+      (el) => el.textContent?.includes("complete") && el.textContent?.includes("of 5"),
+    );
+    expect(progressLive).toBeDefined();
+    expect(progressLive!.getAttribute("aria-live")).toBe("polite");
+    expect(progressLive!.getAttribute("aria-atomic")).toBe("true");
+    expect(progressLive!.textContent).toContain("20% complete");
+    expect(progressLive!.textContent).toContain("1 of 5");
 
     clearModuleSetupDraft("hh-1", "meals_setup");
   });
@@ -509,5 +514,64 @@ describe("ModuleSetupDialog — scroll & footer layout", () => {
     expect(window.localStorage.getItem(storageKey)).toBe("food_allergies");
 
     clearModuleSetupDraft("hh-1", "meals_setup");
+  });
+
+  // ───────────────────────────────────────────────────────────────────────
+  // ARIA live announcement for next question
+  // ───────────────────────────────────────────────────────────────────────
+
+  it("announces the next question by name + step count when focus advances", () => {
+    render(<ModuleSetupDialog module="meals_setup" open={true} dismissible={true} />);
+
+    const announcer = screen.getByTestId("question-announcer");
+    // Live region attributes — polite + atomic so SRs read it as a single
+    // phrase without interrupting the user.
+    expect(announcer.getAttribute("aria-live")).toBe("polite");
+    expect(announcer.getAttribute("aria-atomic")).toBe("true");
+    // Sr-only — no visual content.
+    expect(announcer.className).toContain("sr-only");
+    // Empty before any selection (no question is "active" yet).
+    expect(announcer.textContent).toBe("");
+
+    // Pick Diet type → focus advances to Spice level (index 1, step 2/5).
+    fireEvent.click(screen.getByLabelText("vegan"));
+    const after1 = screen.getByTestId("question-announcer");
+    expect(after1.textContent).toBe("Now on: Spice level, step 2 of 5.");
+
+    // Pick Spice level → focus advances to Weekday cooking time (3/5).
+    fireEvent.click(screen.getByLabelText("spicy"));
+    const after2 = screen.getByTestId("question-announcer");
+    expect(after2.textContent).toBe("Now on: Weekday cooking time, step 3 of 5.");
+
+    clearModuleSetupDraft("hh-1", "meals_setup");
+  });
+
+  it("re-keys the announcer so duplicate messages still re-announce", () => {
+    render(<ModuleSetupDialog module="grocery_setup" open={true} dismissible={true} />);
+
+    // Initially no announcement.
+    let announcer = screen.getByTestId("question-announcer");
+    expect(announcer.textContent).toBe("");
+
+    // Tap pantry size → advance to shopping_frequency (step 2 of 3).
+    fireEvent.click(screen.getByLabelText("small"));
+    announcer = screen.getByTestId("question-announcer");
+    const firstKey = announcer.getAttribute("data-tick") ?? announcer.outerHTML;
+    expect(announcer.textContent).toContain("Shopping frequency");
+    expect(announcer.textContent).toContain("step 2 of 3");
+
+    // Tap shopping_frequency → advance to organic_preference (step 3 of 3).
+    // Use a non-default value so onValueChange actually fires (default
+    // is "weekly", so clicking "Weekly" would be a no-op).
+    fireEvent.click(screen.getByLabelText("Daily"));
+    announcer = screen.getByTestId("question-announcer");
+    expect(announcer.textContent).toContain("Organic preference");
+    expect(announcer.textContent).toContain("step 3 of 3");
+
+    // Different message means the underlying React `key` changed — the
+    // node identity is different so SRs treat it as a fresh announcement.
+    expect(announcer.outerHTML).not.toBe(firstKey);
+
+    clearModuleSetupDraft("hh-1", "grocery_setup");
   });
 });
