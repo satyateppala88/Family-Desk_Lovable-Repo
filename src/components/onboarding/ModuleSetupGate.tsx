@@ -11,6 +11,7 @@ import { useModuleSetup } from "@/hooks/useModuleSetup";
 import { MODULE_SETUP_META, type ModuleSetupKey } from "@/lib/moduleSetup";
 import { toast } from "sonner";
 import { Loader2, AlertCircle, RotateCcw } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 // ---------------------------------------------------------------------------
 // Draft persistence (in-progress answers across dialog close / module switch)
@@ -333,6 +334,37 @@ export const ModuleSetupDialog = ({
   // without losing their selections — the form's draft state is preserved
   // automatically because we only clear the draft on a successful save.
   const [saveError, setSaveError] = useState<string | null>(null);
+
+  // While saving we must prevent ANY exit path so a partial write can't
+  // leave the household in a half-configured state:
+  //   • Dialog X button       → disabled via aria-disabled + pointer-events
+  //   • Esc / outside click   → already preempted in onEscapeKeyDown / onPointerDownOutside
+  //   • Browser back button   → push a history entry on mount, intercept popstate
+  //   • Tab close / reload    → beforeunload prompt
+  useEffect(() => {
+    if (!isSaving) return;
+    // Mark a sentinel history entry we can detect & re-push if the user
+    // hits the back button mid-save.
+    const SENTINEL = { __familydeskSavingGuard: true } as const;
+    try { window.history.pushState(SENTINEL, ""); } catch { /* ignore */ }
+
+    const onPop = (_e: PopStateEvent) => {
+      // Re-push to keep the user on this page until the save resolves.
+      try { window.history.pushState(SENTINEL, ""); } catch { /* ignore */ }
+    };
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      // Required for Chrome to actually show the prompt.
+      e.returnValue = "";
+      return "";
+    };
+    window.addEventListener("popstate", onPop);
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => {
+      window.removeEventListener("popstate", onPop);
+      window.removeEventListener("beforeunload", onBeforeUnload);
+    };
+  }, [isSaving]);
   // Form-reported progress (total questions / answered count).
   const [progress, setProgress] = useState<{ total: number; answered: number }>({ total: 0, answered: 0 });
   const pct = progress.total > 0 ? Math.round((progress.answered / progress.total) * 100) : 0;
@@ -354,9 +386,31 @@ export const ModuleSetupDialog = ({
   return (
     <Dialog open={open} onOpenChange={(next) => { if (dismissible) onOpenChange?.(next); }}>
       <DialogContent
-        className="sm:max-w-md max-h-[90vh] flex flex-col"
+        className={cn(
+          "sm:max-w-md max-h-[90vh] flex flex-col",
+          // Visually + functionally disable the built-in close (X) while
+          // a write is in flight. The shared DialogContent always renders
+          // a Radix Close button in the top-right; we can't remove it
+          // without forking the primitive, so we neutralize it via a
+          // descendant selector. `pointer-events-none` blocks clicks,
+          // `opacity` shows it as disabled, and `aria-disabled` is also
+          // applied below for assistive tech.
+          isSaving && "[&>button[aria-label='Close'],&_>_button.absolute.right-4.top-4]:pointer-events-none [&>button[aria-label='Close'],&_>_button.absolute.right-4.top-4]:opacity-40",
+        )}
         onPointerDownOutside={(e) => { if (!dismissible || isSaving) e.preventDefault(); }}
         onEscapeKeyDown={(e) => { if (!dismissible || isSaving) e.preventDefault(); }}
+        // Capture-phase guard: even if Radix or a future change wires the
+        // X to a click handler that bypasses onOpenChange, we still
+        // swallow clicks anywhere on the close button while saving.
+        onClickCapture={(e) => {
+          if (!isSaving) return;
+          const target = e.target as HTMLElement | null;
+          const closeBtn = target?.closest?.("button");
+          if (closeBtn && closeBtn.querySelector('span.sr-only')?.textContent === "Close") {
+            e.preventDefault();
+            e.stopPropagation();
+          }
+        }}
         aria-busy={isSaving}
       >
         <DialogHeader>
