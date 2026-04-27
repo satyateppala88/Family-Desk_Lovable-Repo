@@ -561,7 +561,9 @@ describe("ModuleSetupDialog — scroll & footer layout", () => {
     expect(announcer.textContent).toContain("step 2 of 3");
 
     // Tap shopping_frequency → advance to organic_preference (step 3 of 3).
-    fireEvent.click(screen.getByLabelText("Weekly"));
+    // Use a non-default value so onValueChange actually fires (default
+    // is "weekly", so clicking "Weekly" would be a no-op).
+    fireEvent.click(screen.getByLabelText("Daily"));
     announcer = screen.getByTestId("question-announcer");
     expect(announcer.textContent).toContain("Organic preference");
     expect(announcer.textContent).toContain("step 3 of 3");
