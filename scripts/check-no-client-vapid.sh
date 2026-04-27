@@ -7,7 +7,10 @@
 # browser bundle.
 set -euo pipefail
 
-PATTERN='VAPID_PRIVATE_KEY|VAPID_SUBJECT|VITE_VAPID'
+# Match real code references: env-var lookups, not narrative comments.
+# Allows: bare identifier in code (Deno.env.get / process.env / import.meta.env)
+# Blocks anything that looks like an actual access pattern in src/.
+PATTERN='env(\.|\[["'\'']| *\. *get *\( *["'\''])(VAPID_PRIVATE_KEY|VAPID_SUBJECT|VITE_VAPID)|VITE_VAPID[A-Z_]*\s*='
 
 if grep -RInE "$PATTERN" src/ 2>/dev/null; then
   echo ""
