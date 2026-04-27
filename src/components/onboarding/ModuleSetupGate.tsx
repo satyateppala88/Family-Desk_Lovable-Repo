@@ -82,7 +82,10 @@ export const ModuleSetupDialog = ({
   // scroll themselves into view when they become the active step.
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const setProgressStable = useCallback(
-    (p: { total: number; answered: number }) => setProgress(p),
+    (p: { total: number; answered: number }) =>
+      setProgress((prev) =>
+        prev.total === p.total && prev.answered === p.answered ? prev : p,
+      ),
     [],
   );
   const ctxValue = useMemo(
