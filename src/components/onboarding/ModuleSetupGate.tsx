@@ -716,7 +716,7 @@ const MealsSetupForm = ({ module, householdId, preferences, onSubmit, onSkip, is
   const { applicableKeys, total, indexOf } = useApplicableQuestions(questions);
   const { mark, count } = useTouchedQuestions(householdId, module, applicableKeys);
   useReportProgress(count, total);
-  const { activeIndex, advanceFrom } = useQuestionFocus(total);
+  const { activeIndex, advanceFrom } = useQuestionFocus(householdId, module, applicableKeys);
   return (
     <FormShell onSave={() => onSubmit(data)} onSkip={onSkip} isSaving={isSaving}>
       <Question index={indexOf("diet_type")} activeIndex={activeIndex}>
@@ -807,7 +807,7 @@ const GrocerySetupForm = ({ module, householdId, preferences, onSubmit, onSkip, 
   const { applicableKeys, total, indexOf } = useApplicableQuestions(questions);
   const { mark, count } = useTouchedQuestions(householdId, module, applicableKeys);
   useReportProgress(count, total);
-  const { activeIndex, advanceFrom } = useQuestionFocus(total);
+  const { activeIndex, advanceFrom } = useQuestionFocus(householdId, module, applicableKeys);
   return (
     <FormShell onSave={() => onSubmit(data)} onSkip={onSkip} isSaving={isSaving}>
       <Question index={indexOf("pantry_size")} activeIndex={activeIndex}>
@@ -852,7 +852,7 @@ const FinanceSetupForm = ({ module, householdId, preferences, onSubmit, onSkip, 
   const { applicableKeys, total, indexOf } = useApplicableQuestions(questions);
   const { mark, count } = useTouchedQuestions(householdId, module, applicableKeys);
   useReportProgress(count, total);
-  const { activeIndex, advanceFrom } = useQuestionFocus(total);
+  const { activeIndex, advanceFrom } = useQuestionFocus(householdId, module, applicableKeys);
   return (
     <FormShell onSave={() => onSubmit(data)} onSkip={onSkip} isSaving={isSaving}>
       <Question index={indexOf("monthly_grocery_budget")} activeIndex={activeIndex}>
@@ -889,7 +889,7 @@ const RoutineSetupForm = ({ module, householdId, preferences, onSubmit, onSkip, 
   const { applicableKeys, total, indexOf } = useApplicableQuestions(questions);
   const { mark, count } = useTouchedQuestions(householdId, module, applicableKeys);
   useReportProgress(count, total);
-  const { activeIndex, advanceFrom } = useQuestionFocus(total);
+  const { activeIndex, advanceFrom } = useQuestionFocus(householdId, module, applicableKeys);
   return (
     <FormShell onSave={() => onSubmit(data)} onSkip={onSkip} isSaving={isSaving}>
       <Question index={indexOf("preferred_task_time")} activeIndex={activeIndex}>
@@ -929,7 +929,7 @@ const CalendarSetupForm = ({ module, householdId, preferences, onSubmit, onSkip,
   const { applicableKeys, total, indexOf } = useApplicableQuestions(questions);
   const { mark, count } = useTouchedQuestions(householdId, module, applicableKeys);
   useReportProgress(count, total);
-  const { activeIndex, advanceFrom } = useQuestionFocus(total);
+  const { activeIndex, advanceFrom } = useQuestionFocus(householdId, module, applicableKeys);
   return (
     <FormShell onSave={() => onSubmit(data)} onSkip={onSkip} isSaving={isSaving}>
       <Question index={indexOf("work_schedule")} activeIndex={activeIndex}>
