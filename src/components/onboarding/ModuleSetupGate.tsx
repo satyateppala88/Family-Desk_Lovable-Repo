@@ -308,24 +308,25 @@ const useQuestionFocus = (totalQuestions: number) => {
 interface FormProps {
   module: ModuleSetupKey;
   preferences: any;
+  householdId: string | null | undefined;
   onSubmit: (updates: Record<string, unknown>) => Promise<void>;
   onSkip: () => Promise<void>;
   isSaving: boolean;
 }
 
-const ModuleSetupForm = ({ module, preferences, onSubmit, onSkip, isSaving }: FormProps) => {
+const ModuleSetupForm = ({ module, preferences, householdId, onSubmit, onSkip, isSaving }: FormProps) => {
   switch (module) {
     case "meals_setup":
-      return <MealsSetupForm preferences={preferences} onSubmit={onSubmit} onSkip={onSkip} isSaving={isSaving} />;
+      return <MealsSetupForm module={module} householdId={householdId} preferences={preferences} onSubmit={onSubmit} onSkip={onSkip} isSaving={isSaving} />;
     case "grocery_setup":
-      return <GrocerySetupForm preferences={preferences} onSubmit={onSubmit} onSkip={onSkip} isSaving={isSaving} />;
+      return <GrocerySetupForm module={module} householdId={householdId} preferences={preferences} onSubmit={onSubmit} onSkip={onSkip} isSaving={isSaving} />;
     case "finance_setup":
-      return <FinanceSetupForm preferences={preferences} onSubmit={onSubmit} onSkip={onSkip} isSaving={isSaving} />;
+      return <FinanceSetupForm module={module} householdId={householdId} preferences={preferences} onSubmit={onSubmit} onSkip={onSkip} isSaving={isSaving} />;
     case "habits_setup":
     case "tasks_setup":
-      return <RoutineSetupForm preferences={preferences} onSubmit={onSubmit} onSkip={onSkip} isSaving={isSaving} />;
+      return <RoutineSetupForm module={module} householdId={householdId} preferences={preferences} onSubmit={onSubmit} onSkip={onSkip} isSaving={isSaving} />;
     case "calendar_setup":
-      return <CalendarSetupForm preferences={preferences} onSubmit={onSubmit} onSkip={onSkip} isSaving={isSaving} />;
+      return <CalendarSetupForm module={module} householdId={householdId} preferences={preferences} onSubmit={onSubmit} onSkip={onSkip} isSaving={isSaving} />;
   }
 };
 
