@@ -140,4 +140,10 @@ const Finance = () => {
   );
 };
 
-export default Finance;
+import { ModuleSetupGate } from "@/components/onboarding/ModuleSetupGate";
+const FinanceWithGate = () => (
+  <ModuleSetupGate module="finance_setup">
+    <Finance />
+  </ModuleSetupGate>
+);
+export default FinanceWithGate;
