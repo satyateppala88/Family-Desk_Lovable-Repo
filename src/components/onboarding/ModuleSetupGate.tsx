@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -81,6 +81,17 @@ export const ModuleSetupDialog = ({
   // Ref to the scrollable form container so child <Question> components can
   // scroll themselves into view when they become the active step.
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const setProgressStable = useCallback(
+    (p: { total: number; answered: number }) =>
+      setProgress((prev) =>
+        prev.total === p.total && prev.answered === p.answered ? prev : p,
+      ),
+    [],
+  );
+  const ctxValue = useMemo(
+    () => ({ saveRef, skipRef, setProgress: setProgressStable, scrollContainerRef }),
+    [setProgressStable],
+  );
 
   return (
     <Dialog open={open} onOpenChange={(next) => { if (dismissible) onOpenChange?.(next); }}>
@@ -114,7 +125,7 @@ export const ModuleSetupDialog = ({
             </div>
           </div>
         )}
-        <FormActionContext.Provider value={{ saveRef, skipRef, setProgress, scrollContainerRef }}>
+        <FormActionContext.Provider value={ctxValue}>
           <div ref={scrollContainerRef} className="flex-1 min-h-0 overflow-y-auto -mx-6 px-6 scroll-smooth">
             <ModuleSetupForm
               module={module}
