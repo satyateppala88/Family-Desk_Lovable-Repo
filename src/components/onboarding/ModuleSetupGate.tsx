@@ -418,6 +418,43 @@ export const ModuleSetupDialog = ({
           </div>
         )}
         <FormActionContext.Provider value={ctxValue}>
+          {saveError && (
+            <div
+              role="alert"
+              aria-live="assertive"
+              className="mx-0 mt-1 flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+            >
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+              <div className="flex-1 min-w-0">
+                <p className="font-medium leading-snug">Couldn’t save your setup</p>
+                <p className="text-xs opacity-90 leading-snug break-words">{saveError}</p>
+                <p className="mt-1 text-[11px] opacity-80 leading-snug">
+                  Your selections are kept — try again when you’re ready.
+                </p>
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => { if (!isSaving) saveRef.current?.(); }}
+                disabled={isSaving}
+                aria-disabled={isSaving}
+                className="shrink-0 border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
+              >
+                {isSaving ? (
+                  <>
+                    <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+                    Retrying...
+                  </>
+                ) : (
+                  <>
+                    <RotateCcw className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
+                    Try again
+                  </>
+                )}
+              </Button>
+            </div>
+          )}
           <div ref={scrollContainerRef} className="flex-1 min-h-0 overflow-y-auto -mx-6 px-6 scroll-smooth">
             <ModuleSetupForm
               module={module}
