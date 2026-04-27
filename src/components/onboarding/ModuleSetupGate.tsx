@@ -75,6 +75,9 @@ export const ModuleSetupDialog = ({
   const saveRef = useRef<(() => void) | null>(null);
   const skipRef = useRef<(() => void) | null>(null);
   const isSaving = isUpdating || isMarking;
+  // Form-reported progress (total questions / answered count).
+  const [progress, setProgress] = useState<{ total: number; answered: number }>({ total: 0, answered: 0 });
+  const pct = progress.total > 0 ? Math.round((progress.answered / progress.total) * 100) : 0;
 
   return (
     <Dialog open={open} onOpenChange={(next) => { if (dismissible) onOpenChange?.(next); }}>
@@ -87,7 +90,28 @@ export const ModuleSetupDialog = ({
           <DialogTitle>{meta.title}</DialogTitle>
           <DialogDescription>{meta.description}</DialogDescription>
         </DialogHeader>
-        <FormActionContext.Provider value={{ saveRef, skipRef }}>
+        {progress.total > 0 && (
+          <div
+            className="-mt-1"
+            role="progressbar"
+            aria-valuenow={pct}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-label="Setup completion"
+          >
+            <div className="flex items-center justify-between text-[11px] text-muted-foreground mb-1.5">
+              <span>Answered {progress.answered} of {progress.total}</span>
+              <span className="tabular-nums">{pct}%</span>
+            </div>
+            <div className="h-1 w-full rounded-full bg-muted overflow-hidden">
+              <div
+                className="h-full bg-primary transition-all duration-300 ease-out"
+                style={{ width: `${pct}%` }}
+              />
+            </div>
+          </div>
+        )}
+        <FormActionContext.Provider value={{ saveRef, skipRef, setProgress }}>
           <div className="flex-1 min-h-0 overflow-y-auto -mx-6 px-6">
             <ModuleSetupForm
               module={module}
@@ -135,7 +159,19 @@ export const ModuleSetupDialog = ({
 const FormActionContext = createContext<{
   saveRef: React.MutableRefObject<(() => void) | null>;
   skipRef: React.MutableRefObject<(() => void) | null>;
+  setProgress: (p: { total: number; answered: number }) => void;
 } | null>(null);
+
+/**
+ * Each *SetupForm calls this with its current answered/total counts so the
+ * dialog can render a step-progress indicator above the scroll area.
+ */
+const useReportProgress = (answered: number, total: number) => {
+  const ctx = useContext(FormActionContext);
+  useEffect(() => {
+    ctx?.setProgress({ answered, total });
+  }, [ctx, answered, total]);
+};
 
 // ---------------------------------------------------------------------------
 // Per-module forms
