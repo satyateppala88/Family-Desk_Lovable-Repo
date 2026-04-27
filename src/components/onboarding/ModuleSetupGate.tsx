@@ -10,7 +10,7 @@ import { useHouseholdPreferences } from "@/hooks/useHouseholdPreferences";
 import { useModuleSetup } from "@/hooks/useModuleSetup";
 import { MODULE_SETUP_META, type ModuleSetupKey } from "@/lib/moduleSetup";
 import { toast } from "sonner";
-import { Loader2, AlertCircle, RotateCcw } from "lucide-react";
+import { Loader2, AlertCircle, RotateCcw, CheckCircle2, History } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // ---------------------------------------------------------------------------
@@ -320,7 +320,7 @@ export const ModuleSetupDialog = ({
   onSkip,
   onOpenChange,
 }: ModuleSetupDialogProps) => {
-  const { markComplete, isMarking } = useModuleSetup(module);
+  const { markComplete, isMarking, isComplete } = useModuleSetup(module);
   const { householdId } = useHousehold();
   const { preferences, updatePreferences, isUpdating } = useHouseholdPreferences(householdId);
   const meta = MODULE_SETUP_META[module];
@@ -334,6 +334,17 @@ export const ModuleSetupDialog = ({
   // without losing their selections — the form's draft state is preserved
   // automatically because we only clear the draft on a successful save.
   const [saveError, setSaveError] = useState<string | null>(null);
+
+  // Detect — exactly once, at mount — whether the user is resuming an
+  // in-progress questionnaire. We snapshot this so the message doesn't
+  // disappear the moment they touch a new question (which would mutate
+  // the underlying draft store) and doesn't flicker while typing.
+  const [restoredFromDraft] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    const draft = readDraft<Record<string, unknown>>(householdId, module);
+    const touched = readTouched(householdId, module);
+    return (!!draft && Object.keys(draft).length > 0) || touched.length > 0;
+  });
 
   // While saving we must prevent ANY exit path so a partial write can't
   // leave the household in a half-configured state:
@@ -441,6 +452,35 @@ export const ModuleSetupDialog = ({
               </div>
             </div>
             {/*
+              Status line — explains, in plain language, where the
+              currently-shown progress is coming from:
+                • "Setup complete" if this module is already marked done
+                  (any answers the user changes here will overwrite their
+                  saved profile).
+                • "Restored your in-progress answers" if a draft was
+                  hydrated from a previous visit (so progress > 0 isn't
+                  confusing on a fresh dialog open).
+              We deliberately render NOTHING for a brand-new questionnaire
+              with no draft and no completion — to avoid noise.
+            */}
+            {isComplete ? (
+              <p className="mt-1.5 flex items-start gap-1.5 text-[11px] leading-snug text-emerald-600 dark:text-emerald-400">
+                <CheckCircle2 className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                <span>
+                  Setup complete for this module — any changes you make here will
+                  overwrite your saved answers.
+                </span>
+              </p>
+            ) : restoredFromDraft ? (
+              <p className="mt-1.5 flex items-start gap-1.5 text-[11px] leading-snug text-muted-foreground">
+                <History className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                <span>
+                  Restored your in-progress answers from your last visit — pick up
+                  where you left off.
+                </span>
+              </p>
+            ) : null}
+            {/*
               Screen-reader-only live region. We announce progress changes
               here (instead of on the progressbar itself) because aria-live
               on role=progressbar is inconsistently supported across SRs.
@@ -453,7 +493,13 @@ export const ModuleSetupDialog = ({
               aria-atomic="true"
               className="sr-only"
             >
-              {`Setup ${pct}% complete. ${progress.answered} of ${progress.total} questions answered.`}
+              {`Setup ${pct}% complete. ${progress.answered} of ${progress.total} questions answered.${
+                isComplete
+                  ? " This module is already set up; changes will overwrite saved answers."
+                  : restoredFromDraft
+                    ? " In-progress answers restored from your last visit."
+                    : ""
+              }`}
             </div>
             {progress.answered > 0 && (
               <p className="mt-1.5 text-[11px] text-muted-foreground/80 leading-snug">
