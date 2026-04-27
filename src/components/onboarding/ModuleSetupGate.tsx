@@ -78,6 +78,9 @@ export const ModuleSetupDialog = ({
   // Form-reported progress (total questions / answered count).
   const [progress, setProgress] = useState<{ total: number; answered: number }>({ total: 0, answered: 0 });
   const pct = progress.total > 0 ? Math.round((progress.answered / progress.total) * 100) : 0;
+  // Ref to the scrollable form container so child <Question> components can
+  // scroll themselves into view when they become the active step.
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
 
   return (
     <Dialog open={open} onOpenChange={(next) => { if (dismissible) onOpenChange?.(next); }}>
@@ -111,8 +114,8 @@ export const ModuleSetupDialog = ({
             </div>
           </div>
         )}
-        <FormActionContext.Provider value={{ saveRef, skipRef, setProgress }}>
-          <div className="flex-1 min-h-0 overflow-y-auto -mx-6 px-6">
+        <FormActionContext.Provider value={{ saveRef, skipRef, setProgress, scrollContainerRef }}>
+          <div ref={scrollContainerRef} className="flex-1 min-h-0 overflow-y-auto -mx-6 px-6 scroll-smooth">
             <ModuleSetupForm
               module={module}
               preferences={preferences}
@@ -160,6 +163,7 @@ const FormActionContext = createContext<{
   saveRef: React.MutableRefObject<(() => void) | null>;
   skipRef: React.MutableRefObject<(() => void) | null>;
   setProgress: (p: { total: number; answered: number }) => void;
+  scrollContainerRef: React.MutableRefObject<HTMLDivElement | null>;
 } | null>(null);
 
 /**
@@ -171,6 +175,48 @@ const useReportProgress = (answered: number, total: number) => {
   useEffect(() => {
     ctx?.setProgress({ answered, total });
   }, [ctx, answered, total]);
+};
+
+/**
+ * Wraps a single question inside a setup form. When `activeIndex` matches
+ * this question's `index`, the wrapper scrolls itself into view inside the
+ * dialog's scrollable container. Used to auto-advance the user to the next
+ * question after they make a selection.
+ */
+const Question = ({
+  index,
+  activeIndex,
+  children,
+}: {
+  index: number;
+  activeIndex: number | null;
+  children: ReactNode;
+}) => {
+  const ref = useRef<HTMLDivElement | null>(null);
+  const ctx = useContext(FormActionContext);
+  useEffect(() => {
+    if (activeIndex !== index) return;
+    const el = ref.current;
+    const container = ctx?.scrollContainerRef.current;
+    if (!el || !container) return;
+    // Scroll within the dialog's container only — don't move the page.
+    const elTop = el.offsetTop - container.offsetTop;
+    container.scrollTo({ top: Math.max(0, elTop - 8), behavior: "smooth" });
+  }, [activeIndex, index, ctx]);
+  return <div ref={ref}>{children}</div>;
+};
+
+/**
+ * Helper hook for forms: keeps track of the most recently answered question
+ * and exposes a setter that bumps `activeIndex` to the next question (or
+ * stays on the last one).
+ */
+const useQuestionFocus = (totalQuestions: number) => {
+  const [activeIndex, setActiveIndex] = useState<number | null>(null);
+  const advanceFrom = (i: number) => {
+    setActiveIndex(Math.min(i + 1, totalQuestions - 1));
+  };
+  return { activeIndex, advanceFrom };
 };
 
 // ---------------------------------------------------------------------------
@@ -273,11 +319,12 @@ const MealsSetupForm = ({ preferences, onSubmit, onSkip, isSaving }: Omit<FormPr
     countAnswered([data.diet_type, data.spice_level, data.weekday_cooking_time, data.food_allergies, data.regional_cuisines]),
     5,
   );
+  const { activeIndex, advanceFrom } = useQuestionFocus(5);
   return (
     <FormShell onSave={() => onSubmit(data)} onSkip={onSkip} isSaving={isSaving}>
-      <div>
+      <Question index={0} activeIndex={activeIndex}>
         <Label>Diet type</Label>
-        <RadioGroup value={data.diet_type} onValueChange={(v) => setData({ ...data, diet_type: v })} className="mt-2">
+        <RadioGroup value={data.diet_type} onValueChange={(v) => { setData({ ...data, diet_type: v }); advanceFrom(0); }} className="mt-2">
           {["vegetarian", "non_vegetarian", "eggetarian", "vegan", "jain"].map((t) => (
             <div key={t} className="flex items-center space-x-2">
               <RadioGroupItem value={t} id={`diet-${t}`} />
@@ -285,10 +332,10 @@ const MealsSetupForm = ({ preferences, onSubmit, onSkip, isSaving }: Omit<FormPr
             </div>
           ))}
         </RadioGroup>
-      </div>
-      <div>
+      </Question>
+      <Question index={1} activeIndex={activeIndex}>
         <Label>Spice level</Label>
-        <RadioGroup value={data.spice_level} onValueChange={(v) => setData({ ...data, spice_level: v })} className="mt-2">
+        <RadioGroup value={data.spice_level} onValueChange={(v) => { setData({ ...data, spice_level: v }); advanceFrom(1); }} className="mt-2">
           {["mild", "medium", "spicy", "very_spicy"].map((t) => (
             <div key={t} className="flex items-center space-x-2">
               <RadioGroupItem value={t} id={`spice-${t}`} />
@@ -296,16 +343,16 @@ const MealsSetupForm = ({ preferences, onSubmit, onSkip, isSaving }: Omit<FormPr
             </div>
           ))}
         </RadioGroup>
-      </div>
-      <div>
+      </Question>
+      <Question index={2} activeIndex={activeIndex}>
         <Label>Weekday cooking time</Label>
-        <RadioGroup value={data.weekday_cooking_time} onValueChange={(v) => setData({ ...data, weekday_cooking_time: v })} className="mt-2">
+        <RadioGroup value={data.weekday_cooking_time} onValueChange={(v) => { setData({ ...data, weekday_cooking_time: v }); advanceFrom(2); }} className="mt-2">
           <div className="flex items-center space-x-2"><RadioGroupItem value="less_than_30" id="t1" /><Label htmlFor="t1">Under 30 min</Label></div>
           <div className="flex items-center space-x-2"><RadioGroupItem value="30_to_60" id="t2" /><Label htmlFor="t2">30–60 min</Label></div>
           <div className="flex items-center space-x-2"><RadioGroupItem value="more_than_60" id="t3" /><Label htmlFor="t3">More than 60 min</Label></div>
         </RadioGroup>
-      </div>
-      <div>
+      </Question>
+      <Question index={3} activeIndex={activeIndex}>
         <Label>Food allergies</Label>
         <div className="space-y-2 mt-2">
           {["None", "Dairy", "Nuts", "Gluten", "Seafood", "Eggs", "Soy"].map((a) => {
@@ -327,8 +374,8 @@ const MealsSetupForm = ({ preferences, onSubmit, onSkip, isSaving }: Omit<FormPr
             );
           })}
         </div>
-      </div>
-      <div>
+      </Question>
+      <Question index={4} activeIndex={activeIndex}>
         <Label>Favourite regional cuisines</Label>
         <div className="space-y-2 mt-2">
           {["North Indian", "South Indian", "East Indian", "West Indian", "International"].map((c) => (
@@ -338,7 +385,7 @@ const MealsSetupForm = ({ preferences, onSubmit, onSkip, isSaving }: Omit<FormPr
             </div>
           ))}
         </div>
-      </div>
+      </Question>
     </FormShell>
   );
 };
@@ -354,33 +401,34 @@ const GrocerySetupForm = ({ preferences, onSubmit, onSkip, isSaving }: Omit<Form
     countAnswered([data.pantry_size, data.shopping_frequency, data.organic_preference]),
     3,
   );
+  const { activeIndex, advanceFrom } = useQuestionFocus(3);
   return (
     <FormShell onSave={() => onSubmit(data)} onSkip={onSkip} isSaving={isSaving}>
-      <div>
+      <Question index={0} activeIndex={activeIndex}>
         <Label>Pantry size</Label>
-        <RadioGroup value={data.pantry_size} onValueChange={(v) => setData({ ...data, pantry_size: v })} className="mt-2">
+        <RadioGroup value={data.pantry_size} onValueChange={(v) => { setData({ ...data, pantry_size: v }); advanceFrom(0); }} className="mt-2">
           {["small", "medium", "large"].map((s) => (
             <div key={s} className="flex items-center space-x-2"><RadioGroupItem value={s} id={`p-${s}`} /><Label htmlFor={`p-${s}`} className="capitalize">{s}</Label></div>
           ))}
         </RadioGroup>
-      </div>
-      <div>
+      </Question>
+      <Question index={1} activeIndex={activeIndex}>
         <Label>Shopping frequency</Label>
-        <RadioGroup value={data.shopping_frequency} onValueChange={(v) => setData({ ...data, shopping_frequency: v })} className="mt-2">
+        <RadioGroup value={data.shopping_frequency} onValueChange={(v) => { setData({ ...data, shopping_frequency: v }); advanceFrom(1); }} className="mt-2">
           <div className="flex items-center space-x-2"><RadioGroupItem value="daily" id="sf1" /><Label htmlFor="sf1">Daily</Label></div>
           <div className="flex items-center space-x-2"><RadioGroupItem value="weekly" id="sf2" /><Label htmlFor="sf2">Weekly</Label></div>
           <div className="flex items-center space-x-2"><RadioGroupItem value="biweekly" id="sf3" /><Label htmlFor="sf3">Every 2 weeks</Label></div>
           <div className="flex items-center space-x-2"><RadioGroupItem value="monthly" id="sf4" /><Label htmlFor="sf4">Monthly</Label></div>
         </RadioGroup>
-      </div>
-      <div>
+      </Question>
+      <Question index={2} activeIndex={activeIndex}>
         <Label>Organic preference</Label>
-        <RadioGroup value={data.organic_preference} onValueChange={(v) => setData({ ...data, organic_preference: v })} className="mt-2">
+        <RadioGroup value={data.organic_preference} onValueChange={(v) => { setData({ ...data, organic_preference: v }); advanceFrom(2); }} className="mt-2">
           <div className="flex items-center space-x-2"><RadioGroupItem value="always" id="o1" /><Label htmlFor="o1">Always</Label></div>
           <div className="flex items-center space-x-2"><RadioGroupItem value="sometimes" id="o2" /><Label htmlFor="o2">Sometimes</Label></div>
           <div className="flex items-center space-x-2"><RadioGroupItem value="never" id="o3" /><Label htmlFor="o3">Never</Label></div>
         </RadioGroup>
-      </div>
+      </Question>
     </FormShell>
   );
 };
@@ -395,25 +443,26 @@ const FinanceSetupForm = ({ preferences, onSubmit, onSkip, isSaving }: Omit<Form
     countAnswered([data.monthly_grocery_budget, data.budget_consciousness]),
     2,
   );
+  const { activeIndex, advanceFrom } = useQuestionFocus(2);
   return (
     <FormShell onSave={() => onSubmit(data)} onSkip={onSkip} isSaving={isSaving}>
-      <div>
+      <Question index={0} activeIndex={activeIndex}>
         <Label>Monthly grocery budget (₹)</Label>
-        <RadioGroup value={data.monthly_grocery_budget} onValueChange={(v) => setData({ ...data, monthly_grocery_budget: v })} className="mt-2">
+        <RadioGroup value={data.monthly_grocery_budget} onValueChange={(v) => { setData({ ...data, monthly_grocery_budget: v }); advanceFrom(0); }} className="mt-2">
           <div className="flex items-center space-x-2"><RadioGroupItem value="under_5000" id="b1" /><Label htmlFor="b1">Under 5,000</Label></div>
           <div className="flex items-center space-x-2"><RadioGroupItem value="5000_to_10000" id="b2" /><Label htmlFor="b2">5,000 – 10,000</Label></div>
           <div className="flex items-center space-x-2"><RadioGroupItem value="10000_to_20000" id="b3" /><Label htmlFor="b3">10,000 – 20,000</Label></div>
           <div className="flex items-center space-x-2"><RadioGroupItem value="over_20000" id="b4" /><Label htmlFor="b4">Over 20,000</Label></div>
         </RadioGroup>
-      </div>
-      <div>
+      </Question>
+      <Question index={1} activeIndex={activeIndex}>
         <Label>How strict should we be on budget?</Label>
-        <RadioGroup value={data.budget_consciousness} onValueChange={(v) => setData({ ...data, budget_consciousness: v })} className="mt-2">
+        <RadioGroup value={data.budget_consciousness} onValueChange={(v) => { setData({ ...data, budget_consciousness: v }); advanceFrom(1); }} className="mt-2">
           <div className="flex items-center space-x-2"><RadioGroupItem value="very" id="bc1" /><Label htmlFor="bc1">Very — keep us on track</Label></div>
           <div className="flex items-center space-x-2"><RadioGroupItem value="somewhat" id="bc2" /><Label htmlFor="bc2">Somewhat</Label></div>
           <div className="flex items-center space-x-2"><RadioGroupItem value="not_really" id="bc3" /><Label htmlFor="bc3">Not really</Label></div>
         </RadioGroup>
-      </div>
+      </Question>
     </FormShell>
   );
 };
@@ -428,18 +477,19 @@ const RoutineSetupForm = ({ preferences, onSubmit, onSkip, isSaving }: Omit<Form
     countAnswered([data.preferred_task_time, data.household_concerns]),
     2,
   );
+  const { activeIndex, advanceFrom } = useQuestionFocus(2);
   return (
     <FormShell onSave={() => onSubmit(data)} onSkip={onSkip} isSaving={isSaving}>
-      <div>
+      <Question index={0} activeIndex={activeIndex}>
         <Label>Preferred time of day</Label>
-        <RadioGroup value={data.preferred_task_time} onValueChange={(v) => setData({ ...data, preferred_task_time: v })} className="mt-2">
+        <RadioGroup value={data.preferred_task_time} onValueChange={(v) => { setData({ ...data, preferred_task_time: v }); advanceFrom(0); }} className="mt-2">
           <div className="flex items-center space-x-2"><RadioGroupItem value="morning" id="r1" /><Label htmlFor="r1">Morning</Label></div>
           <div className="flex items-center space-x-2"><RadioGroupItem value="afternoon" id="r2" /><Label htmlFor="r2">Afternoon</Label></div>
           <div className="flex items-center space-x-2"><RadioGroupItem value="evening" id="r3" /><Label htmlFor="r3">Evening</Label></div>
           <div className="flex items-center space-x-2"><RadioGroupItem value="night" id="r4" /><Label htmlFor="r4">Night</Label></div>
         </RadioGroup>
-      </div>
-      <div>
+      </Question>
+      <Question index={1} activeIndex={activeIndex}>
         <Label>What matters most to you?</Label>
         <div className="space-y-2 mt-2">
           {["Health & fitness", "Family time", "Productivity", "Learning", "Mindfulness"].map((c) => (
@@ -449,7 +499,7 @@ const RoutineSetupForm = ({ preferences, onSubmit, onSkip, isSaving }: Omit<Form
             </div>
           ))}
         </div>
-      </div>
+      </Question>
     </FormShell>
   );
 };
@@ -464,25 +514,26 @@ const CalendarSetupForm = ({ preferences, onSubmit, onSkip, isSaving }: Omit<For
     countAnswered([data.work_schedule, data.festival_importance]),
     2,
   );
+  const { activeIndex, advanceFrom } = useQuestionFocus(2);
   return (
     <FormShell onSave={() => onSubmit(data)} onSkip={onSkip} isSaving={isSaving}>
-      <div>
+      <Question index={0} activeIndex={activeIndex}>
         <Label>Household work schedule</Label>
-        <RadioGroup value={data.work_schedule} onValueChange={(v) => setData({ ...data, work_schedule: v })} className="mt-2">
+        <RadioGroup value={data.work_schedule} onValueChange={(v) => { setData({ ...data, work_schedule: v }); advanceFrom(0); }} className="mt-2">
           <div className="flex items-center space-x-2"><RadioGroupItem value="both_working" id="w1" /><Label htmlFor="w1">Both/all adults working</Label></div>
           <div className="flex items-center space-x-2"><RadioGroupItem value="one_working" id="w2" /><Label htmlFor="w2">One adult working</Label></div>
           <div className="flex items-center space-x-2"><RadioGroupItem value="flexible" id="w3" /><Label htmlFor="w3">Flexible / WFH</Label></div>
           <div className="flex items-center space-x-2"><RadioGroupItem value="retired" id="w4" /><Label htmlFor="w4">Retired</Label></div>
         </RadioGroup>
-      </div>
-      <div>
+      </Question>
+      <Question index={1} activeIndex={activeIndex}>
         <Label>How important are festivals?</Label>
-        <RadioGroup value={data.festival_importance} onValueChange={(v) => setData({ ...data, festival_importance: v })} className="mt-2">
+        <RadioGroup value={data.festival_importance} onValueChange={(v) => { setData({ ...data, festival_importance: v }); advanceFrom(1); }} className="mt-2">
           <div className="flex items-center space-x-2"><RadioGroupItem value="very" id="f1" /><Label htmlFor="f1">Very important</Label></div>
           <div className="flex items-center space-x-2"><RadioGroupItem value="somewhat" id="f2" /><Label htmlFor="f2">Somewhat</Label></div>
           <div className="flex items-center space-x-2"><RadioGroupItem value="not_really" id="f3" /><Label htmlFor="f3">Not really</Label></div>
         </RadioGroup>
-      </div>
+      </Question>
     </FormShell>
   );
 };
