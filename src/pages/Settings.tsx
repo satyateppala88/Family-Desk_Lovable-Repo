@@ -16,14 +16,11 @@ import { useQuery } from "@tanstack/react-query";
 import { InviteMemberDialog } from "@/components/household/InviteMemberDialog";
 import { useHouseholdPreferences } from "@/hooks/useHouseholdPreferences";
 import { EditHouseholdBasicsDialog } from "@/components/settings/EditHouseholdBasicsDialog";
-import { EditDietaryPreferencesDialog } from "@/components/settings/EditDietaryPreferencesDialog";
-import { EditCookingPreferencesDialog } from "@/components/settings/EditCookingPreferencesDialog";
-import { EditRoutinePreferencesDialog } from "@/components/settings/EditRoutinePreferencesDialog";
-import { EditBudgetPreferencesDialog } from "@/components/settings/EditBudgetPreferencesDialog";
 import { supabase } from "@/lib/supabase";
 import { HowToUseSection } from "@/components/settings/HowToUseSection";
 import { WhatsNewSection } from "@/components/settings/WhatsNewSection";
 import { TermsSection, PrivacySection } from "@/components/settings/LegalDocsSection";
+import { ModulePreferencesSection } from "@/components/settings/ModulePreferencesSection";
 
 export const Settings = () => {
   const { user } = useAuth();
@@ -232,145 +229,7 @@ export const Settings = () => {
                 </CardContent>
               </Card>
 
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <div>
-                    <CardTitle>Dietary Preferences</CardTitle>
-                    <CardDescription>Your dietary needs and restrictions</CardDescription>
-                  </div>
-                  <EditDietaryPreferencesDialog
-                    preferences={preferences}
-                    onSave={updatePreferences}
-                    isUpdating={isUpdating}
-                  />
-                </CardHeader>
-                <CardContent className="grid gap-4">
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Diet Type</p>
-                    <p className="text-lg">{formatValue(preferences.diet_type)}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Food Allergies</p>
-                    <p className="text-lg">{formatValue(preferences.food_allergies)}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Religious Restrictions</p>
-                    <p className="text-lg">{formatValue(preferences.religious_restrictions)}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Spice Level</p>
-                    <p className="text-lg">{formatValue(preferences.spice_level)}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Regional Cuisines</p>
-                    <p className="text-lg">{formatValue(preferences.regional_cuisines)}</p>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <div>
-                    <CardTitle>Cooking & Meal Planning</CardTitle>
-                    <CardDescription>Your cooking habits and preferences</CardDescription>
-                  </div>
-                  <EditCookingPreferencesDialog
-                    preferences={preferences}
-                    onSave={updatePreferences}
-                    isUpdating={isUpdating}
-                  />
-                </CardHeader>
-                <CardContent className="grid gap-4">
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Cooking Skill Level</p>
-                    <p className="text-lg">{formatValue(preferences.cooking_skill_level)}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Weekday Cooking Time</p>
-                    <p className="text-lg">{formatValue(preferences.weekday_cooking_time)} minutes</p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Preferred Meal Types</p>
-                    <p className="text-lg">{formatValue(preferences.preferred_meal_types)}</p>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">Pantry Size</p>
-                      <p className="text-lg">{formatValue(preferences.pantry_size)}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">Shopping Frequency</p>
-                      <p className="text-lg">{formatValue(preferences.shopping_frequency)}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <div>
-                    <CardTitle>Household Routine & Priorities</CardTitle>
-                    <CardDescription>Your daily schedule and concerns</CardDescription>
-                  </div>
-                  <EditRoutinePreferencesDialog
-                    preferences={preferences}
-                    onSave={updatePreferences}
-                    isUpdating={isUpdating}
-                  />
-                </CardHeader>
-                <CardContent className="grid gap-4">
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Household Concerns</p>
-                    <p className="text-lg">{formatValue(preferences.household_concerns)}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Work Schedule</p>
-                    <p className="text-lg">{formatValue(preferences.work_schedule)}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Preferred Task Time</p>
-                    <p className="text-lg">{formatValue(preferences.preferred_task_time)}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Festival Importance</p>
-                    <p className="text-lg">{formatValue(preferences.festival_importance)}</p>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <div>
-                    <CardTitle>Budget & Shopping</CardTitle>
-                    <CardDescription>Your budget and shopping preferences</CardDescription>
-                  </div>
-                  <EditBudgetPreferencesDialog
-                    preferences={preferences}
-                    onSave={updatePreferences}
-                    isUpdating={isUpdating}
-                  />
-                </CardHeader>
-                <CardContent className="grid gap-4">
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Monthly Grocery Budget</p>
-                    <p className="text-lg">{formatValue(preferences.monthly_grocery_budget)}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">Shopping Locations</p>
-                    <p className="text-lg">{formatValue(preferences.shopping_locations)}</p>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">Organic Preference</p>
-                      <p className="text-lg">{formatValue(preferences.organic_preference)}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">Budget Consciousness</p>
-                      <p className="text-lg">{formatValue(preferences.budget_consciousness)}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+              <ModulePreferencesSection />
 
               <Card className="bg-muted/50">
                 <CardContent className="pt-6">
@@ -378,7 +237,7 @@ export const Settings = () => {
                     Last updated: {new Date(preferences.updated_at).toLocaleDateString()}
                   </p>
                   <p className="text-sm text-muted-foreground mt-2">
-                    These preferences help our AI provide personalized meal suggestions and task recommendations tailored to your household needs.
+                    Each module asks for its own preferences the first time you open it. You can edit them above anytime.
                   </p>
                 </CardContent>
               </Card>
