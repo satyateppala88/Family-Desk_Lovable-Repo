@@ -143,9 +143,20 @@ beforeEach(() => {
 
 describe("UserPreferencesOnboarding — persistence", () => {
   it("writes profile, preferences, enabled products, household completion, and progress on Finish", async () => {
+    // Prefill all selections so nothing is "newly enabled" — Finish should
+    // skip the per-module setup queue and navigate straight to /dashboard.
+    selectResponses["household_enabled_products:list"] = [
+      { product_name: "tasks" },
+      { product_name: "meals" },
+      { product_name: "calendar" },
+      { product_name: "grocery" },
+      { product_name: "finance" },
+    ];
     renderHost();
     advanceToStep1();
-    fireEvent.click(screen.getByTestId("toggle-finance")); // add finance to default 4
+    await waitFor(() =>
+      expect(screen.getByTestId("toggle-finance").getAttribute("aria-pressed")).toBe("true"),
+    );
     fireEvent.click(screen.getByRole("button", { name: /Finish/i }));
 
     await waitFor(() => {
