@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders } from "../_shared/cors.ts";
 import { sendWhatsAppTemplate, WHATSAPP_TEMPLATES } from "../_shared/whatsapp.ts";
+import { todayIST } from "../_shared/time.ts";
 
 const handler = async (req: Request): Promise<Response> => {
   const origin = req.headers.get("origin");
@@ -17,7 +18,7 @@ const handler = async (req: Request): Promise<Response> => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    const today = new Date().toISOString().split("T")[0];
+    const today = todayIST();
 
     // Get all users with WhatsApp enabled for daily plan
     const { data: usersWithWA, error: usersError } = await supabaseAdmin
