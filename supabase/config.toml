@@ -92,3 +92,6 @@ verify_jwt = false
 
 [functions.whatsapp-verify-otp]
 verify_jwt = false
+
+[functions.bootstrap-push-config]
+verify_jwt = false
