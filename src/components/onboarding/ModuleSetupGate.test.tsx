@@ -11,12 +11,20 @@ vi.mock("@/hooks/useHousehold", () => ({
   useHousehold: () => ({ householdId: "hh-1", isLoading: false }),
 }));
 
-const updatePreferencesMock = vi.fn(async (_u: unknown) => {});
+// Mutable holders so individual tests can swap implementations to simulate
+// in-flight saves (which is what disables the Save & continue button).
+const prefsState = {
+  isUpdating: false,
+  impl: async (_u: unknown) => {},
+};
+const updatePreferencesMock = vi.fn((u: unknown) => prefsState.impl(u));
 vi.mock("@/hooks/useHouseholdPreferences", () => ({
   useHouseholdPreferences: () => ({
     preferences: {},
     updatePreferences: updatePreferencesMock,
-    isUpdating: false,
+    get isUpdating() {
+      return prefsState.isUpdating;
+    },
   }),
 }));
 
