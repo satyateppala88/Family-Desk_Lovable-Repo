@@ -44,7 +44,7 @@ export interface ChangelogEntry {
 
 // ----- Current versions ---------------------------------------------------
 
-export const APP_VERSION = "1.0";
+export const APP_VERSION = "1.1";
 export const PRIVACY_VERSION = "1.0";
 export const TERMS_VERSION = "1.0";
 
@@ -81,6 +81,15 @@ export function formatVersionDate(iso: string): string {
 // ----- Changelogs ---------------------------------------------------------
 
 export const APP_CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "1.1",
+    date: "2026-04-27",
+    type: "minor",
+    title: "Changes",
+    changes: [
+      "Changes",
+    ],
+  },
   {
     version: "1.0",
     date: "2026-04-27",
