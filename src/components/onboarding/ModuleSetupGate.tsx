@@ -156,7 +156,7 @@ const FormShell = ({
 }) => (
   <>
     <div className="space-y-5 py-4">{children}</div>
-    <DialogFooter className="flex-row justify-between sm:justify-between">
+    <DialogFooter className="flex-row justify-between sm:justify-between sticky bottom-0 bg-background border-t border-border -mx-6 px-6 py-3 mt-2">
       <Button variant="ghost" onClick={onSkip} disabled={isSaving}>
         Skip for now
       </Button>
