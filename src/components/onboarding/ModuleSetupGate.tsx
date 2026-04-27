@@ -808,7 +808,7 @@ const MealsSetupForm = ({ module, householdId, preferences, onSubmit, onSkip, is
   const { activeIndex, advanceFrom } = useQuestionFocus(householdId, module, applicableKeys);
   return (
     <FormShell onSave={() => onSubmit(data)} onSkip={onSkip} isSaving={isSaving}>
-      <Question index={indexOf("diet_type")} activeIndex={activeIndex}>
+      <Question index={indexOf("diet_type")} activeIndex={activeIndex} label="Diet type">
         <Label>Diet type</Label>
         <RadioGroup value={data.diet_type} onValueChange={(v) => { setData({ ...data, diet_type: v }); mark("diet_type"); advanceFrom(indexOf("diet_type")); }} className="mt-2">
           {["vegetarian", "non_vegetarian", "eggetarian", "vegan", "jain"].map((t) => (
@@ -819,7 +819,7 @@ const MealsSetupForm = ({ module, householdId, preferences, onSubmit, onSkip, is
           ))}
         </RadioGroup>
       </Question>
-      <Question index={indexOf("spice_level")} activeIndex={activeIndex}>
+      <Question index={indexOf("spice_level")} activeIndex={activeIndex} label="Spice level">
         <Label>Spice level</Label>
         <RadioGroup value={data.spice_level} onValueChange={(v) => { setData({ ...data, spice_level: v }); mark("spice_level"); advanceFrom(indexOf("spice_level")); }} className="mt-2">
           {["mild", "medium", "spicy", "very_spicy"].map((t) => (
@@ -830,7 +830,7 @@ const MealsSetupForm = ({ module, householdId, preferences, onSubmit, onSkip, is
           ))}
         </RadioGroup>
       </Question>
-      <Question index={indexOf("weekday_cooking_time")} activeIndex={activeIndex}>
+      <Question index={indexOf("weekday_cooking_time")} activeIndex={activeIndex} label="Weekday cooking time">
         <Label>Weekday cooking time</Label>
         <RadioGroup value={data.weekday_cooking_time} onValueChange={(v) => { setData({ ...data, weekday_cooking_time: v }); mark("weekday_cooking_time"); advanceFrom(indexOf("weekday_cooking_time")); }} className="mt-2">
           <div className="flex items-center space-x-2"><RadioGroupItem value="less_than_30" id="t1" /><Label htmlFor="t1">Under 30 min</Label></div>
@@ -839,7 +839,7 @@ const MealsSetupForm = ({ module, householdId, preferences, onSubmit, onSkip, is
         </RadioGroup>
       </Question>
       {indexOf("food_allergies") >= 0 && (
-        <Question index={indexOf("food_allergies")} activeIndex={activeIndex}>
+        <Question index={indexOf("food_allergies")} activeIndex={activeIndex} label="Food allergies">
           <Label>Food allergies</Label>
           <div className="space-y-2 mt-2">
             {["None", "Dairy", "Nuts", "Gluten", "Seafood", "Eggs", "Soy"].map((a) => {
@@ -865,7 +865,7 @@ const MealsSetupForm = ({ module, householdId, preferences, onSubmit, onSkip, is
         </Question>
       )}
       {indexOf("regional_cuisines") >= 0 && (
-        <Question index={indexOf("regional_cuisines")} activeIndex={activeIndex}>
+        <Question index={indexOf("regional_cuisines")} activeIndex={activeIndex} label="Favourite regional cuisines">
           <Label>Favourite regional cuisines</Label>
           <div className="space-y-2 mt-2">
             {["North Indian", "South Indian", "East Indian", "West Indian", "International"].map((c) => (
@@ -899,7 +899,7 @@ const GrocerySetupForm = ({ module, householdId, preferences, onSubmit, onSkip, 
   const { activeIndex, advanceFrom } = useQuestionFocus(householdId, module, applicableKeys);
   return (
     <FormShell onSave={() => onSubmit(data)} onSkip={onSkip} isSaving={isSaving}>
-      <Question index={indexOf("pantry_size")} activeIndex={activeIndex}>
+      <Question index={indexOf("pantry_size")} activeIndex={activeIndex} label="Pantry size">
         <Label>Pantry size</Label>
         <RadioGroup value={data.pantry_size} onValueChange={(v) => { setData({ ...data, pantry_size: v }); mark("pantry_size"); advanceFrom(indexOf("pantry_size")); }} className="mt-2">
           {["small", "medium", "large"].map((s) => (
@@ -907,7 +907,7 @@ const GrocerySetupForm = ({ module, householdId, preferences, onSubmit, onSkip, 
           ))}
         </RadioGroup>
       </Question>
-      <Question index={indexOf("shopping_frequency")} activeIndex={activeIndex}>
+      <Question index={indexOf("shopping_frequency")} activeIndex={activeIndex} label="Shopping frequency">
         <Label>Shopping frequency</Label>
         <RadioGroup value={data.shopping_frequency} onValueChange={(v) => { setData({ ...data, shopping_frequency: v }); mark("shopping_frequency"); advanceFrom(indexOf("shopping_frequency")); }} className="mt-2">
           <div className="flex items-center space-x-2"><RadioGroupItem value="daily" id="sf1" /><Label htmlFor="sf1">Daily</Label></div>
@@ -916,7 +916,7 @@ const GrocerySetupForm = ({ module, householdId, preferences, onSubmit, onSkip, 
           <div className="flex items-center space-x-2"><RadioGroupItem value="monthly" id="sf4" /><Label htmlFor="sf4">Monthly</Label></div>
         </RadioGroup>
       </Question>
-      <Question index={indexOf("organic_preference")} activeIndex={activeIndex}>
+      <Question index={indexOf("organic_preference")} activeIndex={activeIndex} label="Organic preference">
         <Label>Organic preference</Label>
         <RadioGroup value={data.organic_preference} onValueChange={(v) => { setData({ ...data, organic_preference: v }); mark("organic_preference"); advanceFrom(indexOf("organic_preference")); }} className="mt-2">
           <div className="flex items-center space-x-2"><RadioGroupItem value="always" id="o1" /><Label htmlFor="o1">Always</Label></div>
@@ -944,7 +944,7 @@ const FinanceSetupForm = ({ module, householdId, preferences, onSubmit, onSkip, 
   const { activeIndex, advanceFrom } = useQuestionFocus(householdId, module, applicableKeys);
   return (
     <FormShell onSave={() => onSubmit(data)} onSkip={onSkip} isSaving={isSaving}>
-      <Question index={indexOf("monthly_grocery_budget")} activeIndex={activeIndex}>
+      <Question index={indexOf("monthly_grocery_budget")} activeIndex={activeIndex} label="Monthly grocery budget">
         <Label>Monthly grocery budget (₹)</Label>
         <RadioGroup value={data.monthly_grocery_budget} onValueChange={(v) => { setData({ ...data, monthly_grocery_budget: v }); mark("monthly_grocery_budget"); advanceFrom(indexOf("monthly_grocery_budget")); }} className="mt-2">
           <div className="flex items-center space-x-2"><RadioGroupItem value="under_5000" id="b1" /><Label htmlFor="b1">Under 5,000</Label></div>
@@ -953,7 +953,7 @@ const FinanceSetupForm = ({ module, householdId, preferences, onSubmit, onSkip, 
           <div className="flex items-center space-x-2"><RadioGroupItem value="over_20000" id="b4" /><Label htmlFor="b4">Over 20,000</Label></div>
         </RadioGroup>
       </Question>
-      <Question index={indexOf("budget_consciousness")} activeIndex={activeIndex}>
+      <Question index={indexOf("budget_consciousness")} activeIndex={activeIndex} label="Budget strictness">
         <Label>How strict should we be on budget?</Label>
         <RadioGroup value={data.budget_consciousness} onValueChange={(v) => { setData({ ...data, budget_consciousness: v }); mark("budget_consciousness"); advanceFrom(indexOf("budget_consciousness")); }} className="mt-2">
           <div className="flex items-center space-x-2"><RadioGroupItem value="very" id="bc1" /><Label htmlFor="bc1">Very — keep us on track</Label></div>
@@ -981,7 +981,7 @@ const RoutineSetupForm = ({ module, householdId, preferences, onSubmit, onSkip, 
   const { activeIndex, advanceFrom } = useQuestionFocus(householdId, module, applicableKeys);
   return (
     <FormShell onSave={() => onSubmit(data)} onSkip={onSkip} isSaving={isSaving}>
-      <Question index={indexOf("preferred_task_time")} activeIndex={activeIndex}>
+      <Question index={indexOf("preferred_task_time")} activeIndex={activeIndex} label="Preferred time of day">
         <Label>Preferred time of day</Label>
         <RadioGroup value={data.preferred_task_time} onValueChange={(v) => { setData({ ...data, preferred_task_time: v }); mark("preferred_task_time"); advanceFrom(indexOf("preferred_task_time")); }} className="mt-2">
           <div className="flex items-center space-x-2"><RadioGroupItem value="morning" id="r1" /><Label htmlFor="r1">Morning</Label></div>
@@ -990,7 +990,7 @@ const RoutineSetupForm = ({ module, householdId, preferences, onSubmit, onSkip, 
           <div className="flex items-center space-x-2"><RadioGroupItem value="night" id="r4" /><Label htmlFor="r4">Night</Label></div>
         </RadioGroup>
       </Question>
-      <Question index={indexOf("household_concerns")} activeIndex={activeIndex}>
+      <Question index={indexOf("household_concerns")} activeIndex={activeIndex} label="What matters most">
         <Label>What matters most to you?</Label>
         <div className="space-y-2 mt-2">
           {["Health & fitness", "Family time", "Productivity", "Learning", "Mindfulness"].map((c) => (
@@ -1021,7 +1021,7 @@ const CalendarSetupForm = ({ module, householdId, preferences, onSubmit, onSkip,
   const { activeIndex, advanceFrom } = useQuestionFocus(householdId, module, applicableKeys);
   return (
     <FormShell onSave={() => onSubmit(data)} onSkip={onSkip} isSaving={isSaving}>
-      <Question index={indexOf("work_schedule")} activeIndex={activeIndex}>
+      <Question index={indexOf("work_schedule")} activeIndex={activeIndex} label="Household work schedule">
         <Label>Household work schedule</Label>
         <RadioGroup value={data.work_schedule} onValueChange={(v) => { setData({ ...data, work_schedule: v }); mark("work_schedule"); advanceFrom(indexOf("work_schedule")); }} className="mt-2">
           <div className="flex items-center space-x-2"><RadioGroupItem value="both_working" id="w1" /><Label htmlFor="w1">Both/all adults working</Label></div>
@@ -1030,7 +1030,7 @@ const CalendarSetupForm = ({ module, householdId, preferences, onSubmit, onSkip,
           <div className="flex items-center space-x-2"><RadioGroupItem value="retired" id="w4" /><Label htmlFor="w4">Retired</Label></div>
         </RadioGroup>
       </Question>
-      <Question index={indexOf("festival_importance")} activeIndex={activeIndex}>
+      <Question index={indexOf("festival_importance")} activeIndex={activeIndex} label="Festival importance">
         <Label>How important are festivals?</Label>
         <RadioGroup value={data.festival_importance} onValueChange={(v) => { setData({ ...data, festival_importance: v }); mark("festival_importance"); advanceFrom(indexOf("festival_importance")); }} className="mt-2">
           <div className="flex items-center space-x-2"><RadioGroupItem value="very" id="f1" /><Label htmlFor="f1">Very important</Label></div>
