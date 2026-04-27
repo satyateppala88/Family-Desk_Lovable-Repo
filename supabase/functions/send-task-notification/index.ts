@@ -7,6 +7,7 @@ import {
 } from "../_shared/email-templates.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
 import { sendWhatsAppTemplate, WHATSAPP_TEMPLATES } from "../_shared/whatsapp.ts";
+import { sendPush } from "../_shared/push.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -121,6 +122,17 @@ const handler = async (req: Request): Promise<Response> => {
     });
 
     console.log("Task notification email sent:", emailResponse);
+
+    // Fan-out Web Push (channel: tasks) — non-blocking, never throws
+    await sendPush({
+      user_ids: [assigneeId],
+      channel: "tasks",
+      title: `New task: ${taskTitle}`,
+      body: `${assignerName} assigned this to you${formattedDueDate ? ` · Due ${formattedDueDate}` : ""}`,
+      url: `/taskmaster/tasks?task=${taskId}`,
+      tag: `task-${taskId}`,
+      data: { taskId, type: "task_assigned" },
+    });
 
     // Check if user has WhatsApp enabled for task notifications
     const { data: profile } = await supabaseAdmin

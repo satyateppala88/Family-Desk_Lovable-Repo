@@ -6,6 +6,7 @@ import {
   getMealPlanSummaryContent 
 } from "../_shared/email-templates.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
+import { sendPush } from "../_shared/push.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -155,6 +156,21 @@ const handler = async (req: Request): Promise<Response> => {
         errors.push(`Member ${member.user_id}: ${error.message}`);
       }
     }
+
+    // Fan-out Web Push to all members (channel: meals)
+    const weekStartLabel = new Date(mealPlan.week_start_date).toLocaleDateString("en-US", {
+      month: "long",
+      day: "numeric",
+    });
+    await sendPush({
+      user_ids: members.map((m) => m.user_id),
+      channel: "meals",
+      title: "🍽️ Your weekly meal plan is ready",
+      body: `Plan for week of ${weekStartLabel}`,
+      url: "/meals",
+      tag: `meal-plan-${mealPlanId}`,
+      data: { mealPlanId, householdId, type: "meal_plan_ready" },
+    });
 
     return new Response(
       JSON.stringify({ 

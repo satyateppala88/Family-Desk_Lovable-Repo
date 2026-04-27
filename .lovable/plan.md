@@ -1,111 +1,126 @@
-# Offline Caching for FamilyDesk PWA
+# Push Notification Coverage Plan
 
-Make Tasks, Daily Plan, Groceries & Pantry, Meals & Recipes, and Habits **viewable** when the device has no internet. Read-only — the app will clearly indicate it's offline and disable mutating actions until reconnected.
+The Web Push pipeline (`send-push`, `_shared/push.ts`, VAPID keys, `notification_preferences` table with channels: `tasks`, `habits`, `meals`, `pantry`, `invites`, `daily_plan`) is already live. Today only **`send-task-reminders`** actually fires push. Every other notification surface still relies on email/WhatsApp only.
 
-Reminder: like all PWA features, this only works in the **published** build (familydesk.in / familydesk.lovable.app), never in the Lovable editor preview iframe — the existing service-worker kill switch already enforces that.
+This plan inventories every place a push would meaningfully help, groups them by the existing channel, flags missing channels, and lays out an implementation order.
 
-## What the user will get
+## 1. Scenarios where push notifications add value
 
-1. **App opens when offline.** All pages, scripts, fonts, and icons are precached by the service worker.
-2. **Last-seen data appears instantly** for: today's tasks, this week's daily plan, shopping list & pantry, this week's meal plan + saved recipes, today's habits.
-3. **Offline banner** at the top of the app: "You're offline — showing your last synced data" with the time of last sync. Auto-dismisses on reconnect.
-4. **Mutating buttons disabled** when offline (e.g. "Add task", "Mark done", "Tick habit") with a tooltip "Reconnect to update". This matches the read-only scope you chose.
-5. **Cache-then-network** for non-critical pages: shows cached page immediately, refreshes in background when online.
+### Tasks channel (`tasks`)
+| Trigger | Where it lives today | Push wanted? |
+|---|---|---|
+| Task assigned to me | `src/hooks/useTasks.ts` → `send-task-notification` (email) | Yes — instant "New task: …" |
+| Task due soon / overdue reminder | `send-task-reminders` cron | Already wired ✅ |
+| Task I created/assigned was completed | `useTasks.ts` status update | Yes — "Asha completed: Pay electricity bill" |
+| Task comment / note added (if/when comments ship) | n/a | Future |
+| Daily plan accepted / generated | `generate-daily-plan` | Use `daily_plan` channel |
 
-## Architecture
+### Habits channel (`habits`)
+| Trigger | Today | Push wanted? |
+|---|---|---|
+| Daily habit reminder at user's `reminder_time` | `send-habit-reminders` cron (email) | Yes — primary channel for habits |
+| Streak milestone (3/7/30 day) | scoring logic in `useHabits` | Yes — celebratory push |
+| Streak about to break (no log by 8pm) | new cron | Yes — "Don't lose your 12-day streak" |
+| New household habit assigned to me | habit create flow | Yes |
+| Household goal completed | `household_habit_goals` | Yes |
 
-```text
-Browser
-  ├─ Service Worker (Workbox via vite-plugin-pwa)
-  │   ├─ precache: app shell (JS, CSS, HTML, icons, fonts)
-  │   └─ runtime caches:
-  │        ├─ Supabase REST GETs   → StaleWhileRevalidate (24h)
-  │        ├─ Google Fonts files   → CacheFirst (1y)
-  │        └─ images / avatars     → CacheFirst (30d)
-  └─ React Query
-      └─ persistQueryClient → IndexedDB (idb-keyval)
-          - persists every successful query for 7 days
-          - on cold start, hydrates instantly from disk
-          - background-refetches when network returns
-```
+### Meals channel (`meals`)
+| Trigger | Today | Push wanted? |
+|---|---|---|
+| Weekly meal plan generated / shared | `useMealPlans.ts` → `send-meal-plan-summary` (email) | Yes |
+| "What's for dinner?" reminder ~5pm | new cron | Yes |
+| Cook-of-the-day rotation reminder | new | Yes |
 
-Two layers cooperate: **Workbox** caches HTTP responses at the network layer (so the SW can serve them when the page makes a fetch), while **persistQueryClient** keeps React Query's in-memory cache on disk so the UI has data to render *before* any fetch even happens.
+### Pantry channel (`pantry`)
+| Trigger | Today | Push wanted? |
+|---|---|---|
+| Item expiring in N days | `send-pantry-alerts` cron (email) | Yes |
+| Item out of stock / low stock | `send-pantry-alerts` | Yes |
+| Shopping list ready | `generate-shopping-list` | Yes |
 
-## Plan
+### Invites channel (`invites`)
+| Trigger | Today | Push wanted? |
+|---|---|---|
+| Household invitation received | `InviteMemberDialog` → `send-household-invitation` (email) | Yes — for already-registered invitees |
+| Join request submitted (notify admins) | `send-join-request-notification` | Yes |
+| Invitation accepted/declined | `send-invitation-response` | Yes |
+| Access request approved/rejected (platform) | `AdminAccessRequests` → `send-access-decision` | Yes |
 
-### 1. Service worker runtime caching
+### Daily plan channel (`daily_plan`)
+| Trigger | Today | Push wanted? |
+|---|---|---|
+| Morning daily plan ready | `generate-daily-plan` + `send-daily-plan-whatsapp` | Yes — push at 7am with top 3 tasks |
+| Evening wrap-up summary | new cron | Yes — "You completed 4/6 tasks today" |
 
-Update `vite.config.ts` Workbox config to add `runtimeCaching` rules:
+### New channel proposals (require schema add)
+These don't fit existing channels:
 
-- **Supabase REST GETs** (`https://oohjebftkvlhpaljvijn.supabase.co/rest/v1/.*`) — `StaleWhileRevalidate`, max 200 entries, 24h. POST/PATCH/DELETE/PUT bypassed (they fail offline by design).
-- **Edge function GETs** (`/functions/v1/.*` GET only) — `NetworkFirst` with 3s timeout, 1h cache.
-- **Google Fonts CSS** — `StaleWhileRevalidate`.
-- **Google Fonts files** (`fonts.gstatic.com`) — `CacheFirst`, 1 year.
-- **Images** (`.png|.jpg|.jpeg|.webp|.svg`) — `CacheFirst`, 30 days, max 100 entries.
+- **`finance`** — bill/subscription due in 3 days (`finance_subscriptions.next_due_date`), budget breach (>90% of category), large transaction logged by another member, monthly review ready.
+- **`calendar`** — event starting in 15 min, new event added by household member, calendar sync errors.
+- **`ai_suggestions`** — new high-value `ai_suggestions` row (e.g. "I noticed you keep buying milk on Sundays — add to recurring?").
+- **`system`** (always-on, not user-toggleable) — security alerts (new device login), critical sync failures.
 
-Keep `navigateFallbackDenylist: [/^\/~oauth/, /^\/auth\/callback/]` so OAuth redirects always hit the network.
+## 2. Implementation phases
 
-### 2. React Query persistence
+### Phase 1 — Wire push into existing notification edge functions (no schema change)
+Add a `sendPush()` fan-out call alongside the existing email/WhatsApp send in:
+1. `send-task-notification` (assignment) — channel `tasks`
+2. `send-habit-reminders` (cron) — channel `habits`
+3. `send-pantry-alerts` (cron) — channel `pantry`
+4. `send-meal-plan-summary` — channel `meals`
+5. `send-household-invitation`, `send-join-request-notification`, `send-invitation-response` — channel `invites`
+6. `send-access-decision` — channel `invites` (or new `system`)
+7. `send-daily-plan-whatsapp` (rename concept to multi-channel) — channel `daily_plan`
+8. `send-weekly-digest` — channel `daily_plan`
 
-Add `@tanstack/react-query-persist-client` + `idb-keyval` based persister in `src/lib/query-client.ts`:
+For each: pass `user_ids`, `title`, `body`, `url` (deep link into the relevant page), `tag` (for collapsing duplicates), `data` (entity id for click handling).
 
-- `staleTime`: 5 min for most queries (so we still refetch when fresh online).
-- `gcTime`: 7 days (cache survives unmount and is persisted).
-- Persist only successful queries to IndexedDB under `familydesk-rq-cache`.
-- Buster string tied to app version (auto-bumped) so a deploy invalidates stale shape.
+### Phase 2 — New event-driven pushes (no new cron)
+Hook into existing client mutations to trigger push fan-out via a thin new edge function (or extend existing ones):
+- Task **completed** → notify creator (in `useTasks.updateStatus`)
+- Task **assigned** to me by someone else → already covered if Phase 1 adds push to `send-task-notification`
+- New **AI suggestion** generated → notify household members
+- New **household habit** created and assigned → notify assignees
 
-Replace the `new QueryClient()` line in `src/App.tsx` with the persisted client + `PersistQueryClientProvider`.
+### Phase 3 — New cron-driven pushes
+Add `pg_cron` schedules + new edge functions:
+- `send-streak-risk-alerts` — 8pm local, users with active streak and no log today
+- `send-meal-dinner-reminder` — 5pm local
+- `send-evening-wrap-up` — 9pm local
+- `send-finance-bill-reminders` — daily 9am, bills due in 3 days
+- `send-calendar-event-reminders` — every 15 min, events starting soon
 
-### 3. Offline indicator
+### Phase 4 — New channels & schema
+Add columns to `notification_preferences`: `finance`, `calendar`, `ai_suggestions`. Update `PushChannel` union, `useNotificationPreferences` hook, and `NotificationSettings.tsx` UI to expose the new toggles. Add a non-toggleable `system` path that bypasses preference filtering for critical alerts only.
 
-- `src/hooks/useOnlineStatus.ts` — listens to `online`/`offline` events, returns boolean + `lastOnlineAt` timestamp (persisted in localStorage).
-- `src/components/layout/OfflineBanner.tsx` — slim top banner: WifiOff icon + "Offline — showing data from {relative time}". Slides down with motion when offline, slides up on reconnect (3s delay so flicker is avoided).
-- Mounted once in `App.tsx` above the routes.
+### Phase 5 — UX polish
+- **Deep-link routing**: service worker click handler navigates to `data.url` (e.g. `/tasks/{id}`, `/habits`, `/pantry`).
+- **Notification grouping/tags**: use stable `tag` per entity so a re-sent reminder replaces the old one.
+- **Action buttons**: "Mark complete" / "Snooze 1h" on task pushes, "Logged ✓" on habit pushes (requires service worker `notificationclick` handler + a lightweight action endpoint).
+- **Quiet hours**: per-user setting (e.g. no pushes 10pm–7am) stored on `notification_preferences`.
+- **Badging**: PWA app icon badge count for unread items via Badging API where supported.
 
-### 4. Disable mutations offline
+## 3. Suggested build order (small, shippable PRs)
 
-- `src/hooks/useOnlineGuard.ts` — wraps a mutation handler; if offline, shows toast "You're offline — reconnect to make changes" and aborts.
-- Apply to the highest-traffic mutating buttons in: Tasks (create/complete/delete), Habits (tick), Groceries (add/check), Pantry (add/edit), Meals plan (regenerate), Finance transactions (add/edit/delete).
-- The disabled state is purely cosmetic UX; the SW already won't serve fake success for non-GET requests.
+1. Phase 1 batch A: `send-task-notification`, `send-household-invitation`, `send-join-request-notification`, `send-invitation-response`, `send-access-decision` (event-driven, easiest to test).
+2. Phase 1 batch B: cron functions — `send-habit-reminders`, `send-pantry-alerts`, `send-meal-plan-summary`, `send-weekly-digest`, daily plan.
+3. Phase 2: task-completed notify-creator + AI suggestion push.
+4. Phase 4 schema + UI for new channels (`finance`, `calendar`, `ai_suggestions`, quiet hours).
+5. Phase 3 new cron jobs (streak risk, dinner reminder, bill reminder, calendar event reminder).
+6. Phase 5 deep-link click handler + action buttons + badging.
 
-### 5. Cache warm-up on login
+## Technical notes
 
-After auth, prefetch the offline-priority queries so the user has something to see if they go offline immediately:
-- Today's tasks, this week's daily plan, shopping list, pantry items, this week's meal plan, today's habits.
-- One small `prefetchOfflineEssentials(queryClient, householdId)` helper called from `AppEntryGate` after the household is resolved.
+- All new fan-outs use the existing `sendPush()` helper from `supabase/functions/_shared/push.ts` — no per-function VAPID handling.
+- Channel filtering and dead-endpoint pruning are already centralized in `send-push`; new callers just pick the right `channel`.
+- For new channels: migration adds boolean columns defaulting to `true`, updates `handle_new_user()` is not needed (defaults cover it), then update the `PushChannel` TS union and the React hook/UI.
+- For deep links, standardize a `url` convention per entity type (`/tasks/:id`, `/habits`, `/pantry`, `/meals`, `/finance/subscriptions`, `/calendar`, `/settings/household/invitations`).
+- Service worker (`public/sw.js` or generated by VitePWA) needs a `notificationclick` listener that does `clients.openWindow(event.notification.data.url)`.
+- Quiet hours: enforce in `send-push` by reading user prefs and skipping (or queuing for later) if current local time falls in the user's quiet window — requires storing `timezone` on profile.
 
-### 6. QA
+## Summary of net-new artifacts
 
-- Unit tests for `useOnlineStatus`, `useOnlineGuard`, and the persister buster logic.
-- Manual checklist (you'll run after publish):
-  1. Load app online, navigate to Tasks/Groceries/Meals/Habits.
-  2. Chrome DevTools → Network → Offline → reload — pages render with cached data, banner shows.
-  3. Try to add a task — toast says "You're offline".
-  4. Toggle online — banner disappears within ~3s, fresh data refetches.
-  5. Cold-kill browser, go offline, reopen app — still loads.
-
-## Out of scope (ask if you want any of these)
-
-- Queued offline writes / background sync (you chose read-only).
-- Conflict resolution / full offline-first sync.
-- Caching AI Chat responses (they're conversation-specific).
-- Caching Calendar/Google events (token expires, refetch always desired).
-
-## Files I'll create or edit
-
-New:
-- `src/lib/query-client.ts` (persisted QueryClient factory)
-- `src/hooks/useOnlineStatus.ts` + test
-- `src/hooks/useOnlineGuard.ts` + test
-- `src/components/layout/OfflineBanner.tsx`
-- `src/lib/prefetch-offline.ts`
-
-Edited:
-- `vite.config.ts` (add `runtimeCaching` rules)
-- `src/App.tsx` (use persisted client, mount banner)
-- `src/components/launch/AppEntryGate.tsx` (call prefetch after household resolved)
-- ~6–8 high-traffic mutation hooks/buttons across Tasks, Habits, Groceries, Pantry, Meals, Finance (wire `useOnlineGuard`)
-
-New deps: `@tanstack/react-query-persist-client`, `idb-keyval`.
-
-After approval I'll start with the QueryClient persistence + offline banner (most user-visible), then layer in Workbox runtime caching and the mutation guards.
+- Edge functions modified: 8 (Phase 1)
+- Edge functions added: ~5 (Phase 3 crons + helper for ad-hoc events)
+- Migrations: 1 (new preference columns + quiet hours + timezone)
+- Frontend: `useNotificationPreferences`, `NotificationSettings.tsx`, service worker click handler

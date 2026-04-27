@@ -6,6 +6,7 @@ import {
   getEmailWrapper, 
   getInvitationResponseContent 
 } from "../_shared/email-templates.ts";
+import { sendPush } from "../_shared/push.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -132,6 +133,21 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     console.log(`Invitation response email sent to ${userData.user.email}:`, emailData);
+
+    // Fan-out Web Push to inviter (channel: invites)
+    await sendPush({
+      user_ids: [invitedByUserId],
+      channel: "invites",
+      title: action === "accepted"
+        ? `🎉 ${memberName} joined ${householdName}`
+        : `${memberName} declined the invite`,
+      body: action === "accepted"
+        ? "They now have access to your household"
+        : `${memberName} won't be joining ${householdName}`,
+      url: "/household/members",
+      tag: `invite-response-${invitedByUserId}-${memberName}`,
+      data: { action, householdName, type: "invitation_response" },
+    });
 
     return new Response(
       JSON.stringify({ success: true, messageId: emailData?.id }),
