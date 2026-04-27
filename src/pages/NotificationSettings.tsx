@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Bell,
@@ -31,11 +31,11 @@ import {
   type NotificationChannel,
 } from "@/hooks/useNotificationPreferences";
 import {
-  getPermissionState,
   isIosNeedsInstall,
   requestNativePermission,
   type PermissionState,
 } from "@/lib/notification-permission";
+import { useNotificationPermission } from "@/hooks/useNotificationPermission";
 
 interface ChannelConfig {
   key: NotificationChannel;
@@ -106,28 +106,14 @@ export default function NotificationSettings() {
   const { preferences, isLoading, setChannel, isUpdating } =
     useNotificationPreferences();
 
-  const [permission, setPermission] = useState<PermissionState>(() =>
-    getPermissionState()
-  );
+  const permission = useNotificationPermission();
   const [requesting, setRequesting] = useState(false);
   const iosNeedsInstall = isIosNeedsInstall();
-
-  // Re-check permission on focus in case the user changed it in browser settings.
-  useEffect(() => {
-    const refresh = () => setPermission(getPermissionState());
-    window.addEventListener("focus", refresh);
-    document.addEventListener("visibilitychange", refresh);
-    return () => {
-      window.removeEventListener("focus", refresh);
-      document.removeEventListener("visibilitychange", refresh);
-    };
-  }, []);
 
   const handleRequestPermission = async () => {
     setRequesting(true);
     const result = await requestNativePermission();
     setRequesting(false);
-    setPermission(result);
     if (result === "granted") {
       toast.success("Notifications enabled.");
     } else if (result === "denied") {
