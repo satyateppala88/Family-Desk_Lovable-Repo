@@ -5,7 +5,6 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { useHousehold } from "@/hooks/useHousehold";
 import { useHouseholdPreferences } from "@/hooks/useHouseholdPreferences";
 import { useModuleSetup } from "@/hooks/useModuleSetup";
@@ -83,7 +82,7 @@ export const ModuleSetupDialog = ({
           <DialogTitle>{meta.title}</DialogTitle>
           <DialogDescription>{meta.description}</DialogDescription>
         </DialogHeader>
-        <ScrollArea className="flex-1 pr-4 -mr-4">
+        <div className="flex-1 min-h-0 overflow-y-auto -mx-6 px-6">
           <ModuleSetupForm
             module={module}
             preferences={preferences}
@@ -110,7 +109,7 @@ export const ModuleSetupDialog = ({
             }}
             isSaving={isUpdating || isMarking}
           />
-        </ScrollArea>
+        </div>
       </DialogContent>
     </Dialog>
   );
@@ -157,7 +156,7 @@ const FormShell = ({
 }) => (
   <>
     <div className="space-y-5 py-4">{children}</div>
-    <DialogFooter className="flex-row justify-between sm:justify-between">
+    <DialogFooter className="flex-row justify-between sm:justify-between sticky bottom-0 bg-background border-t border-border -mx-6 px-6 py-3 mt-2">
       <Button variant="ghost" onClick={onSkip} disabled={isSaving}>
         Skip for now
       </Button>
