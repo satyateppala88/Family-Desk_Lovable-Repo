@@ -198,6 +198,7 @@ export const ModuleSetupDialog = ({
           <div ref={scrollContainerRef} className="flex-1 min-h-0 overflow-y-auto -mx-6 px-6 scroll-smooth">
             <ModuleSetupForm
               module={module}
+              householdId={householdId}
               preferences={preferences}
               onSubmit={async (updates) => {
                 try {
