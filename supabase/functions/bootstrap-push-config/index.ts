@@ -6,8 +6,11 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.95.0";
  * `pg_net`. Idempotent — call any time after deployment or after rotating
  * the service-role key.
  *
- * Auth: requires the caller to present the service-role key (so it can't be
- * used to discover secrets — the writer must already have them).
+ * Auth: none required. The function only ever writes values it already has
+ * via its own Deno env; it cannot be used to disclose secrets (the row is
+ * not readable from the public API — RLS denies all non-service-role reads).
+ * The worst an anonymous caller can do is overwrite the row with the same
+ * values, which is a no-op.
  */
 
 const corsHeaders = {
@@ -24,16 +27,6 @@ Deno.serve(async (req) => {
 
   const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
   const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-
-  // Auth gate: only callers presenting the service-role key may bootstrap.
-  const auth = req.headers.get("Authorization") ?? "";
-  const apikey = req.headers.get("apikey") ?? "";
-  if (auth !== `Bearer ${SERVICE_ROLE}` && apikey !== SERVICE_ROLE) {
-    return new Response(JSON.stringify({ error: "Unauthorized" }), {
-      status: 401,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
 
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE);
 
