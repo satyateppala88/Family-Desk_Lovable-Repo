@@ -13,6 +13,7 @@ import { OfflineBanner } from "@/components/layout/OfflineBanner";
 import { SyncingIndicator } from "@/components/layout/SyncingIndicator";
 import { createPersistedQueryClient } from "@/lib/query-client";
 import { NotificationPermissionPrompt } from "@/components/notifications/NotificationPermissionPrompt";
+import { NotificationActionRunner } from "@/components/notifications/NotificationActionRunner";
 import { InstallPrompt } from "@/components/install/InstallPrompt";
 
 // Eagerly loaded (auth flow)
@@ -76,6 +77,7 @@ const App = () => (
 
           <AuthProvider>
             <ScrollToTop />
+            <NotificationActionRunner />
             <Suspense fallback={<PageLoader />}>
               <Routes>
                 <Route path="/" element={<AppEntryGate />} />
