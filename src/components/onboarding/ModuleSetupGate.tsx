@@ -280,6 +280,20 @@ export const ModuleSetupDialog = ({
                 style={{ width: `${pct}%` }}
               />
             </div>
+            {progress.answered > 0 && (
+              <p className="mt-1.5 text-[11px] text-muted-foreground/80 leading-snug">
+                Tip: tap{" "}
+                <button
+                  type="button"
+                  onClick={() => { if (!isSaving) saveRef.current?.(); }}
+                  disabled={isSaving}
+                  className="font-medium text-primary underline-offset-2 hover:underline focus-visible:underline focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  Save &amp; continue
+                </button>{" "}
+                anytime — your progress is kept if you switch modules.
+              </p>
+            )}
           </div>
         )}
         <FormActionContext.Provider value={ctxValue}>
