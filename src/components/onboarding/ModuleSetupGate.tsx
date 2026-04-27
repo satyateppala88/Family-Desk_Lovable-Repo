@@ -777,7 +777,7 @@ const Question = ({
  * The total is read live from a ref so applicability changes don't push
  * focus past the current end of the list.
  */
-const useQuestionFocus = (
+export const useQuestionFocus = (
   householdId: string | null | undefined,
   module: ModuleSetupKey,
   applicableKeys: readonly string[],
@@ -801,19 +801,48 @@ const useQuestionFocus = (
   totalRef.current = totalQuestions;
   const keysRef = useRef(applicableKeys);
   keysRef.current = applicableKeys;
+  // Mirror `activeIndex` into a ref so `advanceFrom` can read the latest
+  // focus synchronously without re-creating the callback (and without
+  // risking stale-closure bugs in rapidly-fired event handlers).
+  const activeIndexRef = useRef<number | null>(activeIndex);
+  activeIndexRef.current = activeIndex;
 
   const advanceFrom = useCallback(
     (i: number) => {
-      const max = Math.max(0, totalRef.current - 1);
-      // Defensive: if the caller passes -1 (inapplicable question key), or
-      // any out-of-range value, normalize before stepping. `applicableKeys`
-      // already excludes inapplicable questions, so adding 1 here is the
-      // step within the applicable subset — guaranteed to skip any
-      // filtered-out questions.
-      const from = Number.isFinite(i) && i >= 0 ? Math.floor(i) : -1;
+      const total = totalRef.current;
+      // No applicable questions → nothing to focus. Bail out so we don't
+      // set activeIndex to a non-existent slot.
+      if (total <= 0) return;
+      const max = total - 1;
+
+      // Normalize the caller's `i`. The contract is "advance from the
+      // applicable-subset position of the question that just changed."
+      // Inapplicable questions return `indexOf(key) === -1` from the
+      // form's lookup, and any non-finite / negative / oversized value
+      // is treated as "I don't have a valid current position."
+      //
+      // When we don't have a valid `i` we fall back to the LIVE current
+      // focus (`activeIndexRef.current`) instead of `-1`. That way an
+      // accidental `advanceFrom(-1)` from question 3 advances to 4 — it
+      // never snaps focus backward to question 0, and it never targets
+      // the inapplicable question (which isn't in `keysRef.current` at
+      // all and therefore can't be selected by index).
+      const isValid = Number.isFinite(i) && i >= 0 && i <= max;
+      const from = isValid
+        ? Math.floor(i)
+        : (activeIndexRef.current !== null ? activeIndexRef.current : -1);
+
       const next = Math.min(from + 1, max);
+      // If we're already at the last applicable question and the caller
+      // re-fires (e.g. user toggles the final option again), don't write
+      // a redundant update — keeps localStorage churn down.
+      if (next === activeIndexRef.current) return;
+
       setActiveIndex(next);
       const nextKey = keysRef.current[next];
+      // `nextKey` is guaranteed defined here because `next <= max` and
+      // `keysRef.current.length === total`. The `if` is belt-and-braces
+      // for any future refactor that decouples `total` from `keys.length`.
       if (nextKey) writeActiveQuestion(householdId, module, nextKey);
     },
     [householdId, module],

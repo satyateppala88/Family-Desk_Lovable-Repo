@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, cleanup, within } from "@testing-library/react";
+import { render, screen, fireEvent, cleanup, within, renderHook, act } from "@testing-library/react";
 import { useSyncExternalStore } from "react";
 
 // ─── Mocks ────────────────────────────────────────────────────────────────
@@ -56,7 +56,7 @@ vi.mock("@/hooks/useModuleSetup", () => ({
 }));
 
 // Import AFTER mocks so they're picked up.
-import { ModuleSetupDialog, clearModuleSetupDraft } from "./ModuleSetupGate";
+import { ModuleSetupDialog, clearModuleSetupDraft, useQuestionFocus } from "./ModuleSetupGate";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────
 
@@ -598,5 +598,111 @@ describe("ModuleSetupDialog — scroll & footer layout", () => {
 
     // Total stays at exactly one save request across the whole sequence.
     expect(updatePreferencesMock).toHaveBeenCalledTimes(1);
+  });
+
+  // ───────────────────────────────────────────────────────────────────────
+  // advanceFrom — never moves backward from an inapplicable (-1) key
+  // ───────────────────────────────────────────────────────────────────────
+  //
+  // The hook is exported purely for tests so we can drive these edge
+  // cases directly. The contract is:
+  //   • indices are positions within the APPLICABLE subset
+  //   • caller passing -1 (i.e. indexOf(inapplicable_key)) must NOT snap
+  //     focus backward — it advances from the current focus instead
+  //   • out-of-range / non-finite inputs are treated identically to -1
+  //   • empty applicable list is a no-op
+
+  describe("useQuestionFocus.advanceFrom validation", () => {
+    const HH = "hh-validate";
+    const MOD = "meals_setup" as const;
+    const STORAGE = `familydesk:module-setup-active:${HH}:${MOD}`;
+
+    beforeEach(() => {
+      window.localStorage.removeItem(STORAGE);
+    });
+
+    it("from -1 with no current focus, lands on the first applicable question", () => {
+      const keys = ["a", "b", "c", "d"] as const;
+      const { result } = renderHook(() => useQuestionFocus(HH, MOD, keys));
+      expect(result.current.activeIndex).toBeNull();
+
+      act(() => result.current.advanceFrom(-1));
+      expect(result.current.activeIndex).toBe(0);
+      expect(window.localStorage.getItem(STORAGE)).toBe("a");
+    });
+
+    it("from -1 with existing focus, advances from current — never snaps backward", () => {
+      const keys = ["a", "b", "c", "d"] as const;
+      const { result } = renderHook(() => useQuestionFocus(HH, MOD, keys));
+
+      // Walk forward to index 2 first.
+      act(() => result.current.advanceFrom(0)); // → 1
+      act(() => result.current.advanceFrom(1)); // → 2
+      expect(result.current.activeIndex).toBe(2);
+      expect(window.localStorage.getItem(STORAGE)).toBe("c");
+
+      // Caller passes -1 (e.g. an inapplicable question's indexOf).
+      // Focus must NOT regress to 0 — it advances from current (2 → 3).
+      act(() => result.current.advanceFrom(-1));
+      expect(result.current.activeIndex).toBe(3);
+      expect(window.localStorage.getItem(STORAGE)).toBe("d");
+    });
+
+    it("clamps at the last applicable question — repeated advances don't overshoot", () => {
+      const keys = ["a", "b", "c"] as const;
+      const { result } = renderHook(() => useQuestionFocus(HH, MOD, keys));
+
+      act(() => result.current.advanceFrom(0)); // → 1
+      act(() => result.current.advanceFrom(1)); // → 2 (last)
+      act(() => result.current.advanceFrom(2)); // already last → stays at 2
+      act(() => result.current.advanceFrom(-1)); // -1 from current 2 → still 2
+      act(() => result.current.advanceFrom(99)); // out-of-range → still 2
+
+      expect(result.current.activeIndex).toBe(2);
+      expect(window.localStorage.getItem(STORAGE)).toBe("c");
+    });
+
+    it("treats non-finite / negative / oversized inputs identically to -1", () => {
+      const keys = ["a", "b", "c"] as const;
+      const { result } = renderHook(() => useQuestionFocus(HH, MOD, keys));
+      act(() => result.current.advanceFrom(0)); // → 1
+      const before = result.current.activeIndex;
+
+      // Each of these is "no valid current position" → advance from
+      // current focus (1 → 2). After the first one, we're at 2 and can't
+      // go higher, so all subsequent calls stay at 2.
+      act(() => result.current.advanceFrom(NaN));
+      expect(result.current.activeIndex).toBe(2);
+      act(() => result.current.advanceFrom(-99));
+      act(() => result.current.advanceFrom(Infinity));
+      act(() => result.current.advanceFrom(-Infinity));
+      expect(result.current.activeIndex).toBe(2);
+      expect(before).toBe(1); // sanity: we did start from 1
+    });
+
+    it("is a no-op when there are zero applicable questions", () => {
+      const { result } = renderHook(() => useQuestionFocus(HH, MOD, [] as const));
+      expect(result.current.activeIndex).toBeNull();
+      act(() => result.current.advanceFrom(0));
+      act(() => result.current.advanceFrom(-1));
+      act(() => result.current.advanceFrom(5));
+      // Still null — never set focus to a non-existent slot.
+      expect(result.current.activeIndex).toBeNull();
+      expect(window.localStorage.getItem(STORAGE)).toBeNull();
+    });
+
+    it("advancing from the last applicable index does not write a redundant storage update", () => {
+      const keys = ["a", "b"] as const;
+      const { result } = renderHook(() => useQuestionFocus(HH, MOD, keys));
+      act(() => result.current.advanceFrom(0)); // → 1 (last)
+      expect(window.localStorage.getItem(STORAGE)).toBe("b");
+
+      // Mutate the value so we can detect a redundant write.
+      window.localStorage.setItem(STORAGE, "SENTINEL");
+      act(() => result.current.advanceFrom(1)); // already at last
+      act(() => result.current.advanceFrom(-1)); // would-be backward → no-op
+      // The sentinel survives — no redundant write happened.
+      expect(window.localStorage.getItem(STORAGE)).toBe("SENTINEL");
+    });
   });
 });
