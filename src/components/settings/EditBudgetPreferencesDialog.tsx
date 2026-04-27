@@ -20,12 +20,14 @@ interface EditBudgetPreferencesDialogProps {
   preferences: HouseholdPreferences;
   onSave: (updates: Partial<HouseholdPreferences>) => Promise<void>;
   isUpdating?: boolean;
+  trigger?: React.ReactNode;
 }
 
 export const EditBudgetPreferencesDialog = ({
   preferences,
   onSave,
   isUpdating,
+  trigger,
 }: EditBudgetPreferencesDialogProps) => {
   const [open, setOpen] = useState(false);
   const [formData, setFormData] = useState({
@@ -47,9 +49,12 @@ export const EditBudgetPreferencesDialog = ({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="ghost" size="sm">
-          <Pencil className="h-4 w-4" />
-        </Button>
+        {trigger ?? (
+          <Button variant="outline" size="sm">
+            <Pencil className="h-4 w-4 mr-2" />
+            Edit
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent className="sm:max-w-md max-h-[90vh]">
         <DialogHeader>
