@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, cleanup, within } from "@testing-library/react";
+import { useSyncExternalStore } from "react";
 
 // ─── Mocks ────────────────────────────────────────────────────────────────
 
@@ -11,21 +12,38 @@ vi.mock("@/hooks/useHousehold", () => ({
   useHousehold: () => ({ householdId: "hh-1", isLoading: false }),
 }));
 
-// Mutable holders so individual tests can swap implementations to simulate
-// in-flight saves (which is what disables the Save & continue button).
-const prefsState = {
+// Mutable store driving `isUpdating` so individual tests can simulate an
+// in-flight save (which is what disables the Save & continue button).
+// Using useSyncExternalStore inside the mocked hook ensures consumers
+// re-render when the flag flips, mirroring the real react-query behavior.
+const prefsStore = {
   isUpdating: false,
-  impl: async (_u: unknown) => {},
+  impl: (async (_u: unknown) => {}) as (u: unknown) => Promise<void>,
+  listeners: new Set<() => void>(),
+  setUpdating(v: boolean) {
+    this.isUpdating = v;
+    this.listeners.forEach((l) => l());
+  },
+  subscribe(l: () => void) {
+    this.listeners.add(l);
+    return () => this.listeners.delete(l);
+  },
+  reset() {
+    this.isUpdating = false;
+    this.impl = async () => {};
+    this.listeners.clear();
+  },
 };
-const updatePreferencesMock = vi.fn((u: unknown) => prefsState.impl(u));
+const updatePreferencesMock = vi.fn((u: unknown) => prefsStore.impl(u));
 vi.mock("@/hooks/useHouseholdPreferences", () => ({
-  useHouseholdPreferences: () => ({
-    preferences: {},
-    updatePreferences: updatePreferencesMock,
-    get isUpdating() {
-      return prefsState.isUpdating;
-    },
-  }),
+  useHouseholdPreferences: () => {
+    const isUpdating = useSyncExternalStore(
+      (l) => prefsStore.subscribe(l),
+      () => prefsStore.isUpdating,
+      () => prefsStore.isUpdating,
+    );
+    return { preferences: {}, updatePreferences: updatePreferencesMock, isUpdating };
+  },
 }));
 
 const markCompleteMock = vi.fn(async () => {});
