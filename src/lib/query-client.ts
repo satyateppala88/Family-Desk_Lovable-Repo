@@ -1,6 +1,7 @@
-import { QueryClient } from "@tanstack/react-query";
+import { MutationCache, QueryClient } from "@tanstack/react-query";
 import { persistQueryClient } from "@tanstack/react-query-persist-client";
 import { get, set, del, createStore, type UseStore } from "idb-keyval";
+import { toast } from "sonner";
 import { APP_VERSION } from "@/lib/versioning";
 
 // ---------------------------------------------------------------------------
@@ -37,6 +38,24 @@ function getStore(): UseStore {
 
 export function createPersistedQueryClient(): QueryClient {
   const client = new QueryClient({
+    // Global guard: when a mutation fails because the device is offline,
+    // surface a single, clear toast instead of a cryptic network error.
+    // Reads continue to work via the persisted cache + service worker.
+    mutationCache: new MutationCache({
+      onError: (error) => {
+        if (typeof navigator !== "undefined" && !navigator.onLine) {
+          toast.error("You're offline — reconnect to make changes.");
+          return;
+        }
+        // Network errors thrown by fetch when no connection is available
+        // sometimes arrive with the navigator already flipped back; check
+        // for the canonical TypeError too.
+        const msg = error instanceof Error ? error.message : "";
+        if (/network|failed to fetch|load failed/i.test(msg) && !navigator.onLine) {
+          toast.error("You're offline — reconnect to make changes.");
+        }
+      },
+    }),
     defaultOptions: {
       queries: {
         // Keep data considered fresh for 5 min so the UI doesn't refetch
