@@ -1,4 +1,51 @@
-# Harden VAPID Private Key Handling
+# Push Notifications — Phases 2-5 Implementation
+
+Phases 2 (event-driven), 3 (cron-driven), 4 (channel expansion), and 5
+(action buttons + deep links) are now live.
+
+## Phase 4 — Channel expansion
+- `notification_preferences` gained `finance`, `calendar`, `ai_suggestions`
+  columns (default `true`).
+- `useNotificationPreferences` hook + `NotificationSettings` UI updated to
+  expose the three new toggles.
+- `PushChannel` type extended in `_shared/push.ts` and `send-push` payload.
+
+## Phase 2 — Event-driven (DB triggers + dispatcher)
+- New `public.dispatch_push(...)` SECURITY DEFINER helper that calls
+  `send-push` via `pg_net`. Locked: only triggers can execute.
+- Bootstrapper edge function `bootstrap-push-config` writes the project URL
+  and service-role key into `push_dispatch_config` (read-locked table).
+- AFTER triggers (all swallow errors so the originating txn is never aborted):
+  - `tasks` → notify creator on completion
+  - `ai_suggestions` → notify all household members on insert
+  - `finance_savings_goals` → milestone push at 25/50/75/100 %
+  - `household_invitations` → notify inviter when accepted
+
+## Phase 3 — New cron-driven pushes
+- `send-subscription-reminders` (daily 09:00 UTC) — bills/subs due in next 3 days.
+- `send-dinner-prep-reminder` (daily 11:30 UTC ≈ 5pm IST) — tonight's planned dinner.
+- `send-savings-goal-nudge` (Sun 10:00 UTC) — weekly progress nudge for active goals.
+- All three scheduled via `cron.schedule` reading the service-role key from
+  `push_dispatch_config`.
+- Calendar-event 30-min reminders intentionally deferred — Google Calendar
+  events aren't currently mirrored into the DB; cron-scanning would require
+  per-user OAuth refresh and is out of scope for this pass.
+
+## Phase 5 — UX: action buttons + deep links
+- `src/sw.ts` derives default action buttons from `data.type`:
+  - `task_assigned` / `task_due` / `task_overdue` → "Mark complete", "Snooze 1h"
+  - `habit_reminder` → "Log it"
+- `notificationclick` handler maps actions to deep-link URLs
+  (`/taskmaster?action=complete&task_id=…` etc).
+- Global `NotificationActionRunner` (mounted in `App.tsx`) reads the
+  query string via `useNotificationActionHandler` and performs the action
+  (Supabase mutation), then strips the params so refresh doesn't repeat it.
+
+---
+
+# Earlier work (kept for context)
+
+## Harden VAPID Private Key Handling
 
 ## Audit findings
 
