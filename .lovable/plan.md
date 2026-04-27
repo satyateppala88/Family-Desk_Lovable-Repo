@@ -1,73 +1,63 @@
-# Plan: Modular onboarding — basics first, depth on first visit
+# Fix Module Onboarding Questionnaire Scroll
 
-## Goal
+## Problem
 
-Replace today's 5-step monolithic onboarding with:
-- A short **initial onboarding** (basics + module picks) right after signup.
-- Per-module **blocking first-run setup modals** the first time a user opens an enabled module.
-- A **revamped Settings** page that shows household basics + a separate edit card *only* for each enabled module.
+The per-module setup dialog (`ModuleSetupDialog` in `src/components/onboarding/ModuleSetupGate.tsx`) does not scroll properly when the questionnaire is taller than the viewport.
 
-## 1. Slim initial onboarding
+Root causes:
 
-File: `src/components/onboarding/UserPreferencesOnboarding.tsx` (rewritten, kept at the same route `/onboarding/preferences`).
+1. **`DialogFooter` is rendered *inside* the `ScrollArea`** (via `FormShell` returning `<>{children}<DialogFooter/></>` which is mounted inside `<ScrollArea>`). This means:
+   - The Save / Skip buttons scroll away with the content (bad UX), and
+   - When combined with the next issue, scrolling appears broken because the inner content height is constrained oddly.
 
-Steps reduced to **2**:
-1. Profile + household basics — display name, household type, adults, children (+ ages), seniors.
-2. Module selection — reuses the existing `ProductSelectionStep`.
+2. **`ScrollArea` height computation is fragile** here: `<DialogContent className="sm:max-w-md max-h-[90vh] flex flex-col">` + `<ScrollArea className="flex-1 pr-4 -mr-4">`. The Radix `ScrollArea` Viewport needs an explicit pixel/flex height to scroll. With `flex-1` inside a flex column it *should* work, but the global rule in `src/index.css`:
+   ```css
+   button, a, [role="button"], input, select, textarea { min-height: var(--touch-target, 44px); }
+   ```
+   applies a 44px min-height to the `ScrollAreaThumb`'s internal button-like element on some browsers, which doesn't break scrolling itself — but the real blocker is that the form's content + footer overflows the viewport region and the wheel events land on elements (radio/checkbox rows) whose container has no overflow set.
 
-On submit:
-- Saves display name to `profiles.display_name`.
-- Saves only the basics columns to `household_preferences` (everything else stays NULL until the relevant module asks).
-- Writes the chosen modules to `household_enabled_products`.
-- Routes to `/dashboard`.
+3. The full-page **`UserPreferencesOnboarding`** wrapper (`min-h-screen ... py-10 px-4`) is fine — page scrolls — but the **`ModuleSetupQueue`** dialog suffers the bug above immediately after Finish.
 
-The current detailed steps (dietary, cooking, routine, budget) are removed from this flow — their inputs become per-module setup.
+## Fix
 
-## 2. Per-module first-run setup
+### 1. `src/components/onboarding/ModuleSetupGate.tsx`
 
-New shared infra:
-- `src/lib/moduleSetup.ts` — `ModuleSetupKey` type (`meals_setup`, `grocery_setup`, `finance_setup`, `habits_setup`, `calendar_setup`, `tasks_setup`) and a tiny config map (title, description, fields).
-- `src/hooks/useModuleSetup.ts` — wraps `profiles.completed_tours` (per memory `features/user-onboarding/tour-tracking`) to read/mark a setup as complete. Reuses the same JSONB column with new keys; no migration needed.
-- `src/components/onboarding/ModuleSetupGate.tsx` — wraps a page; if the corresponding setup key is missing in `completed_tours`, renders a **blocking modal** (cannot dismiss without completing or "Skip for now") that captures only that module's inputs and persists them, then marks the key complete.
+- Move `DialogFooter` **out of** the `ScrollArea` so the action buttons stay pinned at the bottom of the dialog and only the form body scrolls.
+- Restructure `ModuleSetupDialog` layout:
+  ```
+  DialogContent (flex flex-col, max-h-[90vh])
+    DialogHeader            ← fixed
+    ScrollArea (flex-1 min-h-0)
+      <ModuleSetupForm body only>   ← scrolls
+    DialogFooter            ← fixed (Skip / Save & continue)
+  ```
+- Refactor `FormShell` to render children-only (no footer); lift the footer up into `ModuleSetupDialog`. Pass `onSave` / `onSkip` / `isSaving` down so the dialog can render the footer.
+  - Each form (`MealsSetupForm`, `GrocerySetupForm`, `FinanceSetupForm`, `RoutineSetupForm`, `CalendarSetupForm`) currently calls `<FormShell onSave={() => onSubmit(data)} ...>`. Update them to instead expose their `onSave` payload to the parent. Cleanest approach: keep `FormShell` but make it render only the scrollable body (`<div className="space-y-5 py-4">{children}</div>`) and have it accept an optional ref/callback that publishes the save handler upward. Simpler alternative:
+    - Change each `*SetupForm` to use `useImperativeHandle` via a forwarded ref OR
+    - Easier: each form receives a `registerSave: (fn: () => void) => void` prop and calls it with its current save handler on render. Dialog stores it in state and wires it to the footer button.
+  - Add `min-h-0` to the `ScrollArea` className so flex sizing computes correctly: `className="flex-1 min-h-0 pr-4 -mr-4"`.
 
-Wiring (one-line wrap on each page):
-- `src/pages/Meals.tsx` → diet_type, food_allergies, religious_restrictions, spice_level, regional_cuisines, cooking_skill_level, weekday_cooking_time, preferred_meal_types.
-- `src/pages/Grocery.tsx` → pantry_size, shopping_frequency, shopping_locations, organic_preference.
-- `src/pages/Finance.tsx` → monthly_grocery_budget, budget_consciousness.
-- `src/pages/Habits.tsx` → household_concerns (subset relevant to habits), preferred_task_time.
-- `src/pages/Calendar.tsx` → work_schedule, festival_importance.
-- `src/pages/TaskmasterToday.tsx` → preferred_task_time only (skip if already set by another module).
+### 2. Verify other onboarding scrolls
 
-Each modal writes straight into `household_preferences` (existing table, RLS already in place) and calls `markModuleSetupComplete(key)`. A "Skip for now" button is allowed but the modal will reappear on next visit until completed (per the user's request that this is *blocking*).
+- `UserPreferencesOnboarding` (the multi-step setup before module queue): already uses `min-h-screen ... py-10` — page-level scroll works. No change needed.
+- `OnboardingTour` / `OnboardingIntro`: confirm no `overflow-hidden` clamp; no change expected.
 
-## 3. Settings page revamp
+### 3. Add `ScrollToTop` (small global polish)
 
-File: `src/pages/Settings.tsx` plus new card components in `src/components/settings/`.
+While we're touching navigation/scroll, add `src/components/ScrollToTop.tsx` and mount inside `<BrowserRouter>` in `src/App.tsx` so route changes always start at the top. (Useful since some long pages currently retain the previous scroll offset on navigation.)
 
-Layout (top → bottom):
-- Household Management (kept).
-- **Household Basics** card (kept, uses `EditHouseholdBasicsDialog`).
-- **Module preferences** section — renders one card per *enabled* product only:
-  - Meals → `EditDietaryPreferencesDialog` + `EditCookingPreferencesDialog`.
-  - Grocery → new `EditGroceryPreferencesDialog` (pantry/shopping/organic).
-  - Finance → new `EditFinancePreferencesDialog` (budget + budget_consciousness).
-  - Tasks/Habits/Calendar → `EditRoutinePreferencesDialog` (already covers work_schedule, preferred_task_time, festival_importance, household_concerns).
-  - Each card has an "Edit" button and a small "Re-run setup" link that clears the matching `completed_tours` key so the first-run modal replays next time the module is opened.
-- HowToUse / WhatsNew / Terms / Privacy cards (kept).
+## Files changed
 
-Disabled modules don't render their card at all. Reuse `useEnabledProducts(householdId)` for the gating.
+- `src/components/onboarding/ModuleSetupGate.tsx` — refactor dialog layout; pin footer; ensure ScrollArea scrolls.
+- `src/components/onboarding/UserPreferencesOnboarding.test.tsx` — only touch if test asserts old footer placement (will check during implementation).
+- `src/App.tsx` — mount `<ScrollToTop />`.
+- `src/components/ScrollToTop.tsx` — new, ~10 lines.
 
-Two new dialog components (`EditGroceryPreferencesDialog`, `EditFinancePreferencesDialog`) follow the same pattern as the existing edit dialogs — controlled state, `updatePreferences` from `useHouseholdPreferences`.
+## Verification
 
-## 4. Backwards compatibility
-
-- Existing households that already filled in all preferences keep working — Settings just shows whichever cards correspond to enabled modules; the per-module modals do not pop because the legacy users will be backfilled with all `*_setup` keys on first load (one-time migration in `useModuleSetup`: if all relevant prefs are already non-null, mark the key complete automatically). This avoids re-asking long-standing users.
-- `bumpVersion` minor entry will be added automatically by the auto-bump plugin on next deploy; no manual changelog change required.
-
-## Technical notes
-
-- No DB migration needed (reuses `profiles.completed_tours` and `household_preferences`).
-- `FeatureName` type in `useFeatureTour.ts` is left untouched; the new setup keys live alongside existing tour keys in the same JSONB.
-- `ModuleSetupGate` is rendered just inside each page component before the main content, so the rest of the page is dimmed/blocked but the Header and AI chat remain usable.
-- Re-running setup from Settings clears the key via the same supabase update used by `WhatsNewSection`'s tour-replay button — keeps the codebase consistent.
-- All copy stays terse and Indian-household friendly, matching existing onboarding tone.
+- Open Module Setup dialog (Meals form is the tallest) on mobile viewport (375×812). Confirm:
+  - Form body scrolls smoothly with mouse wheel and touch.
+  - "Skip for now" and "Save & continue" remain visible at the bottom while scrolling.
+  - Save still persists and advances to next module.
+- Run existing Vitest suite (`UserPreferencesOnboarding.test.tsx`) — must still pass.
+- Spot-check route changes (e.g. Dashboard → Settings) start at top after `ScrollToTop` is added.
