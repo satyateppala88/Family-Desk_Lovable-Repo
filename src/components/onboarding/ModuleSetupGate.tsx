@@ -335,6 +335,39 @@ export const ModuleSetupDialog = ({
   // automatically because we only clear the draft on a successful save.
   const [saveError, setSaveError] = useState<string | null>(null);
 
+  // Synchronous in-flight latch — flips true immediately on click and
+  // resets when the save promise settles. We need this *in addition* to
+  // `isSaving` (which is driven by react-query state) because there is a
+  // microtask gap between the click and the next render where rapid
+  // clicks would otherwise all pass the `!isSaving` check and queue
+  // multiple identical save requests. Using a ref makes the guard fire
+  // synchronously within the same tick.
+  const inFlightRef = useRef(false);
+  // UI-only retry state so the inline "Try again" button can show its
+  // busy label the moment it's clicked — without waiting for the
+  // react-query mutation to mark itself as updating on the next render.
+  const [isRetrying, setIsRetrying] = useState(false);
+  const retryDisabled = isSaving || isRetrying;
+
+  // Single chokepoint for triggering the form's save handler. Both the
+  // footer Save button and the inline retry button funnel through here
+  // so the same in-flight latch protects both entry points.
+  const triggerSave = useCallback(() => {
+    if (inFlightRef.current || isSaving) return;
+    const fn = saveRef.current;
+    if (!fn) return;
+    inFlightRef.current = true;
+    try {
+      fn();
+    } finally {
+      // The form's onSubmit owns the async lifecycle — we release the
+      // latch on the next macrotask so any synchronous follow-up clicks
+      // in the same event loop tick are still swallowed, but the latch
+      // doesn't outlive a synchronously-thrown error.
+      setTimeout(() => { inFlightRef.current = false; }, 0);
+    }
+  }, [isSaving]);
+
   // Detect — exactly once, at mount — whether the user is resuming an
   // in-progress questionnaire. We snapshot this so the message doesn't
   // disappear the moment they touch a new question (which would mutate
@@ -506,8 +539,8 @@ export const ModuleSetupDialog = ({
                 Tip: tap{" "}
                 <button
                   type="button"
-                  onClick={() => { if (!isSaving) saveRef.current?.(); }}
-                  disabled={isSaving}
+                  onClick={() => triggerSave()}
+                  disabled={isSaving || isRetrying}
                   className="font-medium text-primary underline-offset-2 hover:underline focus-visible:underline focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   Save &amp; continue
@@ -536,12 +569,20 @@ export const ModuleSetupDialog = ({
                 type="button"
                 size="sm"
                 variant="outline"
-                onClick={() => { if (!isSaving) saveRef.current?.(); }}
-                disabled={isSaving}
-                aria-disabled={isSaving}
+                onClick={() => {
+                  // Synchronously paint the button as busy so a fast
+                  // double-click or Enter-spam can't sneak in a second
+                  // submit before react-query flips `isUpdating`.
+                  if (retryDisabled) return;
+                  setIsRetrying(true);
+                  triggerSave();
+                }}
+                disabled={retryDisabled}
+                aria-disabled={retryDisabled}
+                aria-busy={retryDisabled}
                 className="shrink-0 border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
               >
-                {isSaving ? (
+                {retryDisabled ? (
                   <>
                     <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" aria-hidden="true" />
                     Retrying...
@@ -573,6 +614,12 @@ export const ModuleSetupDialog = ({
                   const msg = err?.message ?? "Failed to save setup";
                   setSaveError(msg);
                   toast.error(msg);
+                } finally {
+                  // Always release the retry-button busy state, whether
+                  // the save succeeded or failed. (`isSaving` from
+                  // react-query also flips back here, so the footer
+                  // Save button re-enables on the same render.)
+                  setIsRetrying(false);
                 }
               }}
               onSkip={async () => {
@@ -600,12 +647,12 @@ export const ModuleSetupDialog = ({
             Skip for now
           </Button>
           <Button
-            onClick={() => { if (!isSaving) saveRef.current?.(); }}
-            disabled={isSaving}
-            aria-disabled={isSaving}
-            aria-busy={isSaving}
+            onClick={() => triggerSave()}
+            disabled={isSaving || isRetrying}
+            aria-disabled={isSaving || isRetrying}
+            aria-busy={isSaving || isRetrying}
           >
-            {isSaving ? (
+            {isSaving || isRetrying ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
                 Saving...
