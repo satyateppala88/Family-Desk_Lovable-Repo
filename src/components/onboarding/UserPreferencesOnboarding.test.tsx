@@ -181,9 +181,9 @@ describe("UserPreferencesOnboarding — persistence", () => {
       { product_name: "habits" },
     ];
     renderHost();
-    // Wait for prefill effect to flush.
+    // Wait for prefill effect to mark `habits` as currently enabled.
     await waitFor(() =>
-      expect(screen.getByTestId("toggle-habits").getAttribute("aria-pressed") === "true" || true).toBe(true),
+      expect(screen.getByTestId("toggle-habits").getAttribute("aria-pressed")).toBe("true"),
     );
     advanceToStep1();
     // Deselect habits.
@@ -217,8 +217,17 @@ describe("UserPreferencesOnboarding — persistence", () => {
     // Returning user already had tasks; they add meals + finance now.
     selectResponses["household_enabled_products:list"] = [{ product_name: "tasks" }];
     renderHost();
+    // Wait for prefill — tasks should be the only currently-pressed toggle.
+    await waitFor(() =>
+      expect(screen.getByTestId("toggle-tasks").getAttribute("aria-pressed")).toBe("true"),
+    );
+    // The prefill replaces the default selection with just [tasks];
+    // re-add the four defaults the test expects in the queue.
+    fireEvent.click(screen.getByTestId("toggle-meals"));
+    fireEvent.click(screen.getByTestId("toggle-calendar"));
+    fireEvent.click(screen.getByTestId("toggle-grocery"));
     advanceToStep1();
-    // Default selection includes tasks/meals/calendar/grocery; add finance too.
+    // Add finance as well so the queue gets 4 newly-enabled modules.
     fireEvent.click(screen.getByTestId("toggle-finance"));
     fireEvent.click(screen.getByRole("button", { name: /Finish/i }));
 
