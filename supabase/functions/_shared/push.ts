@@ -19,7 +19,10 @@ export type PushChannel =
   | "meals"
   | "pantry"
   | "invites"
-  | "daily_plan";
+  | "daily_plan"
+  | "finance"
+  | "calendar"
+  | "ai_suggestions";
 
 export interface SendPushArgs {
   user_ids: string[];
