@@ -1,119 +1,89 @@
-# Push Notifications — Phases 2-5 Implementation
+## Goal
+Make every scheduled job and every "today / tomorrow" calculation behave on **Asia/Kolkata (IST, UTC+5:30)** instead of UTC, so reminders land at the intended local hour and target the correct local calendar day.
 
-Phases 2 (event-driven), 3 (cron-driven), 4 (channel expansion), and 5
-(action buttons + deep links) are now live.
+## Background
+- Lovable Cloud's managed Postgres runs `pg_cron` in **UTC** and the cluster timezone cannot be changed. So we keep cron schedules in UTC but **shift the hour by −5:30** to map to the desired IST clock time.
+- Edge functions currently use `new Date().toISOString()` to compute "today", which is the UTC date. Around late-evening IST that flips to the next day; for early-morning IST jobs (which run the previous UTC day in the evening) it would point at the wrong date. We need to compute "today in IST" instead.
 
-## Phase 4 — Channel expansion
-- `notification_preferences` gained `finance`, `calendar`, `ai_suggestions`
-  columns (default `true`).
-- `useNotificationPreferences` hook + `NotificationSettings` UI updated to
-  expose the three new toggles.
-- `PushChannel` type extended in `_shared/push.ts` and `send-push` payload.
+## Current vs new schedules
 
-## Phase 2 — Event-driven (DB triggers + dispatcher)
-- New `public.dispatch_push(...)` SECURITY DEFINER helper that calls
-  `send-push` via `pg_net`. Locked: only triggers can execute.
-- Bootstrapper edge function `bootstrap-push-config` writes the project URL
-  and service-role key into `push_dispatch_config` (read-locked table).
-- AFTER triggers (all swallow errors so the originating txn is never aborted):
-  - `tasks` → notify creator on completion
-  - `ai_suggestions` → notify all household members on insert
-  - `finance_savings_goals` → milestone push at 25/50/75/100 %
-  - `household_invitations` → notify inviter when accepted
+All seven `cron.job` rows will be re-scheduled. Intended IST → required UTC cron expression:
 
-## Phase 3 — New cron-driven pushes
-- `send-subscription-reminders` (daily 09:00 UTC) — bills/subs due in next 3 days.
-- `send-dinner-prep-reminder` (daily 11:30 UTC ≈ 5pm IST) — tonight's planned dinner.
-- `send-savings-goal-nudge` (Sun 10:00 UTC) — weekly progress nudge for active goals.
-- All three scheduled via `cron.schedule` reading the service-role key from
-  `push_dispatch_config`.
-- Calendar-event 30-min reminders intentionally deferred — Google Calendar
-  events aren't currently mirrored into the DB; cron-scanning would require
-  per-user OAuth refresh and is out of scope for this pass.
+| Job | Intent (IST) | Old (UTC) | New (UTC) |
+|---|---|---|---|
+| `send-task-reminders-daily` | 08:00 IST daily | `30 2 * * *` (08:00 IST ✓ already) | `30 2 * * *` (keep) |
+| `send-habit-reminders-daily` | 07:00 IST daily | `30 1 * * *` (07:00 IST ✓ already) | `30 1 * * *` (keep) |
+| `send-pantry-alerts-daily` | 09:00 IST daily | `30 3 * * *` (09:00 IST ✓ already) | `30 3 * * *` (keep) |
+| `send-weekly-digest-sunday` | 09:00 IST Sun | `30 3 * * 0` (09:00 IST ✓ already) | `30 3 * * 0` (keep) |
+| `push-subscription-reminders` | 09:00 IST daily | `0 9 * * *` (= 14:30 IST ✗) | `30 3 * * *` |
+| `push-dinner-prep` | 17:00 IST daily | `30 11 * * *` (= 17:00 IST ✓ already) | `30 11 * * *` (keep) |
+| `push-savings-nudge` | 10:00 IST Sun | `0 10 * * 0` (= 15:30 IST ✗) | `30 4 * * 0` |
 
-## Phase 5 — UX: action buttons + deep links
-- `src/sw.ts` derives default action buttons from `data.type`:
-  - `task_assigned` / `task_due` / `task_overdue` → "Mark complete", "Snooze 1h"
-  - `habit_reminder` → "Log it"
-- `notificationclick` handler maps actions to deep-link URLs
-  (`/taskmaster?action=complete&task_id=…` etc).
-- Global `NotificationActionRunner` (mounted in `App.tsx`) reads the
-  query string via `useNotificationActionHandler` and performs the action
-  (Supabase mutation), then strips the params so refresh doesn't repeat it.
+Net effect: only **two** jobs (`push-subscription-reminders`, `push-savings-nudge`) actually need re-scheduling. The rest were already authored against IST hours despite the misleading literal numbers. We will still re-issue all seven via `cron.unschedule` + `cron.schedule` so they're documented and auditable.
 
----
+## Edge function date-of-day fixes
 
-# Earlier work (kept for context)
+Add a tiny shared helper `supabase/functions/_shared/time.ts`:
 
-## Harden VAPID Private Key Handling
-
-## Audit findings
-
-I grepped the entire repo for `vapid` (case-insensitive). Results:
-
-**Server-only references** (safe — Deno edge runtime, never bundled to the client):
-- `supabase/functions/send-push/index.ts` — reads `VAPID_PRIVATE_KEY`, `VAPID_PUBLIC_KEY`, `VAPID_SUBJECT` via `Deno.env.get(...)` and passes them to `webpush.setVapidDetails()`.
-- `supabase/functions/push-subscribe/index.ts` — reads `VAPID_PUBLIC_KEY` only and returns it to the client.
-
-**Client references** (safe — public key only):
-- `src/lib/push-subscription.ts` — fetches the **public** key from the `push-subscribe` edge function at runtime. Never imports any env var, never references the private key.
-
-**Environment files** (`.env` checked, values redacted):
-- Only contains `VITE_SUPABASE_PROJECT_ID`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_SUPABASE_URL`. **No VAPID material.**
-
-**Conclusion:** the private key is already correctly scoped to the edge runtime. The remaining work is **defense-in-depth** to keep it that way and to scrub it from logs/errors.
-
-## Hardening changes
-
-### 1. Redact tokens from `send-push` error paths (`supabase/functions/send-push/index.ts`)
-The `web-push` library's error messages occasionally include request metadata. None of those code paths today contain VAPID key material, but to be defensive:
-
-- In the per-endpoint `catch` block (around line 188), replace the raw `err.message` returned in `failures[]` with a sanitised version that strips:
-  - `Bearer <token>` substrings
-  - `vapid t=…` / `vapid k=…` substrings (the JWT signature, which is derived from the private key — should never round-trip into a response)
-  - Any base64-ish run of 40+ chars
-- In the outer `catch` (line 215), replace `console.error("send-push error", e)` with `console.error("send-push error:", err?.name, err?.message)` so the full error object (which on some runtimes serialises request headers including Authorization) never hits logs.
-- Also stop returning `(e as Error).message` to the caller — return a generic `"Internal error sending push"` instead. The detail is still in our edge function logs, but no longer echoed across the wire.
-
-### 2. Add a runtime guard in the client (`src/lib/push-subscription.ts`)
-Add an assertion at the top of the file:
 ```ts
-// Defense-in-depth: this module must never be able to read VAPID material.
-// The Vite bundler will inline `import.meta.env.VITE_*` strings; ensure none
-// of them are VAPID-related so a future refactor can't accidentally expose it.
-if (typeof import.meta !== "undefined" && import.meta.env) {
-  for (const key of Object.keys(import.meta.env)) {
-    if (/vapid/i.test(key)) {
-      throw new Error(
-        "VAPID material must not be exposed via VITE_* env vars. " +
-        "Keys must only live in Supabase secrets and be read inside edge functions."
-      );
-    }
-  }
+// Returns "YYYY-MM-DD" for today in Asia/Kolkata.
+export function todayIST(): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Kolkata",
+    year: "numeric", month: "2-digit", day: "2-digit",
+  }).format(new Date());
+}
+
+// Returns a Date that, when serialized with todayIST-style formatters,
+// equals "today in IST" + N days.
+export function istDateOffset(days: number): string {
+  const d = new Date(Date.now() + days * 86_400_000);
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Kolkata",
+    year: "numeric", month: "2-digit", day: "2-digit",
+  }).format(d);
 }
 ```
-This fails fast at module load if anyone later adds `VITE_VAPID_*` to `.env`.
 
-### 3. Add a CI/repo grep guard
-Create `scripts/check-no-client-vapid.sh` (and document it in README) that fails if any `src/**` file references `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`, or `VITE_VAPID*`. Optional but cheap insurance.
+Then replace UTC date math in:
 
-### 4. Verify `supabase/config.toml` has `verify_jwt` correct on `send-push`
-`send-push` validates auth in code (accepts service-role OR end-user JWT). Confirm the function isn't accidentally exposed without auth checks. Current code already enforces this (lines 78–98), so just leave a code comment reaffirming the contract.
+- `send-dinner-prep-reminder/index.ts` — `today` → `todayIST()`, tag suffix uses IST date.
+- `send-daily-plan-whatsapp/index.ts` — `today` → `todayIST()`.
+- `send-habit-reminders/index.ts` — `today` → `todayIST()`.
+- `send-subscription-reminders/index.ts` — `todayStr` → `todayIST()`, `horizonStr` → `istDateOffset(3)`. Keep numeric "days away" math but compute against IST midnight.
+- `send-pantry-alerts/index.ts` — replace the two `toISOString().split("T")[0]` filters with `todayIST()` and `istDateOffset(3)`.
+- `send-task-reminders/index.ts` — switch the "tomorrow" window to IST midnight bounds (compute IST midnight, then convert to a UTC ISO timestamp for the `due_date` filter so we still query in UTC against `timestamptz`). Two values: start = next IST midnight as UTC ISO; end = +24h.
+- `send-weekly-digest/index.ts` — current logic uses rolling 7-day windows from `now`, which is timezone-agnostic. **No change needed.**
 
-### 5. Documentation note in `_shared/push.ts`
-Add a header comment stating: "Never log the body of `sendPush` errors back to the caller; the response from `send-push` may include sanitised endpoint info but VAPID keys remain server-side only."
+For `send-task-reminders` specifically, helper:
+```ts
+// Returns the UTC ISO string for the next IST midnight after now.
+export function nextISTMidnightUTC(): string { ... }
+```
+so the SQL filter `due_date >= start AND due_date < start + 24h` aligns to the IST calendar day.
 
-## Files to modify
-- `supabase/functions/send-push/index.ts` — error/logging redaction (changes 1)
-- `src/lib/push-subscription.ts` — runtime guard (change 2)
-- `scripts/check-no-client-vapid.sh` — new file (change 3)
-- `supabase/functions/_shared/push.ts` — doc comment (change 5)
+## Files
 
-## What we are explicitly NOT changing
-- The VAPID secrets in Supabase — already correctly stored as project secrets.
-- The `push-subscribe` function — it returns only the **public** key, which is by design (browsers need it for `applicationServerKey`).
-- The client subscribe flow — it already fetches the public key over an authenticated channel, never via env vars.
+**New**
+- `supabase/functions/_shared/time.ts` — IST helpers above.
 
-## Risk summary
-- **Before:** private key correctly in edge env, but error messages echoed to caller and full error objects logged → low residual risk.
-- **After:** errors sanitised, generic 500 response, runtime guard prevents a future `VITE_VAPID_*` slip → effectively zero exposure surface.
+**Edited (edge functions)**
+- `supabase/functions/send-dinner-prep-reminder/index.ts`
+- `supabase/functions/send-daily-plan-whatsapp/index.ts`
+- `supabase/functions/send-habit-reminders/index.ts`
+- `supabase/functions/send-subscription-reminders/index.ts`
+- `supabase/functions/send-pantry-alerts/index.ts`
+- `supabase/functions/send-task-reminders/index.ts`
+
+**New SQL (run via the Supabase insert tool, not a migration — contains anon key + service role lookup, same convention as the existing cron setup)**
+- Unschedule all 7 jobs by name, then re-schedule each with the corrected UTC expression listed in the table above.
+
+## Out of scope
+- Changing the Postgres cluster timezone (not possible on managed Supabase).
+- Rewriting any client-side date formatting — the app already renders in the user's local timezone via the browser.
+- DST: India does not observe DST, so a fixed −5:30 offset is correct year-round.
+
+## Verification
+1. After deploy, query `cron.job` to confirm the 7 schedules match the "New (UTC)" column.
+2. Manually invoke each updated edge function via `curl_edge_functions` and check the response uses the IST date (e.g. on Apr 27 23:30 IST the function should report `2026-04-27`, not `2026-04-28`).
+3. Inspect logs of `send-subscription-reminders` after the next 03:30 UTC tick to confirm it ran at 09:00 IST.
