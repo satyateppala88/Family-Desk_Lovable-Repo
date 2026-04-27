@@ -335,6 +335,39 @@ export const ModuleSetupDialog = ({
   // automatically because we only clear the draft on a successful save.
   const [saveError, setSaveError] = useState<string | null>(null);
 
+  // Synchronous in-flight latch — flips true immediately on click and
+  // resets when the save promise settles. We need this *in addition* to
+  // `isSaving` (which is driven by react-query state) because there is a
+  // microtask gap between the click and the next render where rapid
+  // clicks would otherwise all pass the `!isSaving` check and queue
+  // multiple identical save requests. Using a ref makes the guard fire
+  // synchronously within the same tick.
+  const inFlightRef = useRef(false);
+  // UI-only retry state so the inline "Try again" button can show its
+  // busy label the moment it's clicked — without waiting for the
+  // react-query mutation to mark itself as updating on the next render.
+  const [isRetrying, setIsRetrying] = useState(false);
+  const retryDisabled = isSaving || isRetrying;
+
+  // Single chokepoint for triggering the form's save handler. Both the
+  // footer Save button and the inline retry button funnel through here
+  // so the same in-flight latch protects both entry points.
+  const triggerSave = useCallback(() => {
+    if (inFlightRef.current || isSaving) return;
+    const fn = saveRef.current;
+    if (!fn) return;
+    inFlightRef.current = true;
+    try {
+      fn();
+    } finally {
+      // The form's onSubmit owns the async lifecycle — we release the
+      // latch on the next macrotask so any synchronous follow-up clicks
+      // in the same event loop tick are still swallowed, but the latch
+      // doesn't outlive a synchronously-thrown error.
+      setTimeout(() => { inFlightRef.current = false; }, 0);
+    }
+  }, [isSaving]);
+
   // Detect — exactly once, at mount — whether the user is resuming an
   // in-progress questionnaire. We snapshot this so the message doesn't
   // disappear the moment they touch a new question (which would mutate
