@@ -477,15 +477,20 @@ const Question = ({
 };
 
 /**
- * Helper hook for forms: keeps track of the most recently answered question
- * and exposes a setter that bumps `activeIndex` to the next question (or
- * stays on the last one).
+ * Helper hook for forms: keeps track of the most recently answered
+ * question and exposes a setter that advances focus to the NEXT applicable
+ * question. The total is read live from a ref so applicability changes
+ * (questions appearing/disappearing mid-form) don't push focus past the
+ * current end of the list.
  */
 const useQuestionFocus = (totalQuestions: number) => {
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
-  const advanceFrom = (i: number) => {
-    setActiveIndex(Math.min(i + 1, totalQuestions - 1));
-  };
+  const totalRef = useRef(totalQuestions);
+  totalRef.current = totalQuestions;
+  const advanceFrom = useCallback((i: number) => {
+    const max = Math.max(0, totalRef.current - 1);
+    setActiveIndex(Math.min(i + 1, max));
+  }, []);
   return { activeIndex, advanceFrom };
 };
 
