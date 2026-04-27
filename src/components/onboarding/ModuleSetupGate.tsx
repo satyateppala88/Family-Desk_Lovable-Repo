@@ -539,8 +539,8 @@ export const ModuleSetupDialog = ({
                 Tip: tap{" "}
                 <button
                   type="button"
-                  onClick={() => { if (!isSaving) saveRef.current?.(); }}
-                  disabled={isSaving}
+                  onClick={() => triggerSave()}
+                  disabled={isSaving || isRetrying}
                   className="font-medium text-primary underline-offset-2 hover:underline focus-visible:underline focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed"
                 >
                   Save &amp; continue
@@ -569,12 +569,20 @@ export const ModuleSetupDialog = ({
                 type="button"
                 size="sm"
                 variant="outline"
-                onClick={() => { if (!isSaving) saveRef.current?.(); }}
-                disabled={isSaving}
-                aria-disabled={isSaving}
+                onClick={() => {
+                  // Synchronously paint the button as busy so a fast
+                  // double-click or Enter-spam can't sneak in a second
+                  // submit before react-query flips `isUpdating`.
+                  if (retryDisabled) return;
+                  setIsRetrying(true);
+                  triggerSave();
+                }}
+                disabled={retryDisabled}
+                aria-disabled={retryDisabled}
+                aria-busy={retryDisabled}
                 className="shrink-0 border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
               >
-                {isSaving ? (
+                {retryDisabled ? (
                   <>
                     <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" aria-hidden="true" />
                     Retrying...
