@@ -78,6 +78,9 @@ export const ModuleSetupDialog = ({
   // Form-reported progress (total questions / answered count).
   const [progress, setProgress] = useState<{ total: number; answered: number }>({ total: 0, answered: 0 });
   const pct = progress.total > 0 ? Math.round((progress.answered / progress.total) * 100) : 0;
+  // Ref to the scrollable form container so child <Question> components can
+  // scroll themselves into view when they become the active step.
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
 
   return (
     <Dialog open={open} onOpenChange={(next) => { if (dismissible) onOpenChange?.(next); }}>
@@ -111,8 +114,8 @@ export const ModuleSetupDialog = ({
             </div>
           </div>
         )}
-        <FormActionContext.Provider value={{ saveRef, skipRef, setProgress }}>
-          <div className="flex-1 min-h-0 overflow-y-auto -mx-6 px-6">
+        <FormActionContext.Provider value={{ saveRef, skipRef, setProgress, scrollContainerRef }}>
+          <div ref={scrollContainerRef} className="flex-1 min-h-0 overflow-y-auto -mx-6 px-6 scroll-smooth">
             <ModuleSetupForm
               module={module}
               preferences={preferences}
@@ -160,6 +163,7 @@ const FormActionContext = createContext<{
   saveRef: React.MutableRefObject<(() => void) | null>;
   skipRef: React.MutableRefObject<(() => void) | null>;
   setProgress: (p: { total: number; answered: number }) => void;
+  scrollContainerRef: React.MutableRefObject<HTMLDivElement | null>;
 } | null>(null);
 
 /**
@@ -171,6 +175,48 @@ const useReportProgress = (answered: number, total: number) => {
   useEffect(() => {
     ctx?.setProgress({ answered, total });
   }, [ctx, answered, total]);
+};
+
+/**
+ * Wraps a single question inside a setup form. When `activeIndex` matches
+ * this question's `index`, the wrapper scrolls itself into view inside the
+ * dialog's scrollable container. Used to auto-advance the user to the next
+ * question after they make a selection.
+ */
+const Question = ({
+  index,
+  activeIndex,
+  children,
+}: {
+  index: number;
+  activeIndex: number | null;
+  children: ReactNode;
+}) => {
+  const ref = useRef<HTMLDivElement | null>(null);
+  const ctx = useContext(FormActionContext);
+  useEffect(() => {
+    if (activeIndex !== index) return;
+    const el = ref.current;
+    const container = ctx?.scrollContainerRef.current;
+    if (!el || !container) return;
+    // Scroll within the dialog's container only — don't move the page.
+    const elTop = el.offsetTop - container.offsetTop;
+    container.scrollTo({ top: Math.max(0, elTop - 8), behavior: "smooth" });
+  }, [activeIndex, index, ctx]);
+  return <div ref={ref}>{children}</div>;
+};
+
+/**
+ * Helper hook for forms: keeps track of the most recently answered question
+ * and exposes a setter that bumps `activeIndex` to the next question (or
+ * stays on the last one).
+ */
+const useQuestionFocus = (totalQuestions: number) => {
+  const [activeIndex, setActiveIndex] = useState<number | null>(null);
+  const advanceFrom = (i: number) => {
+    setActiveIndex(Math.min(i + 1, totalQuestions - 1));
+  };
+  return { activeIndex, advanceFrom };
 };
 
 // ---------------------------------------------------------------------------
