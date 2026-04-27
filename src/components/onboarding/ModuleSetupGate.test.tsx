@@ -243,4 +243,58 @@ describe("ModuleSetupDialog — scroll & footer layout", () => {
     const defaultRange = screen.getByLabelText("5,000 – 10,000");
     expect(defaultRange.getAttribute("aria-checked")).toBe("true");
   });
+
+  it("persists progress count and % across unmount/remount", () => {
+    // Fresh dialog: progress should start at 0/5 (defaults are not counted
+    // as answered until the user actually touches them).
+    const { unmount } = render(
+      <ModuleSetupDialog module="meals_setup" open={true} dismissible={true} />,
+    );
+    const initialBar = screen.getByRole("progressbar", { name: /setup completion/i });
+    expect(initialBar.getAttribute("aria-valuenow")).toBe("0");
+    expect(initialBar.textContent).toContain("Answered 0 of 5");
+
+    // Touch two questions.
+    fireEvent.click(screen.getByLabelText("vegan"));
+    fireEvent.click(screen.getByLabelText("spicy"));
+
+    const afterBar = screen.getByRole("progressbar", { name: /setup completion/i });
+    expect(afterBar.getAttribute("aria-valuenow")).toBe("40"); // 2/5 = 40%
+    expect(afterBar.textContent).toContain("Answered 2 of 5");
+
+    // Simulate refresh / reopen by unmounting and remounting.
+    unmount();
+    render(<ModuleSetupDialog module="meals_setup" open={true} dismissible={true} />);
+
+    const restoredBar = screen.getByRole("progressbar", { name: /setup completion/i });
+    expect(restoredBar.getAttribute("aria-valuenow")).toBe("40");
+    expect(restoredBar.textContent).toContain("Answered 2 of 5");
+
+    clearModuleSetupDraft("hh-1", "meals_setup");
+  });
+
+  it("clears persisted progress after a successful save", async () => {
+    const onComplete = vi.fn();
+    const { unmount } = render(
+      <ModuleSetupDialog
+        module="finance_setup"
+        open={true}
+        dismissible={true}
+        onComplete={onComplete}
+      />,
+    );
+    fireEvent.click(screen.getByLabelText("Under 5,000"));
+    const bar = screen.getByRole("progressbar", { name: /setup completion/i });
+    expect(bar.getAttribute("aria-valuenow")).toBe("50"); // 1/2
+
+    const footer = getFooter();
+    fireEvent.click(within(footer).getByRole("button", { name: "Save & continue" }));
+    await vi.waitFor(() => expect(onComplete).toHaveBeenCalled());
+    unmount();
+
+    render(<ModuleSetupDialog module="finance_setup" open={true} dismissible={true} />);
+    const freshBar = screen.getByRole("progressbar", { name: /setup completion/i });
+    expect(freshBar.getAttribute("aria-valuenow")).toBe("0");
+    expect(freshBar.textContent).toContain("Answered 0 of 2");
+  });
 });
