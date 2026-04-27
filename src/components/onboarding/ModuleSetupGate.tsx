@@ -10,7 +10,7 @@ import { useHouseholdPreferences } from "@/hooks/useHouseholdPreferences";
 import { useModuleSetup } from "@/hooks/useModuleSetup";
 import { MODULE_SETUP_META, type ModuleSetupKey } from "@/lib/moduleSetup";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Loader2, AlertCircle, RotateCcw } from "lucide-react";
 
 // ---------------------------------------------------------------------------
 // Draft persistence (in-progress answers across dialog close / module switch)
