@@ -10,6 +10,7 @@ import { ErrorBoundary } from "@/components/layout/ErrorBoundary";
 import { AIChatWidget } from "./components/ai/AIChatWidget";
 import ScrollToTop from "./components/ScrollToTop";
 import { OfflineBanner } from "@/components/layout/OfflineBanner";
+import { SyncingIndicator } from "@/components/layout/SyncingIndicator";
 import { createPersistedQueryClient } from "@/lib/query-client";
 import { NotificationPermissionPrompt } from "@/components/notifications/NotificationPermissionPrompt";
 import { InstallPrompt } from "@/components/install/InstallPrompt";
@@ -69,6 +70,7 @@ const App = () => (
       <Toaster />
       <Sonner />
       <OfflineBanner />
+      <SyncingIndicator />
       <BrowserRouter>
 
           <AuthProvider>
