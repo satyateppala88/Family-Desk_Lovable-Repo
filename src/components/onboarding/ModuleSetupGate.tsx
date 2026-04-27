@@ -573,7 +573,7 @@ const Question = ({
     // actually changes, and uses the parent's reported `total` so the
     // step count stays accurate across applicability changes.
     if (ctx && label) {
-      const total = ctx.total;
+      const total = ctx.totalRef.current;
       const stepNumber = index + 1;
       ctx.announce(
         total > 0
