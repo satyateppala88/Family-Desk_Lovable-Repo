@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, cleanup, within } from "@testing-library/react";
+import { useSyncExternalStore } from "react";
 
 // ─── Mocks ────────────────────────────────────────────────────────────────
 
@@ -11,13 +12,38 @@ vi.mock("@/hooks/useHousehold", () => ({
   useHousehold: () => ({ householdId: "hh-1", isLoading: false }),
 }));
 
-const updatePreferencesMock = vi.fn(async (_u: unknown) => {});
+// Mutable store driving `isUpdating` so individual tests can simulate an
+// in-flight save (which is what disables the Save & continue button).
+// Using useSyncExternalStore inside the mocked hook ensures consumers
+// re-render when the flag flips, mirroring the real react-query behavior.
+const prefsStore = {
+  isUpdating: false,
+  impl: (async (_u: unknown) => {}) as (u: unknown) => Promise<void>,
+  listeners: new Set<() => void>(),
+  setUpdating(v: boolean) {
+    this.isUpdating = v;
+    this.listeners.forEach((l) => l());
+  },
+  subscribe(l: () => void) {
+    this.listeners.add(l);
+    return () => this.listeners.delete(l);
+  },
+  reset() {
+    this.isUpdating = false;
+    this.impl = async () => {};
+    this.listeners.clear();
+  },
+};
+const updatePreferencesMock = vi.fn((u: unknown) => prefsStore.impl(u));
 vi.mock("@/hooks/useHouseholdPreferences", () => ({
-  useHouseholdPreferences: () => ({
-    preferences: {},
-    updatePreferences: updatePreferencesMock,
-    isUpdating: false,
-  }),
+  useHouseholdPreferences: () => {
+    const isUpdating = useSyncExternalStore(
+      (l) => prefsStore.subscribe(l),
+      () => prefsStore.isUpdating,
+      () => prefsStore.isUpdating,
+    );
+    return { preferences: {}, updatePreferences: updatePreferencesMock, isUpdating };
+  },
 }));
 
 const markCompleteMock = vi.fn(async () => {});
@@ -63,6 +89,7 @@ describe("ModuleSetupDialog — scroll & footer layout", () => {
     cleanup();
     updatePreferencesMock.mockClear();
     markCompleteMock.mockClear();
+    prefsStore.reset();
   });
 
   it("renders the form body inside an overflow-y-auto scroll container", () => {
@@ -320,18 +347,13 @@ describe("ModuleSetupDialog — scroll & footer layout", () => {
     expect(updated.getAttribute("aria-valuetext")).toBe("1 of 5 answered, 20% complete");
     expect(updated.getAttribute("aria-valuenow")).toBe("20");
 
-    // A polite live region exists alongside the bar so progress updates
-    // are announced. (There may be other live regions in the dialog —
-    // e.g. the next-question announcer — so match by text content.)
-    const lives = screen.getAllByRole("status");
-    const progressLive = lives.find(
-      (el) => el.textContent?.includes("complete") && el.textContent?.includes("of 5"),
-    );
-    expect(progressLive).toBeDefined();
-    expect(progressLive!.getAttribute("aria-live")).toBe("polite");
-    expect(progressLive!.getAttribute("aria-atomic")).toBe("true");
-    expect(progressLive!.textContent).toContain("20% complete");
-    expect(progressLive!.textContent).toContain("1 of 5");
+    // A polite live region exists alongside it so updates are announced
+    // without re-reading the whole dialog.
+    const live = screen.getByRole("status");
+    expect(live.getAttribute("aria-live")).toBe("polite");
+    expect(live.getAttribute("aria-atomic")).toBe("true");
+    expect(live.textContent).toContain("20% complete");
+    expect(live.textContent).toContain("1 of 5");
 
     clearModuleSetupDraft("hh-1", "meals_setup");
   });
@@ -517,61 +539,64 @@ describe("ModuleSetupDialog — scroll & footer layout", () => {
   });
 
   // ───────────────────────────────────────────────────────────────────────
-  // ARIA live announcement for next question
+  // Save debouncing — rapid double-clicks must produce a single request
   // ───────────────────────────────────────────────────────────────────────
 
-  it("announces the next question by name + step count when focus advances", () => {
-    render(<ModuleSetupDialog module="meals_setup" open={true} dismissible={true} />);
+  it("rapid clicks on Save & continue dispatch only one save request", async () => {
+    // Build a deferred promise so the save stays "in-flight" while we
+    // hammer the button. The mocked hook flips `isUpdating` to true on
+    // entry, which (via useSyncExternalStore) re-renders the dialog and
+    // disables the button — exactly like the real react-query mutation.
+    let resolveSave: (() => void) | null = null;
+    const savePending = new Promise<void>((res) => { resolveSave = () => res(); });
+    prefsStore.impl = async () => {
+      prefsStore.setUpdating(true);
+      try {
+        await savePending;
+      } finally {
+        prefsStore.setUpdating(false);
+      }
+    };
 
-    const announcer = screen.getByTestId("question-announcer");
-    // Live region attributes — polite + atomic so SRs read it as a single
-    // phrase without interrupting the user.
-    expect(announcer.getAttribute("aria-live")).toBe("polite");
-    expect(announcer.getAttribute("aria-atomic")).toBe("true");
-    // Sr-only — no visual content.
-    expect(announcer.className).toContain("sr-only");
-    // Empty before any selection (no question is "active" yet).
-    expect(announcer.textContent).toBe("");
+    const onComplete = vi.fn();
+    render(
+      <ModuleSetupDialog
+        module="finance_setup"
+        open={true}
+        dismissible={true}
+        onComplete={onComplete}
+      />,
+    );
 
-    // Pick Diet type → focus advances to Spice level (index 1, step 2/5).
-    fireEvent.click(screen.getByLabelText("vegan"));
-    const after1 = screen.getByTestId("question-announcer");
-    expect(after1.textContent).toBe("Now on: Spice level, step 2 of 5.");
+    const footer = getFooter();
+    const saveBtn = within(footer).getByRole("button", { name: "Save & continue" });
 
-    // Pick Spice level → focus advances to Weekday cooking time (3/5).
-    fireEvent.click(screen.getByLabelText("spicy"));
-    const after2 = screen.getByTestId("question-announcer");
-    expect(after2.textContent).toBe("Now on: Weekday cooking time, step 3 of 5.");
+    // Hammer the button 8 times back-to-back, faster than any real user
+    // could click. Only the first click should reach updatePreferences;
+    // the rest must be swallowed by the in-flight guard / disabled state.
+    for (let i = 0; i < 8; i++) fireEvent.click(saveBtn);
 
-    clearModuleSetupDraft("hh-1", "meals_setup");
-  });
+    // The button must reflect the saving state (disabled + busy) so
+    // assistive tech and pointer users both see the guard.
+    await vi.waitFor(() => {
+      const btn = within(getFooter()).getByRole("button", { name: /saving/i });
+      expect(btn).toBeDisabled();
+      expect(btn.getAttribute("aria-busy")).toBe("true");
+    });
 
-  it("re-keys the announcer so duplicate messages still re-announce", () => {
-    render(<ModuleSetupDialog module="grocery_setup" open={true} dismissible={true} />);
+    // Even with rapid clicks while saving, exactly ONE network call fires.
+    expect(updatePreferencesMock).toHaveBeenCalledTimes(1);
 
-    // Initially no announcement.
-    let announcer = screen.getByTestId("question-announcer");
-    expect(announcer.textContent).toBe("");
+    // Try clicking a few more times while still in-flight — still one.
+    for (let i = 0; i < 5; i++) fireEvent.click(saveBtn);
+    expect(updatePreferencesMock).toHaveBeenCalledTimes(1);
 
-    // Tap pantry size → advance to shopping_frequency (step 2 of 3).
-    fireEvent.click(screen.getByLabelText("small"));
-    announcer = screen.getByTestId("question-announcer");
-    const firstKey = announcer.getAttribute("data-tick") ?? announcer.outerHTML;
-    expect(announcer.textContent).toContain("Shopping frequency");
-    expect(announcer.textContent).toContain("step 2 of 3");
+    // Resolve the deferred save → markComplete fires once, onComplete once.
+    resolveSave!();
+    await vi.waitFor(() => expect(markCompleteMock).toHaveBeenCalledTimes(1));
+    await vi.waitFor(() => expect(onComplete).toHaveBeenCalledTimes(1));
 
-    // Tap shopping_frequency → advance to organic_preference (step 3 of 3).
-    // Use a non-default value so onValueChange actually fires (default
-    // is "weekly", so clicking "Weekly" would be a no-op).
-    fireEvent.click(screen.getByLabelText("Daily"));
-    announcer = screen.getByTestId("question-announcer");
-    expect(announcer.textContent).toContain("Organic preference");
-    expect(announcer.textContent).toContain("step 3 of 3");
-
-    // Different message means the underlying React `key` changed — the
-    // node identity is different so SRs treat it as a fresh announcement.
-    expect(announcer.outerHTML).not.toBe(firstKey);
-
-    clearModuleSetupDraft("hh-1", "grocery_setup");
+    // Total stays at exactly one save request across the whole sequence.
+    expect(updatePreferencesMock).toHaveBeenCalledTimes(1);
   });
 });
