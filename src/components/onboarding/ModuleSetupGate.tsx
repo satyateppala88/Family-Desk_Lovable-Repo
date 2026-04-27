@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -70,6 +70,11 @@ export const ModuleSetupDialog = ({
   const { householdId } = useHousehold();
   const { preferences, updatePreferences, isUpdating } = useHouseholdPreferences(householdId);
   const meta = MODULE_SETUP_META[module];
+  // Form's "save" handler is registered via context so we can render the
+  // footer OUTSIDE the scrollable form body.
+  const saveRef = useRef<(() => void) | null>(null);
+  const skipRef = useRef<(() => void) | null>(null);
+  const isSaving = isUpdating || isMarking;
 
   return (
     <Dialog open={open} onOpenChange={(next) => { if (dismissible) onOpenChange?.(next); }}>
@@ -82,38 +87,55 @@ export const ModuleSetupDialog = ({
           <DialogTitle>{meta.title}</DialogTitle>
           <DialogDescription>{meta.description}</DialogDescription>
         </DialogHeader>
-        <div className="flex-1 min-h-0 overflow-y-auto -mx-6 px-6">
-          <ModuleSetupForm
-            module={module}
-            preferences={preferences}
-            onSubmit={async (updates) => {
-              try {
-                await updatePreferences(updates);
-                await markComplete();
-                toast.success("Setup saved");
-                onComplete?.();
-              } catch (err: any) {
-                toast.error(err.message ?? "Failed to save setup");
-              }
-            }}
-            onSkip={async () => {
-              // Skip does NOT mark complete when dismissible (so the gate
-              // can re-prompt on first visit). When non-dismissible (legacy
-              // gate), keep the prior behavior to avoid trapping users.
-              try {
-                if (!dismissible) await markComplete();
-                onSkip?.();
-              } catch (err: any) {
-                toast.error(err.message ?? "Failed");
-              }
-            }}
-            isSaving={isUpdating || isMarking}
-          />
-        </div>
+        <FormActionContext.Provider value={{ saveRef, skipRef }}>
+          <div className="flex-1 min-h-0 overflow-y-auto -mx-6 px-6">
+            <ModuleSetupForm
+              module={module}
+              preferences={preferences}
+              onSubmit={async (updates) => {
+                try {
+                  await updatePreferences(updates);
+                  await markComplete();
+                  toast.success("Setup saved");
+                  onComplete?.();
+                } catch (err: any) {
+                  toast.error(err.message ?? "Failed to save setup");
+                }
+              }}
+              onSkip={async () => {
+                // Skip does NOT mark complete when dismissible (so the gate
+                // can re-prompt on first visit). When non-dismissible (legacy
+                // gate), keep the prior behavior to avoid trapping users.
+                try {
+                  if (!dismissible) await markComplete();
+                  onSkip?.();
+                } catch (err: any) {
+                  toast.error(err.message ?? "Failed");
+                }
+              }}
+              isSaving={isSaving}
+            />
+          </div>
+        </FormActionContext.Provider>
+        <DialogFooter className="flex-row justify-between sm:justify-between border-t border-border -mx-6 px-6 pt-3 mt-0 shrink-0">
+          <Button variant="ghost" onClick={() => skipRef.current?.()} disabled={isSaving}>
+            Skip for now
+          </Button>
+          <Button onClick={() => saveRef.current?.()} disabled={isSaving}>
+            {isSaving ? "Saving..." : "Save & continue"}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 };
+
+// Context that lets each *SetupForm register its current save/skip handlers
+// with the parent dialog so the footer can sit OUTSIDE the scroll container.
+const FormActionContext = createContext<{
+  saveRef: React.MutableRefObject<(() => void) | null>;
+  skipRef: React.MutableRefObject<(() => void) | null>;
+} | null>(null);
 
 // ---------------------------------------------------------------------------
 // Per-module forms
@@ -153,19 +175,43 @@ const FormShell = ({
   onSave: () => void;
   onSkip: () => void;
   isSaving: boolean;
-}) => (
-  <>
-    <div className="space-y-5 py-4">{children}</div>
-    <DialogFooter className="flex-row justify-between sm:justify-between sticky bottom-0 bg-background border-t border-border -mx-6 px-6 py-3 mt-2">
-      <Button variant="ghost" onClick={onSkip} disabled={isSaving}>
-        Skip for now
-      </Button>
-      <Button onClick={onSave} disabled={isSaving}>
-        {isSaving ? "Saving..." : "Save & continue"}
-      </Button>
-    </DialogFooter>
-  </>
-);
+}) => {
+  const ctx = useContext(FormActionContext);
+  // Re-register on every render so the latest closure (with current state)
+  // is what the dialog footer invokes.
+  if (ctx) {
+    ctx.saveRef.current = onSave;
+    ctx.skipRef.current = onSkip;
+  }
+  // Clear refs on unmount so a stale handler can't fire after the dialog
+  // swaps to a different module.
+  useEffect(() => {
+    return () => {
+      if (ctx) {
+        ctx.saveRef.current = null;
+        ctx.skipRef.current = null;
+      }
+    };
+  }, [ctx]);
+  // Fallback: if used outside the dialog (e.g. tests), render an inline
+  // footer so behaviour is preserved.
+  if (!ctx) {
+    return (
+      <>
+        <div className="space-y-5 py-4">{children}</div>
+        <DialogFooter className="flex-row justify-between sm:justify-between">
+          <Button variant="ghost" onClick={onSkip} disabled={isSaving}>
+            Skip for now
+          </Button>
+          <Button onClick={onSave} disabled={isSaving}>
+            {isSaving ? "Saving..." : "Save & continue"}
+          </Button>
+        </DialogFooter>
+      </>
+    );
+  }
+  return <div className="space-y-5 py-4">{children}</div>;
+};
 
 const toggle = (arr: string[], v: string) =>
   arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v];
