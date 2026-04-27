@@ -252,6 +252,14 @@ const FormShell = ({
 const toggle = (arr: string[], v: string) =>
   arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v];
 
+/** Count "answered" questions: a non-empty string or non-empty array. */
+const countAnswered = (values: unknown[]) =>
+  values.reduce<number>((n, v) => {
+    if (Array.isArray(v)) return n + (v.length > 0 ? 1 : 0);
+    if (typeof v === "string") return n + (v.trim().length > 0 ? 1 : 0);
+    return n + (v != null ? 1 : 0);
+  }, 0);
+
 // ---- Meals --------------------------------------------------------------
 const MealsSetupForm = ({ preferences, onSubmit, onSkip, isSaving }: Omit<FormProps, "module">) => {
   const [data, setData] = useState({
@@ -261,6 +269,10 @@ const MealsSetupForm = ({ preferences, onSubmit, onSkip, isSaving }: Omit<FormPr
     regional_cuisines: (preferences?.regional_cuisines ?? []) as string[],
     weekday_cooking_time: preferences?.weekday_cooking_time ?? "30_to_60",
   });
+  useReportProgress(
+    countAnswered([data.diet_type, data.spice_level, data.weekday_cooking_time, data.food_allergies, data.regional_cuisines]),
+    5,
+  );
   return (
     <FormShell onSave={() => onSubmit(data)} onSkip={onSkip} isSaving={isSaving}>
       <div>
@@ -338,6 +350,10 @@ const GrocerySetupForm = ({ preferences, onSubmit, onSkip, isSaving }: Omit<Form
     shopping_frequency: preferences?.shopping_frequency ?? "weekly",
     organic_preference: preferences?.organic_preference ?? "sometimes",
   });
+  useReportProgress(
+    countAnswered([data.pantry_size, data.shopping_frequency, data.organic_preference]),
+    3,
+  );
   return (
     <FormShell onSave={() => onSubmit(data)} onSkip={onSkip} isSaving={isSaving}>
       <div>
@@ -375,6 +391,10 @@ const FinanceSetupForm = ({ preferences, onSubmit, onSkip, isSaving }: Omit<Form
     monthly_grocery_budget: preferences?.monthly_grocery_budget ?? "5000_to_10000",
     budget_consciousness: preferences?.budget_consciousness ?? "somewhat",
   });
+  useReportProgress(
+    countAnswered([data.monthly_grocery_budget, data.budget_consciousness]),
+    2,
+  );
   return (
     <FormShell onSave={() => onSubmit(data)} onSkip={onSkip} isSaving={isSaving}>
       <div>
@@ -404,6 +424,10 @@ const RoutineSetupForm = ({ preferences, onSubmit, onSkip, isSaving }: Omit<Form
     preferred_task_time: preferences?.preferred_task_time ?? "evening",
     household_concerns: (preferences?.household_concerns ?? []) as string[],
   });
+  useReportProgress(
+    countAnswered([data.preferred_task_time, data.household_concerns]),
+    2,
+  );
   return (
     <FormShell onSave={() => onSubmit(data)} onSkip={onSkip} isSaving={isSaving}>
       <div>
@@ -436,6 +460,10 @@ const CalendarSetupForm = ({ preferences, onSubmit, onSkip, isSaving }: Omit<For
     work_schedule: preferences?.work_schedule ?? "both_working",
     festival_importance: preferences?.festival_importance ?? "somewhat",
   });
+  useReportProgress(
+    countAnswered([data.work_schedule, data.festival_importance]),
+    2,
+  );
   return (
     <FormShell onSave={() => onSubmit(data)} onSkip={onSkip} isSaving={isSaving}>
       <div>
