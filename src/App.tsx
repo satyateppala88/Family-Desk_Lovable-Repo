@@ -2,13 +2,15 @@ import { lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/layout/ProtectedRoute";
 import { ErrorBoundary } from "@/components/layout/ErrorBoundary";
 import { AIChatWidget } from "./components/ai/AIChatWidget";
 import ScrollToTop from "./components/ScrollToTop";
+import { OfflineBanner } from "@/components/layout/OfflineBanner";
+import { createPersistedQueryClient } from "@/lib/query-client";
 
 // Eagerly loaded (auth flow)
 import Auth from "./pages/Auth";
@@ -49,7 +51,7 @@ const HouseholdProductSettings = lazy(() => import("./pages/HouseholdProductSett
 const VerifyEmail = lazy(() => import("./pages/VerifyEmail"));
 const Install = lazy(() => import("./pages/Install"));
 
-const queryClient = new QueryClient();
+const queryClient = createPersistedQueryClient();
 
 
 const PageLoader = () => (
@@ -64,6 +66,7 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
+      <OfflineBanner />
       <BrowserRouter>
 
           <AuthProvider>
