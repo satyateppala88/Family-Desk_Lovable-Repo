@@ -1,63 +1,120 @@
-# Fix Module Onboarding Questionnaire Scroll
+# Web Push Notifications for FamilyDesk
 
-## Problem
+Add real push notifications (delivered even when the app/browser is closed) on top of the existing PWA. Works on Android Chrome and desktop browsers. iOS works only when the user has installed the PWA to the home screen (Apple's requirement) — we'll detect and message that.
 
-The per-module setup dialog (`ModuleSetupDialog` in `src/components/onboarding/ModuleSetupGate.tsx`) does not scroll properly when the questionnaire is taller than the viewport.
+Important caveats up front:
+- Push only works in the **published** build (familydesk.in / familydesk.lovable.app), never inside the Lovable editor preview — same constraint as the PWA itself.
+- On iOS, Web Push requires the user to "Add to Home Screen" first. We'll show a hint when we detect iOS Safari without standalone mode.
 
-Root causes:
+## What the user will get
 
-1. **`DialogFooter` is rendered *inside* the `ScrollArea`** (via `FormShell` returning `<>{children}<DialogFooter/></>` which is mounted inside `<ScrollArea>`). This means:
-   - The Save / Skip buttons scroll away with the content (bad UX), and
-   - When combined with the next issue, scrolling appears broken because the inner content height is constrained oddly.
+1. A new **Notifications** section in Settings showing:
+   - Current permission state (Default / Granted / Denied / Unsupported)
+   - "Enable push notifications" button (or "Disable" if already on)
+   - "Send test notification" button once enabled
+   - Per-category toggles: Tasks, Habits, Meals, Pantry, Household invites, Daily plan
+2. An auto-prompt (one-time, dismissible) after onboarding completes, asking if they'd like reminders pushed to this device.
+3. Notifications appear in the OS notification tray with the FamilyDesk icon, a title, body, and tapping them deep-links into the right module (e.g., a task reminder opens that task).
+4. Existing reminder edge functions (task reminders, habit reminders, daily plan, pantry alerts) gain a push channel alongside email/WhatsApp.
 
-2. **`ScrollArea` height computation is fragile** here: `<DialogContent className="sm:max-w-md max-h-[90vh] flex flex-col">` + `<ScrollArea className="flex-1 pr-4 -mr-4">`. The Radix `ScrollArea` Viewport needs an explicit pixel/flex height to scroll. With `flex-1` inside a flex column it *should* work, but the global rule in `src/index.css`:
-   ```css
-   button, a, [role="button"], input, select, textarea { min-height: var(--touch-target, 44px); }
-   ```
-   applies a 44px min-height to the `ScrollAreaThumb`'s internal button-like element on some browsers, which doesn't break scrolling itself — but the real blocker is that the form's content + footer overflows the viewport region and the wheel events land on elements (radio/checkbox rows) whose container has no overflow set.
+## Architecture
 
-3. The full-page **`UserPreferencesOnboarding`** wrapper (`min-h-screen ... py-10 px-4`) is fine — page scrolls — but the **`ModuleSetupQueue`** dialog suffers the bug above immediately after Finish.
+```text
+Browser (PWA)
+  ├─ public/sw.js  ← custom service worker (push + notificationclick)
+  ├─ NotificationsManager (React)  ← permission + subscribe/unsubscribe
+  └─ POST /functions/v1/push-subscribe  ─┐
+                                         ▼
+                              push_subscriptions table
+                                         ▲
+  Edge functions (cron + event-driven) ──┤
+  send-task-reminders, send-habit-…      │
+  call shared sendPush(userId, payload) ─┘
+                                         │
+                                         ▼
+                            push-dispatch edge function
+                            (signs JWT with VAPID keys,
+                             POSTs to FCM/Mozilla/Apple endpoints)
+```
 
-## Fix
+## Plan
 
-### 1. `src/components/onboarding/ModuleSetupGate.tsx`
+### 1. Service worker (custom, merged with Workbox)
 
-- Move `DialogFooter` **out of** the `ScrollArea` so the action buttons stay pinned at the bottom of the dialog and only the form body scrolls.
-- Restructure `ModuleSetupDialog` layout:
-  ```
-  DialogContent (flex flex-col, max-h-[90vh])
-    DialogHeader            ← fixed
-    ScrollArea (flex-1 min-h-0)
-      <ModuleSetupForm body only>   ← scrolls
-    DialogFooter            ← fixed (Skip / Save & continue)
-  ```
-- Refactor `FormShell` to render children-only (no footer); lift the footer up into `ModuleSetupDialog`. Pass `onSave` / `onSkip` / `isSaving` down so the dialog can render the footer.
-  - Each form (`MealsSetupForm`, `GrocerySetupForm`, `FinanceSetupForm`, `RoutineSetupForm`, `CalendarSetupForm`) currently calls `<FormShell onSave={() => onSubmit(data)} ...>`. Update them to instead expose their `onSave` payload to the parent. Cleanest approach: keep `FormShell` but make it render only the scrollable body (`<div className="space-y-5 py-4">{children}</div>`) and have it accept an optional ref/callback that publishes the save handler upward. Simpler alternative:
-    - Change each `*SetupForm` to use `useImperativeHandle` via a forwarded ref OR
-    - Easier: each form receives a `registerSave: (fn: () => void) => void` prop and calls it with its current save handler on render. Dialog stores it in state and wires it to the footer button.
-  - Add `min-h-0` to the `ScrollArea` className so flex sizing computes correctly: `className="flex-1 min-h-0 pr-4 -mr-4"`.
+Switch `vite-plugin-pwa` from `generateSW` to `injectManifest` strategy so we can ship our own `src/sw.ts` that:
+- Imports Workbox precaching (keeps current offline behaviour).
+- Adds `self.addEventListener('push', …)` to show notifications.
+- Adds `self.addEventListener('notificationclick', …)` to focus/open the right URL.
+- Keeps the iframe/preview-host kill switch in `src/main.tsx` exactly as it is.
 
-### 2. Verify other onboarding scrolls
+### 2. Database
 
-- `UserPreferencesOnboarding` (the multi-step setup before module queue): already uses `min-h-screen ... py-10` — page-level scroll works. No change needed.
-- `OnboardingTour` / `OnboardingIntro`: confirm no `overflow-hidden` clamp; no change expected.
+New migration:
+- `push_subscriptions` table: `id`, `user_id` (fk auth.users), `endpoint` (unique), `p256dh`, `auth`, `user_agent`, `created_at`, `last_seen_at`.
+  - RLS: user can SELECT/INSERT/DELETE only their own rows.
+- `notification_preferences` table: `user_id` PK, boolean columns per category (`tasks`, `habits`, `meals`, `pantry`, `invites`, `daily_plan`), all default `true`.
+  - RLS: user can SELECT/UPDATE only their own row; auto-insert via trigger on first signup (extend `handle_new_user`).
 
-### 3. Add `ScrollToTop` (small global polish)
+### 3. Edge functions
 
-While we're touching navigation/scroll, add `src/components/ScrollToTop.tsx` and mount inside `<BrowserRouter>` in `src/App.tsx` so route changes always start at the top. (Useful since some long pages currently retain the previous scroll offset on navigation.)
+- **`push-subscribe`** (new): accepts `{endpoint, keys, userAgent}`, validates JWT, upserts into `push_subscriptions`.
+- **`push-unsubscribe`** (new): deletes by endpoint for the calling user.
+- **`push-dispatch`** (new, internal): takes `{userId, category, title, body, url, data?}`, looks up the user's active subscriptions + preferences, signs a Web-Push JWT with VAPID, POSTs to each endpoint. On 404/410, deletes the dead subscription. Uses Deno's WebCrypto — no npm web-push needed.
+- Update existing functions (`send-task-reminders`, `send-habit-reminders`, `generate-daily-plan`, `send-pantry-alerts`, `send-household-invitation`, `send-task-notification`) to additionally invoke `push-dispatch` for users with subscriptions.
 
-## Files changed
+### 4. Secrets
 
-- `src/components/onboarding/ModuleSetupGate.tsx` — refactor dialog layout; pin footer; ensure ScrollArea scrolls.
-- `src/components/onboarding/UserPreferencesOnboarding.test.tsx` — only touch if test asserts old footer placement (will check during implementation).
-- `src/App.tsx` — mount `<ScrollToTop />`.
-- `src/components/ScrollToTop.tsx` — new, ~10 lines.
+Generate a VAPID keypair (P-256, base64url) once, then store:
+- `VAPID_PUBLIC_KEY` — also exposed to the frontend (publishable)
+- `VAPID_PRIVATE_KEY` — server-only
+- `VAPID_SUBJECT` — `mailto:support@familydesk.in`
 
-## Verification
+I'll generate the keypair locally in the build step and ask you to paste them via the secrets prompt.
 
-- Open Module Setup dialog (Meals form is the tallest) on mobile viewport (375×812). Confirm:
-  - Form body scrolls smoothly with mouse wheel and touch.
-  - "Skip for now" and "Save & continue" remain visible at the bottom while scrolling.
-  - Save still persists and advances to next module.
-- Run existing Vitest suite (`UserPreferencesOnboarding.test.tsx`) — must still pass.
-- Spot-check route changes (e.g. Dashboard → Settings) start at top after `ScrollToTop` is added.
+### 5. Frontend
+
+- `src/lib/push.ts`: helpers `isPushSupported()`, `getPermission()`, `subscribe()`, `unsubscribe()`, `sendTest()`. Handles iOS-standalone detection.
+- `src/components/settings/NotificationsSection.tsx`: full settings UI (permission state, master toggle, per-category switches, test button, iOS hint).
+- `src/components/notifications/PushPromptBanner.tsx`: one-time dismissible prompt shown on Home after onboarding completion (tracked via `notification_prompt_seen` localStorage flag + a column on `profiles` so it persists across devices).
+- Wire entry in existing Settings page route.
+- Re-subscription on login: if permission is granted but no subscription exists for this browser, silently re-subscribe.
+
+### 6. QA
+
+- Unit tests for `push.ts` helpers (mock `Notification`, `serviceWorker`, `PushManager`).
+- Edge function test for `push-dispatch` VAPID JWT signing.
+- Manual checklist (you'll run after publish):
+  1. Open https://familydesk.in on Android Chrome → Settings → Enable push → Send test → notification appears.
+  2. Tap notification → app opens to expected URL.
+  3. Disable → re-enable cycle works.
+  4. iOS Safari shows the "Add to Home Screen first" hint; after install + reopen, enable works.
+  5. Triggering a real task reminder delivers a push.
+
+## Out of scope (ask if you want any of these)
+
+- In-app toast/notification center UI separate from OS notifications.
+- Rich notifications with action buttons (Reply / Mark done) — possible later via `actions` array.
+- Push for non-logged-in users / marketing pushes.
+- Background sync / offline mutation queue.
+
+## Files I'll create or edit
+
+New:
+- `src/sw.ts`
+- `src/lib/push.ts`, `src/lib/push.test.ts`
+- `src/components/settings/NotificationsSection.tsx`
+- `src/components/notifications/PushPromptBanner.tsx`
+- `supabase/functions/push-subscribe/index.ts`
+- `supabase/functions/push-unsubscribe/index.ts`
+- `supabase/functions/push-dispatch/index.ts` (+ test)
+- `supabase/functions/_shared/push.ts` (helper used by other functions)
+- DB migration for `push_subscriptions` + `notification_preferences` + `handle_new_user` update.
+
+Edited:
+- `vite.config.ts` (switch to `injectManifest`, register `src/sw.ts`)
+- `src/main.tsx` (no behavioural change beyond keeping the iframe guard)
+- Settings page (mount `NotificationsSection`)
+- Home page (mount `PushPromptBanner` once)
+- The 6 existing reminder edge functions listed above.
+
+After approval I'll start with the DB migration + VAPID secret request, then build outward.

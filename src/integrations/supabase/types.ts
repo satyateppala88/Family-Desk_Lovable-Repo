@@ -1514,6 +1514,42 @@ export type Database = {
           },
         ]
       }
+      notification_preferences: {
+        Row: {
+          created_at: string
+          daily_plan: boolean
+          habits: boolean
+          invites: boolean
+          meals: boolean
+          pantry: boolean
+          tasks: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          daily_plan?: boolean
+          habits?: boolean
+          invites?: boolean
+          meals?: boolean
+          pantry?: boolean
+          tasks?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          daily_plan?: boolean
+          habits?: boolean
+          invites?: boolean
+          meals?: boolean
+          pantry?: boolean
+          tasks?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       pantry_categories: {
         Row: {
           created_at: string
@@ -1780,6 +1816,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      push_subscriptions: {
+        Row: {
+          auth: string
+          created_at: string
+          endpoint: string
+          id: string
+          last_seen_at: string
+          p256dh: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          auth: string
+          created_at?: string
+          endpoint: string
+          id?: string
+          last_seen_at?: string
+          p256dh: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          auth?: string
+          created_at?: string
+          endpoint?: string
+          id?: string
+          last_seen_at?: string
+          p256dh?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
       }
       recipes: {
         Row: {
