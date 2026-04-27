@@ -57,6 +57,8 @@ export const clearModuleSetupDraft = (
   }
   // Also clear the persisted "touched" set so the next visit starts fresh.
   clearTouched(householdId, module);
+  // And the persisted "active question" pointer.
+  clearActiveQuestion(householdId, module);
 };
 
 /**
