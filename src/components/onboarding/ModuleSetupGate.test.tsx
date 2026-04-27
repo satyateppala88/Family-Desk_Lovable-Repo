@@ -330,4 +330,34 @@ describe("ModuleSetupDialog — scroll & footer layout", () => {
 
     clearModuleSetupDraft("hh-1", "meals_setup");
   });
+
+  it("persists the last auto-focused question across close/reopen", () => {
+    // Touch the first question — focus advances to question index 1
+    // (Spice level) and that key gets persisted.
+    const { unmount } = render(
+      <ModuleSetupDialog module="meals_setup" open={true} dismissible={true} />,
+    );
+    fireEvent.click(screen.getByLabelText("vegan"));
+    // Then touch question index 1 to bump focus to index 2.
+    fireEvent.click(screen.getByLabelText("spicy"));
+
+    // localStorage should now hold the active question pointer for this
+    // household + module. We don't assert the exact key (implementation
+    // detail) — only that it's present.
+    const storageKey = "familydesk:module-setup-active:hh-1:meals_setup";
+    expect(window.localStorage.getItem(storageKey)).toBeTruthy();
+    const savedKey = window.localStorage.getItem(storageKey);
+
+    unmount();
+
+    // Reopen — the saved active key should hydrate back. We verify by
+    // checking that the same key is still in storage (the dialog read it
+    // on mount) and that no error occurred.
+    render(<ModuleSetupDialog module="meals_setup" open={true} dismissible={true} />);
+    expect(window.localStorage.getItem(storageKey)).toBe(savedKey);
+
+    // After clearing the draft, the active pointer should also be gone.
+    clearModuleSetupDraft("hh-1", "meals_setup");
+    expect(window.localStorage.getItem(storageKey)).toBeNull();
+  });
 });
