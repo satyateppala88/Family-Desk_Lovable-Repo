@@ -141,6 +141,58 @@ function clearTouched(
   }
 }
 
+// ---------------------------------------------------------------------------
+// Active-question (last-focused step) persistence
+// ---------------------------------------------------------------------------
+//
+// We persist the *key* of the last auto-focused question (not the numeric
+// index) so it survives applicability changes — if the previously active
+// question is filtered out next time, we transparently fall back to the
+// nearest still-applicable step.
+
+const ACTIVE_PREFIX = "familydesk:module-setup-active";
+const activeKeyStorageKey = (
+  householdId: string | null | undefined,
+  module: ModuleSetupKey,
+) => `${ACTIVE_PREFIX}:${householdId ?? "_"}:${module}`;
+
+const readActiveQuestion = (
+  householdId: string | null | undefined,
+  module: ModuleSetupKey,
+): string | null => {
+  if (typeof window === "undefined") return null;
+  try {
+    return window.localStorage.getItem(activeKeyStorageKey(householdId, module));
+  } catch {
+    return null;
+  }
+};
+
+const writeActiveQuestion = (
+  householdId: string | null | undefined,
+  module: ModuleSetupKey,
+  key: string,
+) => {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(activeKeyStorageKey(householdId, module), key);
+  } catch {
+    /* noop */
+  }
+};
+
+function clearActiveQuestion(
+  householdId: string | null | undefined,
+  module: ModuleSetupKey,
+) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.removeItem(activeKeyStorageKey(householdId, module));
+  } catch {
+    /* noop */
+  }
+}
+
 /**
  * Returns a stable, persisted set of touched question keys plus a `mark`
  * helper to record that a question was answered. Forms call `mark("diet")`
