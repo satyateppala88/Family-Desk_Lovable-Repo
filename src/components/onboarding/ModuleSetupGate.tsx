@@ -11,6 +11,7 @@ import { useModuleSetup } from "@/hooks/useModuleSetup";
 import { MODULE_SETUP_META, type ModuleSetupKey } from "@/lib/moduleSetup";
 import { toast } from "sonner";
 import { Loader2, AlertCircle, RotateCcw } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 // ---------------------------------------------------------------------------
 // Draft persistence (in-progress answers across dialog close / module switch)
