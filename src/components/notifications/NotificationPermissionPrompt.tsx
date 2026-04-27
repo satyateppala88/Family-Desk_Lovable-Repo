@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import {
-  getPermissionState,
   isIosNeedsInstall,
   markSoftPromptDismissed,
   markSoftPromptShown,
@@ -12,6 +11,7 @@ import {
   shouldShowSoftPrompt,
   suppressSoftPromptForever,
 } from "@/lib/notification-permission";
+import { useNotificationPermission } from "@/hooks/useNotificationPermission";
 
 /**
  * Soft permission prompt shown BEFORE the browser's native dialog.
@@ -27,6 +27,7 @@ import {
  */
 export const NotificationPermissionPrompt = () => {
   const { user } = useAuth();
+  const permission = useNotificationPermission();
   const [visible, setVisible] = useState(false);
   const [requesting, setRequesting] = useState(false);
   const [showIosHint, setShowIosHint] = useState(false);
@@ -104,9 +105,9 @@ export const NotificationPermissionPrompt = () => {
 
   if (!visible) return null;
 
-  // Re-check permission at render time in case it changed in another tab.
-  const state = getPermissionState();
-  if (state === "granted" || state === "denied") return null;
+  // Auto-hide if permission was granted or blocked elsewhere (other tab,
+  // browser settings, etc.) — `useNotificationPermission` keeps this fresh.
+  if (permission === "granted" || permission === "denied") return null;
 
   return (
     <div
