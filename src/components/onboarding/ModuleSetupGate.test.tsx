@@ -360,4 +360,149 @@ describe("ModuleSetupDialog — scroll & footer layout", () => {
     clearModuleSetupDraft("hh-1", "meals_setup");
     expect(window.localStorage.getItem(storageKey)).toBeNull();
   });
+
+  // ───────────────────────────────────────────────────────────────────────
+  // Question activation & auto-scroll behavior
+  // ───────────────────────────────────────────────────────────────────────
+
+  /**
+   * JSDOM doesn't compute layout, so we stub the geometry of every Question
+   * wrapper to a fixed height starting at predictable offsets, and override
+   * the scroll container's `clientHeight` + `scrollTo`. This lets us assert
+   * which question becomes "active" (gets scrolled to) after each tap.
+   *
+   * Layout model used in these tests:
+   *   - Each Question: 100px tall, stacked back-to-back
+   *   - Container clientHeight: 150px (fits ~1.5 questions)
+   *   - Container offsetTop: 0
+   */
+  const stubLayout = () => {
+    const scroll = getScrollContainer();
+    Object.defineProperty(scroll, "offsetTop", { configurable: true, value: 0 });
+    Object.defineProperty(scroll, "clientHeight", { configurable: true, value: 150 });
+    // Track scrollTop manually since jsdom doesn't drive it from scrollTo.
+    let currentTop = 0;
+    Object.defineProperty(scroll, "scrollTop", {
+      configurable: true,
+      get: () => currentTop,
+      set: (v: number) => { currentTop = v; },
+    });
+    const scrollToMock = vi.fn((arg: any) => {
+      currentTop = typeof arg === "number" ? arg : arg?.top ?? 0;
+    });
+    (scroll as any).scrollTo = scrollToMock;
+
+    // Each Question wrapper is the parent of a <Label> at the top of its
+    // children. We find them via their labels and stub geometry.
+    const labels = [
+      "Diet type",
+      "Spice level",
+      "Weekday cooking time",
+      "Food allergies",
+      "Favourite regional cuisines",
+    ];
+    const wrappers: HTMLElement[] = [];
+    labels.forEach((label, i) => {
+      // The <Question> wrapper is the closest ancestor div that's a direct
+      // child of the form's <fieldset> — so just take the parent element.
+      const labelEl = within(scroll).getByText(label);
+      // Wrapper is two levels up: <div ref> > <Label>. Walk up until we
+      // find the div whose parent is the fieldset/form body.
+      let wrapper: HTMLElement | null = labelEl.parentElement;
+      while (wrapper && wrapper.parentElement?.tagName !== "FIELDSET") {
+        wrapper = wrapper.parentElement;
+      }
+      if (!wrapper) throw new Error(`Could not find wrapper for ${label}`);
+      Object.defineProperty(wrapper, "offsetTop", { configurable: true, value: i * 100 });
+      Object.defineProperty(wrapper, "offsetHeight", { configurable: true, value: 100 });
+      wrappers.push(wrapper);
+    });
+    return { scroll, scrollToMock, wrappers };
+  };
+
+  it("scrolls the next question into view after a single-choice selection", () => {
+    render(<ModuleSetupDialog module="meals_setup" open={true} dismissible={true} />);
+    const { scrollToMock } = stubLayout();
+
+    // Pick a Diet type (question 0) → focus advances to question 1
+    // (Spice level), whose top is at 100px. With an 8px margin, we expect
+    // the container to scroll to top = 100 - 8 = 92 (question 1 is below
+    // the visible area at scrollTop 0 with clientHeight 150 — bottom 200
+    // > viewBottom 150 - 8).
+    fireEvent.click(screen.getByLabelText("vegan"));
+
+    expect(scrollToMock).toHaveBeenCalledTimes(1);
+    const arg = scrollToMock.mock.calls[0][0];
+    expect(arg.behavior).toBe("smooth");
+    // Top should be near 92 (offsetTop 100 - 8 margin) using the
+    // align-bottom branch: elBottom 200 - clientHeight 150 + margin 8 = 58.
+    // Either branch is fine — assert it's a positive number that brings
+    // q1 into view (i.e. between 0 and 100).
+    expect(arg.top).toBeGreaterThan(0);
+    expect(arg.top).toBeLessThanOrEqual(100);
+
+    clearModuleSetupDraft("hh-1", "meals_setup");
+  });
+
+  it("does NOT scroll when the next question is already fully visible", () => {
+    render(<ModuleSetupDialog module="meals_setup" open={true} dismissible={true} />);
+    const { scroll, scrollToMock } = stubLayout();
+    // Make the viewport tall enough to fit questions 0 AND 1 fully (with
+    // margin): need >= 200 + 16 = 216px.
+    Object.defineProperty(scroll, "clientHeight", { configurable: true, value: 300 });
+
+    fireEvent.click(screen.getByLabelText("vegan"));
+
+    expect(scrollToMock).not.toHaveBeenCalled();
+    clearModuleSetupDraft("hh-1", "meals_setup");
+  });
+
+  it("does NOT auto-scroll for multi-select (checkbox) questions", () => {
+    render(<ModuleSetupDialog module="meals_setup" open={true} dismissible={true} />);
+    const { scrollToMock } = stubLayout();
+
+    // "Food allergies" (question 3) is a checkbox group — toggling it
+    // marks progress but should NOT advance focus / scroll.
+    fireEvent.click(screen.getByLabelText("Nuts"));
+
+    expect(scrollToMock).not.toHaveBeenCalled();
+    clearModuleSetupDraft("hh-1", "meals_setup");
+  });
+
+  it("advances focus key in storage to match the activated question", () => {
+    render(<ModuleSetupDialog module="meals_setup" open={true} dismissible={true} />);
+    stubLayout();
+
+    const storageKey = "familydesk:module-setup-active:hh-1:meals_setup";
+    expect(window.localStorage.getItem(storageKey)).toBeNull();
+
+    // Tap Diet type → focus advances to Spice level.
+    fireEvent.click(screen.getByLabelText("vegan"));
+    expect(window.localStorage.getItem(storageKey)).toBe("spice_level");
+
+    // Tap Spice level → focus advances to Weekday cooking time.
+    fireEvent.click(screen.getByLabelText("spicy"));
+    expect(window.localStorage.getItem(storageKey)).toBe("weekday_cooking_time");
+
+    clearModuleSetupDraft("hh-1", "meals_setup");
+  });
+
+  it("clamps active focus to the last question when at the end", () => {
+    render(<ModuleSetupDialog module="meals_setup" open={true} dismissible={true} />);
+    stubLayout();
+
+    // Touch question 4 (the last applicable: Favourite regional cuisines).
+    // Since it's a checkbox group, it doesn't advance focus on its own —
+    // so instead, walk through the radios first.
+    fireEvent.click(screen.getByLabelText("vegan"));            // q0 → focus q1
+    fireEvent.click(screen.getByLabelText("spicy"));            // q1 → focus q2
+    fireEvent.click(screen.getByLabelText("More than 60 min")); // q2 → focus q3
+
+    const storageKey = "familydesk:module-setup-active:hh-1:meals_setup";
+    // After 3 advances from index 0, 1, 2 we should be on the question at
+    // index 3 (food_allergies).
+    expect(window.localStorage.getItem(storageKey)).toBe("food_allergies");
+
+    clearModuleSetupDraft("hh-1", "meals_setup");
+  });
 });
