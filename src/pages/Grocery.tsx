@@ -626,4 +626,10 @@ const Grocery = () => {
   );
 };
 
-export default Grocery;
+import { ModuleSetupGate } from "@/components/onboarding/ModuleSetupGate";
+const GroceryWithGate = () => (
+  <ModuleSetupGate module="grocery_setup">
+    <Grocery />
+  </ModuleSetupGate>
+);
+export default GroceryWithGate;

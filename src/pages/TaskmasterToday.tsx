@@ -298,4 +298,10 @@ const TaskmasterToday = () => {
   );
 };
 
-export default TaskmasterToday;
+import { ModuleSetupGate } from "@/components/onboarding/ModuleSetupGate";
+const TaskmasterTodayWithGate = () => (
+  <ModuleSetupGate module="tasks_setup">
+    <TaskmasterToday />
+  </ModuleSetupGate>
+);
+export default TaskmasterTodayWithGate;

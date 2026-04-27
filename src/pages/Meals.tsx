@@ -345,4 +345,10 @@ const Meals = () => {
   );
 };
 
-export default Meals;
+import { ModuleSetupGate } from "@/components/onboarding/ModuleSetupGate";
+const MealsWithGate = () => (
+  <ModuleSetupGate module="meals_setup">
+    <Meals />
+  </ModuleSetupGate>
+);
+export default MealsWithGate;
