@@ -461,9 +461,14 @@ describe("ModuleSetupDialog — scroll & footer layout", () => {
     render(<ModuleSetupDialog module="meals_setup" open={true} dismissible={true} />);
     const { scrollToMock } = stubLayout();
 
-    // "Food allergies" (question 3) is a checkbox group — toggling it
-    // marks progress but should NOT advance focus / scroll.
-    fireEvent.click(screen.getByLabelText("Nuts"));
+    // "Food allergies" (question 3) is a checkbox group — toggling any
+    // option should mark progress but NOT advance focus / scroll.
+    // The Label has no `htmlFor`, so click the checkbox by walking from
+    // the visible label text to its sibling checkbox.
+    const nutsLabel = screen.getByText("Nuts");
+    const row = nutsLabel.parentElement!;
+    const checkbox = within(row).getByRole("checkbox");
+    fireEvent.click(checkbox);
 
     expect(scrollToMock).not.toHaveBeenCalled();
     clearModuleSetupDraft("hh-1", "meals_setup");
