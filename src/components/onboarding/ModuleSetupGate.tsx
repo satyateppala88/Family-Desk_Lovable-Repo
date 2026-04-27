@@ -389,19 +389,50 @@ const FormShell = ({
   if (!ctx) {
     return (
       <>
-        <div className="space-y-5 py-4">{children}</div>
+        <fieldset
+          disabled={isSaving}
+          aria-busy={isSaving}
+          className="space-y-5 py-4 border-0 p-0 m-0 disabled:opacity-60 disabled:pointer-events-none transition-opacity"
+        >
+          {children}
+        </fieldset>
         <DialogFooter className="flex-row justify-between sm:justify-between">
-          <Button variant="ghost" onClick={onSkip} disabled={isSaving}>
+          <Button
+            variant="ghost"
+            onClick={() => { if (!isSaving) onSkip(); }}
+            disabled={isSaving}
+            aria-disabled={isSaving}
+          >
             Skip for now
           </Button>
-          <Button onClick={onSave} disabled={isSaving}>
-            {isSaving ? "Saving..." : "Save & continue"}
+          <Button
+            onClick={() => { if (!isSaving) onSave(); }}
+            disabled={isSaving}
+            aria-disabled={isSaving}
+            aria-busy={isSaving}
+          >
+            {isSaving ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
+                Saving...
+              </>
+            ) : (
+              "Save & continue"
+            )}
           </Button>
         </DialogFooter>
       </>
     );
   }
-  return <div className="space-y-5 py-4">{children}</div>;
+  return (
+    <fieldset
+      disabled={isSaving}
+      aria-busy={isSaving}
+      className="space-y-5 py-4 border-0 p-0 m-0 disabled:opacity-60 disabled:pointer-events-none transition-opacity"
+    >
+      {children}
+    </fieldset>
+  );
 };
 
 const toggle = (arr: string[], v: string) =>
