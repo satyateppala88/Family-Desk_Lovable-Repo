@@ -3,8 +3,10 @@ import { useNavigate } from "react-router-dom";
 import {
   Bell,
   BellOff,
+  CalendarDays,
   CheckCircle2,
   ChefHat,
+  Lightbulb,
   ListChecks,
   Mail,
   ShieldAlert,
@@ -12,6 +14,7 @@ import {
   Sparkles,
   Sunrise,
   Target,
+  Wallet,
 } from "lucide-react";
 import { Header } from "@/components/layout/Header";
 import {
@@ -84,6 +87,24 @@ const CHANNELS: ChannelConfig[] = [
     title: "Household invites",
     description: "When someone invites you or joins your household.",
     icon: Mail,
+  },
+  {
+    key: "finance",
+    title: "Finance",
+    description: "Budget alerts, savings milestones, bill renewals.",
+    icon: Wallet,
+  },
+  {
+    key: "calendar",
+    title: "Calendar",
+    description: "Reminders before upcoming events.",
+    icon: CalendarDays,
+  },
+  {
+    key: "ai_suggestions",
+    title: "AI suggestions",
+    description: "When the AI assistant has a new tip for your household.",
+    icon: Lightbulb,
   },
 ];
 

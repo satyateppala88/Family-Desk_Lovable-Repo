@@ -1516,8 +1516,11 @@ export type Database = {
       }
       notification_preferences: {
         Row: {
+          ai_suggestions: boolean
+          calendar: boolean
           created_at: string
           daily_plan: boolean
+          finance: boolean
           habits: boolean
           invites: boolean
           meals: boolean
@@ -1527,8 +1530,11 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          ai_suggestions?: boolean
+          calendar?: boolean
           created_at?: string
           daily_plan?: boolean
+          finance?: boolean
           habits?: boolean
           invites?: boolean
           meals?: boolean
@@ -1538,8 +1544,11 @@ export type Database = {
           user_id: string
         }
         Update: {
+          ai_suggestions?: boolean
+          calendar?: boolean
           created_at?: string
           daily_plan?: boolean
+          finance?: boolean
           habits?: boolean
           invites?: boolean
           meals?: boolean
@@ -1816,6 +1825,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      push_dispatch_config: {
+        Row: {
+          base_url: string
+          id: boolean
+          service_role_key: string
+          updated_at: string
+        }
+        Insert: {
+          base_url: string
+          id?: boolean
+          service_role_key: string
+          updated_at?: string
+        }
+        Update: {
+          base_url?: string
+          id?: boolean
+          service_role_key?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       push_subscriptions: {
         Row: {
@@ -2449,6 +2479,18 @@ export type Database = {
       }
     }
     Functions: {
+      dispatch_push: {
+        Args: {
+          _body: string
+          _channel: string
+          _data?: Json
+          _tag?: string
+          _title: string
+          _url?: string
+          _user_ids: string[]
+        }
+        Returns: undefined
+      }
       generate_invite_code: { Args: never; Returns: string }
       has_household_role: {
         Args: {
