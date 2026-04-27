@@ -2,7 +2,6 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders } from "../_shared/cors.ts";
 import { sendWhatsAppTemplate, WHATSAPP_TEMPLATES } from "../_shared/whatsapp.ts";
-import { sendPush } from "../_shared/push.ts";
 
 const handler = async (req: Request): Promise<Response> => {
   const origin = req.headers.get("origin");
@@ -137,19 +136,6 @@ const handler = async (req: Request): Promise<Response> => {
             error: waResult.error,
           });
         }
-
-        // Fan-out Web Push regardless of WhatsApp outcome (channel: daily_plan)
-        await sendPush({
-          user_ids: [userPref.user_id],
-          channel: "daily_plan",
-          title: "📋 Your plan for today",
-          body: taskList === "No tasks planned for today"
-            ? "No tasks planned — add one to get started"
-            : taskList.split("\n").slice(0, 3).join(" · "),
-          url: "/taskmaster/today",
-          tag: `daily-plan-${userPref.user_id}-${today}`,
-          data: { type: "daily_plan", date: today },
-        });
       } catch (userError: any) {
         console.error(`Error processing user ${userPref.user_id}:`, userError);
         results.push({

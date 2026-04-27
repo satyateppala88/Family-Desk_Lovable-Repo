@@ -7,7 +7,6 @@ import {
 } from "../_shared/email-templates.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
 import { sendWhatsAppTemplate, WHATSAPP_TEMPLATES } from "../_shared/whatsapp.ts";
-import { sendPush } from "../_shared/push.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -126,17 +125,6 @@ const handler = async (req: Request): Promise<Response> => {
               console.log(`Pantry alert email sent to ${userData.user.email}:`, emailResponse);
               emailsSent.push(userData.user.email);
             }
-
-            // Fan-out Web Push (channel: pantry)
-            await sendPush({
-              user_ids: [member.user_id],
-              channel: "pantry",
-              title: `🥫 ${items.length} item${items.length > 1 ? "s" : ""} expiring soon`,
-              body: `${items[0].name}${items.length > 1 ? ` + ${items.length - 1} more` : ""} expiring within 3 days`,
-              url: "/grocery",
-              tag: `pantry-expiry-${householdId}`,
-              data: { householdId, type: "pantry_expiry" },
-            });
 
             // Send WhatsApp if enabled
             if (

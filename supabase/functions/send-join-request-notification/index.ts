@@ -6,7 +6,6 @@ import {
   getEmailWrapper, 
   getJoinRequestNotificationContent 
 } from "../_shared/email-templates.ts";
-import { sendPush } from "../_shared/push.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -88,17 +87,6 @@ const handler = async (req: Request): Promise<Response> => {
 
     const reviewUrl = "https://familydesk.in/household/members";
     const emailsSent: string[] = [];
-
-    // Push fan-out to all admins (channel: invites)
-    await sendPush({
-      user_ids: admins.map((a) => a.user_id),
-      channel: "invites",
-      title: `Join request for ${householdName}`,
-      body: `${requesterName} (${requesterEmail}) wants to join`,
-      url: "/household/members",
-      tag: `join-request-${householdId}-${requesterEmail}`,
-      data: { householdId, requesterEmail, type: "join_request" },
-    });
 
     for (const admin of admins) {
       // Check email preferences

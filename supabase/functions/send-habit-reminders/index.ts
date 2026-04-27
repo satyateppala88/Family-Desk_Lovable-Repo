@@ -7,7 +7,6 @@ import {
   getStreakWarningContent
 } from "../_shared/email-templates.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
-import { sendPush } from "../_shared/push.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -164,16 +163,6 @@ const handler = async (req: Request): Promise<Response> => {
               preheader: `Don't lose your ${highestStreak.streak}-day streak on ${highestStreak.name}!`,
             }),
           });
-
-          await sendPush({
-            user_ids: [userId],
-            channel: "habits",
-            title: `⚠️ ${highestStreak.streak}-day streak at risk`,
-            body: `Log "${highestStreak.name}" today to keep your streak alive`,
-            url: "/habits",
-            tag: `habit-streak-${highestStreak.habitId}`,
-            data: { habitId: highestStreak.habitId, type: "streak_warning" },
-          });
         } else {
           // Send regular habit reminder
           const emailContent = getHabitReminderContent(
@@ -189,19 +178,6 @@ const handler = async (req: Request): Promise<Response> => {
               recipientName: profile?.display_name || undefined,
               preheader: `You have ${habitsToRemind.length} habit${habitsToRemind.length > 1 ? "s" : ""} to check in today`,
             }),
-          });
-
-          const firstHabit = habitsToRemind[0];
-          await sendPush({
-            user_ids: [userId],
-            channel: "habits",
-            title: `🌟 ${habitsToRemind.length} habit${habitsToRemind.length > 1 ? "s" : ""} to check in`,
-            body: habitsToRemind.length === 1
-              ? firstHabit.name
-              : `${firstHabit.name} + ${habitsToRemind.length - 1} more`,
-            url: "/habits",
-            tag: `habit-reminder-${userId}`,
-            data: { type: "habit_reminder" },
           });
         }
 

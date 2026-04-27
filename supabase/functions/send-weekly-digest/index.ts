@@ -6,7 +6,6 @@ import {
   getWeeklyDigestContent 
 } from "../_shared/email-templates.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
-import { sendPush } from "../_shared/push.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -133,16 +132,6 @@ const handler = async (req: Request): Promise<Response> => {
 
         console.log(`Weekly digest sent to ${userData.user.email}:`, emailResponse);
         emailsSent.push(userData.user.email);
-
-        await sendPush({
-          user_ids: [member.user_id],
-          channel: "daily_plan",
-          title: "📊 Your weekly summary",
-          body: `${stats.tasksCompleted} tasks done · ${stats.tasksUpcoming} upcoming · ${stats.habitStreak}-day streak`,
-          url: "/dashboard",
-          tag: `weekly-digest-${member.user_id}`,
-          data: { type: "weekly_digest", stats },
-        });
       } catch (error: any) {
         console.error(`Error sending digest to user ${member.user_id}:`, error);
         errors.push(`User ${member.user_id}: ${error.message}`);
