@@ -351,6 +351,11 @@ export const ModuleSetupDialog = ({
   const announce = useCallback((msg: string) => {
     setAnnouncement((prev) => ({ msg, tick: prev.tick + 1 }));
   }, []);
+  // Expose `total` via a ref so changes don't churn the context identity
+  // (which would re-fire FormShell's cleanup effect and clear save/skip
+  // refs mid-interaction). Consumers read the latest total via `totalRef`.
+  const totalRef = useRef(progress.total);
+  totalRef.current = progress.total;
   const ctxValue = useMemo(
     () => ({
       saveRef,
@@ -358,9 +363,9 @@ export const ModuleSetupDialog = ({
       setProgress: setProgressStable,
       scrollContainerRef,
       announce,
-      total: progress.total,
+      totalRef,
     }),
-    [setProgressStable, announce, progress.total],
+    [setProgressStable, announce],
   );
 
   return (
