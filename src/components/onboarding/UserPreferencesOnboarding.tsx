@@ -14,6 +14,7 @@ import { ChevronLeft, ChevronRight, Check } from "lucide-react";
 import { ProductSelectionStep } from "./ProductSelectionStep";
 import { ProductName } from "@/hooks/useEnabledProducts";
 import { useQueryClient } from "@tanstack/react-query";
+import { ModuleSetupQueue } from "./ModuleSetupQueue";
 
 interface BasicsData {
   display_name: string;
@@ -48,6 +49,8 @@ export const UserPreferencesOnboarding = () => {
     "calendar",
     "grocery",
   ]);
+  const [previouslyEnabled, setPreviouslyEnabled] = useState<ProductName[]>([]);
+  const [setupQueue, setSetupQueue] = useState<ProductName[] | null>(null);
 
   // Prefill from existing data
   useEffect(() => {
@@ -88,7 +91,9 @@ export const UserPreferencesOnboarding = () => {
         .select("product_name")
         .eq("household_id", householdId);
       if (enabled && enabled.length > 0) {
-        setSelectedProducts(enabled.map((p) => p.product_name as ProductName));
+        const list = enabled.map((p) => p.product_name as ProductName);
+        setSelectedProducts(list);
+        setPreviouslyEnabled(list);
       }
     })();
   }, [householdId]);
@@ -185,7 +190,14 @@ export const UserPreferencesOnboarding = () => {
       queryClient.invalidateQueries({ queryKey: ["household-preferences"] });
 
       toast.success("Welcome to Family Desk!");
-      navigate("/dashboard");
+
+      // Queue per-module first-enable setup for any *newly* enabled module.
+      const newlyEnabled = selectedProducts.filter((p) => !previouslyEnabled.includes(p));
+      if (newlyEnabled.length > 0) {
+        setSetupQueue(newlyEnabled);
+      } else {
+        navigate("/dashboard");
+      }
     } catch (err: any) {
       toast.error("Setup failed: " + err.message);
     } finally {
@@ -195,6 +207,15 @@ export const UserPreferencesOnboarding = () => {
 
   return (
     <div className="min-h-screen bg-background py-10 px-4">
+      {setupQueue && (
+        <ModuleSetupQueue
+          products={setupQueue}
+          onAllDone={() => {
+            setSetupQueue(null);
+            navigate("/dashboard");
+          }}
+        />
+      )}
       <div className="max-w-2xl mx-auto space-y-4">
         <Progress value={progress} className="h-2" />
         <Card>
