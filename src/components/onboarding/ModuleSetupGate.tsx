@@ -613,7 +613,13 @@ const useQuestionFocus = (
   const advanceFrom = useCallback(
     (i: number) => {
       const max = Math.max(0, totalRef.current - 1);
-      const next = Math.min(i + 1, max);
+      // Defensive: if the caller passes -1 (inapplicable question key), or
+      // any out-of-range value, normalize before stepping. `applicableKeys`
+      // already excludes inapplicable questions, so adding 1 here is the
+      // step within the applicable subset — guaranteed to skip any
+      // filtered-out questions.
+      const from = Number.isFinite(i) && i >= 0 ? Math.floor(i) : -1;
+      const next = Math.min(from + 1, max);
       setActiveIndex(next);
       const nextKey = keysRef.current[next];
       if (nextKey) writeActiveQuestion(householdId, module, nextKey);
