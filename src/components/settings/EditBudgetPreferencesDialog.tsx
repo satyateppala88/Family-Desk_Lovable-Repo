@@ -20,46 +20,47 @@ interface EditBudgetPreferencesDialogProps {
   preferences: HouseholdPreferences;
   onSave: (updates: Partial<HouseholdPreferences>) => Promise<void>;
   isUpdating?: boolean;
+  trigger?: React.ReactNode;
 }
 
 export const EditBudgetPreferencesDialog = ({
   preferences,
   onSave,
   isUpdating,
+  trigger,
 }: EditBudgetPreferencesDialogProps) => {
   const [open, setOpen] = useState(false);
   const [formData, setFormData] = useState({
     monthly_grocery_budget: preferences.monthly_grocery_budget ?? "5000_to_10000",
-    shopping_locations: preferences.shopping_locations ?? [],
     organic_preference: preferences.organic_preference ?? "sometimes",
     budget_consciousness: preferences.budget_consciousness ?? "somewhat",
   });
 
-  const handleCheckboxChange = (value: string) => {
-    const currentValues = formData.shopping_locations;
-    const newValues = currentValues.includes(value)
-      ? currentValues.filter((v) => v !== value)
-      : [...currentValues, value];
-    setFormData({ ...formData, shopping_locations: newValues });
-  };
-
   const handleSubmit = async () => {
-    await onSave(formData);
+    // Strictly Finance-owned fields only.
+    await onSave({
+      monthly_grocery_budget: formData.monthly_grocery_budget,
+      organic_preference: formData.organic_preference,
+      budget_consciousness: formData.budget_consciousness,
+    });
     setOpen(false);
   };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="ghost" size="sm">
-          <Pencil className="h-4 w-4" />
-        </Button>
+        {trigger ?? (
+          <Button variant="outline" size="sm">
+            <Pencil className="h-4 w-4 mr-2" />
+            Edit
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent className="sm:max-w-md max-h-[90vh]">
         <DialogHeader>
-          <DialogTitle>Edit Budget & Shopping</DialogTitle>
+          <DialogTitle>Finance preferences</DialogTitle>
           <DialogDescription>
-            Update your budget and shopping preferences
+            Budget and spending strictness.
           </DialogDescription>
         </DialogHeader>
         <ScrollArea className="max-h-[60vh] pr-4">
@@ -87,21 +88,6 @@ export const EditBudgetPreferencesDialog = ({
                   <Label htmlFor="edit-budget4">Above ₹20,000</Label>
                 </div>
               </RadioGroup>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Preferred Shopping Locations</Label>
-              <div className="space-y-2 mt-2">
-                {["Local markets/Kirana stores", "Supermarkets (DMart, More, Big Bazaar)", "Online (BigBasket, Blinkit, Zepto)", "Wholesale markets"].map((location) => (
-                  <div key={location} className="flex items-center space-x-2">
-                    <Checkbox
-                      checked={formData.shopping_locations.includes(location)}
-                      onCheckedChange={() => handleCheckboxChange(location)}
-                    />
-                    <Label>{location}</Label>
-                  </div>
-                ))}
-              </div>
             </div>
 
             <div className="space-y-2">
