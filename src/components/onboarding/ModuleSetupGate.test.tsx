@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, cleanup, within } from "@testing-library/react";
+import { render, screen, fireEvent, cleanup, within, renderHook, act } from "@testing-library/react";
 import { useSyncExternalStore } from "react";
 
 // ─── Mocks ────────────────────────────────────────────────────────────────
@@ -56,7 +56,7 @@ vi.mock("@/hooks/useModuleSetup", () => ({
 }));
 
 // Import AFTER mocks so they're picked up.
-import { ModuleSetupDialog, clearModuleSetupDraft } from "./ModuleSetupGate";
+import { ModuleSetupDialog, clearModuleSetupDraft, useQuestionFocus } from "./ModuleSetupGate";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────
 
