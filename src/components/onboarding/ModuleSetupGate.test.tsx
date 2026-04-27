@@ -297,4 +297,37 @@ describe("ModuleSetupDialog — scroll & footer layout", () => {
     expect(freshBar.getAttribute("aria-valuenow")).toBe("0");
     expect(freshBar.textContent).toContain("Answered 0 of 2");
   });
+
+  it("progress indicator is keyboard-focusable and announces percentage", () => {
+    render(
+      <ModuleSetupDialog module="meals_setup" open={true} dismissible={true} />,
+    );
+
+    const bar = screen.getByRole("progressbar", { name: /setup completion/i });
+
+    // Keyboard-reachable.
+    expect(bar.getAttribute("tabindex")).toBe("0");
+
+    // Reads a complete phrase including the percentage.
+    expect(bar.getAttribute("aria-valuetext")).toBe("0 of 5 answered, 0% complete");
+    expect(bar.getAttribute("aria-valuenow")).toBe("0");
+    expect(bar.getAttribute("aria-valuemin")).toBe("0");
+    expect(bar.getAttribute("aria-valuemax")).toBe("100");
+
+    // After answering, the announced phrase updates.
+    fireEvent.click(screen.getByLabelText("vegan"));
+    const updated = screen.getByRole("progressbar", { name: /setup completion/i });
+    expect(updated.getAttribute("aria-valuetext")).toBe("1 of 5 answered, 20% complete");
+    expect(updated.getAttribute("aria-valuenow")).toBe("20");
+
+    // A polite live region exists alongside it so updates are announced
+    // without re-reading the whole dialog.
+    const live = screen.getByRole("status");
+    expect(live.getAttribute("aria-live")).toBe("polite");
+    expect(live.getAttribute("aria-atomic")).toBe("true");
+    expect(live.textContent).toContain("20% complete");
+    expect(live.textContent).toContain("1 of 5");
+
+    clearModuleSetupDraft("hh-1", "meals_setup");
+  });
 });
