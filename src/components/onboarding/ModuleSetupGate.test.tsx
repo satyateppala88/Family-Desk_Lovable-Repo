@@ -537,4 +537,66 @@ describe("ModuleSetupDialog — scroll & footer layout", () => {
 
     clearModuleSetupDraft("hh-1", "meals_setup");
   });
+
+  // ───────────────────────────────────────────────────────────────────────
+  // Save debouncing — rapid double-clicks must produce a single request
+  // ───────────────────────────────────────────────────────────────────────
+
+  it("rapid clicks on Save & continue dispatch only one save request", async () => {
+    // Build a deferred promise so the save stays "in-flight" while we
+    // hammer the button. The mocked hook flips `isUpdating` to true on
+    // entry, which (via useSyncExternalStore) re-renders the dialog and
+    // disables the button — exactly like the real react-query mutation.
+    let resolveSave: (() => void) | null = null;
+    const savePending = new Promise<void>((res) => { resolveSave = () => res(); });
+    prefsStore.impl = async () => {
+      prefsStore.setUpdating(true);
+      try {
+        await savePending;
+      } finally {
+        prefsStore.setUpdating(false);
+      }
+    };
+
+    const onComplete = vi.fn();
+    render(
+      <ModuleSetupDialog
+        module="finance_setup"
+        open={true}
+        dismissible={true}
+        onComplete={onComplete}
+      />,
+    );
+
+    const footer = getFooter();
+    const saveBtn = within(footer).getByRole("button", { name: "Save & continue" });
+
+    // Hammer the button 8 times back-to-back, faster than any real user
+    // could click. Only the first click should reach updatePreferences;
+    // the rest must be swallowed by the in-flight guard / disabled state.
+    for (let i = 0; i < 8; i++) fireEvent.click(saveBtn);
+
+    // The button must reflect the saving state (disabled + busy) so
+    // assistive tech and pointer users both see the guard.
+    await vi.waitFor(() => {
+      const btn = within(getFooter()).getByRole("button", { name: /saving/i });
+      expect(btn).toBeDisabled();
+      expect(btn.getAttribute("aria-busy")).toBe("true");
+    });
+
+    // Even with rapid clicks while saving, exactly ONE network call fires.
+    expect(updatePreferencesMock).toHaveBeenCalledTimes(1);
+
+    // Try clicking a few more times while still in-flight — still one.
+    for (let i = 0; i < 5; i++) fireEvent.click(saveBtn);
+    expect(updatePreferencesMock).toHaveBeenCalledTimes(1);
+
+    // Resolve the deferred save → markComplete fires once, onComplete once.
+    resolveSave!();
+    await vi.waitFor(() => expect(markCompleteMock).toHaveBeenCalledTimes(1));
+    await vi.waitFor(() => expect(onComplete).toHaveBeenCalledTimes(1));
+
+    // Total stays at exactly one save request across the whole sequence.
+    expect(updatePreferencesMock).toHaveBeenCalledTimes(1);
+  });
 });
