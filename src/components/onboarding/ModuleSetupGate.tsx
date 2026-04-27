@@ -647,12 +647,12 @@ export const ModuleSetupDialog = ({
             Skip for now
           </Button>
           <Button
-            onClick={() => { if (!isSaving) saveRef.current?.(); }}
-            disabled={isSaving}
-            aria-disabled={isSaving}
-            aria-busy={isSaving}
+            onClick={() => triggerSave()}
+            disabled={isSaving || isRetrying}
+            aria-disabled={isSaving || isRetrying}
+            aria-busy={isSaving || isRetrying}
           >
-            {isSaving ? (
+            {isSaving || isRetrying ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
                 Saving...
