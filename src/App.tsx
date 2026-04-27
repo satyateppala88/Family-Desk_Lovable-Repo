@@ -53,6 +53,7 @@ const HouseholdMembers = lazy(() => import("./pages/HouseholdMembers"));
 const HouseholdProductSettings = lazy(() => import("./pages/HouseholdProductSettings"));
 const VerifyEmail = lazy(() => import("./pages/VerifyEmail"));
 const Install = lazy(() => import("./pages/Install"));
+const NotificationSettings = lazy(() => import("./pages/NotificationSettings"));
 
 const queryClient = createPersistedQueryClient();
 
@@ -195,6 +196,11 @@ const App = () => (
                 <Route path="/terms" element={<TermsOfService />} />
                 <Route path="/privacy" element={<PrivacyPolicy />} />
                 <Route path="/install" element={<Install />} />
+                <Route path="/settings/notifications" element={
+                  <ProtectedRoute>
+                    <NotificationSettings />
+                  </ProtectedRoute>
+                } />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>

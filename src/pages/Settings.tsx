@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { useHousehold } from "@/hooks/useHousehold";
 import { toast } from "sonner";
-import { Settings as SettingsIcon, RefreshCw, Copy, Users, UserPlus, Key, Mail } from "lucide-react";
+import { Settings as SettingsIcon, RefreshCw, Copy, Users, UserPlus, Key, Mail, Bell } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useIsHouseholdAdmin } from "@/hooks/useIsHouseholdAdmin";
 import { usePendingInvitations } from "@/hooks/usePendingInvitations";
@@ -233,6 +233,27 @@ export const Settings = () => {
               <SetupProgressCard />
 
               <ModulePreferencesSection />
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <Bell className="h-5 w-5" />
+                      Notifications
+                    </CardTitle>
+                    <CardDescription>
+                      Choose which reminders you receive and review browser permission status.
+                    </CardDescription>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => navigate("/settings/notifications")}
+                  >
+                    Manage
+                  </Button>
+                </CardHeader>
+              </Card>
 
               <Card className="bg-muted/50">
                 <CardContent className="pt-6">
