@@ -36,6 +36,10 @@ import {
   type PermissionState,
 } from "@/lib/notification-permission";
 import { useNotificationPermission } from "@/hooks/useNotificationPermission";
+import {
+  ensurePushSubscription,
+  removePushSubscription,
+} from "@/lib/push-subscription";
 
 interface ChannelConfig {
   key: NotificationChannel;
@@ -113,15 +117,44 @@ export default function NotificationSettings() {
   const handleRequestPermission = async () => {
     setRequesting(true);
     const result = await requestNativePermission();
-    setRequesting(false);
     if (result === "granted") {
-      toast.success("Notifications enabled.");
+      const sub = await ensurePushSubscription();
+      setRequesting(false);
+      if (sub.ok) {
+        toast.success("Notifications enabled — you're all set.");
+      } else {
+        toast.warning(
+          "Permission granted, but we couldn't register this device for push. We'll retry next time you open the app."
+        );
+        console.warn("[push] subscription setup failed:", sub.reason);
+      }
     } else if (result === "denied") {
+      setRequesting(false);
       toast.error(
         "Notifications are blocked. You can re-enable them in your browser's site settings."
       );
+    } else {
+      setRequesting(false);
     }
   };
+
+  // If the user already granted permission previously but never registered a
+  // subscription on this device (e.g. cleared site data, new browser), quietly
+  // try to register it now.
+  useEffect(() => {
+    if (permission !== "granted") return;
+    let cancelled = false;
+    (async () => {
+      const result = await ensurePushSubscription();
+      if (cancelled) return;
+      if (!result.ok && result.reason !== "no-service-worker") {
+        console.warn("[push] background subscription setup failed:", result.reason);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [permission]);
 
   const permInfo = permissionLabel(permission);
   const PermIcon = permInfo.icon;
