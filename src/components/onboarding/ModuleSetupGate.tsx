@@ -615,7 +615,7 @@ const Question = ({
       // Fallback for environments without scrollTo (older browsers, jsdom).
       container.scrollTop = top;
     }
-  }, [activeIndex, index, ctx]);
+  }, [activeIndex, index, ctx, label]);
   return <div ref={ref}>{children}</div>;
 };
 
