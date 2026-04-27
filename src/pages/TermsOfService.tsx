@@ -5,6 +5,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import {
+  TERMS_VERSION,
+  TERMS_EFFECTIVE_DATE,
+  TERMS_CHANGELOG,
+  formatVersionDate,
+} from "@/lib/versioning";
+import { VersionHistory } from "@/components/settings/VersionHistory";
 
 export default function TermsOfService() {
   const navigate = useNavigate();
@@ -25,9 +33,12 @@ export default function TermsOfService() {
         <Card>
           <CardHeader>
             <CardTitle className="text-3xl">Terms of Service</CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Last Updated: March 24, 2026
-            </p>
+            <div className="flex items-center gap-2 flex-wrap pt-1">
+              <Badge variant="secondary">Version {TERMS_VERSION}</Badge>
+              <span className="text-sm text-muted-foreground">
+                Last updated {formatVersionDate(TERMS_EFFECTIVE_DATE)}
+              </span>
+            </div>
           </CardHeader>
           <CardContent className="prose prose-sm max-w-none space-y-6">
             <section>

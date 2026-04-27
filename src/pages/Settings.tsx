@@ -21,6 +21,8 @@ import { EditCookingPreferencesDialog } from "@/components/settings/EditCookingP
 import { EditRoutinePreferencesDialog } from "@/components/settings/EditRoutinePreferencesDialog";
 import { EditBudgetPreferencesDialog } from "@/components/settings/EditBudgetPreferencesDialog";
 import { supabase } from "@/lib/supabase";
+import { HowToUseSection } from "@/components/settings/HowToUseSection";
+import { WhatsNewSection } from "@/components/settings/WhatsNewSection";
 
 export const Settings = () => {
   const { user } = useAuth();
@@ -381,6 +383,9 @@ export const Settings = () => {
               </Card>
             </div>
           )}
+
+          <HowToUseSection />
+          <WhatsNewSection />
         </div>
       </main>
     </>
