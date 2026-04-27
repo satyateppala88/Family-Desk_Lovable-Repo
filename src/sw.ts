@@ -126,6 +126,8 @@ type PushPayload = {
   badge?: string;
   // Free-form extra data echoed back to the page on click.
   data?: Record<string, unknown>;
+  // Optional action buttons rendered on the OS notification.
+  actions?: Array<{ action: string; title: string }>;
 };
 
 function parsePushData(event: PushEvent): PushPayload {
@@ -145,6 +147,21 @@ self.addEventListener("push", (event) => {
   const payload = parsePushData(event);
 
   const title = payload.title || "FamilyDesk";
+  // Derive default actions from the notification type when the sender hasn't
+  // supplied any. Keeps client-side push payloads small but still useful.
+  let actions = payload.actions;
+  if (!actions) {
+    const type = (payload.data || {}).type as string | undefined;
+    if (type === "task_assigned" || type === "task_due" || type === "task_overdue") {
+      actions = [
+        { action: "task_complete", title: "Mark complete" },
+        { action: "task_snooze", title: "Snooze 1h" },
+      ];
+    } else if (type === "habit_reminder") {
+      actions = [{ action: "habit_log", title: "Log it" }];
+    }
+  }
+
   const options: NotificationOptions = {
     body: payload.body || "",
     icon: payload.icon || "/pwa-icon-192.png",
@@ -152,6 +169,7 @@ self.addEventListener("push", (event) => {
     tag: payload.tag, // collapses repeated notifications of the same kind
     // Vibration pattern hint (Android only).
     ...(({ vibrate: [60, 30, 60] } as any)),
+    ...(actions ? ({ actions } as any) : {}),
     data: {
       url: payload.url || "/",
       ...(payload.data || {}),
@@ -165,7 +183,22 @@ self.addEventListener("notificationclick", (event) => {
   event.notification.close();
 
   const data = (event.notification.data || {}) as { url?: string };
-  const targetPath = data.url || "/";
+  const action = (event as unknown as { action?: string }).action ?? "";
+
+  // Translate notification actions into deep-link URLs that the app can
+  // intercept (see src/lib/notification-actions.ts). The page handler reads
+  // the query string on mount, performs the action, then strips it.
+  let targetPath = data.url || "/";
+  if (action === "task_complete") {
+    const taskId = (data as Record<string, unknown>).task_id as string | undefined;
+    if (taskId) targetPath = `/taskmaster?action=complete&task_id=${encodeURIComponent(taskId)}`;
+  } else if (action === "task_snooze") {
+    const taskId = (data as Record<string, unknown>).task_id as string | undefined;
+    if (taskId) targetPath = `/taskmaster?action=snooze&task_id=${encodeURIComponent(taskId)}`;
+  } else if (action === "habit_log") {
+    const habitId = (data as Record<string, unknown>).habit_id as string | undefined;
+    if (habitId) targetPath = `/habits?action=log&habit_id=${encodeURIComponent(habitId)}`;
+  }
 
   event.waitUntil(
     (async () => {
