@@ -95,3 +95,12 @@ verify_jwt = false
 
 [functions.bootstrap-push-config]
 verify_jwt = false
+
+[functions.send-subscription-reminders]
+verify_jwt = false
+
+[functions.send-dinner-prep-reminder]
+verify_jwt = false
+
+[functions.send-savings-goal-nudge]
+verify_jwt = false
