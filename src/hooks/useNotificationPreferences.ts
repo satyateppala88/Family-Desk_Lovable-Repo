@@ -110,6 +110,26 @@ export function useNotificationPreferences() {
     isError: query.isError,
     setChannel: (channel: NotificationChannel, enabled: boolean) =>
       mutation.mutate({ [channel]: enabled }),
+    /**
+     * Back-compat shim for legacy callers that pass arbitrary string keys.
+     * Only keys present on `NotificationPreferences` actually persist; others
+     * are accepted (no-op) so older UI can compile while we migrate it.
+     */
+    togglePreference: (key: string) => {
+      const valid: NotificationChannel[] = [
+        "tasks",
+        "habits",
+        "meals",
+        "pantry",
+        "invites",
+        "daily_plan",
+      ];
+      if ((valid as string[]).includes(key)) {
+        const channel = key as NotificationChannel;
+        const current = query.data?.[channel] ?? true;
+        mutation.mutate({ [channel]: !current });
+      }
+    },
     isUpdating: mutation.isPending,
   };
 }
