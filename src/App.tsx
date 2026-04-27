@@ -8,6 +8,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/layout/ProtectedRoute";
 import { ErrorBoundary } from "@/components/layout/ErrorBoundary";
 import { AIChatWidget } from "./components/ai/AIChatWidget";
+import ScrollToTop from "./components/ScrollToTop";
 
 // Eagerly loaded (auth flow)
 import Auth from "./pages/Auth";
@@ -66,6 +67,7 @@ const App = () => (
       <BrowserRouter>
 
           <AuthProvider>
+            <ScrollToTop />
             <Suspense fallback={<PageLoader />}>
               <Routes>
                 <Route path="/" element={<AppEntryGate />} />
