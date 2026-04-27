@@ -4,6 +4,13 @@
  * Calls the `send-push` edge function with the service-role key so it can
  * push to users other than the caller. The receiving function applies the
  * `notification_preferences` channel filter and prunes dead endpoints.
+ *
+ * SECURITY: This helper only ever sends a metadata payload (title/body/url).
+ * It must NEVER receive or transmit VAPID key material — those secrets live
+ * exclusively inside `send-push` (the only function that calls
+ * `webpush.setVapidDetails`). Error messages returned by `send-push` are
+ * sanitised server-side; do not log raw `failures[].error` strings to the
+ * client.
  */
 
 export type PushChannel =
