@@ -10,7 +10,7 @@ import { useHouseholdPreferences } from "@/hooks/useHouseholdPreferences";
 import { useModuleSetup } from "@/hooks/useModuleSetup";
 import { MODULE_SETUP_META, type ModuleSetupKey } from "@/lib/moduleSetup";
 import { toast } from "sonner";
-import { Loader2, AlertCircle, RotateCcw } from "lucide-react";
+import { Loader2, AlertCircle, RotateCcw, CheckCircle2, History } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // ---------------------------------------------------------------------------
@@ -320,7 +320,7 @@ export const ModuleSetupDialog = ({
   onSkip,
   onOpenChange,
 }: ModuleSetupDialogProps) => {
-  const { markComplete, isMarking } = useModuleSetup(module);
+  const { markComplete, isMarking, isComplete } = useModuleSetup(module);
   const { householdId } = useHousehold();
   const { preferences, updatePreferences, isUpdating } = useHouseholdPreferences(householdId);
   const meta = MODULE_SETUP_META[module];
@@ -334,6 +334,17 @@ export const ModuleSetupDialog = ({
   // without losing their selections — the form's draft state is preserved
   // automatically because we only clear the draft on a successful save.
   const [saveError, setSaveError] = useState<string | null>(null);
+
+  // Detect — exactly once, at mount — whether the user is resuming an
+  // in-progress questionnaire. We snapshot this so the message doesn't
+  // disappear the moment they touch a new question (which would mutate
+  // the underlying draft store) and doesn't flicker while typing.
+  const [restoredFromDraft] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    const draft = readDraft<Record<string, unknown>>(householdId, module);
+    const touched = readTouched(householdId, module);
+    return (!!draft && Object.keys(draft).length > 0) || touched.length > 0;
+  });
 
   // While saving we must prevent ANY exit path so a partial write can't
   // leave the household in a half-configured state:
