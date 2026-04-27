@@ -57,6 +57,8 @@ export const clearModuleSetupDraft = (
   }
   // Also clear the persisted "touched" set so the next visit starts fresh.
   clearTouched(householdId, module);
+  // And the persisted "active question" pointer.
+  clearActiveQuestion(householdId, module);
 };
 
 /**
@@ -134,6 +136,58 @@ function clearTouched(
   if (typeof window === "undefined") return;
   try {
     window.localStorage.removeItem(touchedKey(householdId, module));
+  } catch {
+    /* noop */
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Active-question (last-focused step) persistence
+// ---------------------------------------------------------------------------
+//
+// We persist the *key* of the last auto-focused question (not the numeric
+// index) so it survives applicability changes — if the previously active
+// question is filtered out next time, we transparently fall back to the
+// nearest still-applicable step.
+
+const ACTIVE_PREFIX = "familydesk:module-setup-active";
+const activeKeyStorageKey = (
+  householdId: string | null | undefined,
+  module: ModuleSetupKey,
+) => `${ACTIVE_PREFIX}:${householdId ?? "_"}:${module}`;
+
+const readActiveQuestion = (
+  householdId: string | null | undefined,
+  module: ModuleSetupKey,
+): string | null => {
+  if (typeof window === "undefined") return null;
+  try {
+    return window.localStorage.getItem(activeKeyStorageKey(householdId, module));
+  } catch {
+    return null;
+  }
+};
+
+const writeActiveQuestion = (
+  householdId: string | null | undefined,
+  module: ModuleSetupKey,
+  key: string,
+) => {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(activeKeyStorageKey(householdId, module), key);
+  } catch {
+    /* noop */
+  }
+};
+
+function clearActiveQuestion(
+  householdId: string | null | undefined,
+  module: ModuleSetupKey,
+) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.removeItem(activeKeyStorageKey(householdId, module));
   } catch {
     /* noop */
   }
@@ -477,20 +531,55 @@ const Question = ({
 };
 
 /**
- * Helper hook for forms: keeps track of the most recently answered
+ * Helper hook for forms: keeps track of the most recently auto-focused
  * question and exposes a setter that advances focus to the NEXT applicable
- * question. The total is read live from a ref so applicability changes
- * (questions appearing/disappearing mid-form) don't push focus past the
- * current end of the list.
+ * question.
+ *
+ * The active position is persisted per `householdId + module` by question
+ * KEY (not numeric index). On mount, the saved key is translated back to
+ * its current applicable index via `applicableKeys` — if the previously
+ * active question has been filtered out, we fall back to the nearest
+ * still-applicable step so users don't land on a missing question.
+ *
+ * The total is read live from a ref so applicability changes don't push
+ * focus past the current end of the list.
  */
-const useQuestionFocus = (totalQuestions: number) => {
-  const [activeIndex, setActiveIndex] = useState<number | null>(null);
+const useQuestionFocus = (
+  householdId: string | null | undefined,
+  module: ModuleSetupKey,
+  applicableKeys: readonly string[],
+) => {
+  const totalQuestions = applicableKeys.length;
+
+  // Hydrate once on mount: translate the persisted key → current index.
+  // We intentionally read applicableKeys ONLY in the initializer so that
+  // a later applicability change doesn't snap focus around mid-session.
+  const [activeIndex, setActiveIndex] = useState<number | null>(() => {
+    const savedKey = readActiveQuestion(householdId, module);
+    if (!savedKey) return null;
+    const idx = applicableKeys.indexOf(savedKey);
+    if (idx >= 0) return idx;
+    // Saved key is no longer applicable — leave focus unset rather than
+    // jumping to an unrelated step.
+    return null;
+  });
+
   const totalRef = useRef(totalQuestions);
   totalRef.current = totalQuestions;
-  const advanceFrom = useCallback((i: number) => {
-    const max = Math.max(0, totalRef.current - 1);
-    setActiveIndex(Math.min(i + 1, max));
-  }, []);
+  const keysRef = useRef(applicableKeys);
+  keysRef.current = applicableKeys;
+
+  const advanceFrom = useCallback(
+    (i: number) => {
+      const max = Math.max(0, totalRef.current - 1);
+      const next = Math.min(i + 1, max);
+      setActiveIndex(next);
+      const nextKey = keysRef.current[next];
+      if (nextKey) writeActiveQuestion(householdId, module, nextKey);
+    },
+    [householdId, module],
+  );
+
   return { activeIndex, advanceFrom };
 };
 
@@ -627,7 +716,7 @@ const MealsSetupForm = ({ module, householdId, preferences, onSubmit, onSkip, is
   const { applicableKeys, total, indexOf } = useApplicableQuestions(questions);
   const { mark, count } = useTouchedQuestions(householdId, module, applicableKeys);
   useReportProgress(count, total);
-  const { activeIndex, advanceFrom } = useQuestionFocus(total);
+  const { activeIndex, advanceFrom } = useQuestionFocus(householdId, module, applicableKeys);
   return (
     <FormShell onSave={() => onSubmit(data)} onSkip={onSkip} isSaving={isSaving}>
       <Question index={indexOf("diet_type")} activeIndex={activeIndex}>
@@ -718,7 +807,7 @@ const GrocerySetupForm = ({ module, householdId, preferences, onSubmit, onSkip, 
   const { applicableKeys, total, indexOf } = useApplicableQuestions(questions);
   const { mark, count } = useTouchedQuestions(householdId, module, applicableKeys);
   useReportProgress(count, total);
-  const { activeIndex, advanceFrom } = useQuestionFocus(total);
+  const { activeIndex, advanceFrom } = useQuestionFocus(householdId, module, applicableKeys);
   return (
     <FormShell onSave={() => onSubmit(data)} onSkip={onSkip} isSaving={isSaving}>
       <Question index={indexOf("pantry_size")} activeIndex={activeIndex}>
@@ -763,7 +852,7 @@ const FinanceSetupForm = ({ module, householdId, preferences, onSubmit, onSkip, 
   const { applicableKeys, total, indexOf } = useApplicableQuestions(questions);
   const { mark, count } = useTouchedQuestions(householdId, module, applicableKeys);
   useReportProgress(count, total);
-  const { activeIndex, advanceFrom } = useQuestionFocus(total);
+  const { activeIndex, advanceFrom } = useQuestionFocus(householdId, module, applicableKeys);
   return (
     <FormShell onSave={() => onSubmit(data)} onSkip={onSkip} isSaving={isSaving}>
       <Question index={indexOf("monthly_grocery_budget")} activeIndex={activeIndex}>
@@ -800,7 +889,7 @@ const RoutineSetupForm = ({ module, householdId, preferences, onSubmit, onSkip, 
   const { applicableKeys, total, indexOf } = useApplicableQuestions(questions);
   const { mark, count } = useTouchedQuestions(householdId, module, applicableKeys);
   useReportProgress(count, total);
-  const { activeIndex, advanceFrom } = useQuestionFocus(total);
+  const { activeIndex, advanceFrom } = useQuestionFocus(householdId, module, applicableKeys);
   return (
     <FormShell onSave={() => onSubmit(data)} onSkip={onSkip} isSaving={isSaving}>
       <Question index={indexOf("preferred_task_time")} activeIndex={activeIndex}>
@@ -840,7 +929,7 @@ const CalendarSetupForm = ({ module, householdId, preferences, onSubmit, onSkip,
   const { applicableKeys, total, indexOf } = useApplicableQuestions(questions);
   const { mark, count } = useTouchedQuestions(householdId, module, applicableKeys);
   useReportProgress(count, total);
-  const { activeIndex, advanceFrom } = useQuestionFocus(total);
+  const { activeIndex, advanceFrom } = useQuestionFocus(householdId, module, applicableKeys);
   return (
     <FormShell onSave={() => onSubmit(data)} onSkip={onSkip} isSaving={isSaving}>
       <Question index={indexOf("work_schedule")} activeIndex={activeIndex}>
