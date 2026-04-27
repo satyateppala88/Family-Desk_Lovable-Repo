@@ -1,120 +1,111 @@
-# Web Push Notifications for FamilyDesk
+# Offline Caching for FamilyDesk PWA
 
-Add real push notifications (delivered even when the app/browser is closed) on top of the existing PWA. Works on Android Chrome and desktop browsers. iOS works only when the user has installed the PWA to the home screen (Apple's requirement) — we'll detect and message that.
+Make Tasks, Daily Plan, Groceries & Pantry, Meals & Recipes, and Habits **viewable** when the device has no internet. Read-only — the app will clearly indicate it's offline and disable mutating actions until reconnected.
 
-Important caveats up front:
-- Push only works in the **published** build (familydesk.in / familydesk.lovable.app), never inside the Lovable editor preview — same constraint as the PWA itself.
-- On iOS, Web Push requires the user to "Add to Home Screen" first. We'll show a hint when we detect iOS Safari without standalone mode.
+Reminder: like all PWA features, this only works in the **published** build (familydesk.in / familydesk.lovable.app), never in the Lovable editor preview iframe — the existing service-worker kill switch already enforces that.
 
 ## What the user will get
 
-1. A new **Notifications** section in Settings showing:
-   - Current permission state (Default / Granted / Denied / Unsupported)
-   - "Enable push notifications" button (or "Disable" if already on)
-   - "Send test notification" button once enabled
-   - Per-category toggles: Tasks, Habits, Meals, Pantry, Household invites, Daily plan
-2. An auto-prompt (one-time, dismissible) after onboarding completes, asking if they'd like reminders pushed to this device.
-3. Notifications appear in the OS notification tray with the FamilyDesk icon, a title, body, and tapping them deep-links into the right module (e.g., a task reminder opens that task).
-4. Existing reminder edge functions (task reminders, habit reminders, daily plan, pantry alerts) gain a push channel alongside email/WhatsApp.
+1. **App opens when offline.** All pages, scripts, fonts, and icons are precached by the service worker.
+2. **Last-seen data appears instantly** for: today's tasks, this week's daily plan, shopping list & pantry, this week's meal plan + saved recipes, today's habits.
+3. **Offline banner** at the top of the app: "You're offline — showing your last synced data" with the time of last sync. Auto-dismisses on reconnect.
+4. **Mutating buttons disabled** when offline (e.g. "Add task", "Mark done", "Tick habit") with a tooltip "Reconnect to update". This matches the read-only scope you chose.
+5. **Cache-then-network** for non-critical pages: shows cached page immediately, refreshes in background when online.
 
 ## Architecture
 
 ```text
-Browser (PWA)
-  ├─ public/sw.js  ← custom service worker (push + notificationclick)
-  ├─ NotificationsManager (React)  ← permission + subscribe/unsubscribe
-  └─ POST /functions/v1/push-subscribe  ─┐
-                                         ▼
-                              push_subscriptions table
-                                         ▲
-  Edge functions (cron + event-driven) ──┤
-  send-task-reminders, send-habit-…      │
-  call shared sendPush(userId, payload) ─┘
-                                         │
-                                         ▼
-                            push-dispatch edge function
-                            (signs JWT with VAPID keys,
-                             POSTs to FCM/Mozilla/Apple endpoints)
+Browser
+  ├─ Service Worker (Workbox via vite-plugin-pwa)
+  │   ├─ precache: app shell (JS, CSS, HTML, icons, fonts)
+  │   └─ runtime caches:
+  │        ├─ Supabase REST GETs   → StaleWhileRevalidate (24h)
+  │        ├─ Google Fonts files   → CacheFirst (1y)
+  │        └─ images / avatars     → CacheFirst (30d)
+  └─ React Query
+      └─ persistQueryClient → IndexedDB (idb-keyval)
+          - persists every successful query for 7 days
+          - on cold start, hydrates instantly from disk
+          - background-refetches when network returns
 ```
+
+Two layers cooperate: **Workbox** caches HTTP responses at the network layer (so the SW can serve them when the page makes a fetch), while **persistQueryClient** keeps React Query's in-memory cache on disk so the UI has data to render *before* any fetch even happens.
 
 ## Plan
 
-### 1. Service worker (custom, merged with Workbox)
+### 1. Service worker runtime caching
 
-Switch `vite-plugin-pwa` from `generateSW` to `injectManifest` strategy so we can ship our own `src/sw.ts` that:
-- Imports Workbox precaching (keeps current offline behaviour).
-- Adds `self.addEventListener('push', …)` to show notifications.
-- Adds `self.addEventListener('notificationclick', …)` to focus/open the right URL.
-- Keeps the iframe/preview-host kill switch in `src/main.tsx` exactly as it is.
+Update `vite.config.ts` Workbox config to add `runtimeCaching` rules:
 
-### 2. Database
+- **Supabase REST GETs** (`https://oohjebftkvlhpaljvijn.supabase.co/rest/v1/.*`) — `StaleWhileRevalidate`, max 200 entries, 24h. POST/PATCH/DELETE/PUT bypassed (they fail offline by design).
+- **Edge function GETs** (`/functions/v1/.*` GET only) — `NetworkFirst` with 3s timeout, 1h cache.
+- **Google Fonts CSS** — `StaleWhileRevalidate`.
+- **Google Fonts files** (`fonts.gstatic.com`) — `CacheFirst`, 1 year.
+- **Images** (`.png|.jpg|.jpeg|.webp|.svg`) — `CacheFirst`, 30 days, max 100 entries.
 
-New migration:
-- `push_subscriptions` table: `id`, `user_id` (fk auth.users), `endpoint` (unique), `p256dh`, `auth`, `user_agent`, `created_at`, `last_seen_at`.
-  - RLS: user can SELECT/INSERT/DELETE only their own rows.
-- `notification_preferences` table: `user_id` PK, boolean columns per category (`tasks`, `habits`, `meals`, `pantry`, `invites`, `daily_plan`), all default `true`.
-  - RLS: user can SELECT/UPDATE only their own row; auto-insert via trigger on first signup (extend `handle_new_user`).
+Keep `navigateFallbackDenylist: [/^\/~oauth/, /^\/auth\/callback/]` so OAuth redirects always hit the network.
 
-### 3. Edge functions
+### 2. React Query persistence
 
-- **`push-subscribe`** (new): accepts `{endpoint, keys, userAgent}`, validates JWT, upserts into `push_subscriptions`.
-- **`push-unsubscribe`** (new): deletes by endpoint for the calling user.
-- **`push-dispatch`** (new, internal): takes `{userId, category, title, body, url, data?}`, looks up the user's active subscriptions + preferences, signs a Web-Push JWT with VAPID, POSTs to each endpoint. On 404/410, deletes the dead subscription. Uses Deno's WebCrypto — no npm web-push needed.
-- Update existing functions (`send-task-reminders`, `send-habit-reminders`, `generate-daily-plan`, `send-pantry-alerts`, `send-household-invitation`, `send-task-notification`) to additionally invoke `push-dispatch` for users with subscriptions.
+Add `@tanstack/react-query-persist-client` + `idb-keyval` based persister in `src/lib/query-client.ts`:
 
-### 4. Secrets
+- `staleTime`: 5 min for most queries (so we still refetch when fresh online).
+- `gcTime`: 7 days (cache survives unmount and is persisted).
+- Persist only successful queries to IndexedDB under `familydesk-rq-cache`.
+- Buster string tied to app version (auto-bumped) so a deploy invalidates stale shape.
 
-Generate a VAPID keypair (P-256, base64url) once, then store:
-- `VAPID_PUBLIC_KEY` — also exposed to the frontend (publishable)
-- `VAPID_PRIVATE_KEY` — server-only
-- `VAPID_SUBJECT` — `mailto:support@familydesk.in`
+Replace the `new QueryClient()` line in `src/App.tsx` with the persisted client + `PersistQueryClientProvider`.
 
-I'll generate the keypair locally in the build step and ask you to paste them via the secrets prompt.
+### 3. Offline indicator
 
-### 5. Frontend
+- `src/hooks/useOnlineStatus.ts` — listens to `online`/`offline` events, returns boolean + `lastOnlineAt` timestamp (persisted in localStorage).
+- `src/components/layout/OfflineBanner.tsx` — slim top banner: WifiOff icon + "Offline — showing data from {relative time}". Slides down with motion when offline, slides up on reconnect (3s delay so flicker is avoided).
+- Mounted once in `App.tsx` above the routes.
 
-- `src/lib/push.ts`: helpers `isPushSupported()`, `getPermission()`, `subscribe()`, `unsubscribe()`, `sendTest()`. Handles iOS-standalone detection.
-- `src/components/settings/NotificationsSection.tsx`: full settings UI (permission state, master toggle, per-category switches, test button, iOS hint).
-- `src/components/notifications/PushPromptBanner.tsx`: one-time dismissible prompt shown on Home after onboarding completion (tracked via `notification_prompt_seen` localStorage flag + a column on `profiles` so it persists across devices).
-- Wire entry in existing Settings page route.
-- Re-subscription on login: if permission is granted but no subscription exists for this browser, silently re-subscribe.
+### 4. Disable mutations offline
+
+- `src/hooks/useOnlineGuard.ts` — wraps a mutation handler; if offline, shows toast "You're offline — reconnect to make changes" and aborts.
+- Apply to the highest-traffic mutating buttons in: Tasks (create/complete/delete), Habits (tick), Groceries (add/check), Pantry (add/edit), Meals plan (regenerate), Finance transactions (add/edit/delete).
+- The disabled state is purely cosmetic UX; the SW already won't serve fake success for non-GET requests.
+
+### 5. Cache warm-up on login
+
+After auth, prefetch the offline-priority queries so the user has something to see if they go offline immediately:
+- Today's tasks, this week's daily plan, shopping list, pantry items, this week's meal plan, today's habits.
+- One small `prefetchOfflineEssentials(queryClient, householdId)` helper called from `AppEntryGate` after the household is resolved.
 
 ### 6. QA
 
-- Unit tests for `push.ts` helpers (mock `Notification`, `serviceWorker`, `PushManager`).
-- Edge function test for `push-dispatch` VAPID JWT signing.
+- Unit tests for `useOnlineStatus`, `useOnlineGuard`, and the persister buster logic.
 - Manual checklist (you'll run after publish):
-  1. Open https://familydesk.in on Android Chrome → Settings → Enable push → Send test → notification appears.
-  2. Tap notification → app opens to expected URL.
-  3. Disable → re-enable cycle works.
-  4. iOS Safari shows the "Add to Home Screen first" hint; after install + reopen, enable works.
-  5. Triggering a real task reminder delivers a push.
+  1. Load app online, navigate to Tasks/Groceries/Meals/Habits.
+  2. Chrome DevTools → Network → Offline → reload — pages render with cached data, banner shows.
+  3. Try to add a task — toast says "You're offline".
+  4. Toggle online — banner disappears within ~3s, fresh data refetches.
+  5. Cold-kill browser, go offline, reopen app — still loads.
 
 ## Out of scope (ask if you want any of these)
 
-- In-app toast/notification center UI separate from OS notifications.
-- Rich notifications with action buttons (Reply / Mark done) — possible later via `actions` array.
-- Push for non-logged-in users / marketing pushes.
-- Background sync / offline mutation queue.
+- Queued offline writes / background sync (you chose read-only).
+- Conflict resolution / full offline-first sync.
+- Caching AI Chat responses (they're conversation-specific).
+- Caching Calendar/Google events (token expires, refetch always desired).
 
 ## Files I'll create or edit
 
 New:
-- `src/sw.ts`
-- `src/lib/push.ts`, `src/lib/push.test.ts`
-- `src/components/settings/NotificationsSection.tsx`
-- `src/components/notifications/PushPromptBanner.tsx`
-- `supabase/functions/push-subscribe/index.ts`
-- `supabase/functions/push-unsubscribe/index.ts`
-- `supabase/functions/push-dispatch/index.ts` (+ test)
-- `supabase/functions/_shared/push.ts` (helper used by other functions)
-- DB migration for `push_subscriptions` + `notification_preferences` + `handle_new_user` update.
+- `src/lib/query-client.ts` (persisted QueryClient factory)
+- `src/hooks/useOnlineStatus.ts` + test
+- `src/hooks/useOnlineGuard.ts` + test
+- `src/components/layout/OfflineBanner.tsx`
+- `src/lib/prefetch-offline.ts`
 
 Edited:
-- `vite.config.ts` (switch to `injectManifest`, register `src/sw.ts`)
-- `src/main.tsx` (no behavioural change beyond keeping the iframe guard)
-- Settings page (mount `NotificationsSection`)
-- Home page (mount `PushPromptBanner` once)
-- The 6 existing reminder edge functions listed above.
+- `vite.config.ts` (add `runtimeCaching` rules)
+- `src/App.tsx` (use persisted client, mount banner)
+- `src/components/launch/AppEntryGate.tsx` (call prefetch after household resolved)
+- ~6–8 high-traffic mutation hooks/buttons across Tasks, Habits, Groceries, Pantry, Meals, Finance (wire `useOnlineGuard`)
 
-After approval I'll start with the DB migration + VAPID secret request, then build outward.
+New deps: `@tanstack/react-query-persist-client`, `idb-keyval`.
+
+After approval I'll start with the QueryClient persistence + offline banner (most user-visible), then layer in Workbox runtime caching and the mutation guards.
