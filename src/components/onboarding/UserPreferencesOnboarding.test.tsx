@@ -71,9 +71,11 @@ const makeQuery = (table: string) => {
       const data = selectResponses[table] ?? null;
       return Promise.resolve({ data, error: null });
     },
-    then(resolve: any) {
+    // Awaiting the chain (e.g. `await supabase.from(t).select().eq(...)`)
+    // resolves to the preloaded list response.
+    then(resolve: any, reject?: any) {
       const data = selectResponses[`${table}:list`] ?? [];
-      resolve({ data, error: null });
+      return Promise.resolve({ data, error: null }).then(resolve, reject);
     },
   };
   return state;
