@@ -493,7 +493,13 @@ export const ModuleSetupDialog = ({
               aria-atomic="true"
               className="sr-only"
             >
-              {`Setup ${pct}% complete. ${progress.answered} of ${progress.total} questions answered.`}
+              {`Setup ${pct}% complete. ${progress.answered} of ${progress.total} questions answered.${
+                isComplete
+                  ? " This module is already set up; changes will overwrite saved answers."
+                  : restoredFromDraft
+                    ? " In-progress answers restored from your last visit."
+                    : ""
+              }`}
             </div>
             {progress.answered > 0 && (
               <p className="mt-1.5 text-[11px] text-muted-foreground/80 leading-snug">
