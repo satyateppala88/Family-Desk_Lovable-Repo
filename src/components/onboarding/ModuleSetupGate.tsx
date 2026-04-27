@@ -341,9 +341,26 @@ export const ModuleSetupDialog = ({
       ),
     [],
   );
+  // Live-region message + monotonically-increasing tick. The tick guarantees
+  // a re-render even when an announcement repeats verbatim, so screen
+  // readers re-read the message instead of suppressing the duplicate.
+  const [announcement, setAnnouncement] = useState<{ msg: string; tick: number }>({
+    msg: "",
+    tick: 0,
+  });
+  const announce = useCallback((msg: string) => {
+    setAnnouncement((prev) => ({ msg, tick: prev.tick + 1 }));
+  }, []);
   const ctxValue = useMemo(
-    () => ({ saveRef, skipRef, setProgress: setProgressStable, scrollContainerRef }),
-    [setProgressStable],
+    () => ({
+      saveRef,
+      skipRef,
+      setProgress: setProgressStable,
+      scrollContainerRef,
+      announce,
+      total: progress.total,
+    }),
+    [setProgressStable, announce, progress.total],
   );
 
   return (
@@ -445,6 +462,24 @@ export const ModuleSetupDialog = ({
             />
           </div>
         </FormActionContext.Provider>
+        {/*
+          Dedicated polite live region for "next question" announcements.
+          Lives OUTSIDE the scroll container so SR-focus on the dialog
+          isn't disturbed when the questionnaire scrolls. The message is
+          re-keyed on every change (via `tick`) so identical consecutive
+          announcements still get re-read by screen readers — important
+          if a user navigates back to the same question via Skip + reopen.
+        */}
+        <div
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+          className="sr-only"
+          data-testid="question-announcer"
+          key={announcement.tick}
+        >
+          {announcement.msg}
+        </div>
         <DialogFooter className="flex-row justify-between sm:justify-between border-t border-border -mx-6 px-6 pt-3 mt-0 shrink-0">
           <Button
             variant="ghost"
