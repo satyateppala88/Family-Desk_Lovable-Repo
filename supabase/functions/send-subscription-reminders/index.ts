@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.95.0";
 import { sendPush } from "../_shared/push.ts";
+import { todayIST, istDateOffset } from "../_shared/time.ts";
 
 /**
  * Daily cron: warns household members about recurring subscriptions / bills
@@ -22,11 +23,8 @@ Deno.serve(async (req) => {
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE);
 
   try {
-    const today = new Date();
-    const horizon = new Date(today);
-    horizon.setDate(horizon.getDate() + 3);
-    const todayStr = today.toISOString().slice(0, 10);
-    const horizonStr = horizon.toISOString().slice(0, 10);
+    const todayStr = todayIST();
+    const horizonStr = istDateOffset(3);
 
     const { data: subs, error } = await admin
       .from("finance_subscriptions")
@@ -49,10 +47,14 @@ Deno.serve(async (req) => {
       const memberIds = (members ?? []).map((m) => m.user_id);
       if (memberIds.length === 0) continue;
 
-      const due = new Date(sub.next_due_date);
+      // Days away based on IST calendar dates, not wall-clock ms.
       const daysAway = Math.max(
         0,
-        Math.round((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+        Math.round(
+          (Date.parse(sub.next_due_date + "T00:00:00Z") -
+            Date.parse(todayStr + "T00:00:00Z")) /
+            86_400_000
+        )
       );
       const when =
         daysAway === 0 ? "today" : daysAway === 1 ? "tomorrow" : `in ${daysAway} days`;
