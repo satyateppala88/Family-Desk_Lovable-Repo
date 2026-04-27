@@ -7,6 +7,7 @@ import {
   getStreakWarningContent
 } from "../_shared/email-templates.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
+import { todayIST } from "../_shared/time.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -24,7 +25,7 @@ const handler = async (req: Request): Promise<Response> => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    const today = new Date().toISOString().split("T")[0];
+    const today = todayIST();
 
     // Get all active habits with their assignees
     const { data: habits, error: habitsError } = await supabaseAdmin
