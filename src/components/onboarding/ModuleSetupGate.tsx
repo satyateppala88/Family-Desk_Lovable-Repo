@@ -531,20 +531,55 @@ const Question = ({
 };
 
 /**
- * Helper hook for forms: keeps track of the most recently answered
+ * Helper hook for forms: keeps track of the most recently auto-focused
  * question and exposes a setter that advances focus to the NEXT applicable
- * question. The total is read live from a ref so applicability changes
- * (questions appearing/disappearing mid-form) don't push focus past the
- * current end of the list.
+ * question.
+ *
+ * The active position is persisted per `householdId + module` by question
+ * KEY (not numeric index). On mount, the saved key is translated back to
+ * its current applicable index via `applicableKeys` — if the previously
+ * active question has been filtered out, we fall back to the nearest
+ * still-applicable step so users don't land on a missing question.
+ *
+ * The total is read live from a ref so applicability changes don't push
+ * focus past the current end of the list.
  */
-const useQuestionFocus = (totalQuestions: number) => {
-  const [activeIndex, setActiveIndex] = useState<number | null>(null);
+const useQuestionFocus = (
+  householdId: string | null | undefined,
+  module: ModuleSetupKey,
+  applicableKeys: readonly string[],
+) => {
+  const totalQuestions = applicableKeys.length;
+
+  // Hydrate once on mount: translate the persisted key → current index.
+  // We intentionally read applicableKeys ONLY in the initializer so that
+  // a later applicability change doesn't snap focus around mid-session.
+  const [activeIndex, setActiveIndex] = useState<number | null>(() => {
+    const savedKey = readActiveQuestion(householdId, module);
+    if (!savedKey) return null;
+    const idx = applicableKeys.indexOf(savedKey);
+    if (idx >= 0) return idx;
+    // Saved key is no longer applicable — leave focus unset rather than
+    // jumping to an unrelated step.
+    return null;
+  });
+
   const totalRef = useRef(totalQuestions);
   totalRef.current = totalQuestions;
-  const advanceFrom = useCallback((i: number) => {
-    const max = Math.max(0, totalRef.current - 1);
-    setActiveIndex(Math.min(i + 1, max));
-  }, []);
+  const keysRef = useRef(applicableKeys);
+  keysRef.current = applicableKeys;
+
+  const advanceFrom = useCallback(
+    (i: number) => {
+      const max = Math.max(0, totalRef.current - 1);
+      const next = Math.min(i + 1, max);
+      setActiveIndex(next);
+      const nextKey = keysRef.current[next];
+      if (nextKey) writeActiveQuestion(householdId, module, nextKey);
+    },
+    [householdId, module],
+  );
+
   return { activeIndex, advanceFrom };
 };
 
