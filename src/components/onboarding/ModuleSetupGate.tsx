@@ -33,44 +33,86 @@ export const ModuleSetupGate = ({ module, children }: ModuleSetupGateProps) => {
   return (
     <>
       {children}
-      <Dialog open={true} onOpenChange={() => { /* non-dismissible */ }}>
-        <DialogContent
-          className="sm:max-w-md max-h-[90vh] flex flex-col"
-          onPointerDownOutside={(e) => e.preventDefault()}
-          onEscapeKeyDown={(e) => e.preventDefault()}
-        >
-          <DialogHeader>
-            <DialogTitle>{meta.title}</DialogTitle>
-            <DialogDescription>{meta.description}</DialogDescription>
-          </DialogHeader>
-          <ScrollArea className="flex-1 pr-4 -mr-4">
-            <ModuleSetupForm
-              module={module}
-              preferences={preferences}
-              onSubmit={async (updates) => {
-                try {
-                  await updatePreferences(updates);
-                  await markComplete();
-                  toast.success("Setup saved");
-                } catch (err: any) {
-                  toast.error(err.message ?? "Failed to save setup");
-                }
-              }}
-              onSkip={async () => {
-                // "Skip for now" still marks complete so the user isn't blocked.
-                // They can re-run later from Settings.
-                try {
-                  await markComplete();
-                } catch (err: any) {
-                  toast.error(err.message ?? "Failed");
-                }
-              }}
-              isSaving={isUpdating || isMarking}
-            />
-          </ScrollArea>
-        </DialogContent>
-      </Dialog>
+      <ModuleSetupDialog module={module} open={true} dismissible={false} />
     </>
+  );
+};
+
+// ---------------------------------------------------------------------------
+// Standalone dialog (used both by the gate and by "trigger on enable" flows)
+// ---------------------------------------------------------------------------
+
+interface ModuleSetupDialogProps {
+  module: ModuleSetupKey;
+  open: boolean;
+  dismissible?: boolean;
+  /** Fired after Save & continue completes successfully. */
+  onComplete?: () => void;
+  /** Fired after Skip for now completes. */
+  onSkip?: () => void;
+  /** Allows external control of the open state when `dismissible` is true. */
+  onOpenChange?: (open: boolean) => void;
+}
+
+/**
+ * Stand-alone version of the per-module setup dialog. Use this when you
+ * want to trigger the flow immediately on a user action (e.g. just
+ * enabled a product from Settings) instead of gating a page render.
+ */
+export const ModuleSetupDialog = ({
+  module,
+  open,
+  dismissible = true,
+  onComplete,
+  onSkip,
+  onOpenChange,
+}: ModuleSetupDialogProps) => {
+  const { markComplete, isMarking } = useModuleSetup(module);
+  const { householdId } = useHousehold();
+  const { preferences, updatePreferences, isUpdating } = useHouseholdPreferences(householdId);
+  const meta = MODULE_SETUP_META[module];
+
+  return (
+    <Dialog open={open} onOpenChange={(next) => { if (dismissible) onOpenChange?.(next); }}>
+      <DialogContent
+        className="sm:max-w-md max-h-[90vh] flex flex-col"
+        onPointerDownOutside={(e) => { if (!dismissible) e.preventDefault(); }}
+        onEscapeKeyDown={(e) => { if (!dismissible) e.preventDefault(); }}
+      >
+        <DialogHeader>
+          <DialogTitle>{meta.title}</DialogTitle>
+          <DialogDescription>{meta.description}</DialogDescription>
+        </DialogHeader>
+        <ScrollArea className="flex-1 pr-4 -mr-4">
+          <ModuleSetupForm
+            module={module}
+            preferences={preferences}
+            onSubmit={async (updates) => {
+              try {
+                await updatePreferences(updates);
+                await markComplete();
+                toast.success("Setup saved");
+                onComplete?.();
+              } catch (err: any) {
+                toast.error(err.message ?? "Failed to save setup");
+              }
+            }}
+            onSkip={async () => {
+              // Skip does NOT mark complete when dismissible (so the gate
+              // can re-prompt on first visit). When non-dismissible (legacy
+              // gate), keep the prior behavior to avoid trapping users.
+              try {
+                if (!dismissible) await markComplete();
+                onSkip?.();
+              } catch (err: any) {
+                toast.error(err.message ?? "Failed");
+              }
+            }}
+            isSaving={isUpdating || isMarking}
+          />
+        </ScrollArea>
+      </DialogContent>
+    </Dialog>
   );
 };
 
