@@ -310,6 +310,8 @@ export default function TermsOfService() {
                 Support: contactus@familydesk.in
               </p>
             </section>
+
+            <VersionHistory entries={TERMS_CHANGELOG} />
           </CardContent>
         </Card>
       </main>

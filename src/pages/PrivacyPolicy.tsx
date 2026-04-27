@@ -245,6 +245,8 @@ export default function PrivacyPolicy() {
                 Website: <strong>familydesk.in</strong>
               </p>
             </section>
+
+            <VersionHistory entries={PRIVACY_CHANGELOG} />
           </CardContent>
         </Card>
       </main>
