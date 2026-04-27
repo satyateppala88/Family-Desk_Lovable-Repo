@@ -17,6 +17,13 @@ export default defineConfig(({ mode }) => ({
     autoBumpVersion(),
     VitePWA({
       registerType: "autoUpdate",
+      // Lovable previews live inside iframes; an active service worker
+      // would cache the built bundle and break hot-reload + navigation.
+      // Keep the SW disabled in dev — it only ships in production builds
+      // (familydesk.in / familydesk.lovable.app).
+      devOptions: {
+        enabled: false,
+      },
       includeAssets: ["pwa-icon-192.png", "pwa-icon-512.png"],
       workbox: {
         navigateFallbackDenylist: [/^\/~oauth/],
