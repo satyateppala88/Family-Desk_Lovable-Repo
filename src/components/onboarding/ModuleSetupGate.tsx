@@ -262,23 +262,42 @@ export const ModuleSetupDialog = ({
           <DialogDescription>{meta.description}</DialogDescription>
         </DialogHeader>
         {progress.total > 0 && (
-          <div
-            className="-mt-1"
-            role="progressbar"
-            aria-valuenow={pct}
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-label="Setup completion"
-          >
-            <div className="flex items-center justify-between text-[11px] text-muted-foreground mb-1.5">
-              <span>Answered {progress.answered} of {progress.total}</span>
-              <span className="tabular-nums">{pct}%</span>
+          <div className="-mt-1">
+            <div
+              role="progressbar"
+              aria-valuenow={pct}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-label="Setup completion"
+              aria-valuetext={`${progress.answered} of ${progress.total} answered, ${pct}% complete`}
+              tabIndex={0}
+              className="rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            >
+              <div className="flex items-center justify-between text-[11px] text-muted-foreground mb-1.5">
+                <span>Answered {progress.answered} of {progress.total}</span>
+                <span className="tabular-nums">{pct}%</span>
+              </div>
+              <div className="h-1 w-full rounded-full bg-muted overflow-hidden">
+                <div
+                  className="h-full bg-primary transition-all duration-300 ease-out"
+                  style={{ width: `${pct}%` }}
+                />
+              </div>
             </div>
-            <div className="h-1 w-full rounded-full bg-muted overflow-hidden">
-              <div
-                className="h-full bg-primary transition-all duration-300 ease-out"
-                style={{ width: `${pct}%` }}
-              />
+            {/*
+              Screen-reader-only live region. We announce progress changes
+              here (instead of on the progressbar itself) because aria-live
+              on role=progressbar is inconsistently supported across SRs.
+              Polite + atomic so each update reads as one phrase without
+              interrupting the user's current action.
+            */}
+            <div
+              role="status"
+              aria-live="polite"
+              aria-atomic="true"
+              className="sr-only"
+            >
+              {`Setup ${pct}% complete. ${progress.answered} of ${progress.total} questions answered.`}
             </div>
             {progress.answered > 0 && (
               <p className="mt-1.5 text-[11px] text-muted-foreground/80 leading-snug">
