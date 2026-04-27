@@ -197,6 +197,7 @@ const App = () => (
               </Routes>
             </Suspense>
             <AIChatWidget />
+            <NotificationPermissionPrompt />
           </AuthProvider>
         
       </BrowserRouter>
