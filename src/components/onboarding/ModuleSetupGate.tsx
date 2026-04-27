@@ -55,6 +55,8 @@ export const clearModuleSetupDraft = (
   } catch {
     /* noop */
   }
+  // Also clear the persisted "touched" set so the next visit starts fresh.
+  clearTouched(householdId, module);
 };
 
 /**
@@ -79,6 +81,90 @@ const useDraftState = <T extends object>(
     writeDraft(householdId, module, data);
   }, [householdId, module, data]);
   return [data, setData];
+};
+
+// ---------------------------------------------------------------------------
+// Touched-question persistence
+// ---------------------------------------------------------------------------
+//
+// Tracks which question keys the user has explicitly touched in this
+// questionnaire. The set is persisted alongside the draft answers so that
+// after a refresh / reopen, the progress indicator restores to the exact
+// same "X of N answered" state the user last saw — instead of either
+// jumping back to 0 or counting prefilled defaults as answered.
+
+const TOUCHED_PREFIX = "familydesk:module-setup-touched";
+const touchedKey = (
+  householdId: string | null | undefined,
+  module: ModuleSetupKey,
+) => `${TOUCHED_PREFIX}:${householdId ?? "_"}:${module}`;
+
+const readTouched = (
+  householdId: string | null | undefined,
+  module: ModuleSetupKey,
+): string[] => {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(touchedKey(householdId, module));
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((x): x is string => typeof x === "string") : [];
+  } catch {
+    return [];
+  }
+};
+
+const writeTouched = (
+  householdId: string | null | undefined,
+  module: ModuleSetupKey,
+  keys: string[],
+) => {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(touchedKey(householdId, module), JSON.stringify(keys));
+  } catch {
+    /* noop */
+  }
+};
+
+function clearTouched(
+  householdId: string | null | undefined,
+  module: ModuleSetupKey,
+) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.removeItem(touchedKey(householdId, module));
+  } catch {
+    /* noop */
+  }
+}
+
+/**
+ * Returns a stable, persisted set of touched question keys plus a `mark`
+ * helper to record that a question was answered. Forms call `mark("diet")`
+ * inside their onValueChange handlers so progress reflects user activity,
+ * not prefilled defaults — and survives refresh / reopen.
+ */
+const useTouchedQuestions = (
+  householdId: string | null | undefined,
+  module: ModuleSetupKey,
+) => {
+  const [touched, setTouched] = useState<Set<string>>(
+    () => new Set(readTouched(householdId, module)),
+  );
+  useEffect(() => {
+    writeTouched(householdId, module, Array.from(touched));
+  }, [householdId, module, touched]);
+  const mark = useCallback((key: string) => {
+    setTouched((prev) => {
+      if (prev.has(key)) return prev;
+      const next = new Set(prev);
+      next.add(key);
+      return next;
+    });
+  }, []);
+  const count = touched.size;
+  return { mark, count };
 };
 
 interface ModuleSetupGateProps {
