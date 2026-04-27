@@ -30,7 +30,7 @@ vi.mock("@/hooks/useModuleSetup", () => ({
 }));
 
 // Import AFTER mocks so they're picked up.
-import { ModuleSetupDialog } from "./ModuleSetupGate";
+import { ModuleSetupDialog, clearModuleSetupDraft } from "./ModuleSetupGate";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────
 
@@ -171,5 +171,76 @@ describe("ModuleSetupDialog — scroll & footer layout", () => {
     // It must come BEFORE the scroll container in document order.
     const pos = bar.compareDocumentPosition(scroll);
     expect(pos & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  // ───────────────────────────────────────────────────────────────────────
+  // Draft persistence (in-progress answers across close / module switch)
+  // ───────────────────────────────────────────────────────────────────────
+
+  it("persists in-progress answers to localStorage and restores them on remount", () => {
+    // First mount: pick a non-default option for the first radio.
+    const { unmount } = render(
+      <ModuleSetupDialog module="meals_setup" open={true} dismissible={true} />,
+    );
+    const veganRadio = screen.getByLabelText("vegan");
+    fireEvent.click(veganRadio);
+    expect((veganRadio as HTMLInputElement).getAttribute("aria-checked")).toBe("true");
+
+    // Close the dialog (simulate user dismissing without saving).
+    unmount();
+
+    // Re-mount: the previously chosen option should be restored from draft.
+    render(<ModuleSetupDialog module="meals_setup" open={true} dismissible={true} />);
+    const veganAgain = screen.getByLabelText("vegan");
+    expect(veganAgain.getAttribute("aria-checked")).toBe("true");
+
+    // Cleanup so other tests don't see this draft.
+    clearModuleSetupDraft("hh-1", "meals_setup");
+  });
+
+  it("keeps drafts isolated per module (switching module does not leak answers)", () => {
+    // Make a meals selection.
+    const { unmount } = render(
+      <ModuleSetupDialog module="meals_setup" open={true} dismissible={true} />,
+    );
+    fireEvent.click(screen.getByLabelText("vegan"));
+    unmount();
+
+    // Switch to a different module — meals draft must NOT affect it.
+    render(<ModuleSetupDialog module="grocery_setup" open={true} dismissible={true} />);
+    // Grocery's "small" radio should be at its default state (not "small"
+    // unless the user picks it). The default is "medium" per the form code.
+    const medium = screen.getByLabelText("medium");
+    expect(medium.getAttribute("aria-checked")).toBe("true");
+
+    clearModuleSetupDraft("hh-1", "meals_setup");
+    clearModuleSetupDraft("hh-1", "grocery_setup");
+  });
+
+  it("clears the draft after a successful save", async () => {
+    const onComplete = vi.fn();
+    const { unmount } = render(
+      <ModuleSetupDialog
+        module="finance_setup"
+        open={true}
+        dismissible={true}
+        onComplete={onComplete}
+      />,
+    );
+    // Make a non-default selection.
+    fireEvent.click(screen.getByLabelText("Under 5,000"));
+    // Trigger save.
+    const footer = getFooter();
+    fireEvent.click(within(footer).getByRole("button", { name: "Save & continue" }));
+    await vi.waitFor(() => expect(onComplete).toHaveBeenCalled());
+    unmount();
+
+    // Re-mount: the chosen option should NOT be restored (draft was cleared
+    // on successful save). Default is "5000_to_10000".
+    render(<ModuleSetupDialog module="finance_setup" open={true} dismissible={true} />);
+    const underFive = screen.getByLabelText("Under 5,000");
+    expect(underFive.getAttribute("aria-checked")).toBe("false");
+    const defaultRange = screen.getByLabelText("5,000 – 10,000");
+    expect(defaultRange.getAttribute("aria-checked")).toBe("true");
   });
 });
