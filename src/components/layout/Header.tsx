@@ -50,6 +50,22 @@ export const Header = (_props: HeaderProps) => {
 
   const isHomePage = location.pathname === "/dashboard" || location.pathname === "/";
 
+  // Resolve the "parent" route for the back button so users move up one level
+  // (e.g. /finance/transactions → /finance) instead of always jumping home.
+  const getParentRoute = (path: string): string => {
+    // Taskmaster: project detail → projects list, otherwise → taskmaster home
+    if (/^\/taskmaster\/projects\/[^/]+/.test(path)) return "/taskmaster/projects";
+    if (path.startsWith("/taskmaster/")) return "/taskmaster";
+    // Finance sub-pages → finance hub
+    if (path.startsWith("/finance/")) return "/finance";
+    // Admin sub-pages → access requests (default admin landing)
+    if (path.startsWith("/admin/")) return "/admin/access-requests";
+    // Everything else (top-level module pages, settings, etc.) → dashboard
+    return "/dashboard";
+  };
+
+  const parentRoute = getParentRoute(location.pathname);
+
   const getInitials = () => {
     if (!user?.user_metadata?.display_name) return "U";
     return user.user_metadata.display_name
@@ -93,9 +109,9 @@ export const Header = (_props: HeaderProps) => {
         <div className="flex items-center gap-0.5 min-w-0">
           {!isHomePage ? (
             <button
-              onClick={() => navigate("/dashboard")}
+              onClick={() => navigate(parentRoute)}
               className="flex items-center gap-1 p-2 -ml-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors shrink-0"
-              aria-label="Back to home"
+              aria-label="Back"
               style={{ minHeight: "var(--touch-target)" }}
             >
               <ChevronLeft className="h-5 w-5" />
