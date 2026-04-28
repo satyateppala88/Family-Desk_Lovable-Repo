@@ -1422,7 +1422,7 @@ export type Database = {
           {
             foreignKeyName: "household_preferences_household_id_fkey"
             columns: ["household_id"]
-            isOneToOne: false
+            isOneToOne: true
             referencedRelation: "households"
             referencedColumns: ["id"]
           },

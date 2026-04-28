@@ -1,39 +1,44 @@
-Plan to fix household settings persistence
+## Problem
 
-1. Make every household settings edit dialog rehydrate from saved preferences when opened
-   - Update the edit dialogs so they always initialise from the latest saved household preferences on open, not from stale component state.
-   - This includes Household Basics, Finance, Dietary, Cooking, Grocery, Calendar, Habits, and Tasks preference dialogs.
+When updating feature preferences from Household Settings, the Setup flow (`UserPreferencesOnboarding.tsx`) calls:
 
-2. Preserve previously saved values while saving partial edits
-   - Ensure each dialog only submits fields it owns, so editing Finance will not overwrite Meals/Grocery/Calendar fields with defaults.
-   - Make the shared `useHouseholdPreferences` save path use an upsert-style save for resilience, so settings can be created or updated without resetting unrelated values.
+```ts
+supabase.from("household_preferences").upsert(payload, { onConflict: "household_id" })
+```
 
-3. Align option values between setup and settings
-   - Fix mismatched values currently present in setup forms, such as:
-     - Finance: `over_20000`, `very`, `not_really` versus settings/database values like `above_20000`, `very_conscious`, `not_much`
-     - Grocery: `biweekly` / `monthly` versus supported shopping frequency values
-     - Calendar: `very` / `not_really` / `flexible` versus supported saved values
-     - Routine: `night` versus the supported `flexible` task time
-   - This prevents saved answers from appearing as defaults or blank when the user returns to edit them.
+But the `household_preferences` table only has constraints on `id` (PK) and a foreign key on `household_id` — there is **no UNIQUE constraint** on `household_id`. Postgres therefore rejects the upsert with:
 
-4. Improve cache refresh after saving
-   - Keep invalidating `household-preferences` after saves, and add/update optimistic cache handling so the Settings screen reflects the saved values immediately after the dialog closes.
+> there is no unique or exclusion constraint matching the ON CONFLICT specification
 
-5. Add/adjust tests around persistence
-   - Add tests for reopening settings dialogs after save to confirm previous choices appear.
-   - Add regression checks that editing one module does not reset another module’s preferences.
+A previous migration attempted to fix this for `household_enabled_products` but missed `household_preferences`.
 
-Technical details
+Additionally, the Live database already contains duplicates (1 household has 4 preference rows), so we must dedupe before adding the constraint or it will fail.
 
-- Main files to update:
-  - `src/hooks/useHouseholdPreferences.ts`
-  - `src/components/settings/EditHouseholdBasicsDialog.tsx`
-  - `src/components/settings/EditBudgetPreferencesDialog.tsx`
-  - `src/components/settings/EditDietaryPreferencesDialog.tsx`
-  - `src/components/settings/EditCookingPreferencesDialog.tsx`
-  - `src/components/settings/EditGroceryPreferencesDialog.tsx`
-  - `src/components/settings/EditCalendarPreferencesDialog.tsx`
-  - `src/components/settings/EditHabitsTasksPreferencesDialog.tsx`
-  - `src/components/onboarding/ModuleSetupGate.tsx`
+## Fix
 
-- No database schema change is expected. Existing `household_preferences` table and RLS policies already support household-member reads/writes.
+Single migration that:
+
+1. **Dedupes** existing `household_preferences` rows — keep the most recently `updated_at` row per `household_id`, delete the rest.
+2. **Adds** `UNIQUE (household_id)` constraint named `household_preferences_household_id_unique`.
+
+```sql
+-- 1. Remove duplicates, keeping the latest row per household
+DELETE FROM public.household_preferences a
+USING public.household_preferences b
+WHERE a.household_id = b.household_id
+  AND (a.updated_at < b.updated_at
+       OR (a.updated_at = b.updated_at AND a.ctid < b.ctid));
+
+-- 2. Add the missing unique constraint that the upsert relies on
+ALTER TABLE public.household_preferences
+  ADD CONSTRAINT household_preferences_household_id_unique
+  UNIQUE (household_id);
+```
+
+After this migration, `upsert(..., { onConflict: "household_id" })` will succeed and existing settings will be preserved (latest row wins).
+
+## Notes
+
+- No code changes required — the hook/component logic is correct; the database schema was the missing piece.
+- The dedupe keeps the freshest preference row, so the user's most recent settings are preserved.
+- This complements the earlier `household_enabled_products` constraint fix.
