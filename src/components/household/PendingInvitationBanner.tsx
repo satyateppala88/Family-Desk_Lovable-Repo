@@ -65,7 +65,7 @@ export const PendingInvitationBanner = () => {
 
       if (accessToken) {
         try {
-          await fetch(
+          const welcomeResponse = await fetch(
             `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-household-member-welcome`,
             {
               method: "POST",
