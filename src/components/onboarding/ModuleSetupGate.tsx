@@ -1091,8 +1091,8 @@ const GrocerySetupForm = ({ module, householdId, preferences, onSubmit, onSkip, 
         <RadioGroup value={data.shopping_frequency} onValueChange={(v) => { setData({ ...data, shopping_frequency: v }); mark("shopping_frequency"); advanceFrom(indexOf("shopping_frequency")); }} className="mt-2">
           <div className="flex items-center space-x-2"><RadioGroupItem value="daily" id="sf1" /><Label htmlFor="sf1">Daily</Label></div>
           <div className="flex items-center space-x-2"><RadioGroupItem value="weekly" id="sf2" /><Label htmlFor="sf2">Weekly</Label></div>
-          <div className="flex items-center space-x-2"><RadioGroupItem value="biweekly" id="sf3" /><Label htmlFor="sf3">Every 2 weeks</Label></div>
-          <div className="flex items-center space-x-2"><RadioGroupItem value="monthly" id="sf4" /><Label htmlFor="sf4">Monthly</Label></div>
+          <div className="flex items-center space-x-2"><RadioGroupItem value="2_3_per_week" id="sf3" /><Label htmlFor="sf3">2–3 times per week</Label></div>
+          <div className="flex items-center space-x-2"><RadioGroupItem value="bi_weekly" id="sf4" /><Label htmlFor="sf4">Every 2 weeks</Label></div>
         </RadioGroup>
       </Question>
       <Question index={indexOf("organic_preference")} activeIndex={activeIndex}>
@@ -1129,15 +1129,15 @@ const FinanceSetupForm = ({ module, householdId, preferences, onSubmit, onSkip, 
           <div className="flex items-center space-x-2"><RadioGroupItem value="under_5000" id="b1" /><Label htmlFor="b1">Under 5,000</Label></div>
           <div className="flex items-center space-x-2"><RadioGroupItem value="5000_to_10000" id="b2" /><Label htmlFor="b2">5,000 – 10,000</Label></div>
           <div className="flex items-center space-x-2"><RadioGroupItem value="10000_to_20000" id="b3" /><Label htmlFor="b3">10,000 – 20,000</Label></div>
-          <div className="flex items-center space-x-2"><RadioGroupItem value="over_20000" id="b4" /><Label htmlFor="b4">Over 20,000</Label></div>
+          <div className="flex items-center space-x-2"><RadioGroupItem value="above_20000" id="b4" /><Label htmlFor="b4">Over 20,000</Label></div>
         </RadioGroup>
       </Question>
       <Question index={indexOf("budget_consciousness")} activeIndex={activeIndex}>
         <Label>How strict should we be on budget?</Label>
         <RadioGroup value={data.budget_consciousness} onValueChange={(v) => { setData({ ...data, budget_consciousness: v }); mark("budget_consciousness"); advanceFrom(indexOf("budget_consciousness")); }} className="mt-2">
-          <div className="flex items-center space-x-2"><RadioGroupItem value="very" id="bc1" /><Label htmlFor="bc1">Very — keep us on track</Label></div>
+          <div className="flex items-center space-x-2"><RadioGroupItem value="very_conscious" id="bc1" /><Label htmlFor="bc1">Very — keep us on track</Label></div>
           <div className="flex items-center space-x-2"><RadioGroupItem value="somewhat" id="bc2" /><Label htmlFor="bc2">Somewhat</Label></div>
-          <div className="flex items-center space-x-2"><RadioGroupItem value="not_really" id="bc3" /><Label htmlFor="bc3">Not really</Label></div>
+          <div className="flex items-center space-x-2"><RadioGroupItem value="not_much" id="bc3" /><Label htmlFor="bc3">Not really</Label></div>
         </RadioGroup>
       </Question>
     </FormShell>
