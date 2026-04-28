@@ -37,10 +37,11 @@ const HouseholdMembers = () => {
           profiles:user_id (display_name)
         `)
         .eq("household_id", householdId)
+        .not("user_id", "is", null)
         .order("joined_at", { ascending: true });
 
       if (error) throw error;
-      return data;
+      return (data ?? []).filter((row: any) => !!row.user_id);
     },
     enabled: !!householdId,
   });
@@ -168,12 +169,14 @@ const HouseholdMembers = () => {
                       </Avatar>
                       <div className="space-y-1">
                         <p className="font-medium">
-                          {member.profiles?.display_name || "Unknown User"}
+                          {member.profiles?.display_name || "Member"}
                           {isCurrentUser && " (You)"}
                         </p>
                         <div className="flex gap-2 items-center">
                           <p className="text-sm text-muted-foreground">
-                            Joined: {new Date(member.joined_at).toLocaleDateString()}
+                            Joined: {member.joined_at
+                              ? new Date(member.joined_at).toLocaleDateString()
+                              : "recently"}
                           </p>
                           {isCreator && (
                             <Badge variant="secondary">Creator</Badge>

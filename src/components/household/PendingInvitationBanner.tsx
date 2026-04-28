@@ -11,10 +11,12 @@ export const PendingInvitationBanner = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
+  const normalizedEmail = user?.email?.trim().toLowerCase() ?? null;
+
   const { data: invitations, isLoading } = useQuery({
-    queryKey: ["my-pending-invitations", user?.email],
+    queryKey: ["my-pending-invitations", normalizedEmail],
     queryFn: async () => {
-      if (!user?.email) return [];
+      if (!normalizedEmail) return [];
 
       const { data, error } = await supabase
         .from("household_invitations")
@@ -22,7 +24,7 @@ export const PendingInvitationBanner = () => {
           *,
           households:household_id (name)
         `)
-        .eq("invitee_email", user.email.toLowerCase())
+        .eq("invitee_email", normalizedEmail)
         .eq("status", "pending")
         .eq("invitation_type", "admin_invite");
 
