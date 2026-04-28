@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -34,6 +34,16 @@ export const EditRoutinePreferencesDialog = ({
     preferred_task_time: preferences.preferred_task_time ?? "evening",
     festival_importance: preferences.festival_importance ?? "somewhat",
   });
+
+  useEffect(() => {
+    if (!open) return;
+    setFormData({
+      household_concerns: preferences.household_concerns ?? [],
+      work_schedule: preferences.work_schedule ?? "both_working",
+      preferred_task_time: preferences.preferred_task_time ?? "evening",
+      festival_importance: preferences.festival_importance ?? "somewhat",
+    });
+  }, [open, preferences]);
 
   const handleCheckboxChange = (value: string) => {
     const currentValues = formData.household_concerns;

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -35,6 +35,17 @@ export const EditDietaryPreferencesDialog = ({
     spice_level: preferences.spice_level ?? "medium",
     regional_cuisines: preferences.regional_cuisines ?? [],
   });
+
+  useEffect(() => {
+    if (!open) return;
+    setFormData({
+      diet_type: preferences.diet_type ?? "vegetarian",
+      food_allergies: preferences.food_allergies ?? [],
+      religious_restrictions: preferences.religious_restrictions ?? "none",
+      spice_level: preferences.spice_level ?? "medium",
+      regional_cuisines: preferences.regional_cuisines ?? [],
+    });
+  }, [open, preferences]);
 
   const handleCheckboxChange = (field: "food_allergies" | "regional_cuisines", value: string) => {
     const currentValues = formData[field] as string[];
