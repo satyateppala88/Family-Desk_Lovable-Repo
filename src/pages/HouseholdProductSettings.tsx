@@ -9,7 +9,7 @@ import { useEnabledProducts, ProductName } from "@/hooks/useEnabledProducts";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
-import { CheckSquare, ChefHat, Calendar, ShoppingCart, Leaf, Loader2 } from "lucide-react";
+import { CheckSquare, ChefHat, Calendar, ShoppingCart, Leaf, Wallet, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ModuleSetupQueue } from "@/components/onboarding/ModuleSetupQueue";
 import {
@@ -58,6 +58,13 @@ const products = [
     label: "Habits",
     description: "Build healthy household routines",
     color: "hsl(142, 70%, 45%)",
+  },
+  {
+    name: "finance" as ProductName,
+    icon: Wallet,
+    label: "Finance",
+    description: "Budgets, subscriptions, savings & cards",
+    color: "hsl(168, 35%, 38%)",
   },
 ];
 
