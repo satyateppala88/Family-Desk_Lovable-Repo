@@ -324,15 +324,29 @@ export const AIChatWidget = () => {
             disabled={isLoading}
             className="flex-1 rounded-full h-10"
           />
-          {isSupported && (
+          <VoiceInputButton
+            onTranscript={(text) =>
+              setInput((prev) => (prev ? prev + " " + text : text))
+            }
+            onVoiceStart={() => setVoiceReplyEnabled(true)}
+            language="en-IN"
+            continuous={true}
+            disabled={isLoading}
+            variant="outline"
+            className="rounded-full h-10 w-10"
+            title="Speak (AI will reply aloud)"
+          />
+          {isSpeaking && (
             <Button
-              onClick={isListening ? stop : start}
-              disabled={isLoading}
+              type="button"
+              onClick={stopSpeaking}
               size="icon"
-              variant={isListening ? "destructive" : "outline"}
-              className={cn("flex-shrink-0 rounded-full h-10 w-10", isListening && "ring-2 ring-destructive/30 ring-offset-2")}
+              variant="outline"
+              className="flex-shrink-0 rounded-full h-10 w-10"
+              title="Stop speaking"
+              aria-label="Stop speaking"
             >
-              <Mic className={cn("h-4 w-4", isListening && "animate-pulse")} />
+              <X className="h-4 w-4" />
             </Button>
           )}
           <Button
