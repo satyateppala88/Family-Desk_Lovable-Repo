@@ -38,4 +38,20 @@ if ((isPreviewHost || isInIframe) && "serviceWorker" in navigator) {
     });
 }
 
+// Record PWA install moment (analytics-only flag). The welcome tour itself is
+// gated by `useFeatureTourGate`, which already plays once on first launch and
+// will naturally play after install if the user hadn't visited the web app
+// previously in this browser.
+try {
+  window.addEventListener("appinstalled", () => {
+    try {
+      localStorage.setItem("familydesk_pwa_installed_at", new Date().toISOString());
+    } catch {
+      /* ignore */
+    }
+  });
+} catch {
+  /* SSR / non-browser */
+}
+
 createRoot(document.getElementById("root")!).render(<App />);

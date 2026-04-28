@@ -180,6 +180,9 @@ export const Header = (_props: HeaderProps) => {
             <DropdownMenuItem onClick={() => navigate("/whats-new")}>
               What's new
             </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => navigate("/welcome")}>
+              Replay welcome tour
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={() => navigate("/terms")}>
               Terms of Service
             </DropdownMenuItem>
