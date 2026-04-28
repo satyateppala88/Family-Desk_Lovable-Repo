@@ -121,7 +121,7 @@ export const PermissionsTutorial = ({ open, onClose }: PermissionsTutorialProps)
 
   const handleEnable = async () => {
     if (!slide.kind) return next();
-    await ensurePermission(slide.kind);
+    await ensurePermission(slide.kind, "onboarding-tutorial");
     next();
   };
 

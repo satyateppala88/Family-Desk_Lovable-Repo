@@ -150,7 +150,7 @@ const PermissionsSettings = () => {
       clearSuppression(kind);
       setSuppressedMap((m) => ({ ...m, [kind]: false }));
     }
-    const granted = await ensurePermission(kind);
+    const granted = await ensurePermission(kind, "settings-permissions");
     await refresh();
     if (granted) toast.success("Permission enabled");
   };

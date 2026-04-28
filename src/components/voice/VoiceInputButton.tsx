@@ -48,7 +48,7 @@ export const VoiceInputButton = ({
       return;
     }
 
-    const granted = await ensurePermission("microphone");
+    const granted = await ensurePermission("microphone", "voice-input");
     if (!granted) return;
 
     onVoiceStart?.();
