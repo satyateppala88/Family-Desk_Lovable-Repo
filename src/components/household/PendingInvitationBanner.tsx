@@ -74,6 +74,7 @@ export const PendingInvitationBanner = () => {
                 Authorization: `Bearer ${accessToken}`,
               },
               body: JSON.stringify({
+                invitationId: invitation.id,
                 householdId: invitation.household_id,
                 householdName: invitation.households?.name || "your household",
                 role: invitation.requested_role,
@@ -81,6 +82,9 @@ export const PendingInvitationBanner = () => {
               }),
             }
           );
+          if (!welcomeResponse.ok) {
+            console.warn("Failed to send household welcome email:", await welcomeResponse.text());
+          }
         } catch (emailError) {
           console.warn("Failed to send household welcome email:", emailError);
         }
