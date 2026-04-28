@@ -48,6 +48,8 @@ export const UserPreferencesOnboarding = () => {
     "meals",
     "calendar",
     "grocery",
+    "habits",
+    "finance",
   ]);
   const [previouslyEnabled, setPreviouslyEnabled] = useState<ProductName[]>([]);
   const [setupQueue, setSetupQueue] = useState<ProductName[] | null>(null);
