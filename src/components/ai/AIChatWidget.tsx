@@ -229,9 +229,6 @@ export const AIChatWidget = () => {
               <RotateCcw className="w-3 h-3 mr-1" /> Start fresh
             </Button>
           )}
-          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setIsOpen(false)}>
-            <X className="w-4 h-4" />
-          </Button>
         </div>
       </div>
 
@@ -378,14 +375,17 @@ export const AIChatWidget = () => {
 
   return (
     <>
-      {/* Trigger button */}
-      <Button
-        size="lg"
-        className="ai-chat-fab fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg z-[60] bg-gradient-to-br from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 transition-[bottom] duration-200"
-        onClick={() => setIsOpen(true)}
-      >
-        <Sparkles className="h-6 w-6" />
-      </Button>
+      {/* Trigger button — hidden while the chat panel is open so it doesn't
+          overlap the mic/send icons inside the input row. */}
+      {!isOpen && (
+        <Button
+          size="lg"
+          className="ai-chat-fab fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg z-[60] bg-gradient-to-br from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 transition-[bottom] duration-200"
+          onClick={() => setIsOpen(true)}
+        >
+          <Sparkles className="h-6 w-6" />
+        </Button>
+      )}
 
       {/* Mobile: bottom drawer ~65% */}
       {isMobile ? (
