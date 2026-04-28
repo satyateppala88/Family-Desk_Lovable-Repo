@@ -9,10 +9,9 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Drawer, DrawerContent } from "@/components/ui/drawer";
-import { MessageCircle, Send, Loader2, Mic, Sparkles, X, RotateCcw } from "lucide-react";
+import { Send, Loader2, Sparkles, X, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
 import { useSpeechSynthesis } from "@/hooks/useSpeechSynthesis";
 import { VoiceInputButton } from "@/components/voice/VoiceInputButton";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -85,12 +84,6 @@ export const AIChatWidget = () => {
   const [placeholderIdx, setPlaceholderIdx] = useState(0);
   const [voiceReplyEnabled, setVoiceReplyEnabled] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
-
-  const { isListening, isSupported, start, stop } = useSpeechRecognition({
-    onResult: (text) => setInput((prev) => (prev ? prev + " " + text : text)),
-    language: "en-IN",
-    continuous: true,
-  });
 
   const { speak, stop: stopSpeaking, isSpeaking, isSupported: ttsSupported } =
     useSpeechSynthesis({ language: "en-IN" });
