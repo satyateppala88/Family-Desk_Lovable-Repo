@@ -171,6 +171,29 @@ export function getWelcomeEmailContent(dashboardUrl: string): string {
   `;
 }
 
+export function getHouseholdMemberWelcomeContent(
+  householdName: string,
+  role: string,
+  dashboardUrl: string
+): string {
+  return `
+    <p>Welcome to ${householdName} on Family Desk! 🎉</p>
+
+    <p>Your invitation has been accepted and you're now part of the household.</p>
+
+    <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+      <p style="margin: 0;"><strong>Household:</strong> ${householdName}</p>
+      <p style="margin: 10px 0 0 0;"><strong>Your Role:</strong> ${role}</p>
+    </div>
+
+    ${getButton("Open Family Desk", dashboardUrl)}
+
+    <p>You can now view shared tasks, calendars, meal plans, groceries, habits, and any enabled household tools.</p>
+
+    ${getNote("Tip: If something looks empty at first, your household admin may still be setting up modules and preferences.")}
+  `;
+}
+
 export function getAccessRequestConfirmationContent(): string {
   return `
     <p>Thank you for requesting access to Family Desk!</p>
