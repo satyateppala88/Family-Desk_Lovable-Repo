@@ -1,39 +1,83 @@
-# Replace User Guide menu entry with How to Use + What's New
+# Replace example-prompt cards with iOS/Android system-prompt mockups
 
 ## Problem
-- Profile dropdown's **User Guide** item calls `onStartOnboarding`, which on most pages is not wired (only Index/Calendar/etc. trigger their own per-page tour). From the profile menu it usually does nothing.
-- The `HowToUseSection` and `WhatsNewSection` are currently rendered inside the Household Settings page, where they don't belong (this page is for household preferences/admin).
+In `PermissionsTutorial.tsx`, the "example" card on each slide is just a line of italic text (e.g. `"Profile → Change photo → Take a photo"`). It doesn't show users what the actual OS permission dialog looks like, so when the real prompt appears it can feel unfamiliar and lower the grant rate.
 
-## Changes
+## Why we won't ship literal Apple/Google screenshots
+Shipping pixel-perfect screenshots of iOS / Android system dialogs is a trademark and App Store review risk (Apple's HIG explicitly disallows mimicking system UI in marketing in a misleading way; Google has similar rules). The industry-standard, review-safe pattern is a **stylized mockup** of the system sheet — same shape, layout, and tone, no Apple/Google logos or SF/Roboto fonts. We'll do that.
 
-### 1. New standalone pages
-- **`src/pages/HowToUse.tsx`** — wraps existing `<HowToUseSection />` in a standard page shell (Header + back button + Footer). Reuses `HOW_TO_USE_SECTIONS` from `src/lib/howToUse.ts`. No new content authored.
-- **`src/pages/WhatsNew.tsx`** — wraps existing `<WhatsNewSection />` in the same page shell.
+We also won't use animated GIFs — they're heavy (often 200KB+ each, 4 capabilities × 2 platforms = 8 assets), hard to localize, and don't add meaningful information over a static mockup with a subtle entrance animation.
 
-### 2. Routing (`src/App.tsx`)
-- Add lazy routes:
-  - `/how-to-use` → `HowToUse`
-  - `/whats-new` → `WhatsNew`
-- Both wrapped in `ProtectedRoute` for consistency with `/settings`.
+## Solution
 
-### 3. Profile dropdown (`src/components/layout/Header.tsx`)
-- **Remove** the `User Guide` `DropdownMenuItem` (and the now-unused `onStartOnboarding` invocation in the menu).
-- **Add** two new items in the same spot, above Terms/Privacy:
-  - `How to use` → `navigate("/how-to-use")`
-  - `What's new` → `navigate("/whats-new")`
-- Keep the `onStartOnboarding` prop on `Header` intact (still used by per-page tours like Calendar/Tasks/etc.) — only the menu entry is removed. No changes needed in pages that pass it.
+### 1. New component: `SystemPromptMock`
+`src/components/permissions/SystemPromptMock.tsx`
 
-### 4. Settings page cleanup (`src/pages/Settings.tsx`)
-- Remove `<HowToUseSection />` and `<WhatsNewSection />` renders (lines 315–316).
-- Remove their imports (lines 20–21).
-- Leave `TermsSection` and `PrivacySection` in place (untouched).
+- Pure React + Tailwind. No external assets, no GIFs.
+- Renders a stylized **iOS-style** alert sheet OR **Android-style** Material dialog based on a `platform` prop.
+- Props:
+  ```ts
+  {
+    kind: "microphone" | "camera" | "photos" | "notifications";
+    platform: "ios" | "android";
+  }
+  ```
+- Per-capability copy mirrors the real system wording (these strings are the user-facing OS strings, which are factual descriptions, not protected IP):
+  - **iOS**: `"\"Family Desk\" Would Like to Access the Microphone"` + our `NSMicrophoneUsageDescription` body + `Don't Allow` / `OK` buttons.
+  - **Android**: `"Allow Family Desk to record audio?"` + `While using the app` / `Only this time` / `Don't allow` buttons.
+- Visual details:
+  - iOS: rounded 14px corners, centered title, divider line between buttons, tinted blue confirm button, light translucent backdrop.
+  - Android: 28px rounded corners, left-aligned title, three stacked text buttons in primary tint, no divider.
+  - Subtle `animate-scale-in` on mount (already in Tailwind config) so it feels like the real prompt sliding in.
+  - Wrapped inside a soft "phone bezel" hint (rounded outer container + gradient bg) so it visually reads as "a system prompt", not part of our UI.
 
-### 5. Files NOT changed
-- `src/components/settings/HowToUseSection.tsx` and `WhatsNewSection.tsx` remain as-is — just relocated by being rendered from the new pages.
-- `src/lib/howToUse.ts` content unchanged.
-- Per-page tour wiring (`handleStartOnboarding` in Calendar/Tasks/Habits/Grocery/Index/Meals) unchanged.
+### 2. Platform toggle inside the tutorial
+On each capability slide, show:
+- The mockup for the user's likely platform first (iOS if the device is iPhone/iPad, Android otherwise — detected via `navigator.userAgent` and Capacitor's `getPlatform()` when available).
+- A small **iOS / Android** segmented toggle above the mockup so anyone can preview the other style. Default selection comes from detection.
+- Welcome slide (`kind: null`) keeps the existing illustrative card — there's no system prompt to mimic there.
 
-## Result
-- Profile dropdown shows working **How to use** and **What's new** entries that route to dedicated pages.
-- Household Settings page is focused purely on household/account preferences.
-- Per-page guided tours continue to work where they're already wired.
+### 3. Wire into `PermissionsTutorial.tsx`
+- Remove the `example: string` field's role as the visual.
+- Replace the `<div className="rounded-xl border ...italic">{slide.example}</div>` block with:
+  ```tsx
+  {slide.kind ? (
+    <SystemPromptMock kind={slide.kind} platform={selectedPlatform} />
+  ) : (
+    <div className="rounded-xl border ...">{slide.example}</div>
+  )}
+  ```
+- Keep the `example` text as a one-line caption **below** the mockup ("This is the prompt you'll see next") so the existing copy isn't lost.
+- Add `selectedPlatform` state + segmented toggle (only rendered for capability slides).
+- Bullets + dots + CTA buttons stay exactly as they are.
+
+### 4. Detection helper
+Small inline helper in `SystemPromptMock` (or a new `src/lib/devicePlatform.ts`):
+```ts
+export const detectMobilePlatform = (): "ios" | "android" => {
+  const cap = (window as any).Capacitor?.getPlatform?.();
+  if (cap === "ios") return "ios";
+  if (cap === "android") return "android";
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) ? "ios" : "android";
+};
+```
+
+## Files
+
+**New**
+- `src/components/permissions/SystemPromptMock.tsx`
+
+**Edited**
+- `src/components/permissions/PermissionsTutorial.tsx` — render the mockup, add platform toggle, repurpose `example` as caption.
+
+**Unchanged**
+- Slide copy / order / analytics surface labels.
+- `usePermissionPrimer`, `PermissionPrimerDialog`, OS-prompt flow.
+- No new dependencies, no new assets, no migrations.
+
+## Why this beats real screenshots / GIFs
+- App Store / Play Store safe (no trademarked imagery).
+- Zero KB asset weight — all CSS / SVG.
+- Always crisp at any DPR; works in dark mode if added later.
+- One source of truth for prompt copy, easy to keep in sync with the real `Info.plist` / `AndroidManifest` strings we ship.
+- Both iOS and Android visible on every device — useful for a cross-platform household app.
