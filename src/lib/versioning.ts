@@ -148,7 +148,7 @@ export const PRIVACY_CHANGELOG: ChangelogEntry[] = [
   },
   {
     version: "1.0",
-    date: PRIVACY_EFFECTIVE_DATE,
+    date: "2026-04-27",
     type: "major",
     title: "Initial Privacy Policy",
     changes: [
