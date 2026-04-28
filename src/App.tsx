@@ -57,6 +57,8 @@ const Install = lazy(() => import("./pages/Install"));
 const NotificationSettings = lazy(() => import("./pages/NotificationSettings"));
 const PermissionsSettings = lazy(() => import("./pages/PermissionsSettings"));
 const AdminPermissionAnalytics = lazy(() => import("./pages/AdminPermissionAnalytics"));
+const HowToUse = lazy(() => import("./pages/HowToUse"));
+const WhatsNew = lazy(() => import("./pages/WhatsNew"));
 
 const queryClient = createPersistedQueryClient();
 
