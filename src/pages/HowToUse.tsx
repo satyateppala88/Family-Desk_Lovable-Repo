@@ -3,16 +3,25 @@ import { useNavigate } from "react-router-dom";
 import { Header } from "@/components/layout/Header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BookOpen, ArrowLeft, ListTree, ChevronRight } from "lucide-react";
+import { BookOpen, ArrowLeft, ListTree, ChevronRight, ChevronDown } from "lucide-react";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { HowToUseSection } from "@/components/settings/HowToUseSection";
 import { HOW_TO_USE_SECTIONS } from "@/lib/howToUse";
 
 export default function HowToUse() {
   const navigate = useNavigate();
   const [openSection, setOpenSection] = useState<string>("");
+  const [tocOpen, setTocOpen] = useState(false);
 
   const jumpTo = (id: string) => {
     setOpenSection(id);
+    setTocOpen(false);
     // Wait for accordion to expand, then scroll into view.
     requestAnimationFrame(() => {
       const el = document.getElementById(`how-to-${id}`);
@@ -20,9 +29,62 @@ export default function HowToUse() {
     });
   };
 
+  const activeSection = HOW_TO_USE_SECTIONS.find((s) => s.id === openSection);
+  const ActiveIcon = activeSection?.icon ?? ListTree;
+
   return (
     <>
       <Header />
+
+      {/* Mobile-only sticky jump-to bar */}
+      <div className="md:hidden sticky top-14 z-30 bg-background/90 backdrop-blur-xl border-b border-border/60">
+        <div className="max-w-2xl mx-auto px-4 py-2">
+          <Sheet open={tocOpen} onOpenChange={setTocOpen}>
+            <SheetTrigger asChild>
+              <button
+                type="button"
+                className="w-full flex items-center gap-2 rounded-md border border-border bg-card px-3 py-2 text-sm text-left hover:bg-muted transition-colors"
+                aria-label="Jump to topic"
+              >
+                <ActiveIcon className="h-4 w-4 text-primary shrink-0" />
+                <span className="flex-1 truncate">
+                  {activeSection ? activeSection.title : "Jump to topic"}
+                </span>
+                <ChevronDown className="h-4 w-4 text-muted-foreground" />
+              </button>
+            </SheetTrigger>
+            <SheetContent side="bottom" className="rounded-t-2xl max-h-[70vh] overflow-y-auto">
+              <SheetHeader>
+                <SheetTitle className="flex items-center gap-2 text-base">
+                  <ListTree className="h-4 w-4 text-primary" />
+                  On this page
+                </SheetTitle>
+              </SheetHeader>
+              <ul className="mt-3 space-y-1">
+                {HOW_TO_USE_SECTIONS.map((section) => {
+                  const Icon = section.icon;
+                  const isActive = section.id === openSection;
+                  return (
+                    <li key={section.id}>
+                      <button
+                        type="button"
+                        onClick={() => jumpTo(section.id)}
+                        className={`w-full flex items-center gap-3 rounded-md px-3 py-3 text-left text-sm transition-colors ${
+                          isActive ? "bg-muted" : "hover:bg-muted"
+                        }`}
+                      >
+                        <Icon className="h-4 w-4 text-primary shrink-0" />
+                        <span className="flex-1 truncate">{section.title}</span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </SheetContent>
+          </Sheet>
+        </div>
+      </div>
+
       <main className="page-content">
         <div className="max-w-2xl mx-auto space-y-4">
           <div className="flex items-center gap-3">
@@ -45,7 +107,8 @@ export default function HowToUse() {
             </div>
           </div>
 
-          <Card>
+          {/* Full TOC card — hidden on mobile (replaced by sticky pill above) */}
+          <Card className="hidden md:block">
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-base">
                 <ListTree className="h-4 w-4 text-primary" />
