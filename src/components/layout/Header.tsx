@@ -21,7 +21,7 @@ interface HeaderProps {
   onStartOnboarding?: () => void;
 }
 
-export const Header = ({ onStartOnboarding }: HeaderProps) => {
+export const Header = (_props: HeaderProps) => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
