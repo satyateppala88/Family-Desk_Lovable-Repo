@@ -7,6 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { usePermissionPrimer } from "@/hooks/usePermissionPrimer";
 import { PermissionPrimerDialog } from "@/components/permissions/PermissionPrimerDialog";
+import { PermissionRetryHint } from "@/components/permissions/PermissionRetryHint";
 
 type AvatarScope =
   | { kind: "user"; userId: string }
@@ -108,7 +109,8 @@ export const AvatarUploader = ({
   };
 
   return (
-    <div className={cn("flex items-center gap-4", className)}>
+    <div className={cn("flex flex-col gap-3", className)}>
+      <div className="flex items-center gap-4">
       <div className="relative group">
         <Avatar className={cn(SIZES[size], "ring-2 ring-border/60")}>
           {currentUrl ? <AvatarImage src={currentUrl} alt="" /> : null}
@@ -152,6 +154,17 @@ export const AvatarUploader = ({
         onChange={handleFile}
       />
       <PermissionPrimerDialog {...primerProps} />
+      </div>
+
+      {/* Inline "Try again" hint when photos access was denied/dismissed.
+          Renders nothing on web (file input needs no permission) — only
+          surfaces on native Capacitor builds when relevant. */}
+      <PermissionRetryHint
+        kind="photos"
+        ensurePermission={ensurePermission}
+        surface="avatar-uploader"
+        onGranted={() => inputRef.current?.click()}
+      />
     </div>
   );
 };
