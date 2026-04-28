@@ -77,7 +77,9 @@ export const useHouseholdPreferences = (householdId: string | null) => {
   return {
     preferences,
     isLoading,
-    updatePreferences: updatePreferences.mutateAsync,
+    updatePreferences: async (updates: Partial<HouseholdPreferences>) => {
+      await updatePreferences.mutateAsync(updates);
+    },
     isUpdating: updatePreferences.isPending,
   };
 };
