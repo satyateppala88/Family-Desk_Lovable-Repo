@@ -2586,6 +2586,7 @@ export type Database = {
         Args: { _household_id: string; _user_id: string }
         Returns: boolean
       }
+      update_completed_tour: { Args: { _key: string }; Returns: undefined }
     }
     Enums: {
       app_role: "household_admin" | "member" | "platform_admin"
