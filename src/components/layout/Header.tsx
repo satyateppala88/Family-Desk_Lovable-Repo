@@ -52,12 +52,27 @@ export const Header = (_props: HeaderProps) => {
 
   // Resolve the "parent" route for the back button so users move up one level
   // (e.g. /finance/transactions → /finance) instead of always jumping home.
+  // Used as a safe fallback when there's no in-app browser history.
   const getParentRoute = (path: string): string => {
-    // Taskmaster: project detail → projects list, otherwise → taskmaster home
+    // Taskmaster: project detail → projects list; other sub-pages → taskmaster hub
     if (/^\/taskmaster\/projects\/[^/]+/.test(path)) return "/taskmaster/projects";
     if (path.startsWith("/taskmaster/")) return "/taskmaster";
     // Finance sub-pages → finance hub
     if (path.startsWith("/finance/")) return "/finance";
+    // Grocery sub-pages → grocery hub
+    if (path.startsWith("/grocery/")) return "/grocery";
+    // Meals sub-pages → meals hub
+    if (path.startsWith("/meals/")) return "/meals";
+    // Calendar sub-pages → calendar hub
+    if (path.startsWith("/calendar/")) return "/calendar";
+    // Habits sub-pages → habits hub
+    if (path.startsWith("/habits/")) return "/habits";
+    // Settings sub-pages (e.g. /settings/notifications) → settings hub
+    if (path.startsWith("/settings/")) return "/settings";
+    // Household sub-pages (e.g. /household/products) → settings hub
+    if (path.startsWith("/household/")) return "/settings";
+    // Onboarding sub-pages → dashboard
+    if (path.startsWith("/onboarding/")) return "/dashboard";
     // Admin sub-pages → access requests (default admin landing)
     if (path.startsWith("/admin/")) return "/admin/access-requests";
     // Everything else (top-level module pages, settings, etc.) → dashboard
