@@ -13,6 +13,8 @@ import { MessageCircle, Send, Loader2, Mic, Sparkles, X, RotateCcw } from "lucid
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
+import { useSpeechSynthesis } from "@/hooks/useSpeechSynthesis";
+import { VoiceInputButton } from "@/components/voice/VoiceInputButton";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 interface Message {
@@ -81,6 +83,7 @@ export const AIChatWidget = () => {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [placeholderIdx, setPlaceholderIdx] = useState(0);
+  const [voiceReplyEnabled, setVoiceReplyEnabled] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const { isListening, isSupported, start, stop } = useSpeechRecognition({
@@ -88,6 +91,14 @@ export const AIChatWidget = () => {
     language: "en-IN",
     continuous: true,
   });
+
+  const { speak, stop: stopSpeaking, isSpeaking, isSupported: ttsSupported } =
+    useSpeechSynthesis({ language: "en-IN" });
+
+  // Stop any ongoing speech when the widget closes
+  useEffect(() => {
+    if (!isOpen && isSpeaking) stopSpeaking();
+  }, [isOpen, isSpeaking, stopSpeaking]);
 
   // Rotate placeholder
   useEffect(() => {
@@ -124,6 +135,9 @@ export const AIChatWidget = () => {
   const sendMessage = useCallback(async (text?: string) => {
     const msgText = text || input;
     if (!msgText.trim() || !householdId || !user) return;
+
+    // Stop any in-progress reply playback when a new message is sent
+    if (isSpeaking) stopSpeaking();
 
     const userMessage: Message = { role: "user", content: msgText.trim() };
     setMessages(prev => [...prev, userMessage]);
@@ -194,8 +208,14 @@ export const AIChatWidget = () => {
       });
     } finally {
       setIsLoading(false);
+      // Speak the assistant's reply only when the user started this exchange by voice
+      if (voiceReplyEnabled && ttsSupported && assistantContent.trim()) {
+        speak(assistantContent);
+      }
+      // Reset voice-reply intent after each turn — must be re-triggered by next mic press
+      setVoiceReplyEnabled(false);
     }
-  }, [input, messages, householdId, user, toast]);
+  }, [input, messages, householdId, user, toast, voiceReplyEnabled, ttsSupported, speak, isSpeaking, stopSpeaking]);
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey && !isLoading) { e.preventDefault(); sendMessage(); }
