@@ -37,14 +37,16 @@ export const logPermissionEvent = async (
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return; // Anonymous → don't log (RLS would reject anyway)
 
-    await supabase.from("permission_events").insert({
-      user_id: user.id,
-      capability,
-      outcome,
-      surface: surface || "unknown",
-      platform: isNative() ? "native" : "web",
-      metadata,
-    });
+    await supabase.from("permission_events").insert([
+      {
+        user_id: user.id,
+        capability,
+        outcome,
+        surface: surface || "unknown",
+        platform: isNative() ? "native" : "web",
+        metadata: metadata as never,
+      },
+    ]);
   } catch (err) {
     // Swallow — analytics must never break the app.
     console.warn("[permission-analytics] log failed:", err);
