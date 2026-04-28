@@ -74,15 +74,32 @@ const useDraftState = <T extends object>(
   module: ModuleSetupKey,
   initial: T,
 ): [T, (next: T) => void] => {
-  const [data, setData] = useState<T>(() => {
+  const hasStoredDraftRef = useRef(false);
+  const dirtyRef = useRef(false);
+  const [data, setDataState] = useState<T>(() => {
     const draft = readDraft<T>(householdId, module);
+    hasStoredDraftRef.current = !!draft;
     return draft ? { ...initial, ...draft } : initial;
   });
-  // Persist on every change. We deliberately re-write on every render where
-  // `data` changes — the writes are tiny and synchronous.
+
+  // If saved preferences arrive after the dialog first rendered, hydrate the
+  // untouched form from those saved values instead of keeping early defaults.
   useEffect(() => {
-    writeDraft(householdId, module, data);
-  }, [householdId, module, data]);
+    if (hasStoredDraftRef.current || dirtyRef.current) return;
+    setDataState((prev) => {
+      const prevJson = JSON.stringify(prev);
+      const nextJson = JSON.stringify(initial);
+      return prevJson === nextJson ? prev : initial;
+    });
+  }, [initial]);
+
+  const setData = useCallback((next: T) => {
+    dirtyRef.current = true;
+    hasStoredDraftRef.current = true;
+    setDataState(next);
+    writeDraft(householdId, module, next);
+  }, [householdId, module]);
+
   return [data, setData];
 };
 
