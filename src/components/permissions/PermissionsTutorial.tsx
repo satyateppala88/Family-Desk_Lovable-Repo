@@ -6,6 +6,11 @@ import { usePermissionPrimer } from "@/hooks/usePermissionPrimer";
 import { PermissionPrimerDialog } from "./PermissionPrimerDialog";
 import type { PermissionKind } from "@/lib/permissions";
 import { setHasSeenPermissionsTutorial } from "@/lib/launchStorage";
+import {
+  SystemPromptMock,
+  detectMobilePlatform,
+  type MobilePlatform,
+} from "./SystemPromptMock";
 
 /**
  * One-time onboarding tutorial that introduces the four sensitive
@@ -106,6 +111,9 @@ export const PermissionsTutorial = ({ open, onClose }: PermissionsTutorialProps)
   const isLast = index === SLIDES.length - 1;
   const Icon = slide.Icon;
   const { ensurePermission, primerProps } = usePermissionPrimer();
+  const [platform, setPlatform] = useState<MobilePlatform>(() =>
+    detectMobilePlatform()
+  );
 
   const dotCount = useMemo(() => SLIDES.length, []);
 
@@ -142,11 +150,43 @@ export const PermissionsTutorial = ({ open, onClose }: PermissionsTutorialProps)
             </p>
           </div>
 
-          {/* Mock prompt / example card — the “screenshot prompt” */}
-          <div className="px-6 pt-4">
-            <div className="rounded-xl border border-border bg-card/60 px-4 py-3 text-sm text-foreground/80 italic">
-              {slide.example}
-            </div>
+          {/* System-prompt preview (or example card on the welcome slide) */}
+          <div className="px-6 pt-4 space-y-2">
+            {slide.kind ? (
+              <>
+                <div className="flex justify-center">
+                  <div
+                    role="tablist"
+                    aria-label="Preview platform"
+                    className="inline-flex rounded-full border border-border bg-muted/40 p-0.5 text-xs"
+                  >
+                    {(["ios", "android"] as MobilePlatform[]).map((p) => (
+                      <button
+                        key={p}
+                        role="tab"
+                        aria-selected={platform === p}
+                        onClick={() => setPlatform(p)}
+                        className={`px-3 py-1 rounded-full transition-colors ${
+                          platform === p
+                            ? "bg-background text-foreground shadow-sm"
+                            : "text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        {p === "ios" ? "iOS" : "Android"}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <SystemPromptMock kind={slide.kind} platform={platform} />
+                <p className="text-center text-xs text-muted-foreground pt-1">
+                  {slide.example}
+                </p>
+              </>
+            ) : (
+              <div className="rounded-xl border border-border bg-card/60 px-4 py-3 text-sm text-foreground/80 italic">
+                {slide.example}
+              </div>
+            )}
           </div>
 
           {/* Bullets */}
