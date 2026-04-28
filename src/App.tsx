@@ -59,6 +59,7 @@ const PermissionsSettings = lazy(() => import("./pages/PermissionsSettings"));
 const AdminPermissionAnalytics = lazy(() => import("./pages/AdminPermissionAnalytics"));
 const HowToUse = lazy(() => import("./pages/HowToUse"));
 const WhatsNew = lazy(() => import("./pages/WhatsNew"));
+const Welcome = lazy(() => import("./pages/Welcome"));
 
 const queryClient = createPersistedQueryClient();
 
@@ -227,6 +228,7 @@ const App = () => (
                     <WhatsNew />
                   </ProtectedRoute>
                 } />
+                <Route path="/welcome" element={<Welcome />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
