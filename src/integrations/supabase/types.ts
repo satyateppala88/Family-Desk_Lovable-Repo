@@ -1734,6 +1734,39 @@ export type Database = {
           },
         ]
       }
+      permission_events: {
+        Row: {
+          capability: string
+          created_at: string
+          id: string
+          metadata: Json
+          outcome: string
+          platform: string
+          surface: string
+          user_id: string
+        }
+        Insert: {
+          capability: string
+          created_at?: string
+          id?: string
+          metadata?: Json
+          outcome: string
+          platform?: string
+          surface?: string
+          user_id: string
+        }
+        Update: {
+          capability?: string
+          created_at?: string
+          id?: string
+          metadata?: Json
+          outcome?: string
+          platform?: string
+          surface?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       phone_verification_tokens: {
         Row: {
           created_at: string | null
@@ -2512,6 +2545,18 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      permission_events_daily: {
+        Row: {
+          capability: string | null
+          day: string | null
+          event_count: number | null
+          outcome: string | null
+          platform: string | null
+          surface: string | null
+          unique_users: number | null
+        }
+        Relationships: []
       }
     }
     Functions: {
