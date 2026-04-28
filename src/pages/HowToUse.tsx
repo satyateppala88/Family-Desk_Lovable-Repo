@@ -107,8 +107,37 @@ export default function HowToUse() {
             </div>
           </div>
 
-          {/* Full TOC card — hidden on mobile (replaced by sticky pill above) */}
-          <Card className="hidden md:block">
+          {/* Compact TOC — tablet only (md to lg). Horizontal scrolling pills. */}
+          <div className="hidden md:block lg:hidden">
+            <div className="flex items-center gap-2 mb-2 px-1">
+              <ListTree className="h-4 w-4 text-primary" />
+              <span className="text-sm font-medium">On this page</span>
+            </div>
+            <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 [scrollbar-width:thin]">
+              {HOW_TO_USE_SECTIONS.map((section) => {
+                const Icon = section.icon;
+                const isActive = section.id === openSection;
+                return (
+                  <button
+                    key={section.id}
+                    type="button"
+                    onClick={() => jumpTo(section.id)}
+                    className={`shrink-0 inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs transition-colors ${
+                      isActive
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-card border-border hover:bg-muted"
+                    }`}
+                  >
+                    <Icon className={`h-3.5 w-3.5 shrink-0 ${isActive ? "" : "text-primary"}`} />
+                    <span className="whitespace-nowrap">{section.title}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Full TOC card — desktop only (lg+) */}
+          <Card className="hidden lg:block">
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-base">
                 <ListTree className="h-4 w-4 text-primary" />
