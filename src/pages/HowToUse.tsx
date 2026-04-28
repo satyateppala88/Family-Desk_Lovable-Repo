@@ -1,11 +1,24 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Header } from "@/components/layout/Header";
 import { Button } from "@/components/ui/button";
-import { BookOpen, ArrowLeft } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { BookOpen, ArrowLeft, ListTree, ChevronRight } from "lucide-react";
 import { HowToUseSection } from "@/components/settings/HowToUseSection";
+import { HOW_TO_USE_SECTIONS } from "@/lib/howToUse";
 
 export default function HowToUse() {
   const navigate = useNavigate();
+  const [openSection, setOpenSection] = useState<string>("");
+
+  const jumpTo = (id: string) => {
+    setOpenSection(id);
+    // Wait for accordion to expand, then scroll into view.
+    requestAnimationFrame(() => {
+      const el = document.getElementById(`how-to-${id}`);
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  };
 
   return (
     <>
@@ -32,7 +45,36 @@ export default function HowToUse() {
             </div>
           </div>
 
-          <HowToUseSection />
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <ListTree className="h-4 w-4 text-primary" />
+                On this page
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <ul className="grid grid-cols-1 sm:grid-cols-2 gap-1">
+                {HOW_TO_USE_SECTIONS.map((section) => {
+                  const Icon = section.icon;
+                  return (
+                    <li key={section.id}>
+                      <button
+                        type="button"
+                        onClick={() => jumpTo(section.id)}
+                        className="group w-full flex items-center gap-2 rounded-md px-2 py-2 text-left text-sm hover:bg-muted transition-colors"
+                      >
+                        <Icon className="h-4 w-4 text-primary shrink-0" />
+                        <span className="flex-1 truncate">{section.title}</span>
+                        <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </CardContent>
+          </Card>
+
+          <HowToUseSection value={openSection} onValueChange={setOpenSection} />
         </div>
       </main>
     </>
