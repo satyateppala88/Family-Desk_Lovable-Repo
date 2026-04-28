@@ -1,7 +1,9 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate, useLocation } from "react-router-dom";
 import { ChevronLeft, Home } from "lucide-react";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/lib/supabase";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,6 +30,23 @@ export const Header = ({ onStartOnboarding }: HeaderProps) => {
   const { data: pendingInvitations = [] } = usePendingInvitations(householdId);
   const pendingCount = isAdmin ? pendingInvitations.length : 0;
   const { isPlatformAdmin } = useIsPlatformAdmin();
+
+  // Pull avatar_url from profile so Header reflects user uploads everywhere
+  const { data: profile } = useQuery({
+    queryKey: ["profile-avatar", user?.id],
+    queryFn: async () => {
+      if (!user) return null;
+      const { data } = await supabase
+        .from("profiles")
+        .select("avatar_url")
+        .eq("id", user.id)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!user,
+    staleTime: 60 * 1000,
+  });
+  const avatarUrl = (profile as any)?.avatar_url || null;
 
   const isHomePage = location.pathname === "/dashboard" || location.pathname === "/";
 
@@ -102,6 +121,7 @@ export const Header = ({ onStartOnboarding }: HeaderProps) => {
               style={{ minHeight: "var(--touch-target)" }}
             >
               <Avatar className="h-8 w-8 ring-2 ring-border/50 transition-all hover:ring-primary/30">
+                {avatarUrl ? <AvatarImage src={avatarUrl} alt="" /> : null}
                 <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
                   {getInitials()}
                 </AvatarFallback>
