@@ -66,6 +66,24 @@ export const Header = (_props: HeaderProps) => {
 
   const parentRoute = getParentRoute(location.pathname);
 
+  // Soft back: prefer browser history when the user navigated here from
+  // within the app; otherwise fall back to the resolved parent route so
+  // direct loads / refreshes still go somewhere sensible.
+  const handleBack = () => {
+    const hasInAppHistory =
+      typeof window !== "undefined" &&
+      window.history.length > 1 &&
+      // history.state.idx is set by react-router; >0 means we have a prior entry
+      ((window.history.state && (window.history.state as any).idx > 0) ||
+        document.referrer.startsWith(window.location.origin));
+
+    if (hasInAppHistory) {
+      navigate(-1);
+    } else {
+      navigate(parentRoute);
+    }
+  };
+
   const getInitials = () => {
     if (!user?.user_metadata?.display_name) return "U";
     return user.user_metadata.display_name
@@ -109,7 +127,7 @@ export const Header = (_props: HeaderProps) => {
         <div className="flex items-center gap-0.5 min-w-0">
           {!isHomePage ? (
             <button
-              onClick={() => navigate(parentRoute)}
+              onClick={handleBack}
               className="flex items-center gap-1 p-2 -ml-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors shrink-0"
               aria-label="Back"
               style={{ minHeight: "var(--touch-target)" }}
