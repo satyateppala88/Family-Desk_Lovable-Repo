@@ -1,43 +1,45 @@
-# Fix AI chat polish + smarter back navigation
+Plan to fix the missing welcome email after household invite acceptance
 
-## What's wrong today
+What I found
+- The app already sends:
+  - an invitation email when an admin invites someone
+  - a response email to the inviter when the invitee accepts/declines
+  - a generic welcome email only during email verification
+- The invited-user flow accepts the household invite in `PendingInvitationBanner`, adds the member to the household, then notifies the inviter. It does not send a welcome email to the joining user at that moment.
+- There is currently no configured Lovable Email domain in this workspace, while the existing project email code uses the existing Resend-based functions and templates.
 
-1. **Two X buttons on the AI chat panel.** Both shadcn `SheetContent` (desktop) and `DrawerContent` (mobile) ship with their own built-in close (X) button. Our header in `AIChatWidget` adds a second X, so the user sees two.
-2. **Sparkle FAB stays visible while the chat is open**, sitting in the bottom-right where it overlaps the mic and send buttons inside the chat input row.
-3. **"Back" in the Header always jumps to `/dashboard`.** From a sub-page like `/finance/transactions` or `/taskmaster/projects/123`, pressing back loses the parent context and dumps the user on Home, which feels wrong.
+Implementation plan
+1. Add a household-specific welcome email template
+   - Reuse the existing Family Desk email wrapper and brand style.
+   - Add copy tailored to an invited user who just joined a household.
+   - Include household name, role, and a button to open the dashboard.
 
-## Fixes
+2. Add a secure backend email endpoint for the invited user welcome
+   - Create a new backend function for “household member welcome”.
+   - Require the user’s signed-in token.
+   - Validate the request body.
+   - Verify the caller is the same invitee and is a member of the target household before sending.
+   - Respect the existing household invitation/email preference if the user has opted out.
+   - Send to the authenticated user’s email only, not to an arbitrary email supplied by the client.
 
-### 1. AI chat — single close, FAB hides when open
-File: `src/components/ai/AIChatWidget.tsx`
+3. Trigger it after invite acceptance
+   - In `PendingInvitationBanner`, after the membership insert and invitation status update succeed, call the new backend email endpoint.
+   - Keep the existing inviter notification unchanged.
+   - Do not block the household join if the welcome email fails; log a warning and still show “You’ve joined the household!”
 
-- Remove the custom `<X>` button from the chat header. Keep the built-in close from `SheetContent` / `DrawerContent` (it's positioned top-right and is the platform-standard one).
-- Keep the "Start fresh" button.
-- Hide the sparkle FAB when `isOpen` is `true` so it stops overlapping the mic/send icons. (Render the FAB only when `!isOpen`.)
+4. Improve routing in email links
+   - Use the current app origin for the dashboard URL instead of hardcoding only the production domain, so preview/test links behave correctly.
 
-### 2. Smarter Header back button
-File: `src/components/layout/Header.tsx`
+5. Verify
+   - Deploy the new/changed backend function.
+   - Check function logs after a test invite acceptance.
+   - Confirm the invitee receives the new “Welcome to the household” email and the inviter still receives the existing accepted notification.
 
-Replace the hardcoded `navigate("/dashboard")` with a small "parent route" resolver:
-
-- `/finance/<anything>` → `/finance`
-- `/taskmaster/projects/:id` → `/taskmaster/projects`
-- `/taskmaster/<anything>` → `/taskmaster`
-- `/admin/<anything>` → `/admin/access-requests` (or `/dashboard` if none)
-- `/members`, `/invitations`, `/account-settings`, `/settings`, `/how-to-use`, `/whats-new`, `/terms`, `/privacy`, `/permissions`, `/notifications`, top-level module pages (`/tasks`, `/meals`, `/grocery`, `/calendar`, `/habits`, `/finance`) → `/dashboard`
-- Anything else → `/dashboard` (safe default)
-
-This is computed from `location.pathname` only — no reliance on `history.back()`, so deep links and refreshes always behave correctly. The chevron stays in the same place; only the destination becomes context-aware.
-
-Header continues to hide the back button on `/` and `/dashboard` (unchanged).
-
-## Files changed
-
-- `src/components/ai/AIChatWidget.tsx` — remove duplicate X, hide FAB when open
-- `src/components/layout/Header.tsx` — context-aware back destination
-
-## Out of scope
-
-- No design/style changes to the chat header beyond removing the extra button.
-- No changes to other pages — the audit confirmed every authenticated page already uses `<Header />`, so fixing the Header propagates everywhere.
-- Public pages (`/auth`, `/landing`, `/welcome`, `/terms`, `/privacy`, `/verify-email`, `/request-access`, `/install`) keep their existing in-page back/CTA patterns; those aren't affected.
+Technical details
+- Files likely to change:
+  - `supabase/functions/_shared/email-templates.ts`
+  - new `supabase/functions/send-household-member-welcome/index.ts`
+  - `src/components/household/PendingInvitationBanner.tsx`
+  - possibly `supabase/config.toml` for the new function’s config block, following existing email function patterns.
+- This should not require a database schema change.
+- Because the current project already uses Resend-backed email functions and has the relevant secret configured, I’ll follow that existing app pattern for this fix rather than introducing a new email infrastructure path mid-flow.
