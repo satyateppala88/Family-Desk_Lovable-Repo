@@ -217,6 +217,16 @@ const App = () => (
                     <AdminPermissionAnalytics />
                   </ProtectedRoute>
                 } />
+                <Route path="/how-to-use" element={
+                  <ProtectedRoute>
+                    <HowToUse />
+                  </ProtectedRoute>
+                } />
+                <Route path="/whats-new" element={
+                  <ProtectedRoute>
+                    <WhatsNew />
+                  </ProtectedRoute>
+                } />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
