@@ -64,11 +64,13 @@ const openOSSettings = async () => {
   // On native, open the app's system settings page directly.
   if (isNative()) {
     try {
-      const mod = await import("@capacitor/app");
-      // @capacitor/app exposes `App.openSettings` on supported platforms
-      const anyApp = mod.App as unknown as { openSettings?: () => Promise<void> };
-      if (anyApp.openSettings) {
-        await anyApp.openSettings();
+      // Resolved at runtime only on native builds where @capacitor/app is bundled.
+      // The string indirection prevents TS/Vite from requiring the module at build time.
+      const moduleName = "@capacitor/app";
+      const mod: unknown = await import(/* @vite-ignore */ moduleName);
+      const App = (mod as { App?: { openSettings?: () => Promise<void> } }).App;
+      if (App?.openSettings) {
+        await App.openSettings();
         return;
       }
     } catch (err) {
