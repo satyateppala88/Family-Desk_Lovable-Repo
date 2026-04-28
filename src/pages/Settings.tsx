@@ -22,6 +22,7 @@ import { ModulePreferencesSection } from "@/components/settings/ModulePreference
 import { SetupProgressCard } from "@/components/settings/SetupProgressCard";
 import { AvatarUploader } from "@/components/avatar/AvatarUploader";
 import { useQueryClient } from "@tanstack/react-query";
+import { InstallAppButton } from "@/components/install/InstallAppButton";
 
 export const Settings = () => {
   const { user } = useAuth();
@@ -312,6 +313,20 @@ export const Settings = () => {
 
           <TermsSection />
           <PrivacySection />
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Install Family Desk</CardTitle>
+              <CardDescription>
+                Add Family Desk to your home screen for a faster, full-screen
+                experience with offline support. Available on most modern
+                browsers.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <InstallAppButton fullWidth />
+            </CardContent>
+          </Card>
         </div>
       </main>
     </>
