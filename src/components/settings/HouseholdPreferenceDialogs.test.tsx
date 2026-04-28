@@ -58,7 +58,7 @@ describe("household preference dialogs", () => {
   });
 
   it("saves only finance-owned fields so other module values are preserved", () => {
-    const onSave = vi.fn(async () => {});
+    const onSave = vi.fn(async (_updates: Partial<HouseholdPreferences>) => {});
     render(<EditBudgetPreferencesDialog preferences={basePreferences} onSave={onSave} />);
 
     fireEvent.click(screen.getByRole("button", { name: /edit/i }));
