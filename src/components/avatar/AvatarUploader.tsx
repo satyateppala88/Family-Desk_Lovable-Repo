@@ -56,7 +56,7 @@ export const AvatarUploader = ({
   const handlePick = async () => {
     // On web this is a no-op (file input needs no permission); on native
     // Capacitor it triggers the photo-library priming + OS prompt.
-    const granted = await ensurePermission("photos");
+    const granted = await ensurePermission("photos", "avatar-uploader");
     if (!granted) return;
     inputRef.current?.click();
   };
