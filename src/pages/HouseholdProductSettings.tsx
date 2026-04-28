@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { useHousehold } from "@/hooks/useHousehold";
 import { useEnabledProducts, ProductName } from "@/hooks/useEnabledProducts";
 import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { CheckSquare, ChefHat, Calendar, ShoppingCart, Leaf, Wallet, Loader2 } from "lucide-react";
@@ -70,6 +71,7 @@ const products = [
 
 export default function HouseholdProductSettings() {
   const { householdId } = useHousehold();
+  const { user } = useAuth();
   const { data: enabledProducts = [], isLoading } = useEnabledProducts(householdId);
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -78,16 +80,17 @@ export default function HouseholdProductSettings() {
   const [setupForProduct, setSetupForProduct] = useState<ProductName | null>(null);
 
   const handleEnableProduct = async (productName: ProductName) => {
-    if (!householdId) return;
+    if (!householdId || !user?.id) return;
 
     setActionLoading(true);
     try {
       const { error } = await supabase
         .from("household_enabled_products")
-        .insert({
+        .upsert({
           household_id: householdId,
           product_name: productName,
-        });
+          enabled_by: user.id,
+        }, { onConflict: "household_id,product_name" });
 
       if (error) throw error;
 
