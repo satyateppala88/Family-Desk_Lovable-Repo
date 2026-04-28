@@ -1166,7 +1166,7 @@ const RoutineSetupForm = ({ module, householdId, preferences, onSubmit, onSkip, 
           <div className="flex items-center space-x-2"><RadioGroupItem value="morning" id="r1" /><Label htmlFor="r1">Morning</Label></div>
           <div className="flex items-center space-x-2"><RadioGroupItem value="afternoon" id="r2" /><Label htmlFor="r2">Afternoon</Label></div>
           <div className="flex items-center space-x-2"><RadioGroupItem value="evening" id="r3" /><Label htmlFor="r3">Evening</Label></div>
-          <div className="flex items-center space-x-2"><RadioGroupItem value="night" id="r4" /><Label htmlFor="r4">Night</Label></div>
+          <div className="flex items-center space-x-2"><RadioGroupItem value="flexible" id="r4" /><Label htmlFor="r4">Flexible</Label></div>
         </RadioGroup>
       </Question>
       <Question index={indexOf("household_concerns")} activeIndex={activeIndex}>
@@ -1205,16 +1205,16 @@ const CalendarSetupForm = ({ module, householdId, preferences, onSubmit, onSkip,
         <RadioGroup value={data.work_schedule} onValueChange={(v) => { setData({ ...data, work_schedule: v }); mark("work_schedule"); advanceFrom(indexOf("work_schedule")); }} className="mt-2">
           <div className="flex items-center space-x-2"><RadioGroupItem value="both_working" id="w1" /><Label htmlFor="w1">Both/all adults working</Label></div>
           <div className="flex items-center space-x-2"><RadioGroupItem value="one_working" id="w2" /><Label htmlFor="w2">One adult working</Label></div>
-          <div className="flex items-center space-x-2"><RadioGroupItem value="flexible" id="w3" /><Label htmlFor="w3">Flexible / WFH</Label></div>
-          <div className="flex items-center space-x-2"><RadioGroupItem value="retired" id="w4" /><Label htmlFor="w4">Retired</Label></div>
+          <div className="flex items-center space-x-2"><RadioGroupItem value="retired" id="w3" /><Label htmlFor="w3">Retired</Label></div>
+          <div className="flex items-center space-x-2"><RadioGroupItem value="students" id="w4" /><Label htmlFor="w4">Students</Label></div>
         </RadioGroup>
       </Question>
       <Question index={indexOf("festival_importance")} activeIndex={activeIndex}>
         <Label>How important are festivals?</Label>
         <RadioGroup value={data.festival_importance} onValueChange={(v) => { setData({ ...data, festival_importance: v }); mark("festival_importance"); advanceFrom(indexOf("festival_importance")); }} className="mt-2">
-          <div className="flex items-center space-x-2"><RadioGroupItem value="very" id="f1" /><Label htmlFor="f1">Very important</Label></div>
+          <div className="flex items-center space-x-2"><RadioGroupItem value="very_important" id="f1" /><Label htmlFor="f1">Very important</Label></div>
           <div className="flex items-center space-x-2"><RadioGroupItem value="somewhat" id="f2" /><Label htmlFor="f2">Somewhat</Label></div>
-          <div className="flex items-center space-x-2"><RadioGroupItem value="not_really" id="f3" /><Label htmlFor="f3">Not really</Label></div>
+          <div className="flex items-center space-x-2"><RadioGroupItem value="not_important" id="f3" /><Label htmlFor="f3">Not important</Label></div>
         </RadioGroup>
       </Question>
     </FormShell>
