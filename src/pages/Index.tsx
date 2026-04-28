@@ -16,6 +16,8 @@ import { Household } from "@/types/database";
 import { useEnabledProducts, isProductEnabled, ProductName } from "@/hooks/useEnabledProducts";
 import { OnboardingProgressIndicator } from "@/components/onboarding/OnboardingProgressIndicator";
 import { FamilyPulse } from "@/components/dashboard/FamilyPulse";
+import { PermissionsTutorial } from "@/components/permissions/PermissionsTutorial";
+import { getHasSeenPermissionsTutorial } from "@/lib/launchStorage";
 import {
   CheckSquare,
   UtensilsCrossed,
@@ -67,12 +69,22 @@ const Index = () => {
 
   const { shouldShowTour, tourChecked, markTourComplete } = useFeatureTour("dashboard");
   const [runOnboarding, setRunOnboarding] = useState(false);
+  const [showPermissionsTutorial, setShowPermissionsTutorial] = useState(false);
 
   useEffect(() => {
     if (tourChecked && shouldShowTour && householdId) {
       setTimeout(() => setRunOnboarding(true), 500);
     }
   }, [tourChecked, shouldShowTour, householdId]);
+
+  // Show the one-time permissions tutorial after the dashboard tour has
+  // had a chance to run (or been skipped). Only appears once per device.
+  useEffect(() => {
+    if (!householdId || !tourChecked) return;
+    if (getHasSeenPermissionsTutorial()) return;
+    const t = setTimeout(() => setShowPermissionsTutorial(true), shouldShowTour ? 1800 : 600);
+    return () => clearTimeout(t);
+  }, [householdId, tourChecked, shouldShowTour]);
 
   useEffect(() => {
     if (!isLoading && !householdId && user) {
@@ -145,6 +157,11 @@ const Index = () => {
       )}
       <main className="page-content animate-fade-in">
         <PendingInvitationBanner />
+
+        <PermissionsTutorial
+          open={showPermissionsTutorial}
+          onClose={() => setShowPermissionsTutorial(false)}
+        />
 
         {!onboardingCompleted && progressData && progressData.percentage < 100 && (
           <Card className="mb-4 border-primary/15">
