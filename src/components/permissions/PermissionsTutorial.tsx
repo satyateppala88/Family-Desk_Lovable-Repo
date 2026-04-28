@@ -1,7 +1,13 @@
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Bell, Camera, ImageIcon, Mic, ShieldCheck, Sparkles } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  type CarouselApi,
+} from "@/components/ui/carousel";
 import { usePermissionPrimer } from "@/hooks/usePermissionPrimer";
 import { PermissionPrimerDialog } from "./PermissionPrimerDialog";
 import type { PermissionKind } from "@/lib/permissions";
@@ -17,11 +23,12 @@ import {
 /**
  * One-time onboarding tutorial that introduces the four sensitive
  * capabilities (microphone, camera, photos, notifications) BEFORE the
- * user encounters a feature that needs them. Each screen explains the
- * feature with a visual prompt + clear copy and offers an inline
- * "Enable" action that triggers the standard primer → OS prompt flow.
+ * user encounters a feature that needs them.
  *
- * Fully skippable. Shown only once (tracked in localStorage).
+ * Implemented as a real swipeable carousel (Embla) — supports touch
+ * swipe, dot-click navigation, and arrow-key navigation. The dialog
+ * is constrained to the viewport so the footer actions remain
+ * reachable on small screens.
  */
 
 type Slide = {
@@ -40,7 +47,7 @@ const SLIDES: Slide[] = [
     Icon: Sparkles,
     title: "A quick tour of permissions",
     body: "Family Desk only asks for what each feature truly needs — and only when you use it. Here's a heads-up about four things you'll see prompts for.",
-    example: "Tap Continue to see what we ask for and why.",
+    example: "Swipe or tap Continue to see what we ask for and why.",
     bullets: [
       "Nothing is enabled without your tap",
       "Skip anything you don't want now",
@@ -108,16 +115,32 @@ interface PermissionsTutorialProps {
 }
 
 export const PermissionsTutorial = ({ open, onClose }: PermissionsTutorialProps) => {
+  const [api, setApi] = useState<CarouselApi>();
   const [index, setIndex] = useState(0);
   const slide = SLIDES[index];
   const isLast = index === SLIDES.length - 1;
-  const Icon = slide.Icon;
   const { ensurePermission, primerProps } = usePermissionPrimer();
   const [platform, setPlatform] = useState<MobilePlatform>(() =>
     detectMobilePlatform()
   );
 
-  const dotCount = useMemo(() => SLIDES.length, []);
+  // Track active slide for dot indicators + footer button context.
+  useEffect(() => {
+    if (!api) return;
+    const sync = () => setIndex(api.selectedScrollSnap());
+    sync();
+    api.on("select", sync);
+    api.on("reInit", sync);
+    return () => {
+      api.off("select", sync);
+      api.off("reInit", sync);
+    };
+  }, [api]);
+
+  // Reset to first slide whenever the tour is reopened.
+  useEffect(() => {
+    if (open && api) api.scrollTo(0, true);
+  }, [open, api]);
 
   const finish = () => {
     setHasSeenPermissionsTutorial();
@@ -125,8 +148,11 @@ export const PermissionsTutorial = ({ open, onClose }: PermissionsTutorialProps)
   };
 
   const next = () => {
-    if (isLast) finish();
-    else setIndex((i) => i + 1);
+    if (isLast) {
+      finish();
+    } else {
+      api?.scrollNext();
+    }
   };
 
   const handleEnable = async () => {
@@ -150,109 +176,82 @@ export const PermissionsTutorial = ({ open, onClose }: PermissionsTutorialProps)
   return (
     <>
       <Dialog open={open} onOpenChange={(v) => !v && finish()}>
-        <DialogContent className="max-w-md p-0 overflow-hidden gap-0">
-          {/* Header / hero */}
-          <div className="bg-gradient-to-br from-primary/15 via-primary/5 to-background px-6 pt-8 pb-6 text-center">
-            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-background shadow-sm text-primary">
-              <Icon className="h-8 w-8" />
-            </div>
-            <h2 className="text-xl font-semibold text-foreground leading-tight">
-              {slide.title}
-            </h2>
-            <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
-              {slide.body}
-            </p>
-          </div>
-
-          {/* System-prompt preview (or example card on the welcome slide) */}
-          <div className="px-6 pt-4 space-y-2">
-            {slide.kind ? (
-              <>
-                <div className="flex justify-center">
-                  <div
-                    role="tablist"
-                    aria-label="Preview platform"
-                    className="inline-flex rounded-full border border-border bg-muted/40 p-0.5 text-xs"
-                  >
-                    {(["ios", "android"] as MobilePlatform[]).map((p) => (
-                      <button
-                        key={p}
-                        role="tab"
-                        aria-selected={platform === p}
-                        onClick={() => setPlatform(p)}
-                        className={`px-3 py-1 rounded-full transition-colors ${
-                          platform === p
-                            ? "bg-background text-foreground shadow-sm"
-                            : "text-muted-foreground hover:text-foreground"
-                        }`}
-                      >
-                        {p === "ios" ? "iOS" : "Android"}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <SystemPromptMock kind={slide.kind} platform={platform} />
-                <p className="text-center text-xs text-muted-foreground pt-1">
-                  {slide.example}
-                </p>
-              </>
-            ) : (
-              <div className="rounded-xl border border-border bg-card/60 px-4 py-3 text-sm text-foreground/80 italic">
-                {slide.example}
-              </div>
-            )}
-          </div>
-
-          {/* Bullets */}
-          <ul className="space-y-2 px-6 pt-4 text-sm">
-            {slide.bullets.map((b) => (
-              <li key={b} className="flex items-start gap-2">
-                <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                <span className="text-muted-foreground">{b}</span>
-              </li>
-            ))}
-          </ul>
-
-          {/* Dots */}
-          <div className="flex justify-center gap-1.5 pt-5">
-            {Array.from({ length: dotCount }).map((_, i) => (
-              <div
-                key={i}
-                className={`h-1.5 rounded-full transition-all ${
-                  i === index ? "w-5 bg-primary" : "w-1.5 bg-border"
-                }`}
-              />
-            ))}
-          </div>
-
-          {/* Actions */}
-          <div className="flex flex-col gap-2 px-6 pb-6 pt-4">
-            {slide.kind ? (
-              <Button className="w-full h-11" onClick={handleEnable}>
-                {slide.cta}
-              </Button>
-            ) : (
-              <Button className="w-full h-11" onClick={next}>
-                {slide.cta}
-              </Button>
-            )}
-            <Button
-              variant="ghost"
-              className="w-full text-muted-foreground"
-              onClick={
-                isLast
-                  ? finish
-                  : slide.kind
-                    ? handleRemindLater
-                    : next
-              }
+        <DialogContent
+          className={[
+            // Sizing — never larger than the viewport, scroll inside.
+            "max-w-md p-0 gap-0 overflow-hidden",
+            "max-h-[92vh] sm:max-h-[88vh] flex flex-col",
+            // Hide the auto-injected close X — the tour has its own
+            // Skip / Done actions and the X overlapped the hero icon.
+            "[&>button.absolute]:hidden",
+          ].join(" ")}
+        >
+          {/* Scrollable slide region (Embla carousel) */}
+          <div className="flex-1 min-h-0 overflow-y-auto">
+            <Carousel
+              setApi={setApi}
+              opts={{ align: "start", loop: false, duration: 22 }}
+              className="w-full"
             >
-              {isLast
-                ? "Done"
-                : slide.kind
-                  ? "Remind me in 7 days"
-                  : "Skip tour"}
-            </Button>
+              <CarouselContent className="-ml-0">
+                {SLIDES.map((s, i) => {
+                  const SlideIcon = s.Icon;
+                  return (
+                    <CarouselItem key={i} className="pl-0 basis-full">
+                      <SlideBody
+                        slide={s}
+                        Icon={SlideIcon}
+                        platform={platform}
+                        onPlatformChange={setPlatform}
+                      />
+                    </CarouselItem>
+                  );
+                })}
+              </CarouselContent>
+            </Carousel>
+          </div>
+
+          {/* Sticky footer — always reachable */}
+          <div className="shrink-0 border-t border-border/60 bg-background/95 backdrop-blur-sm">
+            {/* Dots */}
+            <div className="flex justify-center gap-1.5 pt-3">
+              {SLIDES.map((_, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  aria-label={`Go to step ${i + 1} of ${SLIDES.length}`}
+                  aria-current={i === index ? "step" : undefined}
+                  onClick={() => api?.scrollTo(i)}
+                  className={`h-1.5 rounded-full transition-all ${
+                    i === index ? "w-5 bg-primary" : "w-1.5 bg-border hover:bg-muted-foreground/40"
+                  }`}
+                />
+              ))}
+            </div>
+
+            {/* Actions */}
+            <div className="flex flex-col gap-2 px-6 pb-6 pt-3">
+              <Button className="w-full" onClick={slide.kind ? handleEnable : next}>
+                {slide.cta}
+              </Button>
+              <Button
+                variant="ghost"
+                className="w-full text-muted-foreground"
+                onClick={
+                  isLast
+                    ? finish
+                    : slide.kind
+                      ? handleRemindLater
+                      : next
+                }
+              >
+                {isLast
+                  ? "Done"
+                  : slide.kind
+                    ? "Remind me in 7 days"
+                    : "Skip tour"}
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
@@ -262,3 +261,78 @@ export const PermissionsTutorial = ({ open, onClose }: PermissionsTutorialProps)
     </>
   );
 };
+
+/* ---------- Slide body (rendered inside each CarouselItem) ---------- */
+
+interface SlideBodyProps {
+  slide: Slide;
+  Icon: typeof Mic;
+  platform: MobilePlatform;
+  onPlatformChange: (p: MobilePlatform) => void;
+}
+
+const SlideBody = ({ slide, Icon, platform, onPlatformChange }: SlideBodyProps) => (
+  <div>
+    {/* Header / hero */}
+    <div className="bg-gradient-to-br from-primary/15 via-primary/5 to-background px-6 pt-7 pb-5 text-center">
+      <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-background shadow-sm text-primary">
+        <Icon className="h-7 w-7" />
+      </div>
+      <h2 className="text-lg sm:text-xl font-semibold text-foreground leading-tight">
+        {slide.title}
+      </h2>
+      <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
+        {slide.body}
+      </p>
+    </div>
+
+    {/* System-prompt preview (or example card on the welcome slide) */}
+    <div className="px-6 pt-4 space-y-2">
+      {slide.kind ? (
+        <>
+          <div className="flex justify-center">
+            <div
+              role="tablist"
+              aria-label="Preview platform"
+              className="inline-flex rounded-full border border-border bg-muted/40 p-0.5 text-xs"
+            >
+              {(["ios", "android"] as MobilePlatform[]).map((p) => (
+                <button
+                  key={p}
+                  role="tab"
+                  aria-selected={platform === p}
+                  onClick={() => onPlatformChange(p)}
+                  className={`px-3 py-1 rounded-full transition-colors ${
+                    platform === p
+                      ? "bg-background text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {p === "ios" ? "iOS" : "Android"}
+                </button>
+              ))}
+            </div>
+          </div>
+          <SystemPromptMock kind={slide.kind} platform={platform} />
+          <p className="text-center text-xs text-muted-foreground pt-1">
+            {slide.example}
+          </p>
+        </>
+      ) : (
+        <div className="rounded-xl border border-border bg-card/60 px-4 py-3 text-sm text-foreground/80 italic">
+          {slide.example}
+        </div>
+      )}
+    </div>
+
+    {/* Bullets */}
+    <ul className="space-y-2 px-6 pt-4 pb-5 text-sm">
+      {slide.bullets.map((b) => (
+        <li key={b} className="flex items-start gap-2">
+          <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+          <span className="text-muted-foreground">{b}</span>
+        </li>
+      ))}
+    </ul>
+  </div>
+);
