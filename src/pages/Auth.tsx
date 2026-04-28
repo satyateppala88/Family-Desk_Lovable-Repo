@@ -234,7 +234,7 @@ const Auth = () => {
   // Render verification pending state
   if (authState === "verification-pending") {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-secondary/5 p-4">
+      <div className="min-h-[100svh] flex flex-col items-center justify-center overflow-y-auto bg-gradient-to-br from-primary/5 via-background to-secondary/5 p-4 py-6">
         <Card className="w-full max-w-md text-center">
           <CardHeader>
             <div className="flex justify-center mb-4">
@@ -297,19 +297,19 @@ const Auth = () => {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-secondary/5 p-4">
+    <div className="min-h-[100svh] flex flex-col items-center justify-center overflow-y-auto bg-gradient-to-br from-primary/5 via-background to-secondary/5 p-4 py-6">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <div className="flex justify-center mb-4">
-            <div className="bg-white/90 rounded-2xl p-3 shadow-lg ring-1 ring-black/5">
+          <div className="flex justify-center mb-3">
+            <div className="bg-white/90 rounded-2xl p-2.5 shadow-lg ring-1 ring-black/5">
               <img 
                 src={logoImg} 
                 alt="Family Desk Logo" 
-                className="h-24 w-24 sm:h-28 sm:w-28 object-contain"
+                className="h-16 w-16 sm:h-24 sm:w-24 object-contain"
               />
             </div>
           </div>
-          <CardTitle className="text-3xl">Family Desk</CardTitle>
+          <CardTitle className="text-2xl sm:text-3xl">Family Desk</CardTitle>
           <CardDescription>
             Manage your household with ease
           </CardDescription>
@@ -344,22 +344,20 @@ const Auth = () => {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       required
-                      className="pr-10"
+                      className="pr-12"
                     />
-                    <Button
+                    <button
                       type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                       onClick={() => setShowPassword(!showPassword)}
                       aria-label={showPassword ? "Hide password" : "Show password"}
+                      className="absolute right-1.5 top-1/2 -translate-y-1/2 h-9 w-9 inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
                     >
                       {showPassword ? (
-                        <EyeOff className="h-4 w-4 text-muted-foreground" />
+                        <EyeOff className="h-4 w-4" />
                       ) : (
-                        <Eye className="h-4 w-4 text-muted-foreground" />
+                        <Eye className="h-4 w-4" />
                       )}
-                    </Button>
+                    </button>
                   </div>
                 </div>
                 <Button type="submit" className="w-full" disabled={loading}>
@@ -403,33 +401,32 @@ const Auth = () => {
                       onChange={(e) => setPassword(e.target.value)}
                       required
                       minLength={6}
-                      className="pr-10"
+                      className="pr-12"
                     />
-                    <Button
+                    <button
                       type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                       onClick={() => setShowPassword(!showPassword)}
                       aria-label={showPassword ? "Hide password" : "Show password"}
+                      className="absolute right-1.5 top-1/2 -translate-y-1/2 h-9 w-9 inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
                     >
                       {showPassword ? (
-                        <EyeOff className="h-4 w-4 text-muted-foreground" />
+                        <EyeOff className="h-4 w-4" />
                       ) : (
-                        <Eye className="h-4 w-4 text-muted-foreground" />
+                        <Eye className="h-4 w-4" />
                       )}
-                    </Button>
+                    </button>
                   </div>
                 </div>
-                <div className="flex items-start space-x-2">
+                <div className="flex items-start gap-2.5">
                   <Checkbox 
                     id="terms" 
                     checked={termsAccepted}
                     onCheckedChange={(checked) => setTermsAccepted(checked as boolean)}
+                    className="mt-0.5 shrink-0"
                   />
                   <label
                     htmlFor="terms"
-                    className="text-sm text-muted-foreground leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                    className="text-sm text-muted-foreground leading-snug peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                   >
                     I accept the{" "}
                     <Link to="/terms" className="underline hover:text-foreground" target="_blank">

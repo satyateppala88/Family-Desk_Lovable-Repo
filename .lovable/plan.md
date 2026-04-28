@@ -1,68 +1,42 @@
-# Fix Permissions Tour + Global CSS Responsiveness
+## Fix overlapping UI on the Auth page (mobile Chrome)
 
-## What's actually broken
+Scope is intentionally narrow: only the `/auth` screen (sign-in, sign-up, "verification pending" view) on mobile. No global rewrites — we only touch what's actually causing overlap.
 
-**1. There is no carousel.** `PermissionsTutorial` is a 5-step wizard with Next / Skip buttons and decorative dots — no swipe, no arrow keys, no clickable dots. On touch the user expects to swipe; it doesn't move, which reads as "broken carousel."
+### What's overlapping today (and why)
 
-**2. The dialog overflows the viewport.** `ui/dialog.tsx`'s `DialogContent` has no `max-height` or scroll behavior. The tutorial card (hero + iOS/Android tabs + ~140px system-prompt mock + 3 bullets + dots + 2 buttons) is taller than ~720px viewports, pushing the Continue / Skip buttons off-screen. Combined with the auto-injected close `X` overlapping the hero icon, this is the main "CSS gone for the toss" symptom.
+1. **Eye / EyeOff icon sits on top of the password text.** The icon button is rendered with `size="icon"` + `h-full px-3` and absolutely positioned at `right-0`. On coarse pointers our global rule forces inputs to `min-height: 44px`, but the button stays its own width and ends up wider than the input's `pr-10` (40px) padding reservation. Long emails / passwords therefore disappear *under* the icon.
+2. **Card gets clipped at the top of the screen.** The wrapper uses `min-h-screen flex items-center justify-center`. On mobile Chrome `100vh` includes the URL bar, so when the Card is taller than the visible area, vertical centering pushes the logo *above* the viewport — looks like the logo is overlapping the browser chrome and there's no way to scroll up to it.
+3. **Logo block is oversized** (`h-24 w-24` logo inside a padded white tile) — combined with `text-3xl` title, two tabs, four form fields, terms checkbox, and submit button, the Sign Up card overflows a 390×~700 viewport and triggers issue 2.
+4. **Terms checkbox visually collides with the wrapping label.** `items-start` + `leading-none` on a label that wraps across two lines (because of the two underlined links) makes the checkbox sit tight against the first link's underline.
+5. **Tab focus ring overlaps the neighbouring tab.** The global `:focus-visible { ring-offset-2 }` rule paints a 2px offset ring that bleeds into the adjacent TabsTrigger inside the segmented `TabsList`.
+6. **Verification-pending card** has the same `min-h-screen` centering problem on shorter screens.
 
-**3. Global selector forces 44px min-height on EVERYTHING interactive.** `src/index.css` lines 222–224:
-```css
-button, a, [role="button"], input, select, textarea {
-  min-height: var(--touch-target, 44px);
-}
-```
-This breaks: inline links inside text, the iOS/Android segmented tabs in the tutorial, the mock prompt's "Don't Allow / OK / Allow" buttons (now 44px tall instead of ~36px), dropdown-menu items, breadcrumb links, sub-nav pills, dialog close X, badge buttons, and tag chips across the entire app. It's the single biggest source of layout regression.
+### Fixes
 
-**4. `html, body { overflow-x: hidden }`** silently hides any horizontal overflow bug instead of fixing it — a tablet swipe-carousel won't work as expected and any element wider than the viewport is just clipped, masking real responsive bugs elsewhere.
+**`src/pages/Auth.tsx`**
+- Replace the page wrapper on both the form view and the verification-pending view:
+  - `min-h-screen flex items-center justify-center p-4` → `min-h-[100svh] flex flex-col items-center justify-center p-4 py-6 overflow-y-auto`
+  - This uses the *small viewport height* unit so the URL bar can't clip the card, and allows scrolling when content is tall.
+- Shrink the logo block on phones: `p-3` → `p-2.5`, logo size `h-24 w-24 sm:h-28 sm:w-28` → `h-16 w-16 sm:h-24 sm:w-24`. Reduce `mb-4` → `mb-3`. Drop title from `text-3xl` → `text-2xl sm:text-3xl`.
+- Rebuild the password show/hide control so it can no longer cover the input text:
+  - Wrap is still `relative`, but the input gets `pr-12` (48px) instead of `pr-10`.
+  - Replace the `Button size="icon" h-full` with a plain `<button type="button">` sized `h-9 w-9` (36×36) centered with `absolute right-1.5 top-1/2 -translate-y-1/2`, `inline-flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent`.
+  - This guarantees the button sits *inside* the reserved 48px padding on the right, so typed text never slides under the icon, regardless of the input's enforced 44px coarse-pointer height.
+  - Apply the same change to both the Sign In and Sign Up password fields.
+- Terms row: change `items-start space-x-2` → `items-start gap-2.5`, give the Checkbox `mt-0.5 shrink-0`, and on the label drop `leading-none` (use default `leading-snug`) so wrapped lines don't crowd the checkbox.
 
-## Fix plan
+**`src/index.css`**
+- The `:focus-visible` rule currently applies `ring-offset-2 ring-offset-background` globally, which is what causes Tab triggers (and other tightly-packed controls) to visually overlap when focused. Soften it to `outline-none ring-2 ring-ring/50 rounded-sm` (no offset). Keyboard focus is still clearly visible; offsets are only useful when controls have breathing room around them, which segmented tabs and inline icon buttons don't.
 
-### A. Convert the tour into a real swipeable carousel (`src/components/permissions/PermissionsTutorial.tsx`)
-- Replace the manual `index` stepper UI with the existing **Embla-based `Carousel`** (`src/components/ui/carousel.tsx`).
-- 5 `CarouselItem`s, one per slide, each rendering current header / mock / bullets / CTA.
-- Wire `CarouselApi` to track the active slide so the dot indicators highlight correctly and **clicking a dot** jumps to that slide.
-- Enable swipe on touch (default Embla behavior) and **left/right arrow keys** via `setOptions`.
-- Footer buttons (`Enable …` / `Remind me in 7 days` / `Done`) operate on the active slide and call `api.scrollNext()` instead of `setIndex`.
-- Keep `setHasSeenPermissionsTutorial()` on close/finish.
+### Out of scope
 
-### B. Make the tutorial dialog viewport-safe
-- In `PermissionsTutorial.tsx`, change `DialogContent` props to:
-  - `className="max-w-md p-0 overflow-hidden gap-0 max-h-[90vh] flex flex-col"`
-  - Wrap the slide body in a `flex-1 overflow-y-auto` region so long content scrolls instead of pushing the footer off-screen.
-  - Footer (Enable / Skip) stays as a non-scrolling `shrink-0` block at the bottom.
-- Hide the auto-injected Radix close `X` inside this dialog only, since the tour already has explicit Skip / Done buttons. Add a small `[&>button[aria-label='Close']]:hidden` (or pass a custom prop) to avoid overlap with the hero icon.
+- No changes to other pages, the Header, Hub launcher, AI chat widget, or permissions tour — those were already fixed in the previous round and weren't reported as broken now.
+- No new design tokens, no library swaps.
 
-### C. Fix the global 44px min-height regression (`src/index.css`)
-- Remove the blanket `button, a, [role="button"], input, select, textarea { min-height: 44px }` rule.
-- Replace it with an opt-in approach that only enforces touch targets where they matter:
-  - Keep `--touch-target: 44px` token.
-  - Update the `Button` component (`src/components/ui/button.tsx`) `default` and `lg` size variants to already meet 44px (they do via `h-10` / `h-11` once we audit). For `sm` / `icon` keep their existing compact sizes — they're typically used inside dense toolbars where 44px breaks layout.
-  - For form controls (`Input`, `Select`, `Textarea`, `SelectTrigger`) keep the existing `h-10` (40px) which is acceptable for desktop and bumps via padding on mobile.
-  - Add a media-query rule that **only on coarse pointers** raises primary form inputs to 44px:
-    ```css
-    @media (pointer: coarse) {
-      input:not([type='checkbox']):not([type='radio']):not([type='range']),
-      select, textarea { min-height: var(--touch-target); }
-    }
-    ```
-  - This preserves accessibility on touch devices without trashing inline links, dropdown items, segmented tabs, dialog close icons, etc.
+### Verification
 
-### D. Light global responsive cleanup (`src/index.css`)
-- Remove `html, body { overflow-x: hidden }`. Replace with `body { overflow-x: clip }` only when needed; better yet, drop it entirely and fix any actual offenders. Add a small audit pass and, if any wide element is found in landing/dashboard during local check, constrain it with `max-w-full` / `min-w-0`.
-- Add a `--page-padding-x` step at the smallest breakpoint (≤360px) of `0.75rem` so very narrow Android screens (320–360 CSS px) don't crowd content against the edge.
-- Ensure the hero icon container in the tutorial uses `mt-2` on small screens to avoid bumping the (now hidden) close X area.
-
-### E. Sanity-check that nothing relied on the global 44px rule
-- Quick `rg` for components depending on the global rule (icon-only `<button>`s without explicit height in `header`, FABs, dropdown items). Where any such button truly needs the 44px floor, add `min-h-[var(--touch-target)]` directly on the element rather than via the universal selector.
-
-## Files touched
-- `src/components/permissions/PermissionsTutorial.tsx` — convert to Embla `Carousel`, fix dialog sizing, hide auto close X.
-- `src/components/ui/dialog.tsx` — no structural change, but verify the close-X can be opt-out via class targeting (already supported via the `[&>button]` trick).
-- `src/index.css` — remove blanket 44px rule, add `@media (pointer: coarse)` form-controls rule, drop/relax `overflow-x: hidden`, add ≤360px padding step.
-- `src/components/layout/Header.tsx` and any FAB/icon-button usages identified during audit — add explicit `min-h-[44px]` or `h-11 w-11` where the global rule was implicitly making them tappable.
-
-## Out of scope
-- No design-system color/font changes.
-- No changes to other tour/onboarding flows (`OnboardingIntro`, `FeatureTour`) unless the global CSS fix surfaces a regression there.
-- No changes to backend / RLS / edge functions.
+After the changes, on a 390×754 viewport (matches your OnePlus 11's CSS pixels with the URL bar visible):
+- The whole Auth card — logo, tabs, all form fields, terms, submit — fits without the logo being clipped.
+- Typing a long email/password in either tab shows the text right up to the eye icon with no overlap.
+- The terms checkbox aligns with the first line of the label even when the links wrap.
+- Tapping between Sign In / Sign Up tabs no longer paints a focus ring that bleeds into the other tab.
