@@ -44,7 +44,7 @@ export interface ChangelogEntry {
 
 // ----- Current versions ---------------------------------------------------
 
-export const APP_VERSION = "1.2";
+export const APP_VERSION = "1.3";
 export const PRIVACY_VERSION = "1.1";
 export const TERMS_VERSION = "1.0";
 
@@ -81,6 +81,15 @@ export function formatVersionDate(iso: string): string {
 // ----- Changelogs ---------------------------------------------------------
 
 export const APP_CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "1.3",
+    date: "2026-04-28",
+    type: "minor",
+    title: "Fixed security linter warnings",
+    changes: [
+      "Fixed security linter warnings",
+    ],
+  },
   {
     version: "1.2",
     date: "2026-04-28",
