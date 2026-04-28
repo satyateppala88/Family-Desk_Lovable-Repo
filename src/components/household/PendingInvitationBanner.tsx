@@ -60,11 +60,34 @@ export const PendingInvitationBanner = () => {
 
       if (invError) throw invError;
 
+      const session = await supabase.auth.getSession();
+      const accessToken = session.data.session?.access_token;
+
+      if (accessToken) {
+        try {
+          await fetch(
+            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-household-member-welcome`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${accessToken}`,
+              },
+              body: JSON.stringify({
+                householdId: invitation.household_id,
+                householdName: invitation.households?.name || "your household",
+                role: invitation.requested_role,
+                origin: window.location.origin,
+              }),
+            }
+          );
+        } catch (emailError) {
+          console.warn("Failed to send household welcome email:", emailError);
+        }
+      }
+
       // Send notification to the inviter
       if (invitation.invited_by) {
-        const session = await supabase.auth.getSession();
-        const accessToken = session.data.session?.access_token;
-
         if (accessToken) {
           // Get current user's display name
           const { data: profile } = await supabase
