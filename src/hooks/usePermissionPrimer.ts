@@ -8,6 +8,11 @@ import {
   suppressForever,
 } from "@/lib/permissions";
 import { logPermissionEvent } from "@/lib/permissionAnalytics";
+import {
+  clearPermissionSnooze,
+  getPermissionSnoozeUntil,
+  isPermissionSnoozed,
+} from "@/lib/launchStorage";
 
 interface PrimerState {
   open: boolean;
@@ -48,7 +53,10 @@ export const usePermissionPrimer = () => {
   const ensurePermission = useCallback(
     async (kind: PermissionKind, surface: string = "unknown"): Promise<boolean> => {
       const current = await queryPermission(kind);
-      if (current === "granted") return true;
+      if (current === "granted") {
+        clearPermissionSnooze(kind);
+        return true;
+      }
       if (current === "unsupported") return false;
       if (current === "denied") {
         toast.error(DENIED_HINTS[kind]);
@@ -59,6 +67,16 @@ export const usePermissionPrimer = () => {
       // "prompt" — show our priming dialog first (unless suppressed).
       if (isSuppressed(kind)) {
         void logPermissionEvent(kind, "dismissed", surface, { reason: "suppressed" });
+        return false;
+      }
+
+      // Respect an active "Remind me later" snooze, except when the
+      // user explicitly retries from a "Try again" affordance.
+      if (surface !== "try-again" && isPermissionSnoozed(kind)) {
+        void logPermissionEvent(kind, "dismissed", surface, {
+          reason: "snoozed",
+          until: getPermissionSnoozeUntil(kind),
+        });
         return false;
       }
 
@@ -85,6 +103,7 @@ export const usePermissionPrimer = () => {
     const result = await requestPermission(kind);
     if (result === "granted") {
       void logPermissionEvent(kind, "granted", surface);
+      clearPermissionSnooze(kind);
       closeWith(true);
       return;
     }
