@@ -16,16 +16,45 @@ import { Footer } from "@/components/layout/Footer";
 
 import { PhoneVerificationSection } from "@/components/settings/PhoneVerificationSection";
 import { NotificationPreferencesSection } from "@/components/settings/NotificationPreferencesSection";
+import { AvatarUploader } from "@/components/avatar/AvatarUploader";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 const AccountSettings = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
   
   // Profile state
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState(user?.email || "");
+
+  // Load current avatar
+  const { data: profile } = useQuery({
+    queryKey: ["profile-avatar", user?.id],
+    queryFn: async () => {
+      if (!user) return null;
+      const { data } = await supabase
+        .from("profiles")
+        .select("avatar_url, display_name")
+        .eq("id", user.id)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!user,
+  });
+  const avatarUrl = (profile as any)?.avatar_url || null;
+
+  const handleAvatarChange = async (publicUrl: string | null) => {
+    if (!user) return;
+    const { error } = await supabase
+      .from("profiles")
+      .update({ avatar_url: publicUrl })
+      .eq("id", user.id);
+    if (error) throw error;
+    queryClient.invalidateQueries({ queryKey: ["profile-avatar", user.id] });
+  };
   
   // Password state
   const [currentPassword, setCurrentPassword] = useState("");
