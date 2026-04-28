@@ -1,44 +1,63 @@
-## Problem
+## What's actually happening
 
-When updating feature preferences from Household Settings, the Setup flow (`UserPreferencesOnboarding.tsx`) calls:
+I checked the database for your household (`854163c0…`):
 
-```ts
-supabase.from("household_preferences").upsert(payload, { onConflict: "household_id" })
-```
+- **`household_members`**: only 1 row → you (Satya, admin). There is **no extra "unknown" member** in the database.
+- **`household_invitations`**: 1 pending row for `rajashreeudupi@gmail.com`, with `invitee_user_id = NULL` and `status = pending`.
+- **`auth.users`**: Rajashree did sign up — but with a **different email**: `rajashreeudupi88@gmail.com`. Her account is `a59514a3-…`.
 
-But the `household_preferences` table only has constraints on `id` (PK) and a foreign key on `household_id` — there is **no UNIQUE constraint** on `household_id`. Postgres therefore rejects the upsert with:
+So two things went wrong:
 
-> there is no unique or exclusion constraint matching the ON CONFLICT specification
+1. **The invite is orphaned.** Our acceptance flow (`PendingInvitationBanner`) matches a signed-in user to invitations by exact email (`invitee_email = auth.jwt() email`). Because Rajashree signed up with `…udupi88@gmail.com` instead of `…udupi@gmail.com`, she never sees the banner, can never accept it, and the invite stays "pending" forever.
+2. **The "Unknown user with invalid joining date"** you're seeing on the Members screen is most likely a stale UI render — the database has only you in `household_members`. It can also appear momentarily if a row with a NULL `user_id` or NULL `joined_at` ever sneaks in (the current code renders `"Unknown User"` when `profiles.display_name` is missing and `Invalid Date` when `joined_at` is null).
 
-A previous migration attempted to fix this for `household_enabled_products` but missed `household_preferences`.
+I want your confirmation before changing anything destructive in the database.
 
-Additionally, the Live database already contains duplicates (1 household has 4 preference rows), so we must dedupe before adding the constraint or it will fail.
+## Proposed fix (two parts)
 
-## Fix
+### 1. Clean up this specific case (data fix)
 
-Single migration that:
+- **Delete** the orphaned pending invitation for `rajashreeudupi@gmail.com` in your household.
+- **Send a fresh invitation** to her actual email `rajashreeudupi88@gmail.com` — she'll then see the "Pending Invitation" banner the moment she logs in and can accept in one tap.
+- **(Optional, recommended)** If the Members screen still shows a stale "unknown" row after a hard refresh, that means there's a phantom row I should also delete. We'll verify by reloading first.
 
-1. **Dedupes** existing `household_preferences` rows — keep the most recently `updated_at` row per `household_id`, delete the rest.
-2. **Adds** `UNIQUE (household_id)` constraint named `household_preferences_household_id_unique`.
+### 2. Prevent this from happening again (product fix)
+
+Three small, focused improvements:
+
+**a. Make invitation matching email-case-insensitive and trimmed**
+Today the RLS policy compares emails as-is. Switch to `lower(trim(...))` on both sides so `Rajashree@Gmail.com` and `rajashree@gmail.com` are treated the same. Apply the same normalization in `InviteMemberDialog` when creating an invite.
+
+**b. Show admins a clear status when an invitee signs up with a different email**
+On the Manage Invitations page, surface a small note like:
+> "Awaiting response. If they signed up with a different email, cancel this invite and re-send to the new address."
+
+**c. Harden the Members screen against phantom rows**
+- Filter out any row where `user_id IS NULL` from `household_members` queries.
+- Show "Member" + "Joined recently" instead of "Unknown User" / "Invalid Date" so a transient render never looks broken.
+- Add a unique constraint `UNIQUE (household_id, user_id)` on `household_members` so the same user can never be inserted twice into a household by accident.
+
+**d. (Optional bonus)** Add a "Resend to a different email" button on each pending invite — one click cancels the old invite and reopens the dialog with the email field prefilled.
+
+## Files I'll touch
+
+- `supabase/migrations/<new>.sql` — add `UNIQUE (household_id, user_id)` constraint; update the invitee email RLS policy to use `lower(trim(...))`.
+- `src/components/household/InviteMemberDialog.tsx` — normalize email on insert; lowercase + trim before save.
+- `src/components/household/PendingInvitationBanner.tsx` — match using `lower(trim())` on the user's email when filtering.
+- `src/pages/HouseholdMembers.tsx` — filter out NULL `user_id` rows; replace "Unknown User"/"Invalid Date" with friendlier fallbacks.
+- `src/pages/HouseholdInvitations.tsx` — add the "different email" hint and (optionally) the "Resend to different email" action.
+
+## Data clean-up I'll run after you approve
 
 ```sql
--- 1. Remove duplicates, keeping the latest row per household
-DELETE FROM public.household_preferences a
-USING public.household_preferences b
-WHERE a.household_id = b.household_id
-  AND (a.updated_at < b.updated_at
-       OR (a.updated_at = b.updated_at AND a.ctid < b.ctid));
-
--- 2. Add the missing unique constraint that the upsert relies on
-ALTER TABLE public.household_preferences
-  ADD CONSTRAINT household_preferences_household_id_unique
-  UNIQUE (household_id);
+-- Remove the orphaned invite
+DELETE FROM public.household_invitations
+WHERE id = '39a71d12-42a9-42b5-8b78-77a93d3fe368';
 ```
 
-After this migration, `upsert(..., { onConflict: "household_id" })` will succeed and existing settings will be preserved (latest row wins).
+You'll then re-invite Rajashree to `rajashreeudupi88@gmail.com` from the UI.
 
-## Notes
+## What I need from you
 
-- No code changes required — the hook/component logic is correct; the database schema was the missing piece.
-- The dedupe keeps the freshest preference row, so the user's most recent settings are preserved.
-- This complements the earlier `household_enabled_products` constraint fix.
+1. Confirm I should **delete the pending invite to `rajashreeudupi@gmail.com`** and that you'll re-invite her at `rajashreeudupi88@gmail.com`.
+2. Confirm you want the four product hardening changes (a–c required, d optional).
