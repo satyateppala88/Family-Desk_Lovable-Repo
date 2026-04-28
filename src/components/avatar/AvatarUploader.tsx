@@ -7,6 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { usePermissionPrimer } from "@/hooks/usePermissionPrimer";
 import { PermissionPrimerDialog } from "@/components/permissions/PermissionPrimerDialog";
+import { PermissionRetryHint } from "@/components/permissions/PermissionRetryHint";
 
 type AvatarScope =
   | { kind: "user"; userId: string }
@@ -153,5 +154,6 @@ export const AvatarUploader = ({
       />
       <PermissionPrimerDialog {...primerProps} />
     </div>
+    /* Inline retry hint sits below the uploader row when applicable. */
   );
 };
