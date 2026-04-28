@@ -12,19 +12,24 @@ export default function WhatsNew() {
       <Header />
       <main className="page-content">
         <div className="max-w-2xl mx-auto space-y-4">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => navigate(-1)}
-            className="-ml-2"
-          >
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back
-          </Button>
-
           <div className="flex items-center gap-3">
-            <Sparkles className="h-5 w-5 text-primary" />
-            <h1 className="page-heading">What's new</h1>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate("/settings")}
+              aria-label="Back to settings"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <div>
+              <h1 className="page-heading flex items-center gap-2">
+                <Sparkles className="h-5 w-5 text-primary" />
+                What's new
+              </h1>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                Recent updates and improvements across the platform.
+              </p>
+            </div>
           </div>
 
           <WhatsNewSection />
