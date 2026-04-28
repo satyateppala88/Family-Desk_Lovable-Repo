@@ -1797,6 +1797,42 @@ export type Database = {
         }
         Relationships: []
       }
+      policy_versions: {
+        Row: {
+          change_type: Database["public"]["Enums"]["policy_change_type"]
+          changes: string[]
+          created_at: string
+          doc_type: Database["public"]["Enums"]["policy_doc_type"]
+          effective_date: string
+          id: string
+          title: string
+          updated_at: string
+          version: string
+        }
+        Insert: {
+          change_type: Database["public"]["Enums"]["policy_change_type"]
+          changes?: string[]
+          created_at?: string
+          doc_type: Database["public"]["Enums"]["policy_doc_type"]
+          effective_date: string
+          id?: string
+          title: string
+          updated_at?: string
+          version: string
+        }
+        Update: {
+          change_type?: Database["public"]["Enums"]["policy_change_type"]
+          changes?: string[]
+          created_at?: string
+          doc_type?: Database["public"]["Enums"]["policy_doc_type"]
+          effective_date?: string
+          id?: string
+          title?: string
+          updated_at?: string
+          version?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -2590,6 +2626,8 @@ export type Database = {
     }
     Enums: {
       app_role: "household_admin" | "member" | "platform_admin"
+      policy_change_type: "major" | "minor"
+      policy_doc_type: "privacy" | "terms"
       project_status: "planning" | "in_progress" | "blocked" | "done"
       project_type: "home" | "work" | "personal" | "other"
       task_category: "home" | "work" | "kid" | "other"
@@ -2722,6 +2760,8 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["household_admin", "member", "platform_admin"],
+      policy_change_type: ["major", "minor"],
+      policy_doc_type: ["privacy", "terms"],
       project_status: ["planning", "in_progress", "blocked", "done"],
       project_type: ["home", "work", "personal", "other"],
       task_category: ["home", "work", "kid", "other"],
