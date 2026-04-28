@@ -83,20 +83,31 @@ export function formatVersionDate(iso: string): string {
 export const APP_CHANGELOG: ChangelogEntry[] = [
   {
     version: "1.2",
-    date: "2026-04-27",
+    date: "2026-04-28",
     type: "minor",
-    title: "Changes",
+    title: "Polish, PWA and privacy refresh",
     changes: [
-      "Changes",
+      "Full Progressive Web App support: install Family Desk to your home screen for an app-like launch and offline access on the published site.",
+      "Privacy Policy and Terms of Service now show only the current version on the page; full version history is stored in the backend and managed centrally.",
+      "Bottom-right layout fixed: the AI assistant button no longer overlaps the notification permission card on mobile.",
+      "Welcome carousel rebuilt to fit any screen size — phone mock now scales to the available height so nothing clips on small Android devices.",
+      "Sign-in screen tightened: form labels, inputs and helper text no longer overlap on Chrome for Android.",
+      "AI assistant widget now stays hidden until you've signed in and verified your email.",
+      "Smoother fade and stagger animations across hubs, with no more 'tactile' button scaling.",
     ],
   },
   {
     version: "1.1",
     date: "2026-04-27",
     type: "minor",
-    title: "Changes",
+    title: "Guided tours, navigation polish and security hardening",
     changes: [
-      "Changes",
+      "New feature tour system: short, replayable walk-throughs for the Dashboard, Taskmaster, Meals, Grocery, Calendar and Habits hubs.",
+      "Canonical 'Spoke' headers across every module so the back button, breadcrumb and page title behave consistently.",
+      "How-to-use guide now has a sticky mobile table-of-contents pill and a compact tablet TOC, so long sections are easier to scan.",
+      "Round of security hardening: stricter Row-Level Security on profiles and assignments, additional JWT checks and resolution of all reported scanner warnings.",
+      "Performance pass: tuned React Query stale times, lazy-loaded heavier routes and reduced retries on auth endpoints.",
+      "Numerous small visual fixes across cards, empty states and skeleton loaders.",
     ],
   },
   {
