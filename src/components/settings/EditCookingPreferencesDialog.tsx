@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -35,6 +35,17 @@ export const EditCookingPreferencesDialog = ({
     pantry_size: preferences.pantry_size ?? "medium",
     shopping_frequency: preferences.shopping_frequency ?? "weekly",
   });
+
+  useEffect(() => {
+    if (!open) return;
+    setFormData({
+      cooking_skill_level: preferences.cooking_skill_level ?? "intermediate",
+      weekday_cooking_time: preferences.weekday_cooking_time ?? "30_to_60",
+      preferred_meal_types: preferences.preferred_meal_types ?? [],
+      pantry_size: preferences.pantry_size ?? "medium",
+      shopping_frequency: preferences.shopping_frequency ?? "weekly",
+    });
+  }, [open, preferences]);
 
   const handleCheckboxChange = (value: string) => {
     const currentValues = formData.preferred_meal_types;
