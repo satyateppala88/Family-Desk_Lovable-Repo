@@ -9,10 +9,11 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Drawer, DrawerContent } from "@/components/ui/drawer";
-import { MessageCircle, Send, Loader2, Mic, Sparkles, X, RotateCcw } from "lucide-react";
+import { Send, Loader2, Sparkles, X, RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
-import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
+import { useSpeechSynthesis } from "@/hooks/useSpeechSynthesis";
+import { VoiceInputButton } from "@/components/voice/VoiceInputButton";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 interface Message {
@@ -81,13 +82,16 @@ export const AIChatWidget = () => {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [placeholderIdx, setPlaceholderIdx] = useState(0);
+  const [voiceReplyEnabled, setVoiceReplyEnabled] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const { isListening, isSupported, start, stop } = useSpeechRecognition({
-    onResult: (text) => setInput((prev) => (prev ? prev + " " + text : text)),
-    language: "en-IN",
-    continuous: true,
-  });
+  const { speak, stop: stopSpeaking, isSpeaking, isSupported: ttsSupported } =
+    useSpeechSynthesis({ language: "en-IN" });
+
+  // Stop any ongoing speech when the widget closes
+  useEffect(() => {
+    if (!isOpen && isSpeaking) stopSpeaking();
+  }, [isOpen, isSpeaking, stopSpeaking]);
 
   // Rotate placeholder
   useEffect(() => {
@@ -124,6 +128,9 @@ export const AIChatWidget = () => {
   const sendMessage = useCallback(async (text?: string) => {
     const msgText = text || input;
     if (!msgText.trim() || !householdId || !user) return;
+
+    // Stop any in-progress reply playback when a new message is sent
+    if (isSpeaking) stopSpeaking();
 
     const userMessage: Message = { role: "user", content: msgText.trim() };
     setMessages(prev => [...prev, userMessage]);
@@ -194,8 +201,14 @@ export const AIChatWidget = () => {
       });
     } finally {
       setIsLoading(false);
+      // Speak the assistant's reply only when the user started this exchange by voice
+      if (voiceReplyEnabled && ttsSupported && assistantContent.trim()) {
+        speak(assistantContent);
+      }
+      // Reset voice-reply intent after each turn — must be re-triggered by next mic press
+      setVoiceReplyEnabled(false);
     }
-  }, [input, messages, householdId, user, toast]);
+  }, [input, messages, householdId, user, toast, voiceReplyEnabled, ttsSupported, speak, isSpeaking, stopSpeaking]);
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey && !isLoading) { e.preventDefault(); sendMessage(); }
@@ -304,15 +317,29 @@ export const AIChatWidget = () => {
             disabled={isLoading}
             className="flex-1 rounded-full h-10"
           />
-          {isSupported && (
+          <VoiceInputButton
+            onTranscript={(text) =>
+              setInput((prev) => (prev ? prev + " " + text : text))
+            }
+            onVoiceStart={() => setVoiceReplyEnabled(true)}
+            language="en-IN"
+            continuous={true}
+            disabled={isLoading}
+            variant="outline"
+            className="rounded-full h-10 w-10"
+            title="Speak (AI will reply aloud)"
+          />
+          {isSpeaking && (
             <Button
-              onClick={isListening ? stop : start}
-              disabled={isLoading}
+              type="button"
+              onClick={stopSpeaking}
               size="icon"
-              variant={isListening ? "destructive" : "outline"}
-              className={cn("flex-shrink-0 rounded-full h-10 w-10", isListening && "ring-2 ring-destructive/30 ring-offset-2")}
+              variant="outline"
+              className="flex-shrink-0 rounded-full h-10 w-10"
+              title="Stop speaking"
+              aria-label="Stop speaking"
             >
-              <Mic className={cn("h-4 w-4", isListening && "animate-pulse")} />
+              <X className="h-4 w-4" />
             </Button>
           )}
           <Button

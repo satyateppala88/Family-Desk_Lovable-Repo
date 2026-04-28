@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useParseTask, ParsedTask } from "@/hooks/useParseTask";
 import { format, parseISO } from "date-fns";
+import { VoiceInputButton } from "@/components/voice/VoiceInputButton";
 
 interface QuickTaskInputProps {
   onCreateTask: (task: ParsedTask) => void;
@@ -76,14 +77,25 @@ export const QuickTaskInput = ({ onCreateTask, onEditTask }: QuickTaskInputProps
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Type naturally: 'Call mom tomorrow' or 'Fix tap, urgent'"
-            className="pl-10 pr-24"
+            className="pl-10 pr-32"
             disabled={parseTask.isPending}
           />
-          <Button
+          <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-1">
+            <VoiceInputButton
+              onTranscript={(text) =>
+                setInput((prev) => (prev ? prev + " " + text : text))
+              }
+              size="icon"
+              variant="ghost"
+              disabled={parseTask.isPending}
+              className="h-7 w-7"
+              title="Speak the task"
+            />
+            <Button
             type="submit"
             size="sm"
             disabled={!input.trim() || parseTask.isPending}
-            className="absolute right-1 top-1/2 -translate-y-1/2 h-7"
+              className="h-7"
           >
             {parseTask.isPending ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -91,6 +103,7 @@ export const QuickTaskInput = ({ onCreateTask, onEditTask }: QuickTaskInputProps
               "Parse"
             )}
           </Button>
+          </div>
         </div>
       </form>
 

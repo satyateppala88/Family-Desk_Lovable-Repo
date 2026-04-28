@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { VoiceInputButton } from "@/components/voice/VoiceInputButton";
 import {
   Select,
   SelectContent,
@@ -74,25 +75,47 @@ export const TaskDialog = ({
         <div className="space-y-4 py-2">
           <div className="space-y-1.5">
             <Label htmlFor="title" className="text-xs font-medium">Title</Label>
-            <Input
-              id="title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="What needs to be done?"
-              autoFocus
-            />
+            <div className="flex items-center gap-1.5">
+              <Input
+                id="title"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="What needs to be done?"
+                autoFocus
+                className="flex-1"
+              />
+              <VoiceInputButton
+                onTranscript={(text) =>
+                  setTitle((prev) => (prev ? prev + " " + text : text))
+                }
+                size="icon"
+                variant="outline"
+                title="Speak the task title"
+              />
+            </div>
           </div>
 
           <div className="space-y-1.5">
             <Label htmlFor="description" className="text-xs font-medium">Notes</Label>
-            <Textarea
-              id="description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Add details (optional)"
-              rows={2}
-              className="resize-none"
-            />
+            <div className="flex items-start gap-1.5">
+              <Textarea
+                id="description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Add details (optional)"
+                rows={2}
+                className="resize-none flex-1"
+              />
+              <VoiceInputButton
+                onTranscript={(text) =>
+                  setDescription((prev) => (prev ? prev + " " + text : text))
+                }
+                size="icon"
+                variant="outline"
+                continuous
+                title="Speak notes"
+              />
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">

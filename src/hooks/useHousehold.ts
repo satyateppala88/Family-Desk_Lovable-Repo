@@ -8,7 +8,7 @@ export const useHousehold = () => {
   const { data, isLoading } = useQuery({
     queryKey: ["household", user?.id],
     queryFn: async () => {
-      if (!user) return { householdId: null, onboardingCompleted: false, householdName: null };
+      if (!user) return { householdId: null, onboardingCompleted: false, householdName: null, householdAvatarUrl: null };
 
       const { data: memberData, error: memberError } = await (supabase as any)
         .from("household_members")
@@ -22,13 +22,13 @@ export const useHousehold = () => {
       const householdId = memberData?.household_id || null;
       
       if (!householdId) {
-        return { householdId: null, onboardingCompleted: false, householdName: null };
+        return { householdId: null, onboardingCompleted: false, householdName: null, householdAvatarUrl: null };
       }
 
       // Fetch household onboarding status and name
       const { data: householdData } = await supabase
         .from("households")
-        .select("onboarding_completed, name")
+        .select("onboarding_completed, name, avatar_url")
         .eq("id", householdId)
         .single();
 
@@ -36,6 +36,7 @@ export const useHousehold = () => {
         householdId,
         onboardingCompleted: householdData?.onboarding_completed || false,
         householdName: householdData?.name || null,
+        householdAvatarUrl: (householdData as any)?.avatar_url || null,
       };
     },
     enabled: !!user,
@@ -46,6 +47,7 @@ export const useHousehold = () => {
     householdId: data?.householdId || null,
     onboardingCompleted: data?.onboardingCompleted || false,
     householdName: data?.householdName || null,
+    householdAvatarUrl: data?.householdAvatarUrl || null,
     isLoading,
   };
 };

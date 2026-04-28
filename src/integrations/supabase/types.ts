@@ -1153,6 +1153,39 @@ export type Database = {
           },
         ]
       }
+      household_family_members: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          created_by: string
+          household_id: string
+          id: string
+          name: string
+          relationship: string | null
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          created_by: string
+          household_id: string
+          id?: string
+          name: string
+          relationship?: string | null
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          created_by?: string
+          household_id?: string
+          id?: string
+          name?: string
+          relationship?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       household_habit_goals: {
         Row: {
           created_at: string
@@ -1397,6 +1430,7 @@ export type Database = {
       }
       households: {
         Row: {
+          avatar_url: string | null
           created_at: string
           created_by: string
           id: string
@@ -1408,6 +1442,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          avatar_url?: string | null
           created_at?: string
           created_by: string
           id?: string
@@ -1419,6 +1454,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          avatar_url?: string | null
           created_at?: string
           created_by?: string
           id?: string

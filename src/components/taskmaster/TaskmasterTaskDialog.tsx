@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { VoiceInputButton } from "@/components/voice/VoiceInputButton";
 import {
   Select,
   SelectContent,
@@ -95,12 +96,29 @@ export const TaskmasterTaskDialog = ({
         <div className="grid gap-4 py-4">
           <div className="grid gap-2">
             <Label htmlFor="title">Title</Label>
-            <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Task title" />
+            <div className="flex items-center gap-1.5">
+              <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Task title" className="flex-1" />
+              <VoiceInputButton
+                onTranscript={(text) => setTitle((prev) => (prev ? prev + " " + text : text))}
+                size="icon"
+                variant="outline"
+                title="Speak the task title"
+              />
+            </div>
           </div>
 
           <div className="grid gap-2">
             <Label htmlFor="description">Description</Label>
-            <Textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Task description (optional)" rows={2} />
+            <div className="flex items-start gap-1.5">
+              <Textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Task description (optional)" rows={2} className="flex-1" />
+              <VoiceInputButton
+                onTranscript={(text) => setDescription((prev) => (prev ? prev + " " + text : text))}
+                size="icon"
+                variant="outline"
+                continuous
+                title="Speak the description"
+              />
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">

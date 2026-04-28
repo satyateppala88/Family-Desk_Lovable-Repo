@@ -22,11 +22,14 @@ import { WhatsNewSection } from "@/components/settings/WhatsNewSection";
 import { TermsSection, PrivacySection } from "@/components/settings/LegalDocsSection";
 import { ModulePreferencesSection } from "@/components/settings/ModulePreferencesSection";
 import { SetupProgressCard } from "@/components/settings/SetupProgressCard";
+import { AvatarUploader } from "@/components/avatar/AvatarUploader";
+import { useQueryClient } from "@tanstack/react-query";
 
 export const Settings = () => {
   const { user } = useAuth();
   const { householdId } = useHousehold();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { isAdmin } = useIsHouseholdAdmin(householdId);
   const { data: pendingInvitations } = usePendingInvitations(householdId);
   const { preferences, isLoading: preferencesLoading, updatePreferences, isUpdating } = useHouseholdPreferences(householdId);
@@ -37,7 +40,7 @@ export const Settings = () => {
       if (!householdId) return null;
       const { data } = await supabase
         .from("households")
-        .select("invite_code, name")
+        .select("invite_code, name, avatar_url")
         .eq("id", householdId)
         .single();
       return data;
@@ -135,6 +138,26 @@ export const Settings = () => {
                         <p className="text-lg font-semibold">{household?.name || "Your Household"}</p>
                       </div>
                     </div>
+                    {householdId && isAdmin && (
+                      <div className="mt-4 pt-4 border-t">
+                        <p className="text-sm font-medium text-muted-foreground mb-2">Household photo</p>
+                        <AvatarUploader
+                          scope={{ kind: "household", householdId }}
+                          currentUrl={(household as any)?.avatar_url || null}
+                          fallbackInitials={(household?.name || "FD").slice(0, 2)}
+                          size="lg"
+                          onChange={async (url) => {
+                            const { error } = await supabase
+                              .from("households")
+                              .update({ avatar_url: url })
+                              .eq("id", householdId);
+                            if (error) throw error;
+                            queryClient.invalidateQueries({ queryKey: ["household-details", householdId] });
+                            queryClient.invalidateQueries({ queryKey: ["household", user?.id] });
+                          }}
+                        />
+                      </div>
+                    )}
                   </div>
 
                   <div className="p-4 bg-background rounded-lg border">
