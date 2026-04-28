@@ -355,6 +355,27 @@ export const AIChatWidget = () => {
     </div>
   );
 
+  // ─── Gate: only show the chat FAB to verified, signed-in users ───
+  // Hidden on auth/marketing/pre-household routes so it never appears
+  // on /auth, /landing, /welcome, /terms, /privacy, /verify-email, etc.
+  const HIDDEN_PREFIXES = [
+    "/auth",
+    "/landing",
+    "/welcome",
+    "/terms",
+    "/privacy",
+    "/verify-email",
+    "/request-access",
+    "/install",
+    "/admin",
+  ];
+  const onPublicRoute =
+    location.pathname === "/" ||
+    HIDDEN_PREFIXES.some(
+      (p) => location.pathname === p || location.pathname.startsWith(p + "/"),
+    );
+  if (loading || !user || !isEmailVerified || onPublicRoute) return null;
+
   return (
     <>
       {/* Trigger button */}
