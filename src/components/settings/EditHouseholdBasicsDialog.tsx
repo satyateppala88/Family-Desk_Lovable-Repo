@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -32,6 +32,15 @@ export const EditHouseholdBasicsDialog = ({
     family_size_children: preferences.family_size_children ?? 0,
     household_type: preferences.household_type ?? "nuclear" as const,
   });
+
+  useEffect(() => {
+    if (!open) return;
+    setFormData({
+      family_size_adults: preferences.family_size_adults ?? 2,
+      family_size_children: preferences.family_size_children ?? 0,
+      household_type: preferences.household_type ?? "nuclear" as const,
+    });
+  }, [open, preferences]);
 
   const handleSubmit = async () => {
     await onSave(formData);
