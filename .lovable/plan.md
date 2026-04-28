@@ -1,89 +1,102 @@
 ## Goal
-Make every scheduled job and every "today / tomorrow" calculation behave on **Asia/Kolkata (IST, UTC+5:30)** instead of UTC, so reminders land at the intended local hour and target the correct local calendar day.
 
-## Background
-- Lovable Cloud's managed Postgres runs `pg_cron` in **UTC** and the cluster timezone cannot be changed. So we keep cron schedules in UTC but **shift the hour by −5:30** to map to the desired IST clock time.
-- Edge functions currently use `new Date().toISOString()` to compute "today", which is the UTC date. Around late-evening IST that flips to the next day; for early-morning IST jobs (which run the previous UTC day in the evening) it would point at the wrong date. We need to compute "today in IST" instead.
+Make every text input in the app voice-capable using **ElevenLabs Scribe** for transcription and **ElevenLabs TTS** for spoken AI replies, upgrade the assistant to **autonomously create tasks** (asking follow-up questions for missing info, answerable by voice or text), and let users upload **profile, household, and family-member photos** that replace the FamilyDesk avatar throughout the app.
 
-## Current vs new schedules
+---
 
-All seven `cron.job` rows will be re-scheduled. Intended IST → required UTC cron expression:
+## Part 1 — Voice everywhere (ElevenLabs Scribe)
 
-| Job | Intent (IST) | Old (UTC) | New (UTC) |
-|---|---|---|---|
-| `send-task-reminders-daily` | 08:00 IST daily | `30 2 * * *` (08:00 IST ✓ already) | `30 2 * * *` (keep) |
-| `send-habit-reminders-daily` | 07:00 IST daily | `30 1 * * *` (07:00 IST ✓ already) | `30 1 * * *` (keep) |
-| `send-pantry-alerts-daily` | 09:00 IST daily | `30 3 * * *` (09:00 IST ✓ already) | `30 3 * * *` (keep) |
-| `send-weekly-digest-sunday` | 09:00 IST Sun | `30 3 * * 0` (09:00 IST ✓ already) | `30 3 * * 0` (keep) |
-| `push-subscription-reminders` | 09:00 IST daily | `0 9 * * *` (= 14:30 IST ✗) | `30 3 * * *` |
-| `push-dinner-prep` | 17:00 IST daily | `30 11 * * *` (= 17:00 IST ✓ already) | `30 11 * * *` (keep) |
-| `push-savings-nudge` | 10:00 IST Sun | `0 10 * * 0` (= 15:30 IST ✗) | `30 4 * * 0` |
+### New shared component: `<VoiceInputButton />`
+A drop-in mic button that wraps any text field. Records mic audio, sends it to a new edge function, and appends the transcript to the field.
 
-Net effect: only **two** jobs (`push-subscription-reminders`, `push-savings-nudge`) actually need re-scheduling. The rest were already authored against IST hours despite the misleading literal numbers. We will still re-issue all seven via `cron.unschedule` + `cron.schedule` so they're documented and auditable.
+- New edge function `elevenlabs-transcribe` (server-side only, JWT validated, rate-limited):
+  - Accepts a short audio blob (multipart/form-data).
+  - Calls `https://api.elevenlabs.io/v1/speech-to-text` with `model_id=scribe_v2`, `language_code=eng`, `tag_audio_events=false`.
+  - Returns `{ text }`.
+- New hook `useVoiceTranscription()` handles `getUserMedia` → `MediaRecorder` (webm/opus) → POST → callback.
+- Replace the existing Web Speech API usage in `AIChatWidget` and `AIPantryImportDialog`, and add the new mic button to:
+  - `QuickTaskInput` (Taskmaster natural-language input)
+  - `TaskmasterTaskDialog` title/description
+  - `TaskDialog` (legacy tasks)
+  - `HabitQuickAdd`, `HabitCreateDialog`
+  - `TransactionDialog`, `BudgetDialog`, `SubscriptionDialog`, `SavingsGoalDialog` (notes/description fields)
+  - `FinanceChat` input
+  - `CalendarEventDialog` title/notes
+  - `ProjectDialog`, `MealPlanDownload` notes, `RecipeRatingDialog` review
 
-## Edge function date-of-day fixes
+### Spoken AI replies (TTS)
+- New edge function `elevenlabs-tts`: takes `{ text, voiceId? }`, returns MP3 bytes (proxied through gateway/api). Uses `eleven_turbo_v2_5` for low latency. Default voice: George (`JBFqnCBsd6RMkjVDRZzb`).
+- In `AIChatWidget` and `FinanceChat`: track whether the user's *last sent message* came from the mic. If yes, after the assistant stream completes, fetch TTS for the final reply and auto-play it. Otherwise stay silent.
+- Show a small speaker pill on every assistant message to play/replay on demand (so typed users still get optional voice).
+- Stop playback when the sheet closes or the user sends a new message.
 
-Add a tiny shared helper `supabase/functions/_shared/time.ts`:
+---
 
-```ts
-// Returns "YYYY-MM-DD" for today in Asia/Kolkata.
-export function todayIST(): string {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Kolkata",
-    year: "numeric", month: "2-digit", day: "2-digit",
-  }).format(new Date());
-}
+## Part 2 — Autonomous task creation via chat
 
-// Returns a Date that, when serialized with todayIST-style formatters,
-// equals "today in IST" + N days.
-export function istDateOffset(days: number): string {
-  const d = new Date(Date.now() + days * 86_400_000);
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Kolkata",
-    year: "numeric", month: "2-digit", day: "2-digit",
-  }).format(d);
-}
-```
+Extend the AI assistant so a user can say *"Create a task to call the plumber"* and the assistant will:
 
-Then replace UTC date math in:
+1. **Parse intent** using existing `create_task` tool, but the schema is expanded to also include `assignee_user_id`, `task_category`, `priority_level`, `due_date`, `description`.
+2. **Detect missing critical fields** (title, due_date, assignee, priority). If missing, the assistant asks one focused follow-up at a time ("Who should own this?", "When is it due?", "How urgent — P1, P2, P3?"). The user replies by voice or text.
+3. **Resolve names → user IDs** server-side using `household_members` + `profiles.display_name` (fuzzy match). If ambiguous, the assistant lists choices.
+4. **Create the task** through Taskmaster (`tasks` table used by Taskmaster) once it has the minimum (title + assignee + due_date + priority). Confirms with a success message.
 
-- `send-dinner-prep-reminder/index.ts` — `today` → `todayIST()`, tag suffix uses IST date.
-- `send-daily-plan-whatsapp/index.ts` — `today` → `todayIST()`.
-- `send-habit-reminders/index.ts` — `today` → `todayIST()`.
-- `send-subscription-reminders/index.ts` — `todayStr` → `todayIST()`, `horizonStr` → `istDateOffset(3)`. Keep numeric "days away" math but compute against IST midnight.
-- `send-pantry-alerts/index.ts` — replace the two `toISOString().split("T")[0]` filters with `todayIST()` and `istDateOffset(3)`.
-- `send-task-reminders/index.ts` — switch the "tomorrow" window to IST midnight bounds (compute IST midnight, then convert to a UTC ISO timestamp for the `due_date` filter so we still query in UTC against `timestamptz`). Two values: start = next IST midnight as UTC ISO; end = +24h.
-- `send-weekly-digest/index.ts` — current logic uses rolling 7-day windows from `now`, which is timezone-agnostic. **No change needed.**
+### Backend changes (`supabase/functions/ai-chat/index.ts`)
+- Add household roster + display names into the system prompt context so the model can resolve "mom"/"Aman" to a user.
+- Add new tools: `list_household_members`, `create_taskmaster_task` (with full field set), `update_taskmaster_task`.
+- Implement a tool-execution loop: read streamed `tool_calls`, execute server-side, append `tool` role messages, re-stream the model's next turn. (Currently the function just streams once and never executes tools — this is the main lift.)
+- Reuse the validated, household-scoped supabase client already in the function.
 
-For `send-task-reminders` specifically, helper:
-```ts
-// Returns the UTC ISO string for the next IST midnight after now.
-export function nextISTMidnightUTC(): string { ... }
-```
-so the SQL filter `due_date >= start AND due_date < start + 24h` aligns to the IST calendar day.
+### Frontend changes
+- `AIChatWidget` already streams content; extend the SSE parser to also surface `tool_calls` deltas so we can show "Creating task…" status chips between turns.
+- Add inline confirmation card when a task is created (title + due + assignee), with an Undo button (deletes the just-created task).
 
-## Files
+---
 
-**New**
-- `supabase/functions/_shared/time.ts` — IST helpers above.
+## Part 3 — Profile, household & family-member photos
 
-**Edited (edge functions)**
-- `supabase/functions/send-dinner-prep-reminder/index.ts`
-- `supabase/functions/send-daily-plan-whatsapp/index.ts`
-- `supabase/functions/send-habit-reminders/index.ts`
-- `supabase/functions/send-subscription-reminders/index.ts`
-- `supabase/functions/send-pantry-alerts/index.ts`
-- `supabase/functions/send-task-reminders/index.ts`
+### Storage (Lovable Cloud)
+New public storage bucket `avatars` with RLS:
+- Anyone authenticated can read.
+- Users can write to `users/<auth.uid()>/...`
+- Household admins can write to `households/<household_id>/...` and `members/<household_id>/<member_id>/...`
 
-**New SQL (run via the Supabase insert tool, not a migration — contains anon key + service role lookup, same convention as the existing cron setup)**
-- Unschedule all 7 jobs by name, then re-schedule each with the corrected UTC expression listed in the table above.
+### Schema additions
+- `households.avatar_url text` (nullable).
+- New table `household_family_members` for non-app people the user wants to track (kids, grandparents, pets) with `id`, `household_id`, `display_name`, `relationship`, `avatar_url`, `birthdate`, timestamps. RLS: household members read/write.
+  - If a similar table already exists during build, reuse it instead of creating a new one.
+
+### Upload UI
+- New component `<AvatarUploader />` (image picker + crop preview using a lightweight 1:1 crop, max 2 MB, resized client-side to 512×512 webp before upload).
+- **AccountSettings page**: section "Profile photo" → uploads to `avatars/users/<uid>/avatar.webp`, writes to `profiles.avatar_url`.
+- **Settings (Household) page**: new "Household photo" card visible to admins → writes to `households.avatar_url`.
+- **Members page**: each app member shows current avatar; admins can add/edit "Family members" (non-app) with avatar + name + relationship.
+
+### Display everywhere
+- Update `Header` avatar to use `profiles.avatar_url` (fallback to initials).
+- On `/dashboard`, show household photo as a small chip next to the household name; if absent, keep current FamilyDesk wordmark.
+- Member chips in Taskmaster, Habits leaderboard, Calendar legend, FamilyPulse, MemberProgressCard → use `avatar_url`.
+- Add a `useHouseholdRosterWithAvatars` hook that joins `household_members → profiles` plus `household_family_members` so all member-list UIs can switch in one place.
+
+---
+
+## Technical Details
+
+- **Audio capture**: `MediaRecorder` with `audio/webm;codecs=opus`, max 60 s per take, push-to-talk button (hold to record on mobile, click-to-toggle on desktop).
+- **ElevenLabs key**: present (`ELEVENLABS_API_KEY` will be added via `add_secret` if missing — current secrets list does NOT include it; we will request it from the user before deploying the two new functions).
+- **TTS streaming**: use `/v1/text-to-speech/{voice}/stream?output_format=mp3_44100_128`; pipe response body straight back to the client and play with `<audio>`.
+- **Tool loop in ai-chat**: switch from "stream pass-through" to "non-streaming first turn → execute tools → stream final turn". Keeps UX similar; spinner shows during tool execution.
+- **Image processing**: client-side `createImageBitmap` + `OffscreenCanvas` resize to 512 px square webp (quality 0.85). No server processing needed.
+- **Storage policies**: `INSERT`/`UPDATE`/`DELETE` policies on `storage.objects` checking `bucket_id = 'avatars'` and path prefix matches `auth.uid()` or `has_household_role(auth.uid(), <hh>, 'admin')`.
+
+---
 
 ## Out of scope
-- Changing the Postgres cluster timezone (not possible on managed Supabase).
-- Rewriting any client-side date formatting — the app already renders in the user's local timezone via the browser.
-- DST: India does not observe DST, so a fixed −5:30 offset is correct year-round.
+- Wake-word / always-on listening.
+- Real-time bidirectional voice chat (ElevenLabs Agents). We use one-shot STT + TTS, which is cheaper and matches the requested UX.
+- Editing/cropping tools beyond a simple square crop.
 
-## Verification
-1. After deploy, query `cron.job` to confirm the 7 schedules match the "New (UTC)" column.
-2. Manually invoke each updated edge function via `curl_edge_functions` and check the response uses the IST date (e.g. on Apr 27 23:30 IST the function should report `2026-04-27`, not `2026-04-28`).
-3. Inspect logs of `send-subscription-reminders` after the next 03:30 UTC tick to confirm it ran at 09:00 IST.
+---
+
+## Confirmation needed before build
+We will request `ELEVENLABS_API_KEY` via the secret prompt when implementation starts (the existing secrets list does not include it). All other infrastructure (Lovable Cloud, Resend, etc.) is already in place.
