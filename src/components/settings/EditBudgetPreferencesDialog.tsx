@@ -62,14 +62,14 @@ export const EditBudgetPreferencesDialog = ({
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md max-h-[90vh]">
+      <DialogContent className="sm:max-w-md max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>Finance preferences</DialogTitle>
           <DialogDescription>
             Budget and spending strictness.
           </DialogDescription>
         </DialogHeader>
-        <ScrollArea className="max-h-[60vh] pr-4">
+        <ScrollArea className="flex-1 min-h-0 pr-4 -mr-4">
           <div className="space-y-6 py-4">
             <div className="space-y-2">
               <Label>Monthly Grocery Budget</Label>

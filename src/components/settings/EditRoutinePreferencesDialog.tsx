@@ -65,14 +65,14 @@ export const EditRoutinePreferencesDialog = ({
           <Pencil className="h-4 w-4" />
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md max-h-[90vh]">
+      <DialogContent className="sm:max-w-md max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>Edit Household Routine</DialogTitle>
           <DialogDescription>
             Update your daily schedule and priorities
           </DialogDescription>
         </DialogHeader>
-        <ScrollArea className="max-h-[60vh] pr-4">
+        <ScrollArea className="flex-1 min-h-0 pr-4 -mr-4">
           <div className="space-y-6 py-4">
             <div className="space-y-2">
               <Label>Primary Household Concerns</Label>
