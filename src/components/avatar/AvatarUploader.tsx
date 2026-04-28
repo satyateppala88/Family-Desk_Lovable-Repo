@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { usePermissionPrimer } from "@/hooks/usePermissionPrimer";
+import { PermissionPrimerDialog } from "@/components/permissions/PermissionPrimerDialog";
 
 type AvatarScope =
   | { kind: "user"; userId: string }
@@ -48,9 +50,16 @@ export const AvatarUploader = ({
 }: AvatarUploaderProps) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  const { ensurePermission, primerProps } = usePermissionPrimer();
   const [busy, setBusy] = useState(false);
 
-  const handlePick = () => inputRef.current?.click();
+  const handlePick = async () => {
+    // On web this is a no-op (file input needs no permission); on native
+    // Capacitor it triggers the photo-library priming + OS prompt.
+    const granted = await ensurePermission("photos");
+    if (!granted) return;
+    inputRef.current?.click();
+  };
 
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -142,6 +151,7 @@ export const AvatarUploader = ({
         className="hidden"
         onChange={handleFile}
       />
+      <PermissionPrimerDialog {...primerProps} />
     </div>
   );
 };
