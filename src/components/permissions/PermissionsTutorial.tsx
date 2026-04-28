@@ -5,7 +5,9 @@ import { Button } from "@/components/ui/button";
 import { usePermissionPrimer } from "@/hooks/usePermissionPrimer";
 import { PermissionPrimerDialog } from "./PermissionPrimerDialog";
 import type { PermissionKind } from "@/lib/permissions";
-import { setHasSeenPermissionsTutorial } from "@/lib/launchStorage";
+import { setHasSeenPermissionsTutorial, snoozePermission } from "@/lib/launchStorage";
+import { logPermissionEvent } from "@/lib/permissionAnalytics";
+import { toast } from "sonner";
 import {
   SystemPromptMock,
   detectMobilePlatform,
@@ -133,6 +135,18 @@ export const PermissionsTutorial = ({ open, onClose }: PermissionsTutorialProps)
     next();
   };
 
+  const handleRemindLater = () => {
+    if (!slide.kind) return next();
+    snoozePermission(slide.kind, 7);
+    void logPermissionEvent(slide.kind, "dismissed", "onboarding-tutorial-snooze", {
+      snooze_days: 7,
+    });
+    toast("We'll remind you in 7 days.", {
+      description: "You can enable it sooner from Settings → Permissions.",
+    });
+    next();
+  };
+
   return (
     <>
       <Dialog open={open} onOpenChange={(v) => !v && finish()}>
@@ -225,9 +239,19 @@ export const PermissionsTutorial = ({ open, onClose }: PermissionsTutorialProps)
             <Button
               variant="ghost"
               className="w-full text-muted-foreground"
-              onClick={isLast ? finish : next}
+              onClick={
+                isLast
+                  ? finish
+                  : slide.kind
+                    ? handleRemindLater
+                    : next
+              }
             >
-              {isLast ? "Done" : slide.kind ? "Maybe later" : "Skip tour"}
+              {isLast
+                ? "Done"
+                : slide.kind
+                  ? "Remind me in 7 days"
+                  : "Skip tour"}
             </Button>
           </div>
         </DialogContent>
