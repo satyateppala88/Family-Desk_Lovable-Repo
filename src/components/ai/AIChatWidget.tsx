@@ -71,7 +71,7 @@ const saveSession = (messages: Message[]) => {
 };
 
 export const AIChatWidget = () => {
-  const { user } = useAuth();
+  const { user, loading, isEmailVerified } = useAuth();
   const { householdId, householdName } = useHousehold();
   const { toast } = useToast();
   const location = useLocation();
