@@ -184,6 +184,20 @@ const AccountSettings = () => {
             <CardContent>
               <form onSubmit={handleUpdateProfile} className="space-y-4">
                 <div className="space-y-2">
+                  <Label>Profile photo</Label>
+                  <AvatarUploader
+                    scope={{ kind: "user", userId: user?.id || "" }}
+                    currentUrl={avatarUrl}
+                    fallbackInitials={
+                      (displayName || (profile as any)?.display_name || user?.email || "U")
+                        .toString()
+                        .slice(0, 2)
+                    }
+                    size="lg"
+                    onChange={handleAvatarChange}
+                  />
+                </div>
+                <div className="space-y-2">
                   <Label htmlFor="email">Email</Label>
                   <Input
                     id="email"
