@@ -97,9 +97,9 @@ export const FeatureTour = ({ onFinish }: FeatureTourProps) => {
   const ScreenComponent = screen.Component;
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-gradient-to-br from-primary/10 via-background to-secondary/10">
+    <div className="fixed inset-0 z-50 flex flex-col bg-gradient-to-br from-primary/10 via-background to-secondary/10 overflow-hidden">
       {/* Top bar */}
-      <div className="flex items-center justify-between p-4">
+      <div className="flex items-center justify-between p-4 shrink-0 relative z-10">
         <span className="text-xs font-semibold tracking-wide text-muted-foreground">
           {current + 1} / {screens.length}
         </span>
@@ -109,14 +109,14 @@ export const FeatureTour = ({ onFinish }: FeatureTourProps) => {
       </div>
 
       {/* Phone mock */}
-      <div className="flex-1 flex items-center justify-center px-4 min-h-0">
-        <div key={screen.id} className="animate-fade-in w-full">
+      <div className="flex-1 flex items-center justify-center px-4 min-h-0 overflow-hidden">
+        <div key={screen.id} className="animate-fade-in w-full h-full flex items-center justify-center">
           <ScreenComponent active />
         </div>
       </div>
 
       {/* Copy + controls */}
-      <div className="px-6 pb-8 pt-2 flex flex-col items-center gap-3 max-w-md mx-auto w-full">
+      <div className="px-6 pb-6 pt-2 flex flex-col items-center gap-3 max-w-md mx-auto w-full shrink-0 relative z-10 bg-gradient-to-t from-background/95 to-transparent">
         <div key={`copy-${screen.id}`} className="text-center animate-fade-in">
           <h2 className="text-xl font-bold text-foreground leading-tight">{screen.title}</h2>
           <p className="text-sm text-muted-foreground leading-relaxed mt-1.5">
