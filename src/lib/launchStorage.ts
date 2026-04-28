@@ -6,6 +6,34 @@ export const getHasSeenIntro = (): boolean =>
 export const setHasSeenIntro = (): void =>
   localStorage.setItem(INTRO_KEY, "true");
 
+/* ---------- Welcome Feature Tour (post-install / first-launch) ---------- */
+
+const FEATURE_TOUR_KEY = "familydesk_has_seen_feature_tour_v1";
+
+export const getHasSeenFeatureTour = (): boolean => {
+  try {
+    return Boolean(localStorage.getItem(FEATURE_TOUR_KEY));
+  } catch {
+    return true; // fail-closed: don't replay if storage unavailable
+  }
+};
+
+export const setHasSeenFeatureTour = (): void => {
+  try {
+    localStorage.setItem(FEATURE_TOUR_KEY, new Date().toISOString());
+  } catch {
+    /* ignore */
+  }
+};
+
+export const clearHasSeenFeatureTour = (): void => {
+  try {
+    localStorage.removeItem(FEATURE_TOUR_KEY);
+  } catch {
+    /* ignore */
+  }
+};
+
 const PERMISSIONS_TUTORIAL_KEY = "familydesk_has_seen_permissions_tutorial";
 
 export const getHasSeenPermissionsTutorial = (): boolean => {
