@@ -12,19 +12,24 @@ export default function HowToUse() {
       <Header />
       <main className="page-content">
         <div className="max-w-2xl mx-auto space-y-4">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => navigate(-1)}
-            className="-ml-2"
-          >
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back
-          </Button>
-
           <div className="flex items-center gap-3">
-            <BookOpen className="h-5 w-5 text-primary" />
-            <h1 className="page-heading">How to use</h1>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate("/settings")}
+              aria-label="Back to settings"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <div>
+              <h1 className="page-heading flex items-center gap-2">
+                <BookOpen className="h-5 w-5 text-primary" />
+                How to use
+              </h1>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                Short walkthroughs for every Family Desk module.
+              </p>
+            </div>
           </div>
 
           <HowToUseSection />
