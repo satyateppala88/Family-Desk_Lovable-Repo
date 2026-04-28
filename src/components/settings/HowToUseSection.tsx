@@ -5,8 +5,15 @@ import { BookOpen, ArrowRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { HOW_TO_USE_SECTIONS } from "@/lib/howToUse";
 
-export const HowToUseSection = () => {
+interface HowToUseSectionProps {
+  /** Controlled accordion value (section id). Pass "" for none open. */
+  value?: string;
+  onValueChange?: (value: string) => void;
+}
+
+export const HowToUseSection = ({ value, onValueChange }: HowToUseSectionProps = {}) => {
   const navigate = useNavigate();
+  const controlled = value !== undefined && onValueChange !== undefined;
 
   return (
     <Card>
@@ -20,11 +27,23 @@ export const HowToUseSection = () => {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <Accordion type="single" collapsible className="w-full">
+        <Accordion
+          type="single"
+          collapsible
+          className="w-full"
+          {...(controlled
+            ? { value, onValueChange }
+            : {})}
+        >
           {HOW_TO_USE_SECTIONS.map((section) => {
             const Icon = section.icon;
             return (
-              <AccordionItem key={section.id} value={section.id}>
+              <AccordionItem
+                key={section.id}
+                value={section.id}
+                id={`how-to-${section.id}`}
+                className="scroll-mt-24"
+              >
                 <AccordionTrigger className="text-left">
                   <div className="flex items-center gap-3">
                     <Icon className="h-4 w-4 text-primary shrink-0" />
