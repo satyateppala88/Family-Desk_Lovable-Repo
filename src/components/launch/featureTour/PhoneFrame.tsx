@@ -16,23 +16,18 @@ export const PhoneFrame = ({ children, surfaceClassName = "bg-background" }: Pho
   return (
     <div
       className="relative mx-auto h-full flex items-center justify-center"
-      style={{
-        // Width is the smaller of: 78% of viewport width, OR what fits the
-        // available height given the 9:19.5 aspect ratio. This guarantees
-        // the phone never overflows its container vertically — which is
-        // what was clipping the "Skip" button at the top and the
-        // tour copy at the bottom on small phones (e.g. Galaxy S8+ 360×740).
-        width: "min(280px, 78vw, calc((100% - 0px) * 9 / 19.5), calc(var(--phone-mock-max-h, 100%)))",
-      }}
+      style={{ maxWidth: "min(280px, 78vw)" }}
     >
-      {/* Outer bezel */}
+      {/* Outer bezel — sized by HEIGHT first (via aspect-ratio on the screen),
+          so the frame can never exceed the parent's available height. The
+          parent is `flex-1 min-h-0` in FeatureTour, giving us a real bound. */}
       <div
-        className="relative rounded-[2.25rem] bg-foreground/85 p-[6px] shadow-[0_24px_70px_-20px_hsl(var(--foreground)/0.35)] w-full"
+        className="relative rounded-[2.25rem] bg-foreground/85 p-[6px] shadow-[0_24px_70px_-20px_hsl(var(--foreground)/0.35)] h-full max-h-full flex"
       >
         {/* Screen */}
         <div
-          className={`relative overflow-hidden rounded-[1.85rem] ${surfaceClassName} w-full`}
-          style={{ aspectRatio: "9/19.5" }}
+          className={`relative overflow-hidden rounded-[1.85rem] ${surfaceClassName} h-full`}
+          style={{ aspectRatio: "9 / 19.5" }}
         >
           {/* Notch */}
           <div className="absolute left-1/2 top-0 z-20 -translate-x-1/2">
