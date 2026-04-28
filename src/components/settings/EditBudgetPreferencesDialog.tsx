@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -32,15 +32,21 @@ export const EditBudgetPreferencesDialog = ({
   const [open, setOpen] = useState(false);
   const [formData, setFormData] = useState({
     monthly_grocery_budget: preferences.monthly_grocery_budget ?? "5000_to_10000",
-    organic_preference: preferences.organic_preference ?? "sometimes",
     budget_consciousness: preferences.budget_consciousness ?? "somewhat",
   });
+
+  useEffect(() => {
+    if (!open) return;
+    setFormData({
+      monthly_grocery_budget: preferences.monthly_grocery_budget ?? "5000_to_10000",
+      budget_consciousness: preferences.budget_consciousness ?? "somewhat",
+    });
+  }, [open, preferences]);
 
   const handleSubmit = async () => {
     // Strictly Finance-owned fields only.
     await onSave({
       monthly_grocery_budget: formData.monthly_grocery_budget,
-      organic_preference: formData.organic_preference,
       budget_consciousness: formData.budget_consciousness,
     });
     setOpen(false);
@@ -87,23 +93,6 @@ export const EditBudgetPreferencesDialog = ({
                   <RadioGroupItem value="above_20000" id="edit-budget4" />
                   <Label htmlFor="edit-budget4">Above ₹20,000</Label>
                 </div>
-              </RadioGroup>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Organic/Premium Products Preference</Label>
-              <RadioGroup
-                value={formData.organic_preference}
-                onValueChange={(v) => setFormData({ ...formData, organic_preference: v as typeof formData.organic_preference })}
-              >
-                {["always", "sometimes", "rarely", "never"].map((pref) => (
-                  <div key={pref} className="flex items-center space-x-2">
-                    <RadioGroupItem value={pref} id={`edit-organic-${pref}`} />
-                    <Label htmlFor={`edit-organic-${pref}`} className="capitalize">
-                      {pref}
-                    </Label>
-                  </div>
-                ))}
               </RadioGroup>
             </div>
 
