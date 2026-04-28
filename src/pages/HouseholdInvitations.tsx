@@ -214,6 +214,11 @@ const HouseholdInvitations = () => {
                     <p className="text-xs text-muted-foreground mt-3">
                       {invitation.invitation_type === "admin_invite" ? "Invited" : "Requested"}: {new Date(invitation.created_at).toLocaleDateString()}
                     </p>
+                    {invitation.invitation_type === "admin_invite" && (
+                      <p className="text-xs text-muted-foreground mt-2 italic">
+                        Tip: if they signed up with a different email address, cancel this invite and re-send to the email they actually used.
+                      </p>
+                    )}
                   </CardContent>
                 </Card>
               ))}
