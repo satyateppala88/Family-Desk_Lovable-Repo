@@ -7,11 +7,13 @@ import {
   requestPermission,
   suppressForever,
 } from "@/lib/permissions";
+import { logPermissionEvent } from "@/lib/permissionAnalytics";
 
 interface PrimerState {
   open: boolean;
   kind: PermissionKind | null;
   resolve: ((granted: boolean) => void) | null;
+  surface: string;
 }
 
 const DENIED_HINTS: Record<PermissionKind, string> = {
@@ -40,23 +42,29 @@ export const usePermissionPrimer = () => {
     open: false,
     kind: null,
     resolve: null,
+    surface: "unknown",
   });
 
   const ensurePermission = useCallback(
-    async (kind: PermissionKind): Promise<boolean> => {
+    async (kind: PermissionKind, surface: string = "unknown"): Promise<boolean> => {
       const current = await queryPermission(kind);
       if (current === "granted") return true;
       if (current === "unsupported") return false;
       if (current === "denied") {
         toast.error(DENIED_HINTS[kind]);
+        void logPermissionEvent(kind, "blocked", surface);
         return false;
       }
 
       // "prompt" — show our priming dialog first (unless suppressed).
-      if (isSuppressed(kind)) return false;
+      if (isSuppressed(kind)) {
+        void logPermissionEvent(kind, "dismissed", surface, { reason: "suppressed" });
+        return false;
+      }
 
+      void logPermissionEvent(kind, "prompted", surface);
       return new Promise<boolean>((resolve) => {
-        setState({ open: true, kind, resolve });
+        setState({ open: true, kind, resolve, surface });
       });
     },
     []
@@ -65,29 +73,37 @@ export const usePermissionPrimer = () => {
   const closeWith = useCallback(
     (granted: boolean) => {
       state.resolve?.(granted);
-      setState({ open: false, kind: null, resolve: null });
+      setState({ open: false, kind: null, resolve: null, surface: "unknown" });
     },
     [state]
   );
 
   const handleAllow = useCallback(async () => {
     const kind = state.kind;
+    const surface = state.surface;
     if (!kind) return closeWith(false);
     const result = await requestPermission(kind);
     if (result === "granted") {
+      void logPermissionEvent(kind, "granted", surface);
       closeWith(true);
       return;
     }
     if (result === "denied") {
       toast.error(DENIED_HINTS[kind]);
+      void logPermissionEvent(kind, "denied", surface);
+    } else {
+      void logPermissionEvent(kind, "denied", surface, { result });
     }
     closeWith(false);
-  }, [state.kind, closeWith]);
+  }, [state.kind, state.surface, closeWith]);
 
   const handleDecline = useCallback(() => {
-    if (state.kind) suppressForever(state.kind);
+    if (state.kind) {
+      suppressForever(state.kind);
+      void logPermissionEvent(state.kind, "dismissed", state.surface, { via: "primer-cancel" });
+    }
     closeWith(false);
-  }, [state.kind, closeWith]);
+  }, [state.kind, state.surface, closeWith]);
 
   return {
     ensurePermission,
