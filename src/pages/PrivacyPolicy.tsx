@@ -8,10 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import {
   PRIVACY_VERSION,
   PRIVACY_EFFECTIVE_DATE,
-  PRIVACY_CHANGELOG,
   formatVersionDate,
 } from "@/lib/versioning";
-import { VersionHistory } from "@/components/settings/VersionHistory";
 
 export default function PrivacyPolicy() {
   const navigate = useNavigate();
@@ -295,8 +293,6 @@ export default function PrivacyPolicy() {
                 Website: <strong>familydesk.in</strong>
               </p>
             </section>
-
-            <VersionHistory entries={PRIVACY_CHANGELOG} />
           </CardContent>
         </Card>
       </main>

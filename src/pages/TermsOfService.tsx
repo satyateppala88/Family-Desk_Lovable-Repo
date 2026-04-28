@@ -9,10 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import {
   TERMS_VERSION,
   TERMS_EFFECTIVE_DATE,
-  TERMS_CHANGELOG,
   formatVersionDate,
 } from "@/lib/versioning";
-import { VersionHistory } from "@/components/settings/VersionHistory";
 
 export default function TermsOfService() {
   const navigate = useNavigate();
@@ -310,8 +308,6 @@ export default function TermsOfService() {
                 Support: contactus@familydesk.in
               </p>
             </section>
-
-            <VersionHistory entries={TERMS_CHANGELOG} />
           </CardContent>
         </Card>
       </main>
