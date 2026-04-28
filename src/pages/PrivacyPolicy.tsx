@@ -72,6 +72,8 @@ export default function PrivacyPolicy() {
                 <li>Budget, savings, spending, and finance-related planning entries</li>
                 <li>Subscription and recurring expense details (names, amounts, frequencies, categories)</li>
                 <li>Credit card selections from our pre-built catalog (no card numbers or payment credentials are stored)</li>
+                <li>Photos and avatars you upload for yourself, your household, or family members</li>
+                <li>Voice input you choose to dictate (see Section 3 — voice is converted to text on your device and the audio is not stored)</li>
                 <li>Preferences, settings, and onboarding selections</li>
               </ul>
 
@@ -109,14 +111,59 @@ export default function PrivacyPolicy() {
             </section>
 
             <section>
-              <h2 className="text-xl font-semibold mb-3">4. Legal Basis and Consent</h2>
+              <h2 className="text-xl font-semibold mb-3">4. Device Permissions &amp; Sensitive Data</h2>
+              <p className="text-muted-foreground mb-3">
+                Family Desk only requests sensitive device permissions at the moment you tap the related feature, never on app launch. You can decline any permission and continue to use the rest of the app, and you can revoke permissions at any time from your device settings.
+              </p>
+
+              <h3 className="text-lg font-medium mb-2 mt-4">a. Microphone &amp; Voice Processing</h3>
+              <p className="text-muted-foreground mb-2">
+                When you tap the microphone icon (for example to dictate a task or chat with the assistant), Family Desk requests microphone access so your speech can be converted into text.
+              </p>
+              <ul className="list-disc pl-6 space-y-1 text-muted-foreground">
+                <li>Speech-to-text is performed by your <strong>device&rsquo;s built-in speech recognition</strong> (Web Speech API on browsers, the OS recognizer on mobile).</li>
+                <li>We do <strong>not</strong> record audio, store audio files, or transmit raw audio to our servers or to any third party.</li>
+                <li>Only the resulting text is processed by Family Desk, and only if you choose to send or save it (for example by submitting a task).</li>
+                <li>You can stop voice input at any time by tapping the microphone icon again.</li>
+              </ul>
+
+              <h3 className="text-lg font-medium mb-2 mt-4">b. Camera &amp; Photo Library</h3>
+              <p className="text-muted-foreground mb-2">
+                When you choose to add or change a profile picture (for yourself, your household, or a family member), Family Desk requests permission to access your camera or photo library.
+              </p>
+              <ul className="list-disc pl-6 space-y-1 text-muted-foreground">
+                <li>We only access the single photo you select &mdash; we never browse your library.</li>
+                <li>Selected photos are uploaded to our secure cloud storage (Lovable Cloud), scoped to your household, and protected by row-level security so only co-members can view them.</li>
+                <li>You can replace or delete any uploaded photo at any time from the relevant settings screen.</li>
+                <li>If you delete a photo, the file is removed from active storage; encrypted backup copies may persist for a limited period before being purged.</li>
+              </ul>
+
+              <h3 className="text-lg font-medium mb-2 mt-4">c. Notifications</h3>
+              <p className="text-muted-foreground mb-2">
+                Notifications are optional and only enabled if you grant permission. We send notifications strictly for things you have asked Family Desk to track.
+              </p>
+              <ul className="list-disc pl-6 space-y-1 text-muted-foreground">
+                <li>Categories include task reminders, habit nudges, meal-prep alerts, pantry low-stock and expiry alerts, and household activity.</li>
+                <li>We do not send marketing or promotional notifications.</li>
+                <li>A push token (an anonymous identifier issued by Apple Push Notification service or Firebase Cloud Messaging) is stored to deliver notifications. It is not used for tracking across other apps or websites.</li>
+                <li>You can mute, fine-tune categories, or fully disable notifications at any time from <em>Settings &rarr; Notifications</em>, or from your device&rsquo;s system settings.</li>
+              </ul>
+
+              <h3 className="text-lg font-medium mb-2 mt-4">d. Permission Priming</h3>
+              <p className="text-muted-foreground">
+                Before the operating system shows its native permission dialog, Family Desk displays a brief in-app explanation of why the permission is needed. This is to help you make an informed choice. Tapping &ldquo;Not now&rdquo; in the in-app dialog will not trigger the system prompt; you can re-enable the request later from the relevant feature.
+              </p>
+            </section>
+
+            <section>
+              <h2 className="text-xl font-semibold mb-3">5. Legal Basis and Consent</h2>
               <p className="text-muted-foreground">
                 Where required by applicable law, we process personal data based on user consent, performance of a contract, legitimate interests in operating and securing the service, and compliance with legal obligations.
               </p>
             </section>
 
             <section>
-              <h2 className="text-xl font-semibold mb-3">5. Data Storage</h2>
+              <h2 className="text-xl font-semibold mb-3">6. Data Storage</h2>
               <p className="text-muted-foreground mb-2">Data may be stored:</p>
               <ul className="list-disc pl-6 space-y-1 text-muted-foreground">
                 <li>Locally on your device</li>
@@ -129,7 +176,7 @@ export default function PrivacyPolicy() {
             </section>
 
             <section>
-              <h2 className="text-xl font-semibold mb-3">6. Data Sharing</h2>
+              <h2 className="text-xl font-semibold mb-3">7. Data Sharing</h2>
               <p className="text-muted-foreground mb-2">We do not sell personal information.</p>
               <p className="text-muted-foreground mb-2">We may share data only as needed with:</p>
               <ul className="list-disc pl-6 space-y-1 text-muted-foreground">
@@ -144,7 +191,7 @@ export default function PrivacyPolicy() {
             </section>
 
             <section>
-              <h2 className="text-xl font-semibold mb-3">7. Third-Party Services</h2>
+              <h2 className="text-xl font-semibold mb-3">8. Third-Party Services</h2>
               <p className="text-muted-foreground mb-2">
                 Family Desk may use third-party services to operate core features. These may include hosting, authentication, analytics, crash reporting, notifications, AI services, or file storage.
               </p>
@@ -153,11 +200,13 @@ export default function PrivacyPolicy() {
                 <li><strong>Supabase:</strong> Backend infrastructure (database, authentication, edge functions, storage)</li>
                 <li><strong>Lovable AI Gateway:</strong> AI processing for meal plans, task parsing, and assistant features</li>
                 <li><strong>Google Calendar API:</strong> Calendar synchronization and event retrieval</li>
+                <li><strong>Apple Push Notification service / Firebase Cloud Messaging:</strong> Delivering notifications to your device (token-based; no message content is shared with the platform beyond what is required to deliver the alert)</li>
+                <li><strong>Device speech recognition (Apple, Google, browser):</strong> Converts your voice to text on your device when you use voice input</li>
               </ul>
             </section>
 
             <section>
-              <h2 className="text-xl font-semibold mb-3">8. Data Retention</h2>
+              <h2 className="text-xl font-semibold mb-3">9. Data Retention</h2>
               <p className="text-muted-foreground mb-2">
                 We retain personal data only for as long as necessary to provide the service, comply with legal obligations, resolve disputes, enforce agreements, and maintain security.
               </p>
@@ -167,7 +216,7 @@ export default function PrivacyPolicy() {
             </section>
 
             <section>
-              <h2 className="text-xl font-semibold mb-3">9. User Choices and Rights</h2>
+              <h2 className="text-xl font-semibold mb-3">10. User Choices and Rights</h2>
               <p className="text-muted-foreground mb-2">Depending on your jurisdiction, you may have the right to:</p>
               <ul className="list-disc pl-6 space-y-1 text-muted-foreground">
                 <li>Access your personal data</li>
@@ -176,6 +225,7 @@ export default function PrivacyPolicy() {
                 <li>Request export of your data</li>
                 <li>Withdraw consent where processing is based on consent</li>
                 <li>Object to certain processing activities</li>
+                <li>Revoke any device permission (microphone, camera, photos, notifications) at any time via your device&rsquo;s system settings</li>
               </ul>
               <p className="text-muted-foreground mt-2">
                 To exercise these rights, contact us at <strong>contactus@familydesk.in</strong>.
@@ -183,7 +233,7 @@ export default function PrivacyPolicy() {
             </section>
 
             <section>
-              <h2 className="text-xl font-semibold mb-3">10. Account Deletion</h2>
+              <h2 className="text-xl font-semibold mb-3">11. Account Deletion</h2>
               <p className="text-muted-foreground mb-2">You may request deletion of your account and associated personal data by:</p>
               <ul className="list-disc pl-6 space-y-1 text-muted-foreground">
                 <li>Using the in-app account deletion feature, if available, or</li>
@@ -195,7 +245,7 @@ export default function PrivacyPolicy() {
             </section>
 
             <section>
-              <h2 className="text-xl font-semibold mb-3">11. Security</h2>
+              <h2 className="text-xl font-semibold mb-3">12. Security</h2>
               <p className="text-muted-foreground mb-2">
                 We use reasonable administrative, technical, and organizational safeguards to protect personal information. These include:
               </p>
@@ -214,7 +264,7 @@ export default function PrivacyPolicy() {
             </section>
 
             <section>
-              <h2 className="text-xl font-semibold mb-3">12. Children's Privacy</h2>
+              <h2 className="text-xl font-semibold mb-3">13. Children&rsquo;s Privacy</h2>
               <p className="text-muted-foreground mb-2">
                 Family Desk is not directed to children unless explicitly stated otherwise. If children use the app as part of a household, such use should occur under parent or guardian supervision where required by law.
               </p>
@@ -224,21 +274,21 @@ export default function PrivacyPolicy() {
             </section>
 
             <section>
-              <h2 className="text-xl font-semibold mb-3">13. International Transfers</h2>
+              <h2 className="text-xl font-semibold mb-3">14. International Transfers</h2>
               <p className="text-muted-foreground">
                 If data is processed outside your country of residence, we will take reasonable steps to protect it in accordance with applicable law.
               </p>
             </section>
 
             <section>
-              <h2 className="text-xl font-semibold mb-3">14. Changes to This Privacy Policy</h2>
+              <h2 className="text-xl font-semibold mb-3">15. Changes to This Privacy Policy</h2>
               <p className="text-muted-foreground">
                 We may update this Privacy Policy from time to time. If we make material changes, we will update the Effective Date and provide notice where required.
               </p>
             </section>
 
             <section>
-              <h2 className="text-xl font-semibold mb-3">15. Contact Us</h2>
+              <h2 className="text-xl font-semibold mb-3">16. Contact Us</h2>
               <p className="text-muted-foreground">
                 Family Desk<br />
                 Email: <strong>contactus@familydesk.in</strong><br />
