@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { useHousehold } from "@/hooks/useHousehold";
 import { toast } from "sonner";
-import { Settings as SettingsIcon, RefreshCw, Copy, Users, UserPlus, Key, Mail, Bell } from "lucide-react";
+import { Settings as SettingsIcon, RefreshCw, Copy, Users, UserPlus, Key, Mail, Bell, ShieldCheck } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useIsHouseholdAdmin } from "@/hooks/useIsHouseholdAdmin";
 import { usePendingInvitations } from "@/hooks/usePendingInvitations";
@@ -272,6 +272,27 @@ export const Settings = () => {
                     variant="outline"
                     size="sm"
                     onClick={() => navigate("/settings/notifications")}
+                  >
+                    Manage
+                  </Button>
+                </CardHeader>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <ShieldCheck className="h-5 w-5" />
+                      Permissions
+                    </CardTitle>
+                    <CardDescription>
+                      Review microphone, camera, photos, and notifications access.
+                    </CardDescription>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => navigate("/settings/permissions")}
                   >
                     Manage
                   </Button>
