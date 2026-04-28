@@ -130,6 +130,7 @@ export const NotificationPermissionPrompt = () => {
       role="dialog"
       aria-labelledby="notif-prompt-title"
       aria-describedby="notif-prompt-desc"
+      data-bottom-card="notif-primer"
       className="fixed inset-x-0 bottom-0 z-50 px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] sm:bottom-6 sm:left-auto sm:right-6 sm:max-w-sm sm:px-0 animate-slide-in-up"
     >
       <div className="rounded-2xl border border-border bg-card text-card-foreground shadow-2xl overflow-hidden">
