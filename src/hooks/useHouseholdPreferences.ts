@@ -37,14 +37,24 @@ export const useHouseholdPreferences = (householdId: string | null) => {
         updated_at: new Date().toISOString(),
       };
 
-      const { data, error } = await supabase
+      const { data: updated, error: updateError } = await supabase
         .from("household_preferences")
-        .upsert(payload, { onConflict: "household_id" })
+        .update(payload)
+        .eq("household_id", householdId)
+        .select("*")
+        .maybeSingle();
+
+      if (updateError) throw updateError;
+      if (updated) return updated as HouseholdPreferences;
+
+      const { data: inserted, error: insertError } = await supabase
+        .from("household_preferences")
+        .insert(payload)
         .select("*")
         .single();
 
-      if (error) throw error;
-      return data as HouseholdPreferences;
+      if (insertError) throw insertError;
+      return inserted as HouseholdPreferences;
     },
     onMutate: async (updates) => {
       await queryClient.cancelQueries({ queryKey: ["household-preferences", householdId] });
