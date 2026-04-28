@@ -388,3 +388,20 @@
 .destructive-zone {
   @apply border border-destructive/20 bg-destructive/5 rounded-lg p-3;
 }
+
+/* ─── Bottom-right float coordination ───
+   When the notification permission primer card is on screen
+   (NotificationPermissionPrompt sets `body[data-notif-primer-open]`),
+   lift the AI chat FAB up so the two floats don't overlap.
+   On mobile the primer is full-width along the bottom — push the FAB
+   above it. On sm+ the primer is a 24rem-wide card pinned to bottom-right,
+   so the FAB needs to clear that card's height (~13rem for the tallest
+   variant) plus a bit of breathing room. */
+body[data-notif-primer-open] .ai-chat-fab {
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 14rem);
+}
+@media (min-width: 640px) {
+  body[data-notif-primer-open] .ai-chat-fab {
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 15rem);
+  }
+}

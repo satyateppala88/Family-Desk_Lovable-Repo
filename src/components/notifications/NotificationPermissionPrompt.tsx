@@ -119,17 +119,28 @@ export const NotificationPermissionPrompt = () => {
     setVisible(false);
   };
 
-  if (!visible) return null;
+  // Whether the soft prompt is actually being rendered right now. Other
+  // bottom-right floats (the AI chat FAB) read this via `body[data-notif-primer-open]`
+  // so they can lift themselves above the card and avoid overlapping it.
+  const isShowing =
+    visible && permission !== "granted" && permission !== "denied";
 
-  // Auto-hide if permission was granted or blocked elsewhere (other tab,
-  // browser settings, etc.) — `useNotificationPermission` keeps this fresh.
-  if (permission === "granted" || permission === "denied") return null;
+  useEffect(() => {
+    if (!isShowing) return;
+    document.body.dataset.notifPrimerOpen = "true";
+    return () => {
+      delete document.body.dataset.notifPrimerOpen;
+    };
+  }, [isShowing]);
+
+  if (!isShowing) return null;
 
   return (
     <div
       role="dialog"
       aria-labelledby="notif-prompt-title"
       aria-describedby="notif-prompt-desc"
+      data-bottom-card="notif-primer"
       className="fixed inset-x-0 bottom-0 z-50 px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] sm:bottom-6 sm:left-auto sm:right-6 sm:max-w-sm sm:px-0 animate-slide-in-up"
     >
       <div className="rounded-2xl border border-border bg-card text-card-foreground shadow-2xl overflow-hidden">

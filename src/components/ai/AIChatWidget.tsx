@@ -381,7 +381,7 @@ export const AIChatWidget = () => {
       {/* Trigger button */}
       <Button
         size="lg"
-        className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg z-[60] bg-gradient-to-br from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70"
+        className="ai-chat-fab fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg z-[60] bg-gradient-to-br from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 transition-[bottom] duration-200"
         onClick={() => setIsOpen(true)}
       >
         <Sparkles className="h-6 w-6" />
