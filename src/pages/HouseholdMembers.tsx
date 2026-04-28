@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Users, ArrowLeft, Mail } from "lucide-react";
 import { InviteMemberDialog } from "@/components/household/InviteMemberDialog";
+import { FamilyMembersSection } from "@/components/household/FamilyMembersSection";
 
 const HouseholdMembers = () => {
   const navigate = useNavigate();
@@ -210,6 +211,8 @@ const HouseholdMembers = () => {
               })}
             </CardContent>
           </Card>
+
+          {householdId && <FamilyMembersSection householdId={householdId} />}
         </div>
       </main>
       <Footer />
