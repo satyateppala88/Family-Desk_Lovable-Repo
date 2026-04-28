@@ -35,7 +35,7 @@ const basePreferences = {
 
 describe("household preference dialogs", () => {
   it("rehydrates household basics from the latest saved preferences when reopened", () => {
-    const onSave = vi.fn(async () => {});
+    const onSave = vi.fn(async (_updates: Partial<HouseholdPreferences>) => {});
     const { rerender } = render(
       <EditHouseholdBasicsDialog preferences={basePreferences} onSave={onSave} />,
     );
@@ -70,8 +70,9 @@ describe("household preference dialogs", () => {
       monthly_grocery_budget: "above_20000",
       budget_consciousness: "very_conscious",
     });
-    expect(onSave.mock.calls[0][0]).not.toHaveProperty("organic_preference");
-    expect(onSave.mock.calls[0][0]).not.toHaveProperty("pantry_size");
+    const payload = onSave.mock.calls[0][0];
+    expect(payload).not.toHaveProperty("organic_preference");
+    expect(payload).not.toHaveProperty("pantry_size");
   });
 
   it("opens finance edits with saved values instead of defaults", () => {
