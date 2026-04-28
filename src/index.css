@@ -254,7 +254,7 @@
 
   /* ─── Focus states — accessible, calm ─── */
   :focus-visible {
-    @apply outline-none ring-2 ring-ring/50 ring-offset-2 ring-offset-background rounded-sm;
+    @apply outline-none ring-2 ring-ring/50 rounded-sm;
   }
 
   /* Skip link for keyboard navigation */

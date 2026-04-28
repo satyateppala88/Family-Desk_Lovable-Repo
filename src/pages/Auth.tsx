@@ -234,7 +234,7 @@ const Auth = () => {
   // Render verification pending state
   if (authState === "verification-pending") {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-secondary/5 p-4">
+      <div className="min-h-[100svh] flex flex-col items-center justify-center overflow-y-auto bg-gradient-to-br from-primary/5 via-background to-secondary/5 p-4 py-6">
         <Card className="w-full max-w-md text-center">
           <CardHeader>
             <div className="flex justify-center mb-4">
@@ -297,19 +297,19 @@ const Auth = () => {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-secondary/5 p-4">
+    <div className="min-h-[100svh] flex flex-col items-center justify-center overflow-y-auto bg-gradient-to-br from-primary/5 via-background to-secondary/5 p-4 py-6">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <div className="flex justify-center mb-4">
-            <div className="bg-white/90 rounded-2xl p-3 shadow-lg ring-1 ring-black/5">
+          <div className="flex justify-center mb-3">
+            <div className="bg-white/90 rounded-2xl p-2.5 shadow-lg ring-1 ring-black/5">
               <img 
                 src={logoImg} 
                 alt="Family Desk Logo" 
-                className="h-24 w-24 sm:h-28 sm:w-28 object-contain"
+                className="h-16 w-16 sm:h-24 sm:w-24 object-contain"
               />
             </div>
           </div>
-          <CardTitle className="text-3xl">Family Desk</CardTitle>
+          <CardTitle className="text-2xl sm:text-3xl">Family Desk</CardTitle>
           <CardDescription>
             Manage your household with ease
           </CardDescription>
