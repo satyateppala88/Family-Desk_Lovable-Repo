@@ -218,14 +218,38 @@
     font-weight: 600;
   }
 
-  /* Ensure minimum touch targets */
-  button, a, [role="button"], input, select, textarea {
-    min-height: var(--touch-target, 44px);
+  /*
+   * Touch-target floor — opt-in.
+   * The previous global rule forced 44px on EVERY button/link/input,
+   * which broke segmented tabs, dropdown items, dialog close buttons,
+   * inline links, and chip rows app-wide. We now only enforce the
+   * floor for primary form controls on coarse-pointer devices, where
+   * fat-finger accuracy actually matters. Components that need a
+   * larger tap target opt in via Tailwind (`min-h-[44px]`) or the
+   * `Button` variants (default/lg already meet the floor).
+   */
+  @media (pointer: coarse) {
+    input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
+    select,
+    textarea {
+      min-height: var(--touch-target, 44px);
+    }
   }
 
-  /* Prevent horizontal overflow globally */
+  /* Prevent horizontal overflow at the document level only.
+     `clip` (vs `hidden`) preserves position: sticky on descendants. */
   html, body {
-    overflow-x: hidden;
+    overflow-x: clip;
+  }
+
+  /* Very narrow phones (≤360 CSS px) — tighten edge padding so
+     content doesn't crowd against the screen edge. */
+  @media (max-width: 360px) {
+    :root {
+      --page-padding-x: 0.75rem;
+      --section-gap: 0.875rem;
+      --card-padding: 0.875rem;
+    }
   }
 
   /* ─── Focus states — accessible, calm ─── */
