@@ -45,10 +45,10 @@ export interface ChangelogEntry {
 // ----- Current versions ---------------------------------------------------
 
 export const APP_VERSION = "1.2";
-export const PRIVACY_VERSION = "1.0";
+export const PRIVACY_VERSION = "1.1";
 export const TERMS_VERSION = "1.0";
 
-export const PRIVACY_EFFECTIVE_DATE = "2026-04-27";
+export const PRIVACY_EFFECTIVE_DATE = "2026-04-28";
 export const TERMS_EFFECTIVE_DATE = "2026-04-27";
 
 // ----- Helpers ------------------------------------------------------------
@@ -133,6 +133,19 @@ export const APP_CHANGELOG: ChangelogEntry[] = [
 ];
 
 export const PRIVACY_CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "1.1",
+    date: "2026-04-28",
+    type: "minor",
+    title: "Device permissions, voice and photo handling",
+    changes: [
+      "New 'Device Permissions & Sensitive Data' section covering microphone, camera, photo library and notifications.",
+      "Clarifies that voice input is transcribed on-device by the operating system and audio is never recorded or uploaded.",
+      "Adds 'Photos and avatars' to user content categories with storage, retention and deletion details.",
+      "Documents the in-app permission priming flow and the right to revoke any permission via OS settings at any time.",
+      "Aligns disclosures with Apple App Store Privacy Nutrition Labels and Google Play Data Safety requirements.",
+    ],
+  },
   {
     version: "1.0",
     date: PRIVACY_EFFECTIVE_DATE,
