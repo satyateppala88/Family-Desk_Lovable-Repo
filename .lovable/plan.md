@@ -1,27 +1,42 @@
-I checked the app logs, backend linter, recent migration files, and the Live database state. The frontend preview server shows no build error. The likely publish failure is a Live database migration failure, because one unpublished migration adds a unique constraint to `household_preferences.household_id`, and Live currently has 3 rows for the same household. That constraint cannot be added until the duplicate Live rows are cleaned up.
+# Fix: Meal Preferences (and similar) dialogs not scrolling
 
-Plan to fix:
+## Problem
 
-1. Make the pending Live migration safe and idempotent
-   - Update the unpublished `household_preferences` migration so it deduplicates Live rows deterministically before adding the unique constraint.
-   - Keep the newest row for each household, as the current migration intended.
-   - Add guards around the constraint creation so re-running/publishing does not fail if the constraint already exists.
+In Settings, the **Edit Dietary Preferences** dialog (and a few other settings dialogs) overflow the viewport on smaller screens — the content inside is not scrollable, so the bottom fields and Save button get cut off.
 
-2. Harden the other recent migrations against repeat/publish edge cases
-   - Ensure the household members unique constraint migration is idempotent.
-   - Keep the invitation cleanup and RLS policy updates safe to re-run.
-   - Keep the security hardening changes, but avoid statements that could fail if a function/signature/policy has already changed between Test and Live.
+## Root cause
 
-3. Re-check Live preconditions
-   - Verify no remaining duplicate rows block the unique constraints.
-   - Confirm the specific pending invitation cleanup target still exists only if it is safe to delete.
+Radix UI's `ScrollArea` renders a Viewport with `h-full w-full`. For scrolling to actually engage, the ScrollArea's parent must give it a **fixed/flex height**, not just `max-height`.
 
-4. Validate after changes
-   - Run a production build check after edits.
-   - Re-run the backend security linter and confirm there are no critical findings.
-   - If possible, test the relevant database migration path against the current schema assumptions before you publish again.
+Dialogs that use `className="flex-1 pr-4 -mr-4"` inside a flex-column DialogContent scroll correctly. Dialogs that use `className="max-h-[60vh] pr-4"` do **not** scroll — the viewport collapses to content height, content overflows the dialog, and the dialog itself gets clipped by the screen.
 
-Expected outcome:
-- Publish should no longer fail on the Live schema sync.
-- The duplicate `household_preferences` rows in Live will be reduced to one per household during publish.
-- The earlier security hardening remains in place.
+Affected dialogs (all use the broken `max-h-[60vh]` pattern):
+- `src/components/settings/EditDietaryPreferencesDialog.tsx` (the one user reported)
+- `src/components/settings/EditCookingPreferencesDialog.tsx`
+- `src/components/settings/EditRoutinePreferencesDialog.tsx`
+- `src/components/settings/EditBudgetPreferencesDialog.tsx`
+
+## Fix
+
+Adopt the same proven pattern used by `EditMealsPreferencesDialog`, `EditGroceryPreferencesDialog`, `EditHabitsTasksPreferencesDialog`, and `EditCalendarPreferencesDialog`:
+
+1. Make `DialogContent` a bounded flex column:
+   - Add `max-h-[90vh] flex flex-col` to the `DialogContent` className.
+2. Let the ScrollArea fill the remaining space:
+   - Replace `className="max-h-[60vh] pr-4"` on `<ScrollArea>` with `className="flex-1 pr-4 -mr-4 min-h-0"`.
+3. Keep `DialogHeader` and `DialogFooter` as fixed (non-flex) siblings so only the middle area scrolls.
+
+The `min-h-0` is important on flex children that contain a scroll container — without it, flexbox's default `min-height: auto` prevents the child from shrinking below its content size and scrolling never engages.
+
+## Files to change
+
+- `src/components/settings/EditDietaryPreferencesDialog.tsx`
+- `src/components/settings/EditCookingPreferencesDialog.tsx`
+- `src/components/settings/EditRoutinePreferencesDialog.tsx`
+- `src/components/settings/EditBudgetPreferencesDialog.tsx`
+
+## Verification
+
+- Open Settings → Edit Dietary Preferences on a 947×754 viewport (current preview size) and on a smaller phone viewport. Confirm the inner form scrolls and Save/Cancel remain visible at the bottom.
+- Spot-check the other three dialogs the same way.
+- No backend, schema, or migration changes — purely a CSS/layout fix.

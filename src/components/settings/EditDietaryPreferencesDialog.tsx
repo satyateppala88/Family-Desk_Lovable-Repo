@@ -80,14 +80,14 @@ export const EditDietaryPreferencesDialog = ({
           <Pencil className="h-4 w-4" />
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md max-h-[90vh]">
+      <DialogContent className="sm:max-w-md max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>Edit Dietary Preferences</DialogTitle>
           <DialogDescription>
             Update your dietary needs and restrictions
           </DialogDescription>
         </DialogHeader>
-        <ScrollArea className="max-h-[60vh] pr-4">
+        <ScrollArea className="flex-1 min-h-0 pr-4 -mr-4">
           <div className="space-y-6 py-4">
             <div className="space-y-2">
               <Label>Diet Type</Label>

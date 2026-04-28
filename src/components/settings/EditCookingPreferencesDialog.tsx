@@ -67,14 +67,14 @@ export const EditCookingPreferencesDialog = ({
           <Pencil className="h-4 w-4" />
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md max-h-[90vh]">
+      <DialogContent className="sm:max-w-md max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>Edit Cooking & Meal Planning</DialogTitle>
           <DialogDescription>
             Update your cooking habits and preferences
           </DialogDescription>
         </DialogHeader>
-        <ScrollArea className="max-h-[60vh] pr-4">
+        <ScrollArea className="flex-1 min-h-0 pr-4 -mr-4">
           <div className="space-y-6 py-4">
             <div className="space-y-2">
               <Label>Cooking Skill Level</Label>
