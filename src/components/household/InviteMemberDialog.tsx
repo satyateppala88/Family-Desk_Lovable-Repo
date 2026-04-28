@@ -25,7 +25,12 @@ export const InviteMemberDialog = ({ householdId, trigger }: InviteMemberDialogP
 
   const inviteMutation = useMutation({
     mutationFn: async () => {
-      if (!email.trim()) throw new Error("Email is required");
+      const normalizedEmail = email.trim().toLowerCase();
+      if (!normalizedEmail) throw new Error("Email is required");
+      // Basic shape check
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+        throw new Error("Please enter a valid email address");
+      }
       if (!user) throw new Error("Not authenticated");
 
       // Check if invitation already exists
@@ -33,7 +38,7 @@ export const InviteMemberDialog = ({ householdId, trigger }: InviteMemberDialogP
         .from("household_invitations")
         .select("id, status")
         .eq("household_id", householdId)
-        .eq("invitee_email", email.toLowerCase())
+        .eq("invitee_email", normalizedEmail)
         .eq("status", "pending")
         .single();
 
@@ -46,7 +51,7 @@ export const InviteMemberDialog = ({ householdId, trigger }: InviteMemberDialogP
         .from("household_invitations")
         .insert({
           household_id: householdId,
-          invitee_email: email.toLowerCase(),
+          invitee_email: normalizedEmail,
           invitee_name: displayName.trim() || null,
           requested_role: role,
           invitation_type: "admin_invite",
@@ -79,7 +84,7 @@ export const InviteMemberDialog = ({ householdId, trigger }: InviteMemberDialogP
                 Authorization: `Bearer ${accessToken}`,
               },
               body: JSON.stringify({
-                inviteeEmail: email.toLowerCase(),
+                inviteeEmail: normalizedEmail,
                 inviteeName: displayName.trim() || undefined,
                 inviterName,
                 householdName,
