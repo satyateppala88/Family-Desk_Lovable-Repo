@@ -21,12 +21,6 @@ verify_jwt = false
 [functions.create-household]
 verify_jwt = false
 
-[functions.dev-reset-account]
-verify_jwt = false
-
-[functions.dev-seed-test-user]
-verify_jwt = false
-
 [functions.extract-calendar-tasks]
 verify_jwt = false
 
