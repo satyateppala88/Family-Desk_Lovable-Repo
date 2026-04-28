@@ -55,6 +55,7 @@ const HouseholdProductSettings = lazy(() => import("./pages/HouseholdProductSett
 const VerifyEmail = lazy(() => import("./pages/VerifyEmail"));
 const Install = lazy(() => import("./pages/Install"));
 const NotificationSettings = lazy(() => import("./pages/NotificationSettings"));
+const PermissionsSettings = lazy(() => import("./pages/PermissionsSettings"));
 
 const queryClient = createPersistedQueryClient();
 
@@ -201,6 +202,11 @@ const App = () => (
                 <Route path="/settings/notifications" element={
                   <ProtectedRoute>
                     <NotificationSettings />
+                  </ProtectedRoute>
+                } />
+                <Route path="/settings/permissions" element={
+                  <ProtectedRoute>
+                    <PermissionsSettings />
                   </ProtectedRoute>
                 } />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
