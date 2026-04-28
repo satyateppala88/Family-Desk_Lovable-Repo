@@ -27,34 +27,27 @@ export const useHouseholdPreferences = (householdId: string | null) => {
     mutationFn: async (updates: Partial<HouseholdPreferences>) => {
       if (!householdId) throw new Error("No household ID");
 
-      const cachedPreferences =
-        queryClient.getQueryData<HouseholdPreferences | null>(["household-preferences", householdId]) ??
-        preferences;
+      // Send ONLY the fields the caller wants to change, plus the keys needed
+      // for upsert. Never spread cached/optimistic data — that can include
+      // server-managed fields (id, created_at) or partial optimistic shapes
+      // that confuse PostgREST and cause 400s.
+      const { id: _ignoreId, created_at: _ignoreCreated, updated_at: _ignoreUpdated, ...cleanUpdates } =
+        (updates as Partial<HouseholdPreferences> & { id?: string; created_at?: string; updated_at?: string });
+
       const payload = {
-        ...(cachedPreferences ?? {}),
-        ...updates,
+        ...cleanUpdates,
         household_id: householdId,
         updated_at: new Date().toISOString(),
       };
 
-      const { data: updated, error: updateError } = await supabase
+      const { data: upserted, error: upsertError } = await supabase
         .from("household_preferences")
-        .update(payload)
-        .eq("household_id", householdId)
-        .select("*")
-        .maybeSingle();
-
-      if (updateError) throw updateError;
-      if (updated) return updated as HouseholdPreferences;
-
-      const { data: inserted, error: insertError } = await supabase
-        .from("household_preferences")
-        .insert(payload)
+        .upsert(payload, { onConflict: "household_id" })
         .select("*")
         .single();
 
-      if (insertError) throw insertError;
-      return inserted as HouseholdPreferences;
+      if (upsertError) throw upsertError;
+      return upserted as HouseholdPreferences;
     },
     onMutate: async (updates) => {
       await queryClient.cancelQueries({ queryKey: ["household-preferences", householdId] });
