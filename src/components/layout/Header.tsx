@@ -21,7 +21,7 @@ interface HeaderProps {
   onStartOnboarding?: () => void;
 }
 
-export const Header = ({ onStartOnboarding }: HeaderProps) => {
+export const Header = (_props: HeaderProps) => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -174,8 +174,11 @@ export const Header = ({ onStartOnboarding }: HeaderProps) => {
               </>
             )}
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={onStartOnboarding}>
-              User Guide
+            <DropdownMenuItem onClick={() => navigate("/how-to-use")}>
+              How to use
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => navigate("/whats-new")}>
+              What's new
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => navigate("/terms")}>
               Terms of Service

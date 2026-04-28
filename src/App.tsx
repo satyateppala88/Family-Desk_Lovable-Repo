@@ -57,6 +57,8 @@ const Install = lazy(() => import("./pages/Install"));
 const NotificationSettings = lazy(() => import("./pages/NotificationSettings"));
 const PermissionsSettings = lazy(() => import("./pages/PermissionsSettings"));
 const AdminPermissionAnalytics = lazy(() => import("./pages/AdminPermissionAnalytics"));
+const HowToUse = lazy(() => import("./pages/HowToUse"));
+const WhatsNew = lazy(() => import("./pages/WhatsNew"));
 
 const queryClient = createPersistedQueryClient();
 
@@ -213,6 +215,16 @@ const App = () => (
                 <Route path="/admin/permission-analytics" element={
                   <ProtectedRoute>
                     <AdminPermissionAnalytics />
+                  </ProtectedRoute>
+                } />
+                <Route path="/how-to-use" element={
+                  <ProtectedRoute>
+                    <HowToUse />
+                  </ProtectedRoute>
+                } />
+                <Route path="/whats-new" element={
+                  <ProtectedRoute>
+                    <WhatsNew />
                   </ProtectedRoute>
                 } />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

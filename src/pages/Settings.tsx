@@ -17,8 +17,6 @@ import { InviteMemberDialog } from "@/components/household/InviteMemberDialog";
 import { useHouseholdPreferences } from "@/hooks/useHouseholdPreferences";
 import { EditHouseholdBasicsDialog } from "@/components/settings/EditHouseholdBasicsDialog";
 import { supabase } from "@/lib/supabase";
-import { HowToUseSection } from "@/components/settings/HowToUseSection";
-import { WhatsNewSection } from "@/components/settings/WhatsNewSection";
 import { TermsSection, PrivacySection } from "@/components/settings/LegalDocsSection";
 import { ModulePreferencesSection } from "@/components/settings/ModulePreferencesSection";
 import { SetupProgressCard } from "@/components/settings/SetupProgressCard";
@@ -312,8 +310,6 @@ export const Settings = () => {
             </div>
           )}
 
-          <HowToUseSection />
-          <WhatsNewSection />
           <TermsSection />
           <PrivacySection />
         </div>
