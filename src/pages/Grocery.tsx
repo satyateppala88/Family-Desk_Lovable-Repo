@@ -173,6 +173,47 @@ const Grocery = () => {
     bulkAddItems.mutate(itemsWithRequired);
   };
 
+  const handleSaveScannedBill = async ({
+    inserts,
+    merges,
+  }: {
+    inserts: Array<Partial<PantryItem>>;
+    merges: Array<{ id: string; quantity: number }>;
+    billDate: string | null;
+  }) => {
+    if (!householdId || !user?.id) return;
+    setIsSavingBill(true);
+    try {
+      if (inserts.length > 0) {
+        const enriched = inserts.map(i => ({
+          ...i,
+          household_id: householdId,
+          added_by: user.id,
+        }));
+        await bulkAddItems.mutateAsync(enriched);
+      }
+      for (const m of merges) {
+        await updatePantryItem.mutateAsync({
+          id: m.id,
+          updates: { quantity: m.quantity, last_purchased_at: new Date().toISOString() },
+        });
+      }
+      toast({
+        title: "Pantry updated",
+        description: `${inserts.length} added, ${merges.length} merged.`,
+      });
+      setScannedBill(null);
+    } catch (err: any) {
+      toast({
+        title: "Could not save",
+        description: err?.message || "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSavingBill(false);
+    }
+  };
+
   const handleCreateList = (name: string) => {
     if (!householdId || !user?.id) return;
     createShoppingList.mutate({
