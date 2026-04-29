@@ -13,6 +13,8 @@ import { AddPantryItemDialog } from "@/components/grocery/AddPantryItemDialog";
 import { QuickAddChecklist } from "@/components/grocery/QuickAddChecklist";
 import { PantryFilters } from "@/components/grocery/PantryFilters";
 import { AIPantryImportDialog } from "@/components/grocery/AIPantryImportDialog";
+import { ScanBillDialog, type ScannedBill } from "@/components/grocery/ScanBillDialog";
+import { BillReviewDialog } from "@/components/grocery/BillReviewDialog";
 import { ShoppingListCard } from "@/components/grocery/ShoppingListCard";
 import { CreateShoppingListDialog } from "@/components/grocery/CreateShoppingListDialog";
 import { PantryEducationBanner } from "@/components/grocery/PantryEducationBanner";
