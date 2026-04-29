@@ -36,7 +36,7 @@ const moduleDefinitions: {
   path: string;
   tintClass: string;
 }[] = [
-  { product: "tasks", icon: CheckSquare, label: "Tasks", description: "Family to-dos", path: "/tasks", tintClass: "module-tint-tasks" },
+  { product: "tasks", icon: CheckSquare, label: "Tasks", description: "Family to-dos", path: "/taskmaster/today", tintClass: "module-tint-tasks" },
   { product: "meals", icon: UtensilsCrossed, label: "Meals", description: "Weekly meal plans", path: "/meals", tintClass: "module-tint-meals" },
   { product: "grocery", icon: ShoppingCart, label: "Grocery", description: "Pantry & shopping", path: "/grocery", tintClass: "module-tint-grocery" },
   { product: "calendar", icon: Calendar, label: "Calendar", description: "Family schedule", path: "/calendar", tintClass: "module-tint-calendar" },

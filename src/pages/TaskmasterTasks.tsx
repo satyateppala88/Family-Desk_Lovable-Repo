@@ -4,6 +4,8 @@ import { Header } from "@/components/layout/Header";
 import { useHousehold } from "@/hooks/useHousehold";
 import { useTaskmaster } from "@/hooks/useTaskmaster";
 import { useProjects } from "@/hooks/useProjects";
+import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
+import { TaskmasterSubNav } from "@/components/taskmaster/TaskmasterSubNav";
 import { TaskmasterTaskDialog } from "@/components/taskmaster/TaskmasterTaskDialog";
 import { QuickTaskInput } from "@/components/taskmaster/QuickTaskInput";
 import { ParsedTask } from "@/hooks/useParseTask";
@@ -54,6 +56,26 @@ const TaskmasterTasks = () => {
   const { householdId, isLoading: loadingHousehold } = useHousehold();
   const { tasks, isLoading, createTask, updateTask, deleteTask, markTaskDone, startTask } = useTaskmaster(householdId);
   const { projects } = useProjects(householdId);
+
+  useRealtimeSubscription([
+    {
+      table: "tasks",
+      filter: householdId ? `household_id=eq.${householdId}` : undefined,
+      queryKeys: [["taskmaster-tasks", householdId]],
+      enabled: !!householdId,
+    },
+    {
+      table: "task_assignees",
+      queryKeys: [["taskmaster-tasks", householdId]],
+      enabled: !!householdId,
+    },
+    {
+      table: "projects",
+      filter: householdId ? `household_id=eq.${householdId}` : undefined,
+      queryKeys: [["projects", householdId]],
+      enabled: !!householdId,
+    },
+  ]);
   
   const [selectedTask, setSelectedTask] = useState<TaskmasterTask | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -169,8 +191,13 @@ const TaskmasterTasks = () => {
       <Header />
 
       <main className="container px-4 sm:px-6 py-6 pb-24">
+        <TaskmasterSubNav />
+
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-xl sm:text-2xl font-bold">All Tasks</h1>
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold mt-4">All Tasks</h1>
+            <p className="text-xs text-muted-foreground mt-1">Visible to everyone in your household</p>
+          </div>
           <Button onClick={handleCreateTask} size="sm">
             <Plus className="w-4 h-4 sm:mr-2" />
             <span className="hidden sm:inline">Add Task</span>

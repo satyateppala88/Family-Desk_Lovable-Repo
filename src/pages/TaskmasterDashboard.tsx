@@ -4,6 +4,8 @@ import { Header } from "@/components/layout/Header";
 import { useHousehold } from "@/hooks/useHousehold";
 import { useTaskmaster } from "@/hooks/useTaskmaster";
 import { useProjects } from "@/hooks/useProjects";
+import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
+import { TaskmasterSubNav } from "@/components/taskmaster/TaskmasterSubNav";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -35,6 +37,21 @@ const TaskmasterDashboard = () => {
   const { tasks, isLoading: loadingTasks } = useTaskmaster(householdId);
   const { projects, isLoading: loadingProjects } = useProjects(householdId);
   const [scanDialogOpen, setScanDialogOpen] = useState(false);
+
+  useRealtimeSubscription([
+    {
+      table: "tasks",
+      filter: householdId ? `household_id=eq.${householdId}` : undefined,
+      queryKeys: [["taskmaster-tasks", householdId]],
+      enabled: !!householdId,
+    },
+    {
+      table: "projects",
+      filter: householdId ? `household_id=eq.${householdId}` : undefined,
+      queryKeys: [["projects", householdId]],
+      enabled: !!householdId,
+    },
+  ]);
 
   const stats = useMemo(() => {
     if (!tasks) return null;
@@ -160,10 +177,12 @@ const TaskmasterDashboard = () => {
       <Header />
 
       <main className="container px-4 sm:px-6 py-6 pb-24">
+        <TaskmasterSubNav />
+
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-2">
             <LayoutDashboard className="w-6 h-6" />
-            <h1 className="text-xl sm:text-2xl font-bold">Dashboard</h1>
+            <h1 className="text-xl sm:text-2xl font-bold mt-4">Dashboard</h1>
           </div>
           <Button variant="outline" size="sm" onClick={() => setScanDialogOpen(true)}>
             <CalendarSearch className="w-4 h-4 mr-2" />

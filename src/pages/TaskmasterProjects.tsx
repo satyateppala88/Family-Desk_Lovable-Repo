@@ -5,6 +5,8 @@ import { Header } from "@/components/layout/Header";
 import { useHousehold } from "@/hooks/useHousehold";
 import { useProjects } from "@/hooks/useProjects";
 import { useTaskmaster } from "@/hooks/useTaskmaster";
+import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
+import { TaskmasterSubNav } from "@/components/taskmaster/TaskmasterSubNav";
 import { ProjectDialog } from "@/components/taskmaster/ProjectDialog";
 import { Project, ProjectStatus, ProjectType } from "@/types/taskmaster";
 import { Button } from "@/components/ui/button";
@@ -47,6 +49,21 @@ const TaskmasterProjects = () => {
   const { householdId, isLoading: loadingHousehold } = useHousehold();
   const { projects, isLoading, createProject, updateProject, deleteProject } = useProjects(householdId);
   const { tasks } = useTaskmaster(householdId);
+
+  useRealtimeSubscription([
+    {
+      table: "projects",
+      filter: householdId ? `household_id=eq.${householdId}` : undefined,
+      queryKeys: [["projects", householdId]],
+      enabled: !!householdId,
+    },
+    {
+      table: "tasks",
+      filter: householdId ? `household_id=eq.${householdId}` : undefined,
+      queryKeys: [["taskmaster-tasks", householdId]],
+      enabled: !!householdId,
+    },
+  ]);
   
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -137,8 +154,10 @@ const TaskmasterProjects = () => {
       <Header />
 
       <main className="container px-4 sm:px-6 py-6 pb-24">
+        <TaskmasterSubNav />
+
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-xl sm:text-2xl font-bold">Projects</h1>
+          <h1 className="text-xl sm:text-2xl font-bold mt-4">Projects</h1>
           <Button onClick={handleCreateProject} size="sm">
             <Plus className="w-4 h-4 sm:mr-2" />
             <span className="hidden sm:inline">New Project</span>
