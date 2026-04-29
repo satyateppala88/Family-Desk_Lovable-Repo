@@ -86,6 +86,9 @@ const Grocery = () => {
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [showAIImport, setShowAIImport] = useState(false);
+  const [showScanBill, setShowScanBill] = useState(false);
+  const [scannedBill, setScannedBill] = useState<ScannedBill | null>(null);
+  const [isSavingBill, setIsSavingBill] = useState(false);
   const [showCreateList, setShowCreateList] = useState(false);
   const [editItem, setEditItem] = useState<PantryItem | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
