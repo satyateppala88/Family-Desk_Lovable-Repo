@@ -4,6 +4,8 @@ import { Header } from "@/components/layout/Header";
 import { useHousehold } from "@/hooks/useHousehold";
 import { useTaskmaster } from "@/hooks/useTaskmaster";
 import { useDailyPlan } from "@/hooks/useDailyPlan";
+import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
+import { TaskmasterSubNav } from "@/components/taskmaster/TaskmasterSubNav";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -27,6 +29,20 @@ const TaskmasterMyTasks = () => {
   const { householdId, isLoading: loadingHousehold } = useHousehold();
   const { tasks, isLoading, markTaskDone, startTask } = useTaskmaster(householdId);
   const { dailyPlan } = useDailyPlan(householdId);
+
+  useRealtimeSubscription([
+    {
+      table: "tasks",
+      filter: householdId ? `household_id=eq.${householdId}` : undefined,
+      queryKeys: [["taskmaster-tasks", householdId]],
+      enabled: !!householdId,
+    },
+    {
+      table: "task_assignees",
+      queryKeys: [["taskmaster-tasks", householdId]],
+      enabled: !!householdId,
+    },
+  ]);
 
   // Filter tasks assigned to current user
   const myTasks = useMemo(() => {
@@ -124,9 +140,11 @@ const TaskmasterMyTasks = () => {
       <Header />
 
       <main className="container px-4 sm:px-6 py-6 pb-24">
+        <TaskmasterSubNav />
+
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
+            <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2 mt-4">
               <ListTodo className="w-6 h-6" />
               My Tasks
             </h1>

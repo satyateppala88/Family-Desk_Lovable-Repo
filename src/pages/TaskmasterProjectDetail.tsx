@@ -4,6 +4,8 @@ import { Header } from "@/components/layout/Header";
 import { useHousehold } from "@/hooks/useHousehold";
 import { useProjects } from "@/hooks/useProjects";
 import { useTaskmaster } from "@/hooks/useTaskmaster";
+import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
+import { TaskmasterSubNav } from "@/components/taskmaster/TaskmasterSubNav";
 import { TaskmasterTaskDialog } from "@/components/taskmaster/TaskmasterTaskDialog";
 import { TaskmasterTask, TaskStatus } from "@/types/taskmaster";
 import { Button } from "@/components/ui/button";
@@ -38,6 +40,21 @@ const TaskmasterProjectDetail = () => {
   const { householdId, isLoading: loadingHousehold } = useHousehold();
   const { projects, isLoading: loadingProjects } = useProjects(householdId);
   const { tasks, createTask, updateTask, deleteTask, markTaskDone, startTask } = useTaskmaster(householdId);
+
+  useRealtimeSubscription([
+    {
+      table: "tasks",
+      filter: householdId ? `household_id=eq.${householdId}` : undefined,
+      queryKeys: [["taskmaster-tasks", householdId]],
+      enabled: !!householdId,
+    },
+    {
+      table: "projects",
+      filter: householdId ? `household_id=eq.${householdId}` : undefined,
+      queryKeys: [["projects", householdId]],
+      enabled: !!householdId,
+    },
+  ]);
 
   const [selectedTask, setSelectedTask] = useState<TaskmasterTask | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -145,6 +162,8 @@ const TaskmasterProjectDetail = () => {
       <Header />
 
       <main className="container px-4 sm:px-6 py-6 pb-24">
+        <TaskmasterSubNav />
+
         <Button variant="ghost" onClick={() => navigate("/taskmaster/projects")} className="mb-4">
           <ArrowLeft className="w-4 h-4 mr-2" />
           Back to Projects
