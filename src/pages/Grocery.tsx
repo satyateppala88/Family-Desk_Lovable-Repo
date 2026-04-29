@@ -473,6 +473,17 @@ const Grocery = () => {
             </Button>
             <Button
               variant="outline"
+              onClick={() => setShowScanBill(true)}
+              className="gap-2 h-9"
+              size="sm"
+              data-tour="scan-bill"
+            >
+              <ScanLine className="h-4 w-4" aria-hidden="true" />
+              <span className="hidden xs:inline">Scan Bill</span>
+              <span className="xs:hidden">Scan</span>
+            </Button>
+            <Button
+              variant="outline"
               onClick={() => setShowQuickAdd(true)}
               className="gap-2 h-9"
               size="sm"
