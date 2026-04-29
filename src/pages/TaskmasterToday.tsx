@@ -4,6 +4,9 @@ import { Header } from "@/components/layout/Header";
 import { useHousehold } from "@/hooks/useHousehold";
 import { useDailyPlan } from "@/hooks/useDailyPlan";
 import { useTaskmaster } from "@/hooks/useTaskmaster";
+import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
+import { TaskmasterSubNav } from "@/components/taskmaster/TaskmasterSubNav";
+import { Link } from "react-router-dom";
 import { QuickTaskInput } from "@/components/taskmaster/QuickTaskInput";
 import { ParsedTask } from "@/hooks/useParseTask";
 import { Button } from "@/components/ui/button";
@@ -35,8 +38,38 @@ import {
 const TaskmasterToday = () => {
   const { householdId, isLoading: loadingHousehold } = useHousehold();
   const { dailyPlan, isLoading, generatePlan, acceptPlan, removeFromPlan } = useDailyPlan(householdId);
-  const { markTaskDone, startTask, createTask } = useTaskmaster(householdId);
+  const { tasks, markTaskDone, startTask, createTask } = useTaskmaster(householdId);
   const [hasGenerated, setHasGenerated] = useState(false);
+
+  // Live updates so all household members see today's plan and task changes.
+  useRealtimeSubscription([
+    {
+      table: "tasks",
+      filter: householdId ? `household_id=eq.${householdId}` : undefined,
+      queryKeys: [["taskmaster-tasks", householdId]],
+      enabled: !!householdId,
+    },
+    {
+      table: "task_assignees",
+      queryKeys: [["taskmaster-tasks", householdId]],
+      enabled: !!householdId,
+    },
+    {
+      table: "daily_plans",
+      filter: householdId ? `household_id=eq.${householdId}` : undefined,
+      queryKeys: [["daily-plan", householdId]],
+      enabled: !!householdId,
+    },
+    {
+      table: "daily_plan_items",
+      queryKeys: [["daily-plan", householdId]],
+      enabled: !!householdId,
+    },
+  ]);
+
+  const backlogCount = (tasks || []).filter(
+    (t: any) => t.task_status !== "done"
+  ).length;
 
   const handleQuickCreate = (parsed: ParsedTask) => {
     createTask.mutate({
@@ -101,11 +134,27 @@ const TaskmasterToday = () => {
       <Header />
 
       <main className="container px-4 sm:px-6 py-6 pb-24">
+        <TaskmasterSubNav />
+
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold">Today's Plan</h1>
+            <h1 className="text-xl sm:text-2xl font-bold mt-4">Today's Plan</h1>
             <p className="text-sm text-muted-foreground">
               {format(new Date(), "EEEE, MMMM d, yyyy")}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {backlogCount > 0 ? (
+                <>
+                  {backlogCount} task{backlogCount === 1 ? "" : "s"} in your household backlog ·{" "}
+                  <Link to="/taskmaster/tasks" className="text-primary hover:underline">
+                    View all
+                  </Link>
+                </>
+              ) : (
+                <Link to="/taskmaster/tasks" className="text-primary hover:underline">
+                  View all household tasks
+                </Link>
+              )}
             </p>
           </div>
           <div className="flex gap-2">
