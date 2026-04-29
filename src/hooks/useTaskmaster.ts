@@ -48,8 +48,13 @@ export const useTaskmaster = (householdId: string | null) => {
 
   const createTask = useMutation({
     mutationFn: async (newTask: Partial<TaskmasterTask> & { assignee_ids?: string[] }) => {
-      const { assignee_ids, ...taskData } = newTask;
-      
+      const {
+        assignee_ids,
+        assignees: _ignoredAssignees,
+        project: _ignoredProject,
+        ...taskData
+      } = newTask as Partial<TaskmasterTask> & { assignee_ids?: string[] };
+
       const { data, error } = await supabase
         .from("tasks")
         .insert({
