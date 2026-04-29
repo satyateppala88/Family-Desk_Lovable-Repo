@@ -646,6 +646,24 @@ const Grocery = () => {
         userId={user.id}
       />
 
+      {householdId && (
+        <ScanBillDialog
+          open={showScanBill}
+          onOpenChange={setShowScanBill}
+          householdId={householdId}
+          onScanned={(bill) => setScannedBill(bill)}
+        />
+      )}
+
+      <BillReviewDialog
+        open={!!scannedBill}
+        onOpenChange={(o) => { if (!o) setScannedBill(null); }}
+        bill={scannedBill}
+        pantryItems={pantryItems}
+        onConfirm={handleSaveScannedBill}
+        isSaving={isSavingBill}
+      />
+
       <CreateShoppingListDialog
         open={showCreateList}
         onOpenChange={setShowCreateList}
