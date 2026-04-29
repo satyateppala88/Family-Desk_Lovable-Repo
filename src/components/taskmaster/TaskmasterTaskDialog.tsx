@@ -91,6 +91,9 @@ export const TaskmasterTaskDialog = ({
       <DialogContent className="sm:max-w-[525px]">
         <DialogHeader>
           <DialogTitle>{task ? "Edit Task" : "Create New Task"}</DialogTitle>
+          <p className="text-xs text-muted-foreground">
+            Visible to everyone in your household.
+          </p>
         </DialogHeader>
 
         <div className="grid gap-4 py-4">

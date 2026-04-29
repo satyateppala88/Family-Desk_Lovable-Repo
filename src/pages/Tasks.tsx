@@ -186,8 +186,8 @@ const Tasks = () => {
         {filteredTasks.length === 0 ? (
           <EmptyState
             icon={CheckSquare}
-            title={statusFilter !== "all" || priorityFilter !== "all" ? "No matching tasks" : "You're all clear for today"}
-            description={statusFilter !== "all" || priorityFilter !== "all" ? "Try widening your filters" : "Nothing on the list — add a task or let the daily plan suggest what's next."}
+            title={statusFilter !== "all" || priorityFilter !== "all" ? "No matching tasks" : "Nothing on the list yet"}
+            description={statusFilter !== "all" || priorityFilter !== "all" ? "Try widening your filters" : "Add a task to get started — it'll be visible to everyone in your household."}
             encouragement={statusFilter === "all" && priorityFilter === "all" ? "Even small wins count. What needs doing?" : undefined}
             action={{ label: "Add a Task", onClick: handleCreateTask }}
           />
