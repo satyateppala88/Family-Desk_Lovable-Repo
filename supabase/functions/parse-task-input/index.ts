@@ -93,6 +93,12 @@ Due date parsing (return ISO date format YYYY-MM-DD):
 - Specific dates -> parse them accordingly
 - No date mentioned -> null
 
+Status detection (only set when explicit; otherwise null):
+- "today", "for today", "do today" -> today
+- "right now", "starting now", "i'm doing it" -> in_progress
+- "later", "someday", "backlog", "queue" -> backlog
+- Anything ambiguous -> null
+
 SCHEDULING CONTEXT (extract timing hints from natural language):
 - "after my meeting", "after the 2pm call" -> dependent on a calendar event
 - "before school pickup", "before 3pm" -> has a deadline constraint  
@@ -146,6 +152,11 @@ If there's additional context beyond the title, put it in the description.`;
                   due_date: {
                     type: "string",
                     description: "Due date in YYYY-MM-DD format, or null if not specified"
+                  },
+                  task_status: {
+                    type: "string",
+                    enum: ["backlog", "today", "in_progress"],
+                    description: "Task status if user explicitly indicated when to do it; omit otherwise"
                   }
                 },
                 required: ["title", "category", "priority"],
@@ -194,7 +205,8 @@ If there's additional context beyond the title, put it in the description.`;
           task_category: parsedTask.category,
           priority_level: parsedTask.priority,
           due_date: parsedTask.due_date || null,
-          scheduling_context: parsedTask.scheduling_context || null
+          scheduling_context: parsedTask.scheduling_context || null,
+          task_status: parsedTask.task_status || null
         }
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }

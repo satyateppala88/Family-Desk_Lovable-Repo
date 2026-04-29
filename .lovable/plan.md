@@ -1,73 +1,94 @@
-# Bill Image Scanner for Pantry
+# Guided Task Completion After Voice / Quick Input
 
-Add a vision-powered bill scanner so users can photograph grocery bills (Indian retail receipts) and have items pushed into the household pantry after a review step.
+## Problem
+
+When a task is added via the Quick Task input (typed or spoken), the AI parser may leave fields empty or default them silently:
+
+- **due_date** — often null when no date was spoken
+- **task_category** — AI guesses, but may pick "other"
+- **priority_level** — defaults to 3 (P3 Normal)
+- **task_status** — *never set* by `handleQuickCreate`, so the task lands as the DB default (likely `backlog`) and is **invisible on the Today dashboard**
+- **project** — never asked
+- **assignees** — silently set to just the creator, even though the household shares tasks
+
+Today, the parsed task is created immediately with one click, so the user has no chance to fill these in — that's why some tasks "don't show on the dashboard".
+
+## Solution
+
+After parsing, instead of jumping straight to "Create", open a lightweight **"Complete task details"** sheet that:
+
+1. Pre-fills every field the AI extracted.
+2. Highlights the fields the AI **could not determine** (with an "AI didn't catch this — pick one" hint).
+3. Forces the user to confirm/select values for the four critical fields before Create is enabled:
+   - **Status** (Backlog / Today / In Progress / Blocked)
+   - **Category** (Home / Work / Kid / Other)
+   - **Priority** (P1–P4)
+   - **Due date** (date picker, or explicit "No due date" toggle)
+4. Optional fields stay optional but visible: **Project**, **Assignees** (multi-select of household members, defaults to creator).
+5. Voice users get a "Speak the answer" mic on each missing field — saying "tomorrow", "high priority", "work", etc. fills that one field via a small follow-up parser call. Tapping a dropdown is always an alternative.
+
+The Create button stays disabled until every required field has an explicit value (not just an AI guess). A small "AI suggested" badge appears next to fields the user hasn't confirmed yet; tapping the field (or confirming via voice) clears the badge.
 
 ## User flow
 
+```text
+User types / speaks: "Call plumber"
+        │
+        ▼
+[Parse] → AI returns: title="Call plumber", category="home",
+                      priority=3, due_date=null, status=null
+        │
+        ▼
+"Complete task details" sheet opens
+   Title:    Call plumber                    [edit]
+   Category: Home          (AI suggested)    [confirm / change]
+   Priority: P3 Normal     (AI suggested)    [confirm / change]
+   Status:   ⚠ pick one    [Backlog ▼]
+   Due:     ⚠ pick one    [📅] or [No due date]
+   Project: optional
+   Assignees: You ✓  + add member
+        │
+        ▼
+[Create] enabled only when Status + Due answered
+        │
+        ▼
+createTask runs with full payload → shows up everywhere it should
 ```
-Pantry → "Scan Bill" button (next to "AI Import")
-   ↓
-ScanBillDialog
-  • Drop / pick 1–5 images (camera on mobile, file picker on desktop)
-  • Thumbnails shown, remove individual images
-  • "Extract Items" → loading state per image
-   ↓
-Edge function: ai-scan-bill (vision)
-  • Returns merged items + bill metadata (store, date, total)
-   ↓
-BillReviewDialog (editable preview)
-  • Table of items: name, qty, unit, category, expiry (days), price (optional)
-  • Inline edit, delete row, "Add row" manually
-  • Confidence chip per row (low-confidence highlighted)
-  • Duplicate detector: if name fuzzy-matches an existing pantry item,
-    show "Merge with existing (current qty X)" toggle → updates instead of insert
-  • Footer: store name + bill date (editable), item count
-  • "Save to Pantry" → bulkAdd + bulkUpdate
-   ↓
-Toast + pantry list refreshes (realtime already wired)
-```
 
-## Why this fits cleanly (no conflicts)
+## Scope
 
-- **Mirrors existing `AIPantryImportDialog`** pattern — same edge-function shape, same `bulkAddItems` mutation, same household scoping. The text importer stays as-is for voice/typing; bill scan is the visual sibling.
-- **Household-shared rule honored**: items inserted with `household_id` flow through existing RLS + realtime publication, so all members see updates instantly.
-- **Reuses `usePantryItems` hook** (`bulkAddItems`, `updatePantryItem`) — no new mutations needed.
-- **Categories + units** match the controlled vocab the AI already uses, so review chips/dropdowns reuse `usePantryCategories`.
-- **No conflict with `last_purchased_at` / staples logic** — bill date populates `last_purchased_at`, which improves the existing "average usage days" analytics for free.
-- **Meal-plan auto-deduction is unaffected** — it reads pantry totals; adding via bill is just another insert path.
+### New
+- `src/components/taskmaster/TaskCompletionSheet.tsx` — the missing-details sheet (mobile-first bottom sheet, uses existing `Sheet`/`Select`/`Calendar`/`VoiceInputButton`).
+- Small helper `src/lib/taskCompletion.ts` to compute which fields are "missing" vs "AI-guessed" and validate readiness.
 
-## Optional enhancements (call out, default OFF)
+### Edited
+- `src/components/taskmaster/QuickTaskInput.tsx` — replace the inline preview Card + Check button with: parse → open `TaskCompletionSheet` → on confirm call `onCreateTask`. Keep the voice mic on the main input.
+- `src/pages/TaskmasterToday.tsx`, `src/pages/TaskmasterTasks.tsx` — `handleQuickCreate` now receives a fully-completed payload (with `task_status`, `assignee_ids`, `project_id`) and passes it through to `createTask.mutate`. Today page should default the suggested status to `today` so newly created tasks immediately appear on the dashboard.
+- `src/components/taskmaster/TaskmasterTaskDialog.tsx` — minor: same "AI didn't catch this" highlighting reused if a parsed task is opened via the "Edit before creating" pencil (already wired through `onEditTask`).
+- `supabase/functions/parse-task-input/index.ts` — small enhancement: also return `task_status` (allow values: `backlog | today | in_progress`) when input contains hints like "today", "now", "start now", "later"; null when ambiguous. No schema migration needed.
 
-- **Auto-create a "Bill" record** in a new `pantry_bills` table for history/spend tracking. Skipped by default to keep scope tight; can be added later and tied into Finance module.
-- **Push bill total into Finance as a transaction** — only if user opts in via a checkbox in the review dialog. Off by default.
+### Not touched
+- DB schema, RLS, realtime hook, household-shared-view rule.
+- The `TaskmasterTaskDialog` full editor remains the power-user path.
 
-## Technical details
+## Field-readiness rules
 
-**New files**
-- `supabase/functions/ai-scan-bill/index.ts` — vision call to `google/gemini-2.5-flash` (or `pro` for low-quality bills). Accepts `images: string[]` (base64 data URLs, max 5, ~4MB each post-compression). Same auth/rate-limit/Zod pattern as `ai-pantry-import`. Tool-call schema returns `{ store, bill_date, currency, items: [{name, quantity, unit, category, expiry_days, unit_price?, confidence}] }`.
-- `src/components/grocery/ScanBillDialog.tsx` — image picker, client-side compression (canvas → JPEG ~1600px max edge, q=0.8), thumbnail strip, extract button.
-- `src/components/grocery/BillReviewDialog.tsx` — editable items table with merge-detection (fuzzy match against current `pantryItems` by lowercased name + Levenshtein ≤ 2).
-- `src/hooks/useScanBill.ts` — wraps `supabase.functions.invoke("ai-scan-bill", ...)`.
+A task is ready to create when **all** of these are explicitly set by the user (AI suggestions count as set only after user confirms):
 
-**Edited files**
-- `src/pages/Grocery.tsx` — add "Scan Bill" action button alongside existing AI Import.
-- `supabase/config.toml` — register `[functions.ai-scan-bill]` with `verify_jwt = false` (matches sibling functions; auth done in code).
+| Field      | Required | Default if user picks "skip" |
+|------------|----------|------------------------------|
+| title      | yes      | —                            |
+| status     | yes      | `today` on Today page, `backlog` elsewhere |
+| category   | yes      | `other`                      |
+| priority   | yes      | `3`                          |
+| due_date   | yes (or "no due date" toggle) | null |
+| project    | no       | null                         |
+| assignees  | no, but pre-checked = creator | [creator] |
 
-**Limits & guardrails**
-- Max 5 images per scan, 4MB each pre-compression (client rejects larger).
-- Use existing `AI_RATE_LIMIT` (per-user).
-- If AI returns 0 items → friendly empty state with "Try another photo" CTA.
-- All inserts use `household_id` + `added_by = auth.uid()`.
+## Why this fixes the dashboard issue
 
-**Image handling**
-- Images are sent inline as base64 to the edge function (not stored). Keeps the feature stateless and avoids needing a new storage bucket. If users later want bill history, we add a `bills` bucket + table.
+The Today dashboard filters tasks by `task_status = 'today'` (and/or due_date = today). Quick-created tasks today never set `task_status`, so they fall into `backlog` and disappear from Today. By making status a required, confirmed field — and defaulting the suggestion to `today` when the user is on the Today page — every quick-added task lands where the user expects.
 
-**Permission primer**
-- Camera access on mobile uses existing `usePermissionPrimer` hook (already in memory) so the soft-prompt → OS-prompt pattern stays consistent.
+## Out of scope (can follow up)
 
-## Out of scope (this iteration)
-
-- Bill history / spend tracking table
-- Auto-posting to Finance transactions
-- Multi-language OCR beyond what Gemini handles natively (it already handles English + common Indian-language store receipts well)
-- Background async processing — call is synchronous (~5–10s), shown with progress UI
+- Conversational multi-turn voice flow ("Sure, what priority?" spoken back). The plan uses one sheet with per-field voice mics, which is faster and more accessible than a back-and-forth dialog. Happy to layer a spoken Q&A on top later if you want it.

@@ -1,7 +1,7 @@
 import { useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { TaskCategory } from "@/types/taskmaster";
+import { TaskCategory, TaskStatus } from "@/types/taskmaster";
 
 export interface ParsedTask {
   title: string;
@@ -9,6 +9,7 @@ export interface ParsedTask {
   task_category: TaskCategory;
   priority_level: number;
   due_date: string | null;
+  task_status: TaskStatus | null;
 }
 
 export const useParseTask = () => {

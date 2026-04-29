@@ -4,11 +4,13 @@ import { Header } from "@/components/layout/Header";
 import { useHousehold } from "@/hooks/useHousehold";
 import { useDailyPlan } from "@/hooks/useDailyPlan";
 import { useTaskmaster } from "@/hooks/useTaskmaster";
+import { useProjects } from "@/hooks/useProjects";
+import { useAuth } from "@/contexts/AuthContext";
 import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
 import { TaskmasterSubNav } from "@/components/taskmaster/TaskmasterSubNav";
 import { Link } from "react-router-dom";
 import { QuickTaskInput } from "@/components/taskmaster/QuickTaskInput";
-import { ParsedTask } from "@/hooks/useParseTask";
+import { CompletionDraft } from "@/lib/taskCompletion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -37,6 +39,8 @@ import {
 
 const TaskmasterToday = () => {
   const { householdId, isLoading: loadingHousehold } = useHousehold();
+  const { user } = useAuth();
+  const { projects } = useProjects(householdId);
   const { dailyPlan, isLoading, generatePlan, acceptPlan, removeFromPlan } = useDailyPlan(householdId);
   const { tasks, markTaskDone, startTask, createTask } = useTaskmaster(householdId);
   const [hasGenerated, setHasGenerated] = useState(false);
@@ -71,14 +75,17 @@ const TaskmasterToday = () => {
     (t: any) => t.task_status !== "done"
   ).length;
 
-  const handleQuickCreate = (parsed: ParsedTask) => {
+  const handleQuickCreate = (draft: CompletionDraft) => {
     createTask.mutate({
-      title: parsed.title,
-      description: parsed.description,
-      task_category: parsed.task_category,
-      priority_level: parsed.priority_level,
-      due_date: parsed.due_date,
+      title: draft.title,
+      description: draft.description,
+      task_category: draft.task_category,
+      priority_level: draft.priority_level,
+      task_status: draft.task_status,
+      due_date: draft.has_due_date ? draft.due_date : null,
+      project_id: draft.project_id,
       household_id: householdId!,
+      assignee_ids: draft.assignee_ids,
     });
   };
 
@@ -172,7 +179,13 @@ const TaskmasterToday = () => {
 
         {/* Quick Task Input */}
         <div className="mb-6">
-          <QuickTaskInput onCreateTask={handleQuickCreate} />
+          <QuickTaskInput
+            onCreateTask={handleQuickCreate}
+            householdId={householdId}
+            projects={projects}
+            defaultStatus="today"
+            creatorId={user?.id}
+          />
         </div>
 
         {/* Plan Status Banner */}
