@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Sparkles, X, Check, Pencil, Loader2 } from "lucide-react";
+import { Sparkles, X, Check, Pencil, Loader2, Users } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -106,6 +106,11 @@ export const QuickTaskInput = ({ onCreateTask, onEditTask }: QuickTaskInputProps
           </div>
         </div>
       </form>
+
+      <p className="text-[11px] text-muted-foreground flex items-center gap-1 px-1">
+        <Users className="h-3 w-3" />
+        Tasks you add are visible to everyone in your household.
+      </p>
 
       {parsedTask && (
         <Card className="border-primary/20 bg-primary/5">
