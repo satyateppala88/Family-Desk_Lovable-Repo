@@ -1,108 +1,73 @@
+# Bill Image Scanner for Pantry
 
-# Taskmaster: restore sub-pages, add realtime, audit "shared household view" rule
+Add a vision-powered bill scanner so users can photograph grocery bills (Indian retail receipts) and have items pushed into the household pantry after a review step.
 
-## What I found
+## User flow
 
-### A. Your missing Taskmaster sub-pages — they exist but are unreachable
+```
+Pantry → "Scan Bill" button (next to "AI Import")
+   ↓
+ScanBillDialog
+  • Drop / pick 1–5 images (camera on mobile, file picker on desktop)
+  • Thumbnails shown, remove individual images
+  • "Extract Items" → loading state per image
+   ↓
+Edge function: ai-scan-bill (vision)
+  • Returns merged items + bill metadata (store, date, total)
+   ↓
+BillReviewDialog (editable preview)
+  • Table of items: name, qty, unit, category, expiry (days), price (optional)
+  • Inline edit, delete row, "Add row" manually
+  • Confidence chip per row (low-confidence highlighted)
+  • Duplicate detector: if name fuzzy-matches an existing pantry item,
+    show "Merge with existing (current qty X)" toggle → updates instead of insert
+  • Footer: store name + bill date (editable), item count
+  • "Save to Pantry" → bulkAdd + bulkUpdate
+   ↓
+Toast + pantry list refreshes (realtime already wired)
+```
 
-The Tasks tile on the home hub points to `/tasks`, which renders `TaskmasterToday`. But Taskmaster has **5 full pages** in the codebase, and 4 of them have no UI link anywhere:
+## Why this fits cleanly (no conflicts)
 
-| Page | Route | Linked from UI? |
-|---|---|---|
-| Today (AI daily plan) | `/taskmaster/today` (and `/tasks`) | ✅ hub tile |
-| All Tasks (full backlog) | `/taskmaster/tasks` | ❌ orphaned |
-| My Tasks (assigned to me) | `/taskmaster/my-tasks` | ❌ orphaned |
-| Projects | `/taskmaster/projects` + `/:id` | ❌ orphaned |
-| Dashboard (analytics) | `/taskmaster/dashboard` | ❌ orphaned |
+- **Mirrors existing `AIPantryImportDialog`** pattern — same edge-function shape, same `bulkAddItems` mutation, same household scoping. The text importer stays as-is for voice/typing; bill scan is the visual sibling.
+- **Household-shared rule honored**: items inserted with `household_id` flow through existing RLS + realtime publication, so all members see updates instantly.
+- **Reuses `usePantryItems` hook** (`bulkAddItems`, `updatePantryItem`) — no new mutations needed.
+- **Categories + units** match the controlled vocab the AI already uses, so review chips/dropdowns reuse `usePantryCategories`.
+- **No conflict with `last_purchased_at` / staples logic** — bill date populates `last_purchased_at`, which improves the existing "average usage days" analytics for free.
+- **Meal-plan auto-deduction is unaffected** — it reads pantry totals; adding via bill is just another insert path.
 
-There's also no `/taskmaster` hub route — only deep links work. That's why you only see Today.
+## Optional enhancements (call out, default OFF)
 
-### B. "All household members see the same view" — current state audit
+- **Auto-create a "Bill" record** in a new `pantry_bills` table for history/spend tracking. Skipped by default to keep scope tight; can be added later and tied into Finance module.
+- **Push bill total into Finance as a transaction** — only if user opts in via a checkbox in the review dialog. Off by default.
 
-I checked every public table for `household_id` vs `user_id` filtering. Here's the truth:
+## Technical details
 
-**Already shared across the household (correct):**
-- `tasks`, `projects`, `task_categories`, `task_comments`, `task_assignees`
-- `meal_plans`, `recipes`, `pantry_items`, `shopping_lists`, `pantry_categories`
-- `finance_*` (accounts, transactions, budgets, savings, subscriptions, cards, snapshots)
-- `habits`, `habit_logs`, `habit_streaks`, `habit_scores` (data is shared; only logging is per-user)
-- `calendar_settings`, `dietary_preferences`, `household_preferences`, `household_family_members`, `ai_suggestions`, `household_habit_goals`
+**New files**
+- `supabase/functions/ai-scan-bill/index.ts` — vision call to `google/gemini-2.5-flash` (or `pro` for low-quality bills). Accepts `images: string[]` (base64 data URLs, max 5, ~4MB each post-compression). Same auth/rate-limit/Zod pattern as `ai-pantry-import`. Tool-call schema returns `{ store, bill_date, currency, items: [{name, quantity, unit, category, expiry_days, unit_price?, confidence}] }`.
+- `src/components/grocery/ScanBillDialog.tsx` — image picker, client-side compression (canvas → JPEG ~1600px max edge, q=0.8), thumbnail strip, extract button.
+- `src/components/grocery/BillReviewDialog.tsx` — editable items table with merge-detection (fuzzy match against current `pantryItems` by lowercased name + Levenshtein ≤ 2).
+- `src/hooks/useScanBill.ts` — wraps `supabase.functions.invoke("ai-scan-bill", ...)`.
 
-**Per-user by design (rule conflicts — needs your call):**
-- **`daily_plans`** — each member generates and sees their own AI daily plan. RLS: `user_id = auth.uid()`.
-- **`ai_conversations` / `ai_messages`** — each member's AI Assistant chat is private.
-- **`finance_chat_sessions` / `finance_chat_messages`** — same, private finance chat.
-- **`calendar_connections`** — each member's Google account tokens are private (security requirement).
-- **`notification_preferences`, `user_email_preferences`, `push_subscriptions`** — per-device/per-user settings.
-- **`habit_coach_recommendations`** — personal nudges.
-- **`user_onboarding_progress`, `user_habit_badges`, `permission_events`** — personal records.
+**Edited files**
+- `src/pages/Grocery.tsx` — add "Scan Bill" action button alongside existing AI Import.
+- `supabase/config.toml` — register `[functions.ai-scan-bill]` with `verify_jwt = false` (matches sibling functions; auth done in code).
 
-**Conclusion on the rule:** "All household members see the same data" is true for all shared family data (tasks, finance, meals, calendar, habits). It conflicts with **5 categories of intentionally private data** above (daily AI plan, private chats, OAuth tokens, personal settings, personal achievements). I do **not** recommend making those shared — daily plan would lose its personal relevance, and OAuth tokens are a security boundary.
+**Limits & guardrails**
+- Max 5 images per scan, 4MB each pre-compression (client rejects larger).
+- Use existing `AI_RATE_LIMIT` (per-user).
+- If AI returns 0 items → friendly empty state with "Try another photo" CTA.
+- All inserts use `household_id` + `added_by = auth.uid()`.
 
-### C. Realtime is not enabled — that's why members don't see each other's edits
+**Image handling**
+- Images are sent inline as base64 to the edge function (not stored). Keeps the feature stateless and avoids needing a new storage bucket. If users later want bill history, we add a `bills` bucket + table.
 
-`supabase_realtime` publication has **zero tables** in it. So when a household member adds or updates a task, other members won't see it until they refresh. This is the core of your "same view" complaint.
+**Permission primer**
+- Camera access on mobile uses existing `usePermissionPrimer` hook (already in memory) so the soft-prompt → OS-prompt pattern stays consistent.
 
-## Plan
+## Out of scope (this iteration)
 
-### 1. Restore Taskmaster navigation (orphaned pages)
-
-- **Add `TaskmasterSubNav` component** mirroring `FinanceNav` pill-style: tabs for Today · All Tasks · My Tasks · Projects · Dashboard.
-- **Mount SubNav on all 5 Taskmaster pages** (Today, Tasks, My Tasks, Projects, ProjectDetail, Dashboard).
-- **Add `/taskmaster` route** that redirects to `/taskmaster/today` (so the hub tile and back-button work cleanly).
-- **Update hub tile** in `src/pages/Index.tsx` line 39: change `/tasks` → `/taskmaster/today` for clarity (keep `/tasks` route as alias for backward-compat).
-
-### 2. Add realtime so all members see updates instantly
-
-- **Migration:** add to `supabase_realtime` publication: `tasks`, `task_assignees`, `task_comments`, `projects`, `daily_plans`, `daily_plan_items`.
-- **New hook `useRealtimeSubscription(table, queryKeys[], filter?)`** — single reusable hook that subscribes to `postgres_changes` on a table (filtered by `household_id` where applicable) and invalidates the matching React Query keys.
-- **Wire into Taskmaster pages:** subscribe to `tasks`, `projects`, `task_assignees`, `daily_plans`, `daily_plan_items` filtered by current household. On any change → invalidate `["taskmaster-tasks", householdId]`, `["projects", householdId]`, `["daily-plan", householdId, ...]`.
-- **Extend to other shared modules** in the same PR (low cost): `meal_plans`, `meal_plan_items`, `shopping_lists`, `shopping_list_items`, `pantry_items`, `finance_transactions`, `habits`, `habit_logs`. This makes the whole app feel live for the household.
-
-### 3. Make the "shared with household" model visible in UI
-
-- On `TaskmasterTaskDialog` and `QuickTaskInput`: small helper text "Visible to everyone in your household".
-- On All Tasks cards: show creator name/avatar (data is in `tasks.created_by`; join `profiles`).
-- On Today empty state: change "No tasks in today's plan" → "Nothing scheduled for today" + show backlog count + "View all tasks" link to `/taskmaster/tasks`.
-
-### 4. Decisions needed from you (rule conflicts)
-
-For the 5 categories of intentionally per-user data, default is to **keep them per-user**. Confirm or override:
-
-| Data | Default | Override to shared? |
-|---|---|---|
-| Daily AI plan (`daily_plans`) | Per-user | Risky — loses personal focus. **Recommend keep per-user**, but add a "Household plan" view later if needed. |
-| AI Assistant chats | Per-user | **Keep per-user** — privacy. |
-| Finance AI chat | Per-user | **Keep per-user** — privacy. |
-| Google Calendar tokens | Per-user | **Must keep per-user** — security. (Calendar *events* are already merged into the unified family view.) |
-| Notification/push settings | Per-user | **Must keep per-user** — per-device. |
-
-If you want any of these flipped to shared, say which ones and I'll add the migration.
-
-## Files I'll create / change
-
-**New:**
-- `src/components/taskmaster/TaskmasterSubNav.tsx` — pill-style nav (mirror of `FinanceNav`)
-- `src/hooks/useRealtimeSubscription.ts` — reusable realtime hook
-
-**Edited:**
-- `src/App.tsx` — add `/taskmaster` redirect route
-- `src/pages/Index.tsx` — hub tile path
-- `src/pages/TaskmasterToday.tsx` — mount SubNav, improve empty state, wire realtime, add "Visible to household" helper
-- `src/pages/TaskmasterTasks.tsx` — mount SubNav, show creator avatar, wire realtime
-- `src/pages/TaskmasterMyTasks.tsx` — mount SubNav, wire realtime
-- `src/pages/TaskmasterProjects.tsx` — mount SubNav, wire realtime
-- `src/pages/TaskmasterProjectDetail.tsx` — mount SubNav, wire realtime
-- `src/pages/TaskmasterDashboard.tsx` — mount SubNav, wire realtime
-- `src/components/taskmaster/QuickTaskInput.tsx` and `TaskmasterTaskDialog.tsx` — "Visible to household" helper
-- `src/pages/Tasks.tsx` — empty-state microcopy fix
-- `src/components/layout/Header.tsx` — back-button mapping for `/taskmaster` hub
-
-**Migration:**
-- One migration adding the listed tables to `supabase_realtime` publication. No schema changes.
-
-## Open questions
-
-1. SubNav order — keep my proposed order (Today · All Tasks · My Tasks · Projects · Dashboard) or reorder?
-2. Confirm defaults in the rule-conflict table above (keep daily plan, AI chats, calendar tokens, settings as per-user)?
-3. Scope of realtime — do realtime for **all shared family modules** (tasks, meals, grocery, finance, habits) in this PR, or restrict to **Taskmaster only** for now?
+- Bill history / spend tracking table
+- Auto-posting to Finance transactions
+- Multi-language OCR beyond what Gemini handles natively (it already handles English + common Indian-language store receipts well)
+- Background async processing — call is synchronous (~5–10s), shown with progress UI
