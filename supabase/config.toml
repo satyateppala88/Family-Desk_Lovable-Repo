@@ -101,3 +101,6 @@ verify_jwt = false
 
 [functions.send-savings-goal-nudge]
 verify_jwt = false
+
+[functions.ai-scan-bill]
+verify_jwt = false

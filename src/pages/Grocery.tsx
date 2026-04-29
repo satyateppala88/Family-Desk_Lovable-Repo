@@ -7,12 +7,14 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
-import { Plus, ListChecks, Package, Sparkles, ShoppingCart } from "lucide-react";
+import { Plus, ListChecks, Package, Sparkles, ShoppingCart, ScanLine } from "lucide-react";
 import { PantryItemCard } from "@/components/grocery/PantryItemCard";
 import { AddPantryItemDialog } from "@/components/grocery/AddPantryItemDialog";
 import { QuickAddChecklist } from "@/components/grocery/QuickAddChecklist";
 import { PantryFilters } from "@/components/grocery/PantryFilters";
 import { AIPantryImportDialog } from "@/components/grocery/AIPantryImportDialog";
+import { ScanBillDialog, type ScannedBill } from "@/components/grocery/ScanBillDialog";
+import { BillReviewDialog } from "@/components/grocery/BillReviewDialog";
 import { ShoppingListCard } from "@/components/grocery/ShoppingListCard";
 import { CreateShoppingListDialog } from "@/components/grocery/CreateShoppingListDialog";
 import { PantryEducationBanner } from "@/components/grocery/PantryEducationBanner";
@@ -84,6 +86,9 @@ const Grocery = () => {
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [showAIImport, setShowAIImport] = useState(false);
+  const [showScanBill, setShowScanBill] = useState(false);
+  const [scannedBill, setScannedBill] = useState<ScannedBill | null>(null);
+  const [isSavingBill, setIsSavingBill] = useState(false);
   const [showCreateList, setShowCreateList] = useState(false);
   const [editItem, setEditItem] = useState<PantryItem | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -166,6 +171,47 @@ const Grocery = () => {
       added_by: item.added_by || user.id,
     }));
     bulkAddItems.mutate(itemsWithRequired);
+  };
+
+  const handleSaveScannedBill = async ({
+    inserts,
+    merges,
+  }: {
+    inserts: Array<Partial<PantryItem>>;
+    merges: Array<{ id: string; quantity: number }>;
+    billDate: string | null;
+  }) => {
+    if (!householdId || !user?.id) return;
+    setIsSavingBill(true);
+    try {
+      if (inserts.length > 0) {
+        const enriched = inserts.map(i => ({
+          ...i,
+          household_id: householdId,
+          added_by: user.id,
+        }));
+        await bulkAddItems.mutateAsync(enriched);
+      }
+      for (const m of merges) {
+        await updatePantryItem.mutateAsync({
+          id: m.id,
+          updates: { quantity: m.quantity, last_purchased_at: new Date().toISOString() },
+        });
+      }
+      toast({
+        title: "Pantry updated",
+        description: `${inserts.length} added, ${merges.length} merged.`,
+      });
+      setScannedBill(null);
+    } catch (err: any) {
+      toast({
+        title: "Could not save",
+        description: err?.message || "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSavingBill(false);
+    }
   };
 
   const handleCreateList = (name: string) => {
@@ -427,6 +473,17 @@ const Grocery = () => {
             </Button>
             <Button
               variant="outline"
+              onClick={() => setShowScanBill(true)}
+              className="gap-2 h-9"
+              size="sm"
+              data-tour="scan-bill"
+            >
+              <ScanLine className="h-4 w-4" aria-hidden="true" />
+              <span className="hidden xs:inline">Scan Bill</span>
+              <span className="xs:hidden">Scan</span>
+            </Button>
+            <Button
+              variant="outline"
               onClick={() => setShowQuickAdd(true)}
               className="gap-2 h-9"
               size="sm"
@@ -587,6 +644,24 @@ const Grocery = () => {
         onItemsExtracted={handleAIImport}
         householdId={householdId}
         userId={user.id}
+      />
+
+      {householdId && (
+        <ScanBillDialog
+          open={showScanBill}
+          onOpenChange={setShowScanBill}
+          householdId={householdId}
+          onScanned={(bill) => setScannedBill(bill)}
+        />
+      )}
+
+      <BillReviewDialog
+        open={!!scannedBill}
+        onOpenChange={(o) => { if (!o) setScannedBill(null); }}
+        bill={scannedBill}
+        pantryItems={pantryItems}
+        onConfirm={handleSaveScannedBill}
+        isSaving={isSavingBill}
       />
 
       <CreateShoppingListDialog
