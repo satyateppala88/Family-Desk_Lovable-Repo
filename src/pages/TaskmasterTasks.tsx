@@ -8,7 +8,8 @@ import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
 import { TaskmasterSubNav } from "@/components/taskmaster/TaskmasterSubNav";
 import { TaskmasterTaskDialog } from "@/components/taskmaster/TaskmasterTaskDialog";
 import { QuickTaskInput } from "@/components/taskmaster/QuickTaskInput";
-import { ParsedTask } from "@/hooks/useParseTask";
+import { CompletionDraft } from "@/lib/taskCompletion";
+import { useAuth } from "@/contexts/AuthContext";
 import { TaskmasterTask, TaskStatus, TaskCategory } from "@/types/taskmaster";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -54,6 +55,7 @@ import { cn } from "@/lib/utils";
 
 const TaskmasterTasks = () => {
   const { householdId, isLoading: loadingHousehold } = useHousehold();
+  const { user } = useAuth();
   const { tasks, isLoading, createTask, updateTask, deleteTask, markTaskDone, startTask } = useTaskmaster(householdId);
   const { projects } = useProjects(householdId);
 
@@ -123,14 +125,17 @@ const TaskmasterTasks = () => {
     setDialogOpen(true);
   };
 
-  const handleQuickCreate = (parsed: ParsedTask) => {
+  const handleQuickCreate = (draft: CompletionDraft) => {
     createTask.mutate({
-      title: parsed.title,
-      description: parsed.description,
-      task_category: parsed.task_category,
-      priority_level: parsed.priority_level,
-      due_date: parsed.due_date,
+      title: draft.title,
+      description: draft.description,
+      task_category: draft.task_category,
+      priority_level: draft.priority_level,
+      task_status: draft.task_status,
+      due_date: draft.has_due_date ? draft.due_date : null,
+      project_id: draft.project_id,
       household_id: householdId!,
+      assignee_ids: draft.assignee_ids,
     });
   };
 
@@ -206,7 +211,13 @@ const TaskmasterTasks = () => {
 
         {/* Quick Task Input */}
         <div className="mb-6">
-          <QuickTaskInput onCreateTask={handleQuickCreate} />
+          <QuickTaskInput
+            onCreateTask={handleQuickCreate}
+            householdId={householdId}
+            projects={projects}
+            defaultStatus="backlog"
+            creatorId={user?.id}
+          />
         </div>
 
         {/* Filters */}
