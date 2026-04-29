@@ -329,14 +329,24 @@ const TaskmasterToday = () => {
         ) : (
           <Card>
             <CardContent className="py-12 text-center">
-              <p className="text-muted-foreground mb-4">No tasks in today's plan</p>
-              <Button 
-                onClick={() => generatePlan.mutate({ forceRegenerate: true })}
-                disabled={generatePlan.isPending}
-              >
-                <RefreshCw className={cn("w-4 h-4 mr-2", generatePlan.isPending && "animate-spin")} />
-                Generate Plan
-              </Button>
+              <p className="text-base font-medium mb-1">Nothing scheduled for today</p>
+              <p className="text-sm text-muted-foreground mb-5">
+                {backlogCount > 0
+                  ? `${backlogCount} task${backlogCount === 1 ? "" : "s"} waiting in your backlog. Generate a plan or browse them all.`
+                  : "Add a task above, or generate a plan from your calendar."}
+              </p>
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                <Button
+                  onClick={() => generatePlan.mutate({ forceRegenerate: true })}
+                  disabled={generatePlan.isPending}
+                >
+                  <RefreshCw className={cn("w-4 h-4 mr-2", generatePlan.isPending && "animate-spin")} />
+                  Generate Plan
+                </Button>
+                <Button variant="outline" asChild>
+                  <Link to="/taskmaster/tasks">View all tasks</Link>
+                </Button>
+              </div>
             </CardContent>
           </Card>
         )}
