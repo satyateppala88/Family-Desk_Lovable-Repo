@@ -48,8 +48,13 @@ export const useTaskmaster = (householdId: string | null) => {
 
   const createTask = useMutation({
     mutationFn: async (newTask: Partial<TaskmasterTask> & { assignee_ids?: string[] }) => {
-      const { assignee_ids, ...taskData } = newTask;
-      
+      const {
+        assignee_ids,
+        assignees: _ignoredAssignees,
+        project: _ignoredProject,
+        ...taskData
+      } = newTask as Partial<TaskmasterTask> & { assignee_ids?: string[] };
+
       const { data, error } = await supabase
         .from("tasks")
         .insert({
@@ -90,9 +95,18 @@ export const useTaskmaster = (householdId: string | null) => {
 
   const updateTask = useMutation({
     mutationFn: async ({ id, updates, assignee_ids }: { id: string; updates: Partial<TaskmasterTask>; assignee_ids?: string[] }) => {
+      // Strip fields that don't exist on the tasks table (e.g. assignee_ids,
+      // assignees join data) so PostgREST doesn't reject the update.
+      const {
+        assignee_ids: _ignoredAssigneeIds,
+        assignees: _ignoredAssignees,
+        project: _ignoredProject,
+        ...safeUpdates
+      } = updates as Partial<TaskmasterTask> & { assignee_ids?: string[] };
+
       const { data, error } = await supabase
         .from("tasks")
-        .update(updates)
+        .update(safeUpdates)
         .eq("id", id)
         .select()
         .single();
