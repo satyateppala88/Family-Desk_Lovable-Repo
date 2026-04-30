@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { usePermissionPrimer } from "@/hooks/usePermissionPrimer";
 import { PermissionPrimerDialog } from "@/components/permissions/PermissionPrimerDialog";
 import { PermissionRetryHint } from "@/components/permissions/PermissionRetryHint";
+import { AvatarSourceSheet, type AvatarSource } from "./AvatarSourceSheet";
 
 type AvatarScope =
   | { kind: "user"; userId: string }
@@ -41,6 +42,12 @@ const buildPath = (scope: AvatarScope, ext: string) => {
 const MAX_BYTES = 4 * 1024 * 1024;
 const ALLOWED = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 
+const isNativePlatform = (): boolean => {
+  if (typeof window === "undefined") return false;
+  const cap = (window as unknown as { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor;
+  return !!cap?.isNativePlatform?.();
+};
+
 export const AvatarUploader = ({
   scope,
   currentUrl,
@@ -49,17 +56,91 @@ export const AvatarUploader = ({
   onChange,
   className,
 }: AvatarUploaderProps) => {
-  const inputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const { ensurePermission, primerProps } = usePermissionPrimer();
   const [busy, setBusy] = useState(false);
+  const [chooserOpen, setChooserOpen] = useState(false);
 
-  const handlePick = async () => {
-    // On web this is a no-op (file input needs no permission); on native
-    // Capacitor it triggers the photo-library priming + OS prompt.
-    const granted = await ensurePermission("photos", "avatar-uploader");
+  const handleOpenChooser = () => {
+    setChooserOpen(true);
+  };
+
+  const uploadFromBlob = async (blob: Blob, ext: string) => {
+    if (blob.size > MAX_BYTES) {
+      toast({
+        title: "Image too large",
+        description: "Please choose an image under 4 MB.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setBusy(true);
+    try {
+      const path = buildPath(scope, ext);
+      const { error: upErr } = await supabase.storage
+        .from("avatars")
+        .upload(path, blob, { contentType: blob.type || `image/${ext}`, upsert: true });
+      if (upErr) throw upErr;
+      const { data: pub } = supabase.storage.from("avatars").getPublicUrl(path);
+      await onChange(pub.publicUrl);
+      toast({ title: "Photo updated" });
+    } catch (err: any) {
+      toast({
+        title: "Upload failed",
+        description: err?.message || "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const runNativeCapture = async (source: AvatarSource) => {
+    try {
+      const cam = await import("@capacitor/camera");
+      const photo = await cam.Camera.getPhoto({
+        source: source === "camera" ? cam.CameraSource.Camera : cam.CameraSource.Photos,
+        resultType: cam.CameraResultType.Uri,
+        quality: 85,
+        allowEditing: false,
+      });
+      const uri = photo.webPath || photo.path;
+      if (!uri) return;
+      const res = await fetch(uri);
+      const blob = await res.blob();
+      const ext = (photo.format || "jpg").toLowerCase();
+      await uploadFromBlob(blob, ext);
+    } catch (err: any) {
+      // User cancellation throws — only surface real errors.
+      const msg = String(err?.message || err || "");
+      if (/cancel/i.test(msg)) return;
+      toast({
+        title: "Couldn't open " + (source === "camera" ? "camera" : "gallery"),
+        description: msg || "Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handlePickSource = async (source: AvatarSource) => {
+    const kind = source === "camera" ? "camera" : "photos";
+    const surface = source === "camera" ? "avatar-uploader-camera" : "avatar-uploader-gallery";
+    const granted = await ensurePermission(kind, surface);
     if (!granted) return;
-    inputRef.current?.click();
+
+    if (isNativePlatform()) {
+      await runNativeCapture(source);
+      return;
+    }
+
+    // Web path: trigger the appropriate hidden input.
+    if (source === "camera") {
+      cameraInputRef.current?.click();
+    } else {
+      galleryInputRef.current?.click();
+    }
   };
 
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -71,29 +152,8 @@ export const AvatarUploader = ({
       toast({ title: "Unsupported file", description: "Please choose a JPG, PNG, WEBP, or GIF image.", variant: "destructive" });
       return;
     }
-    if (file.size > MAX_BYTES) {
-      toast({ title: "Image too large", description: "Please choose an image under 4 MB.", variant: "destructive" });
-      return;
-    }
-
-    setBusy(true);
-    try {
-      const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
-      const path = buildPath(scope, ext);
-
-      const { error: upErr } = await supabase.storage
-        .from("avatars")
-        .upload(path, file, { contentType: file.type, upsert: true });
-      if (upErr) throw upErr;
-
-      const { data: pub } = supabase.storage.from("avatars").getPublicUrl(path);
-      await onChange(pub.publicUrl);
-      toast({ title: "Photo updated" });
-    } catch (err: any) {
-      toast({ title: "Upload failed", description: err?.message || "Please try again.", variant: "destructive" });
-    } finally {
-      setBusy(false);
-    }
+    const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+    await uploadFromBlob(file, ext);
   };
 
   const handleRemove = async () => {
@@ -120,7 +180,7 @@ export const AvatarUploader = ({
         </Avatar>
         <button
           type="button"
-          onClick={handlePick}
+          onClick={handleOpenChooser}
           disabled={busy}
           className={cn(
             "absolute inset-0 rounded-full flex items-center justify-center",
@@ -134,7 +194,7 @@ export const AvatarUploader = ({
       </div>
 
       <div className="flex flex-col gap-2">
-        <Button type="button" variant="outline" size="sm" onClick={handlePick} disabled={busy}>
+        <Button type="button" variant="outline" size="sm" onClick={handleOpenChooser} disabled={busy}>
           <Upload className="h-4 w-4 mr-2" />
           {currentUrl ? "Change photo" : "Upload photo"}
         </Button>
@@ -147,23 +207,43 @@ export const AvatarUploader = ({
       </div>
 
       <input
-        ref={inputRef}
+        ref={galleryInputRef}
         type="file"
         accept="image/jpeg,image/png,image/webp,image/gif"
+        className="hidden"
+        onChange={handleFile}
+      />
+      <input
+        ref={cameraInputRef}
+        type="file"
+        accept="image/*"
+        capture="user"
         className="hidden"
         onChange={handleFile}
       />
       <PermissionPrimerDialog {...primerProps} />
       </div>
 
-      {/* Inline "Try again" hint when photos access was denied/dismissed.
-          Renders nothing on web (file input needs no permission) — only
-          surfaces on native Capacitor builds when relevant. */}
+      {/* Inline "Try again" hints when camera/photos access was blocked.
+          Render nothing on web when irrelevant — surface mainly on native
+          Capacitor builds where the OS gates these prompts. */}
+      <PermissionRetryHint
+        kind="camera"
+        ensurePermission={ensurePermission}
+        surface="avatar-uploader-camera"
+        onGranted={() => handlePickSource("camera")}
+      />
       <PermissionRetryHint
         kind="photos"
         ensurePermission={ensurePermission}
-        surface="avatar-uploader"
-        onGranted={() => inputRef.current?.click()}
+        surface="avatar-uploader-gallery"
+        onGranted={() => handlePickSource("gallery")}
+      />
+
+      <AvatarSourceSheet
+        open={chooserOpen}
+        onOpenChange={setChooserOpen}
+        onPick={handlePickSource}
       />
     </div>
   );
