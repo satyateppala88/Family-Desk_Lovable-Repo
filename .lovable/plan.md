@@ -1,94 +1,61 @@
-# Guided Task Completion After Voice / Quick Input
+## Goal
 
-## Problem
+When a user taps "Upload photo" on any avatar (profile, household, family member), show a small chooser with two options: **Take photo (camera)** and **Choose from gallery**. Each path checks the right permission, primes the user if needed, and then either opens the front camera or the phone's gallery. If a permission is blocked, show a clear "enable in settings, then try again" message.
 
-When a task is added via the Quick Task input (typed or spoken), the AI parser may leave fields empty or default them silently:
+## What changes for the user
 
-- **due_date** — often null when no date was spoken
-- **task_category** — AI guesses, but may pick "other"
-- **priority_level** — defaults to 3 (P3 Normal)
-- **task_status** — *never set* by `handleQuickCreate`, so the task lands as the DB default (likely `backlog`) and is **invisible on the Today dashboard**
-- **project** — never asked
-- **assignees** — silently set to just the creator, even though the household shares tasks
+1. Tap **Upload photo** / **Change photo** on any avatar.
+2. A bottom sheet (mobile) / dialog (desktop) appears with two large buttons:
+   - **Take photo** — uses camera (front-facing by default for selfies)
+   - **Choose from gallery** — opens the phone's photo library
+3. First time on each option:
+   - Soft "why we need this" primer → OS permission prompt → camera or gallery opens.
+4. If the user previously blocked it: a friendly toast says "Camera/Photos access is blocked. Enable it in your device settings, then tap Try again," with a Try-again button that re-invokes the flow.
+5. Cancelling the chooser does nothing — no errors.
 
-Today, the parsed task is created immediately with one click, so the user has no chance to fill these in — that's why some tasks "don't show on the dashboard".
+## How it works (technical)
 
-## Solution
+### New component: `AvatarSourceSheet`
+- A small `Sheet` (mobile-friendly) at `src/components/avatar/AvatarSourceSheet.tsx`.
+- Two buttons: **Take photo** (Camera icon), **Choose from gallery** (Image icon).
+- Emits `onPick("camera" | "gallery")`.
 
-After parsing, instead of jumping straight to "Create", open a lightweight **"Complete task details"** sheet that:
+### Update `AvatarUploader.tsx`
+- Replace single `handlePick` with:
+  - `handleOpenChooser()` — opens `AvatarSourceSheet`.
+  - `handleCameraPick()` — runs camera flow.
+  - `handleGalleryPick()` — runs gallery flow.
+- Keep existing `<input type="file">` for the **gallery** path on web; add a **second** hidden input with `capture="user"` for the **camera** path on web (front-facing on mobile browsers).
+- On native (Capacitor), use `@capacitor/camera`'s `Camera.getPhoto({ source: CameraSource.Camera | CameraSource.Photos, resultType: ResultType.Uri })`, then fetch the URI as a Blob and upload through the existing Supabase storage code path.
 
-1. Pre-fills every field the AI extracted.
-2. Highlights the fields the AI **could not determine** (with an "AI didn't catch this — pick one" hint).
-3. Forces the user to confirm/select values for the four critical fields before Create is enabled:
-   - **Status** (Backlog / Today / In Progress / Blocked)
-   - **Category** (Home / Work / Kid / Other)
-   - **Priority** (P1–P4)
-   - **Due date** (date picker, or explicit "No due date" toggle)
-4. Optional fields stay optional but visible: **Project**, **Assignees** (multi-select of household members, defaults to creator).
-5. Voice users get a "Speak the answer" mic on each missing field — saying "tomorrow", "high priority", "work", etc. fills that one field via a small follow-up parser call. Tapping a dropdown is always an alternative.
+### Permission flow per option
+- **Take photo** → `ensurePermission("camera", "avatar-uploader-camera")`.
+  - On web: primer → `getUserMedia({ video: true })` triggers OS prompt; on grant we immediately click the hidden `capture="user"` input (no `getUserMedia` stream is kept — the input itself opens the camera UI; the `getUserMedia` call is only used as the prompt vehicle and stops tracks immediately, matching existing pattern in `requestPermission`).
+  - On native: primer → `Camera.requestPermissions({ permissions: ["camera"] })` → `Camera.getPhoto({ source: Camera })`.
+- **Choose from gallery** → `ensurePermission("photos", "avatar-uploader-gallery")`.
+  - On web: photos has no real permission — primer is skipped (`queryPermission` returns "prompt", primer shows once unless suppressed). After "Allow," click the existing hidden `<input type="file">`.
+  - On native: primer → `Camera.requestPermissions({ permissions: ["photos"] })` → `Camera.getPhoto({ source: Photos })`.
 
-The Create button stays disabled until every required field has an explicit value (not just an AI guess). A small "AI suggested" badge appears next to fields the user hasn't confirmed yet; tapping the field (or confirming via voice) clears the badge.
+### Denied / blocked handling
+- Reuse the existing `DENIED_HINTS` toast in `usePermissionPrimer` (already shows "Camera access is blocked…" / "Photo access is blocked…").
+- Keep the existing `PermissionRetryHint` block under the uploader; add a second one so both `camera` and `photos` retry hints can surface independently.
 
-## User flow
+### Files touched
+- **New:** `src/components/avatar/AvatarSourceSheet.tsx`
+- **Edit:** `src/components/avatar/AvatarUploader.tsx`
+  - Add chooser state, two flows, second hidden input with `capture="user"`, native Capacitor branch.
+- No changes to `src/lib/permissions.ts`, `usePermissionPrimer`, primer dialog copy, or storage logic.
 
-```text
-User types / speaks: "Call plumber"
-        │
-        ▼
-[Parse] → AI returns: title="Call plumber", category="home",
-                      priority=3, due_date=null, status=null
-        │
-        ▼
-"Complete task details" sheet opens
-   Title:    Call plumber                    [edit]
-   Category: Home          (AI suggested)    [confirm / change]
-   Priority: P3 Normal     (AI suggested)    [confirm / change]
-   Status:   ⚠ pick one    [Backlog ▼]
-   Due:     ⚠ pick one    [📅] or [No due date]
-   Project: optional
-   Assignees: You ✓  + add member
-        │
-        ▼
-[Create] enabled only when Status + Due answered
-        │
-        ▼
-createTask runs with full payload → shows up everywhere it should
-```
+### What is NOT changed
+- Storage bucket, path layout, file validation (type/size), and the `onChange(publicUrl)` contract are all untouched.
+- Other call sites of `usePermissionPrimer` (voice input, notifications) are untouched.
+- No DB migrations, no edge functions.
 
-## Scope
+## Native Capacitor note
 
-### New
-- `src/components/taskmaster/TaskCompletionSheet.tsx` — the missing-details sheet (mobile-first bottom sheet, uses existing `Sheet`/`Select`/`Calendar`/`VoiceInputButton`).
-- Small helper `src/lib/taskCompletion.ts` to compute which fields are "missing" vs "AI-guessed" and validate readiness.
+The Capacitor branch only activates when `window.Capacitor.isNativePlatform()` is true. On the published web app and PWA, the existing `<input type="file">` paths handle both camera (`capture="user"`) and gallery — exactly what mobile Chrome/Safari already do natively. No new npm dependency is required because `@capacitor/camera` is already imported lazily by `src/lib/permissions.ts`.
 
-### Edited
-- `src/components/taskmaster/QuickTaskInput.tsx` — replace the inline preview Card + Check button with: parse → open `TaskCompletionSheet` → on confirm call `onCreateTask`. Keep the voice mic on the main input.
-- `src/pages/TaskmasterToday.tsx`, `src/pages/TaskmasterTasks.tsx` — `handleQuickCreate` now receives a fully-completed payload (with `task_status`, `assignee_ids`, `project_id`) and passes it through to `createTask.mutate`. Today page should default the suggested status to `today` so newly created tasks immediately appear on the dashboard.
-- `src/components/taskmaster/TaskmasterTaskDialog.tsx` — minor: same "AI didn't catch this" highlighting reused if a parsed task is opened via the "Edit before creating" pencil (already wired through `onEditTask`).
-- `supabase/functions/parse-task-input/index.ts` — small enhancement: also return `task_status` (allow values: `backlog | today | in_progress`) when input contains hints like "today", "now", "start now", "later"; null when ambiguous. No schema migration needed.
+## Risks / call-outs
 
-### Not touched
-- DB schema, RLS, realtime hook, household-shared-view rule.
-- The `TaskmasterTaskDialog` full editor remains the power-user path.
-
-## Field-readiness rules
-
-A task is ready to create when **all** of these are explicitly set by the user (AI suggestions count as set only after user confirms):
-
-| Field      | Required | Default if user picks "skip" |
-|------------|----------|------------------------------|
-| title      | yes      | —                            |
-| status     | yes      | `today` on Today page, `backlog` elsewhere |
-| category   | yes      | `other`                      |
-| priority   | yes      | `3`                          |
-| due_date   | yes (or "no due date" toggle) | null |
-| project    | no       | null                         |
-| assignees  | no, but pre-checked = creator | [creator] |
-
-## Why this fixes the dashboard issue
-
-The Today dashboard filters tasks by `task_status = 'today'` (and/or due_date = today). Quick-created tasks today never set `task_status`, so they fall into `backlog` and disappear from Today. By making status a required, confirmed field — and defaulting the suggestion to `today` when the user is on the Today page — every quick-added task lands where the user expects.
-
-## Out of scope (can follow up)
-
-- Conversational multi-turn voice flow ("Sure, what priority?" spoken back). The plan uses one sheet with per-field voice mics, which is faster and more accessible than a back-and-forth dialog. Happy to layer a spoken Q&A on top later if you want it.
+- `capture="user"` is a *hint*, not a guarantee — some Android browsers may open a chooser between camera apps. This is the platform behaviour; we cannot force-open a specific lens in a PWA.
+- If the user blocks camera at the OS level on a native build, re-enabling requires a trip to system Settings (standard Android/iOS behaviour). The toast tells them this.
