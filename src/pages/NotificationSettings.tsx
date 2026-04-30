@@ -144,10 +144,21 @@ export default function NotificationSettings() {
       if (sub.ok) {
         toast.success("Notifications enabled — you're all set.");
       } else {
-        toast(
-          "Permission granted, but we couldn't register this device for push. We'll retry next time you open the app."
-        );
-        console.warn("[push] subscription setup failed:", (sub as { reason: string }).reason);
+        const reason = (sub as { reason: string }).reason;
+        const friendly: Record<string, string> = {
+          unsupported: "This browser doesn't support push notifications.",
+          "permission-denied": "Notifications are blocked in your browser.",
+          "no-service-worker":
+            "Background service isn't ready yet. Reload the page and try again.",
+          "no-vapid-key":
+            "Server isn't configured for push yet. Please contact support.",
+          "subscribe-failed":
+            "Your browser couldn't register for push (often due to no network or Google Play Services on Android). Try again on Wi-Fi.",
+          "upload-failed":
+            "We couldn't save your device. Please check your connection and try again.",
+        };
+        toast.error(friendly[reason] ?? "Couldn't register this device for push.");
+        console.warn("[push] subscription setup failed:", reason);
       }
     } else if (result === "denied") {
       setRequesting(false);
