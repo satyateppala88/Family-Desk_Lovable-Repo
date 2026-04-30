@@ -89,8 +89,27 @@ export async function ensurePushSubscription(): Promise<PushSetupResult> {
     return { ok: false, reason: "permission-denied" };
   }
 
-  const registration = await navigator.serviceWorker.getRegistration();
-  if (!registration) return { ok: false, reason: "no-service-worker" };
+  // Wait for the service worker to actually be ready. On Android Chrome the
+  // SW registration can still be `installing` when the user taps Enable
+  // immediately after permission, so `getRegistration()` returns the record
+  // but `pushManager.subscribe` then fails with "no active Service Worker".
+  // `navigator.serviceWorker.ready` resolves only once an active worker
+  // controls the page.
+  let registration: ServiceWorkerRegistration | undefined;
+  try {
+    registration = await Promise.race([
+      navigator.serviceWorker.ready,
+      new Promise<undefined>((resolve) => setTimeout(() => resolve(undefined), 8000)),
+    ]);
+  } catch {
+    registration = undefined;
+  }
+  if (!registration) {
+    registration = await navigator.serviceWorker.getRegistration();
+  }
+  if (!registration || !registration.active) {
+    return { ok: false, reason: "no-service-worker" };
+  }
 
   // Reuse any existing subscription for this registration.
   let sub = await registration.pushManager.getSubscription();
