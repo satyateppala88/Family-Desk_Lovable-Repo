@@ -25,6 +25,9 @@ Deno.serve(async (req) => {
   }
 
   const vapidPublicKey = Deno.env.get("VAPID_PUBLIC_KEY") ?? "";
+  if (!vapidPublicKey) {
+    console.error("[push-subscribe] VAPID_PUBLIC_KEY env var is missing");
+  }
 
   try {
     const authHeader = req.headers.get("Authorization");
