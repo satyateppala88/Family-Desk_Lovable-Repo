@@ -13,6 +13,7 @@ import {
   type PermissionState,
   queryPermission,
 } from "@/lib/permissions";
+import { clearPermissionSnooze } from "@/lib/launchStorage";
 import { usePermissionPrimer } from "@/hooks/usePermissionPrimer";
 import { PermissionPrimerDialog } from "@/components/permissions/PermissionPrimerDialog";
 
@@ -150,7 +151,11 @@ const PermissionsSettings = () => {
       clearSuppression(kind);
       setSuppressedMap((m) => ({ ...m, [kind]: false }));
     }
-    const granted = await ensurePermission(kind, "settings-permissions");
+    // The user is explicitly opting in from Settings — bypass any active
+    // "Remind me later" snooze and use the try-again surface so the primer
+    // hook does not silently no-op.
+    clearPermissionSnooze(kind);
+    const granted = await ensurePermission(kind, "try-again");
     await refresh();
     if (granted) toast.success("Permission enabled");
   };
