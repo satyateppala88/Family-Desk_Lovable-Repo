@@ -1,17 +1,17 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Joyride, { CallBackProps, STATUS, Step } from "react-joyride";
-import { supabase } from "@/lib/supabase";
-import { useAuth } from "@/contexts/AuthContext";
 
 interface OnboardingTourProps {
   run: boolean;
   onComplete: () => void;
+  steps?: Step[];
+  featureName?: string;
 }
 
-const steps: Step[] = [
+const defaultSteps: Step[] = [
   {
     target: "body",
-    content: "Welcome to HomeMate! Let's take a quick tour to help you get started with managing your household in India.",
+    content: "Welcome to Family Desk! Let's take a quick tour to help you get started with managing your household in India.",
     placement: "center",
     disableBeacon: true,
   },
@@ -47,21 +47,15 @@ const steps: Step[] = [
   },
 ];
 
-export const OnboardingTour = ({ run, onComplete }: OnboardingTourProps) => {
-  const { user } = useAuth();
+export const OnboardingTour = ({ run, onComplete, steps, featureName }: OnboardingTourProps) => {
+  const tourSteps = steps || defaultSteps;
   const [stepIndex, setStepIndex] = useState(0);
 
   const handleJoyrideCallback = async (data: CallBackProps) => {
     const { status, index, type } = data;
 
     if ([STATUS.FINISHED, STATUS.SKIPPED].includes(status as any)) {
-      // Mark onboarding as completed
-      if (user) {
-        await supabase
-          .from("profiles")
-          .update({ onboarding_completed: true })
-          .eq("id", user.id);
-      }
+      // Call the onComplete handler which should mark the feature tour as complete
       onComplete();
     }
 
@@ -72,7 +66,7 @@ export const OnboardingTour = ({ run, onComplete }: OnboardingTourProps) => {
 
   return (
     <Joyride
-      steps={steps}
+      steps={tourSteps}
       run={run}
       continuous
       showProgress

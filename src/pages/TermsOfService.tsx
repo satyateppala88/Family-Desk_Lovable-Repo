@@ -1,10 +1,16 @@
 import { Header } from "@/components/layout/Header";
-import { MobileNav } from "@/components/layout/MobileNav";
+
 import { Footer } from "@/components/layout/Footer";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import {
+  TERMS_VERSION,
+  TERMS_EFFECTIVE_DATE,
+  formatVersionDate,
+} from "@/lib/versioning";
 
 export default function TermsOfService() {
   const navigate = useNavigate();
@@ -25,22 +31,25 @@ export default function TermsOfService() {
         <Card>
           <CardHeader>
             <CardTitle className="text-3xl">Terms of Service</CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Last Updated: {new Date().toLocaleDateString('en-IN')}
-            </p>
+            <div className="flex items-center gap-2 flex-wrap pt-1">
+              <Badge variant="secondary">Version {TERMS_VERSION}</Badge>
+              <span className="text-sm text-muted-foreground">
+                Last updated {formatVersionDate(TERMS_EFFECTIVE_DATE)}
+              </span>
+            </div>
           </CardHeader>
           <CardContent className="prose prose-sm max-w-none space-y-6">
             <section>
               <h2 className="text-xl font-semibold mb-3">1. Acceptance of Terms</h2>
               <p className="text-muted-foreground">
-                By accessing and using HomeMate ("the Service"), you accept and agree to be bound by the terms and provision of this agreement. If you do not agree to these Terms of Service, please do not use the Service.
+                By accessing and using Family Desk ("the Service"), you accept and agree to be bound by the terms and provision of this agreement. If you do not agree to these Terms of Service, please do not use the Service.
               </p>
             </section>
 
             <section>
               <h2 className="text-xl font-semibold mb-3">2. Description of Service</h2>
               <p className="text-muted-foreground">
-                HomeMate is a household management platform designed for Indian families, providing features including task management, AI-powered meal planning with Indian cuisine focus, grocery list management, and calendar organization.
+                Family Desk is a household management platform designed for Indian families, providing features including task management, AI-powered meal planning with Indian cuisine focus, grocery list management, calendar organization, habit tracking, project management (Taskmaster), and Google Calendar integration with AI-powered task extraction.
               </p>
             </section>
 
@@ -61,7 +70,9 @@ export default function TermsOfService() {
                 <li>Use the Service only for lawful purposes and in accordance with these Terms</li>
                 <li>Not use the Service in any way that could damage, disable, or impair the Service</li>
                 <li>Not attempt to gain unauthorized access to any portion of the Service</li>
+                <li>Not attempt to escalate privileges, bypass access controls, or exploit security vulnerabilities</li>
                 <li>Not upload or transmit any harmful code, viruses, or malicious software</li>
+                <li>Not abuse API rate limits or attempt automated bulk access beyond normal usage</li>
                 <li>Respect the intellectual property rights of others</li>
               </ul>
               
@@ -115,72 +126,193 @@ export default function TermsOfService() {
                 <li>Consult healthcare professionals for specific dietary needs</li>
                 <li>We do not guarantee the accuracy of nutritional information</li>
               </ul>
+
+              <h3 className="text-lg font-medium mb-2 mt-4">5.4 Natural Language Task Processing</h3>
+              <p className="text-muted-foreground mb-2">
+                Our AI processes natural language task inputs to extract structured information:
+              </p>
+              <ul className="list-disc pl-6 space-y-2 text-muted-foreground">
+                <li>Task titles, descriptions, priorities, and due dates are extracted from conversational input</li>
+                <li>Scheduling context (e.g., "after my meeting", "before school pickup") is interpreted</li>
+                <li>Category classification (home, work, kid-related) is automatically assigned</li>
+                <li>You can always edit or correct AI-interpreted task details</li>
+              </ul>
+
+              <h3 className="text-lg font-medium mb-2 mt-4">5.5 Calendar-Aware Task Prioritization</h3>
+              <p className="text-muted-foreground mb-2">
+                When you connect your Google Calendar, our AI uses your schedule to enhance task management:
+              </p>
+              <ul className="list-disc pl-6 space-y-2 text-muted-foreground">
+                <li>Daily task plans consider your meeting load and available time slots</li>
+                <li>On busy days, fewer tasks are recommended to avoid overwhelm</li>
+                <li>Task scheduling suggestions align with your free time windows</li>
+                <li>Work tasks are prioritized during work hours, home tasks during evenings</li>
+              </ul>
+
+              <h3 className="text-lg font-medium mb-2 mt-4">5.6 Calendar Task Extraction</h3>
+              <p className="text-muted-foreground mb-2">
+                Our AI can automatically identify actionable tasks from your calendar events:
+              </p>
+              <ul className="list-disc pl-6 space-y-2 text-muted-foreground">
+                <li>Calendar events that represent actions (e.g., "Call dentist") may be converted to tasks</li>
+                <li>Appointments and meetings (e.g., "Team standup") are not converted to tasks</li>
+                <li>You retain full control to delete or modify any extracted tasks</li>
+                <li>Duplicate task extraction is prevented through event tracking</li>
+                <li>AI-extracted tasks are marked with their calendar source for transparency</li>
+              </ul>
+
+              <h3 className="text-lg font-medium mb-2 mt-4">5.7 Habit Tracking Features</h3>
+              <p className="text-muted-foreground mb-2">When using the Habits feature:</p>
+              <ul className="list-disc pl-6 space-y-2 text-muted-foreground">
+                <li>Personal habits are visible only to you unless marked as household habits</li>
+                <li>Household habits and completion data are visible to all household members</li>
+                <li>Leaderboards show relative performance of household members</li>
+                <li>AI coach suggestions are based on your habit patterns and may not be personalized medical advice</li>
+                <li>Habit streaks reset if you miss a scheduled day</li>
+                <li>You can delete habits and their history at any time</li>
+              </ul>
+
+              <h3 className="text-lg font-medium mb-2 mt-4">5.8 Taskmaster Project Management</h3>
+              <p className="text-muted-foreground mb-2">The Taskmaster feature provides advanced project management:</p>
+              <ul className="list-disc pl-6 space-y-2 text-muted-foreground">
+                <li>Projects and tasks are visible to all household members</li>
+                <li>AI parsing of task inputs may not always be accurate; verify extracted details</li>
+                <li>Project completion status is tracked and stored</li>
+                <li>AI-generated daily plans prioritize tasks based on multiple factors including urgency, your schedule, and task dependencies</li>
+                <li>You maintain full control over accepting or modifying AI-suggested plans</li>
+              </ul>
             </section>
 
             <section>
-              <h2 className="text-xl font-semibold mb-3">6. Household Sharing Features</h2>
-              <p className="text-muted-foreground">
-                When you create or join a household, you agree to share certain data with household members. You are responsible for managing household member access and permissions.
+              <h2 className="text-xl font-semibold mb-3">5A. Finance Features</h2>
+              
+              <h3 className="text-lg font-medium mb-2">5A.1 Financial Data</h3>
+              <p className="text-muted-foreground mb-2">
+                The Finance module allows you to track transactions, budgets, savings goals, subscriptions, and credit card rewards. You acknowledge that:
+              </p>
+              <ul className="list-disc pl-6 space-y-2 text-muted-foreground">
+                <li>Financial data you enter is stored securely and shared only within your household</li>
+                <li>We do not connect to bank accounts or process real payments</li>
+                <li>Budget and spending insights are for informational purposes only and do not constitute financial advice</li>
+                <li>You are responsible for the accuracy of transaction and budget data you enter</li>
+              </ul>
+
+              <h3 className="text-lg font-medium mb-2 mt-4">5A.2 Credit Card Recommender</h3>
+              <p className="text-muted-foreground mb-2">
+                The credit card recommendation feature uses a pre-built catalog of popular Indian credit cards:
+              </p>
+              <ul className="list-disc pl-6 space-y-2 text-muted-foreground">
+                <li>Card benefit data (cashback rates, reward multipliers, lounge access) is maintained by Family Desk and may not always reflect the latest bank terms</li>
+                <li>Recommendations are suggestive and not binding; always verify benefits with your card issuer</li>
+                <li>We do not store your card numbers, CVVs, or any payment credentials</li>
+                <li>Card catalog information may be updated periodically without notice</li>
+              </ul>
+
+              <h3 className="text-lg font-medium mb-2 mt-4">5A.3 Subscriptions & Recurring Expenses</h3>
+              <ul className="list-disc pl-6 space-y-2 text-muted-foreground">
+                <li>Subscription tracking is manual; we do not auto-detect or cancel subscriptions</li>
+                <li>Due date reminders are informational; we are not liable for missed payments</li>
+                <li>AMC and recurring expense data is visible to all household members</li>
+              </ul>
+            </section>
+
+            <section>
+              <h2 className="text-xl font-semibold mb-3">6. Google Calendar Integration</h2>
+              <p className="text-muted-foreground mb-2">
+                When you connect your Google Calendar to Family Desk:
+              </p>
+              <ul className="list-disc pl-6 space-y-2 text-muted-foreground">
+                <li>You authorize us to read your calendar events for display and task planning purposes</li>
+                <li>We access all calendars associated with your Google account that you make visible</li>
+                <li>Calendar data is used to provide unified family calendar views and AI-powered insights</li>
+                <li>We store OAuth tokens securely to maintain your calendar connection</li>
+                <li>You can disconnect your Google Calendar at any time through Settings</li>
+                <li>Disconnecting will stop calendar synchronization but won't delete previously extracted tasks</li>
+              </ul>
+              <p className="text-muted-foreground mt-2">
+                By connecting Google Calendar, you agree to Google's Terms of Service and acknowledge that your use is also subject to Google's Privacy Policy.
               </p>
             </section>
 
             <section>
-              <h2 className="text-xl font-semibold mb-3">7. Intellectual Property</h2>
+              <h2 className="text-xl font-semibold mb-3">7. Household Sharing Features</h2>
               <p className="text-muted-foreground">
-                The Service and its original content, features, and functionality are owned by HomeMate and are protected by international copyright, trademark, patent, trade secret, and other intellectual property laws.
+                When you create or join a household, you agree to share certain data with household members. You are responsible for managing household member access and permissions. Connected calendars and extracted tasks are visible to all household members. Habit leaderboards and completion data are shared within your household.
               </p>
             </section>
 
             <section>
-              <h2 className="text-xl font-semibold mb-3">8. Limitation of Liability</h2>
+              <h2 className="text-xl font-semibold mb-3">8. Intellectual Property</h2>
               <p className="text-muted-foreground">
-                To the maximum extent permitted by applicable law, HomeMate shall not be liable for any indirect, incidental, special, consequential, or punitive damages, or any loss of profits or revenues, whether incurred directly or indirectly.
+                The Service and its original content, features, and functionality are owned by Family Desk and are protected by international copyright, trademark, patent, trade secret, and other intellectual property laws.
               </p>
             </section>
 
             <section>
-              <h2 className="text-xl font-semibold mb-3">9. Compliance with Indian Laws</h2>
+              <h2 className="text-xl font-semibold mb-3">9. Limitation of Liability</h2>
+              <p className="text-muted-foreground">
+                To the maximum extent permitted by applicable law, Family Desk shall not be liable for any indirect, incidental, special, consequential, or punitive damages, or any loss of profits or revenues, whether incurred directly or indirectly.
+              </p>
+            </section>
+
+            <section>
+              <h2 className="text-xl font-semibold mb-3">10. Compliance with Indian Laws</h2>
               <p className="text-muted-foreground">
                 This Service complies with the Information Technology Act, 2000 and the Digital Personal Data Protection Act, 2023 (DPDP Act). We are committed to protecting your personal data in accordance with Indian data protection regulations.
               </p>
             </section>
 
             <section>
-              <h2 className="text-xl font-semibold mb-3">10. Termination</h2>
+              <h2 className="text-xl font-semibold mb-3">11. Third-Party Services</h2>
+              <p className="text-muted-foreground mb-2">
+                Our Service integrates with third-party services:
+              </p>
+              <ul className="list-disc pl-6 space-y-2 text-muted-foreground">
+                <li><strong>Google Calendar:</strong> For calendar synchronization and event display</li>
+                <li><strong>Lovable AI Gateway:</strong> For AI-powered meal planning, task parsing, and calendar analysis</li>
+                <li><strong>Lovable Cloud:</strong> For database, authentication, and backend infrastructure</li>
+              </ul>
+              <p className="text-muted-foreground mt-2">
+                Each third-party service has its own terms and privacy policies. By using these integrations, you agree to comply with their respective terms.
+              </p>
+            </section>
+
+            <section>
+              <h2 className="text-xl font-semibold mb-3">12. Termination</h2>
               <p className="text-muted-foreground">
                 We may terminate or suspend your account and access to the Service immediately, without prior notice, for conduct that we believe violates these Terms or is harmful to other users, us, or third parties.
               </p>
             </section>
 
             <section>
-              <h2 className="text-xl font-semibold mb-3">11. Changes to Terms</h2>
+              <h2 className="text-xl font-semibold mb-3">13. Changes to Terms</h2>
               <p className="text-muted-foreground">
                 We reserve the right to modify these terms at any time. We will notify users of any material changes via email or through the Service. Your continued use after such modifications constitutes acceptance of the updated terms.
               </p>
             </section>
 
             <section>
-              <h2 className="text-xl font-semibold mb-3">12. Governing Law</h2>
+              <h2 className="text-xl font-semibold mb-3">14. Governing Law</h2>
               <p className="text-muted-foreground">
                 These Terms shall be governed by and construed in accordance with the laws of India, without regard to its conflict of law provisions. Any disputes shall be subject to the exclusive jurisdiction of courts in India.
               </p>
             </section>
 
             <section>
-              <h2 className="text-xl font-semibold mb-3">13. Contact Information</h2>
+              <h2 className="text-xl font-semibold mb-3">15. Contact Information</h2>
               <p className="text-muted-foreground">
                 If you have any questions about these Terms, please contact us at:
                 <br />
-                Email: legal@homemate.app
+                Email: contactus@familydesk.in
                 <br />
-                Support: support@homemate.app
+                Support: contactus@familydesk.in
               </p>
             </section>
           </CardContent>
         </Card>
       </main>
       <Footer />
-      <MobileNav />
+      
     </div>
   );
 }

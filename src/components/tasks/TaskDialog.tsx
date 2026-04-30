@@ -1,10 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Task } from "@/types/database";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -13,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { VoiceInputButton } from "@/components/voice/VoiceInputButton";
 import {
   Select,
   SelectContent,
@@ -37,12 +37,20 @@ export const TaskDialog = ({
   householdId,
 }: TaskDialogProps) => {
   const { user } = useAuth();
-  const [title, setTitle] = useState(task?.title || "");
-  const [description, setDescription] = useState(task?.description || "");
-  const [priority, setPriority] = useState<Task["priority"]>(task?.priority || "medium");
-  const [dueDate, setDueDate] = useState(
-    task?.due_date ? new Date(task.due_date).toISOString().split("T")[0] : ""
-  );
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [priority, setPriority] = useState<Task["priority"]>("medium");
+  const [dueDate, setDueDate] = useState("");
+
+  // Sync form when task changes
+  useEffect(() => {
+    if (open) {
+      setTitle(task?.title || "");
+      setDescription(task?.description || "");
+      setPriority(task?.priority || "medium");
+      setDueDate(task?.due_date ? new Date(task.due_date).toISOString().split("T")[0] : "");
+    }
+  }, [task, open]);
 
   const handleSave = () => {
     const taskData: Partial<Task> = {
@@ -53,67 +61,81 @@ export const TaskDialog = ({
       household_id: householdId,
       created_by: user?.id,
     };
-
     onSave(taskData);
     onOpenChange(false);
-    
-    // Reset form
-    setTitle("");
-    setDescription("");
-    setPriority("medium");
-    setDueDate("");
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[525px]">
+      <DialogContent className="sm:max-w-[480px]">
         <DialogHeader>
-          <DialogTitle>{task ? "Edit Task" : "Create New Task"}</DialogTitle>
-          <DialogDescription>
-            {task ? "Update your task details" : "Add a new task to your household"}
-          </DialogDescription>
+          <DialogTitle>{task ? "Edit Task" : "New Task"}</DialogTitle>
         </DialogHeader>
 
-        <div className="grid gap-4 py-4">
-          <div className="grid gap-2">
-            <Label htmlFor="title">Title</Label>
-            <Input
-              id="title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Task title"
-            />
+        <div className="space-y-4 py-2">
+          <div className="space-y-1.5">
+            <Label htmlFor="title" className="text-xs font-medium">Title</Label>
+            <div className="flex items-center gap-1.5">
+              <Input
+                id="title"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="What needs to be done?"
+                autoFocus
+                className="flex-1"
+              />
+              <VoiceInputButton
+                onTranscript={(text) =>
+                  setTitle((prev) => (prev ? prev + " " + text : text))
+                }
+                size="icon"
+                variant="outline"
+                title="Speak the task title"
+              />
+            </div>
           </div>
 
-          <div className="grid gap-2">
-            <Label htmlFor="description">Description</Label>
-            <Textarea
-              id="description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Task description (optional)"
-              rows={3}
-            />
+          <div className="space-y-1.5">
+            <Label htmlFor="description" className="text-xs font-medium">Notes</Label>
+            <div className="flex items-start gap-1.5">
+              <Textarea
+                id="description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Add details (optional)"
+                rows={2}
+                className="resize-none flex-1"
+              />
+              <VoiceInputButton
+                onTranscript={(text) =>
+                  setDescription((prev) => (prev ? prev + " " + text : text))
+                }
+                size="icon"
+                variant="outline"
+                continuous
+                title="Speak notes"
+              />
+            </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="grid gap-2">
-              <Label htmlFor="priority">Priority</Label>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="priority" className="text-xs font-medium">Priority</Label>
               <Select value={priority} onValueChange={(value: Task["priority"]) => setPriority(value)}>
                 <SelectTrigger id="priority">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="low">Low</SelectItem>
-                  <SelectItem value="medium">Medium</SelectItem>
-                  <SelectItem value="high">High</SelectItem>
-                  <SelectItem value="urgent">Urgent</SelectItem>
+                  <SelectItem value="low">🟢 Low</SelectItem>
+                  <SelectItem value="medium">🟡 Medium</SelectItem>
+                  <SelectItem value="high">🟠 High</SelectItem>
+                  <SelectItem value="urgent">🔴 Urgent</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
-            <div className="grid gap-2">
-              <Label htmlFor="due-date">Due Date</Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="due-date" className="text-xs font-medium">Due Date</Label>
               <Input
                 id="due-date"
                 type="date"
@@ -124,12 +146,12 @@ export const TaskDialog = ({
           </div>
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="gap-2 sm:gap-0">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
           <Button onClick={handleSave} disabled={!title.trim()}>
-            {task ? "Save Changes" : "Create Task"}
+            {task ? "Save" : "Create"}
           </Button>
         </DialogFooter>
       </DialogContent>

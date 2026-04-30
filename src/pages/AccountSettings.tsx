@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
@@ -8,16 +9,52 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { Separator } from "@/components/ui/separator";
-import { User, Lock, Globe } from "lucide-react";
+import { User, Lock, Globe, ArrowLeft, Bell } from "lucide-react";
+
+import { Header } from "@/components/layout/Header";
+import { Footer } from "@/components/layout/Footer";
+
+import { PhoneVerificationSection } from "@/components/settings/PhoneVerificationSection";
+import { NotificationPreferencesSection } from "@/components/settings/NotificationPreferencesSection";
+import { AvatarUploader } from "@/components/avatar/AvatarUploader";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 const AccountSettings = () => {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
   
   // Profile state
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState(user?.email || "");
+
+  // Load current avatar
+  const { data: profile } = useQuery({
+    queryKey: ["profile-avatar", user?.id],
+    queryFn: async () => {
+      if (!user) return null;
+      const { data } = await supabase
+        .from("profiles")
+        .select("avatar_url, display_name")
+        .eq("id", user.id)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!user,
+  });
+  const avatarUrl = (profile as any)?.avatar_url || null;
+
+  const handleAvatarChange = async (publicUrl: string | null) => {
+    if (!user) return;
+    const { error } = await supabase
+      .from("profiles")
+      .update({ avatar_url: publicUrl })
+      .eq("id", user.id);
+    if (error) throw error;
+    queryClient.invalidateQueries({ queryKey: ["profile-avatar", user.id] });
+  };
   
   // Password state
   const [currentPassword, setCurrentPassword] = useState("");
@@ -101,19 +138,30 @@ const AccountSettings = () => {
   };
 
   return (
-    <div className="container max-w-4xl px-4 sm:px-6 py-6 sm:py-8 space-y-6 sm:space-y-8 pb-24">
-      <div>
-        <h1 className="text-2xl sm:text-3xl font-bold">Account Settings</h1>
-        <p className="text-muted-foreground mt-2 text-sm sm:text-base">
-          Manage your account settings and preferences
-        </p>
-      </div>
+    <>
+      <Header />
+      <main className="container max-w-4xl px-4 sm:px-6 py-6 sm:py-8 space-y-6 sm:space-y-8 pb-24">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" onClick={() => navigate("/dashboard")}>
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold">Account Settings</h1>
+            <p className="text-muted-foreground mt-1 text-sm sm:text-base">
+              Manage your account settings and preferences
+            </p>
+          </div>
+        </div>
 
       <Tabs defaultValue="profile" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="profile" className="flex-col sm:flex-row gap-1 sm:gap-2 py-2">
             <User className="w-4 h-4" />
             <span className="text-xs sm:text-sm">Profile</span>
+          </TabsTrigger>
+          <TabsTrigger value="notifications" className="flex-col sm:flex-row gap-1 sm:gap-2 py-2">
+            <Bell className="w-4 h-4" />
+            <span className="text-xs sm:text-sm">Notifications</span>
           </TabsTrigger>
           <TabsTrigger value="security" className="flex-col sm:flex-row gap-1 sm:gap-2 py-2">
             <Lock className="w-4 h-4" />
@@ -135,6 +183,20 @@ const AccountSettings = () => {
             </CardHeader>
             <CardContent>
               <form onSubmit={handleUpdateProfile} className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Profile photo</Label>
+                  <AvatarUploader
+                    scope={{ kind: "user", userId: user?.id || "" }}
+                    currentUrl={avatarUrl}
+                    fallbackInitials={
+                      (displayName || (profile as any)?.display_name || user?.email || "U")
+                        .toString()
+                        .slice(0, 2)
+                    }
+                    size="lg"
+                    onChange={handleAvatarChange}
+                  />
+                </div>
                 <div className="space-y-2">
                   <Label htmlFor="email">Email</Label>
                   <Input
@@ -166,6 +228,11 @@ const AccountSettings = () => {
               </form>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="notifications" className="space-y-4">
+          <PhoneVerificationSection />
+          <NotificationPreferencesSection />
         </TabsContent>
 
         <TabsContent value="security" className="space-y-4">
@@ -228,6 +295,7 @@ const AccountSettings = () => {
                   Delete Account (Coming Soon)
                 </Button>
               </div>
+              
             </CardContent>
           </Card>
         </TabsContent>
@@ -250,8 +318,11 @@ const AccountSettings = () => {
             </CardContent>
           </Card>
         </TabsContent>
-      </Tabs>
-    </div>
+        </Tabs>
+      </main>
+      <Footer />
+      
+    </>
   );
 };
 

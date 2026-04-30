@@ -1,11 +1,9 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { z } from "https://deno.land/x/zod@v3.23.8/mod.ts";
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { getCorsHeaders } from "../_shared/cors.ts";
+import { checkRateLimit, AI_HEAVY_RATE_LIMIT } from "../_shared/rate-limit.ts";
+import { Logger } from "../_shared/logger.ts";
 
 // Input validation schema
 const RegenerateMealsSchema = z.object({
@@ -16,6 +14,9 @@ const RegenerateMealsSchema = z.object({
 });
 
 serve(async (req) => {
+  const log = new Logger("regenerate-meals");
+  const corsHeaders = getCorsHeaders(req.headers.get("origin"));
+
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -58,9 +59,22 @@ serve(async (req) => {
     );
 
     if (!user) {
+      log.warn("Unauthorized request");
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    log.setContext({ userId: user.id, householdId });
+
+    // Rate limiting
+    const rateCheck = checkRateLimit(user.id, "regenerate-meals", AI_HEAVY_RATE_LIMIT);
+    if (!rateCheck.allowed) {
+      log.warn("Rate limit exceeded");
+      return new Response(JSON.stringify({ error: "Too many requests. Please try again later." }), {
+        status: 429,
+        headers: { ...corsHeaders, "Content-Type": "application/json", "Retry-After": String(Math.ceil((rateCheck.resetAt - Date.now()) / 1000)) },
       });
     }
 

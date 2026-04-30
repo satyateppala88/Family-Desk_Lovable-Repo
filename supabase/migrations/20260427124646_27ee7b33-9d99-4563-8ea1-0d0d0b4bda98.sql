@@ -1,0 +1,1 @@
+DROP POLICY IF EXISTS "Service role only" ON public.push_dispatch_config;

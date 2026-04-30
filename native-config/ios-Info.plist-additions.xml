@@ -1,0 +1,24 @@
+<!--
+  Add these keys inside the <dict> of ios/App/App/Info.plist
+  after running: npx cap add ios
+
+  These are the user-facing permission prompts shown on iOS.
+-->
+
+<key>NSMicrophoneUsageDescription</key>
+<string>Family Desk uses your microphone so you can speak to create tasks, chat with the assistant, and use voice commands hands-free.</string>
+
+<key>NSSpeechRecognitionUsageDescription</key>
+<string>Family Desk converts your voice into text on-device so you can dictate tasks, notes, and chat messages.</string>
+
+<key>NSCameraUsageDescription</key>
+<string>Family Desk uses your camera to take profile photos for you, your household, and family members.</string>
+
+<key>NSPhotoLibraryUsageDescription</key>
+<string>Family Desk needs access to your photos so you can choose existing pictures for profile, household, and family member avatars.</string>
+
+<key>NSPhotoLibraryAddUsageDescription</key>
+<string>Family Desk may save photos you capture back to your library.</string>
+
+<key>NSUserNotificationsUsageDescription</key>
+<string>Family Desk sends reminders for tasks, habits, meal prep, and pantry alerts to keep your household running smoothly.</string>
