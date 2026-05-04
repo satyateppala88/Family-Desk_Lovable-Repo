@@ -1,61 +1,52 @@
-## Goal
+## Problem
 
-When a user taps "Upload photo" on any avatar (profile, household, family member), show a small chooser with two options: **Take photo (camera)** and **Choose from gallery**. Each path checks the right permission, primes the user if needed, and then either opens the front camera or the phone's gallery. If a permission is blocked, show a clear "enable in settings, then try again" message.
+Two related bugs in **Finance → Add Transaction**:
 
-## What changes for the user
+1. **Salary (and other income) saves as an expense.** The dialog defaults Type = "Expense". When a user picks the "Salary" category but doesn't notice the Expense/Income toggle, the transaction is saved as `type: "expense"` with category `"salary"`. It then shows with a `−` sign and red styling.
+2. **"All Categories" view appears to be missing the transaction.** It isn't actually missing — the query correctly returns all categories when the filter is `"all"` (verified in `useFinance.ts` line 164). But because the salary entry is saved as an expense, the user sees a `−₹X` row that doesn't look like their salary, so it feels missing. Filtering by category = "Salary" still shows it (same row, still mislabeled as expense).
 
-1. Tap **Upload photo** / **Change photo** on any avatar.
-2. A bottom sheet (mobile) / dialog (desktop) appears with two large buttons:
-   - **Take photo** — uses camera (front-facing by default for selfies)
-   - **Choose from gallery** — opens the phone's photo library
-3. First time on each option:
-   - Soft "why we need this" primer → OS permission prompt → camera or gallery opens.
-4. If the user previously blocked it: a friendly toast says "Camera/Photos access is blocked. Enable it in your device settings, then tap Try again," with a Try-again button that re-invokes the flow.
-5. Cancelling the chooser does nothing — no errors.
+The underlying cause for both is the same: **category and transaction type aren't linked, and the labels "Expense/Income" are easy to overlook.**
 
-## How it works (technical)
+## Fix
 
-### New component: `AvatarSourceSheet`
-- A small `Sheet` (mobile-friendly) at `src/components/avatar/AvatarSourceSheet.tsx`.
-- Two buttons: **Take photo** (Camera icon), **Choose from gallery** (Image icon).
-- Emits `onPick("camera" | "gallery")`.
+### 1. Rename the toggle to "Debit / Credit" and make it more prominent
 
-### Update `AvatarUploader.tsx`
-- Replace single `handlePick` with:
-  - `handleOpenChooser()` — opens `AvatarSourceSheet`.
-  - `handleCameraPick()` — runs camera flow.
-  - `handleGalleryPick()` — runs gallery flow.
-- Keep existing `<input type="file">` for the **gallery** path on web; add a **second** hidden input with `capture="user"` for the **camera** path on web (front-facing on mobile browsers).
-- On native (Capacitor), use `@capacitor/camera`'s `Camera.getPhoto({ source: CameraSource.Camera | CameraSource.Photos, resultType: ResultType.Uri })`, then fetch the URI as a Blob and upload through the existing Supabase storage code path.
+In `src/components/finance/TransactionDialog.tsx`:
+- Replace the two `Expense` / `Income` buttons with clearer **Debit (money out)** and **Credit (money in)** buttons.
+- Keep the underlying values as `"expense"` (debit) and `"income"` (credit) so no DB schema change is needed.
+- Add a one-line helper text under the toggle: *"Debit = money leaving your account · Credit = money coming in"*.
+- Style the selected state more strongly (color the active button red for Debit, green for Credit) so it's visually obvious which one is selected.
 
-### Permission flow per option
-- **Take photo** → `ensurePermission("camera", "avatar-uploader-camera")`.
-  - On web: primer → `getUserMedia({ video: true })` triggers OS prompt; on grant we immediately click the hidden `capture="user"` input (no `getUserMedia` stream is kept — the input itself opens the camera UI; the `getUserMedia` call is only used as the prompt vehicle and stops tracks immediately, matching existing pattern in `requestPermission`).
-  - On native: primer → `Camera.requestPermissions({ permissions: ["camera"] })` → `Camera.getPhoto({ source: Camera })`.
-- **Choose from gallery** → `ensurePermission("photos", "avatar-uploader-gallery")`.
-  - On web: photos has no real permission — primer is skipped (`queryPermission` returns "prompt", primer shows once unless suppressed). After "Allow," click the existing hidden `<input type="file">`.
-  - On native: primer → `Camera.requestPermissions({ permissions: ["photos"] })` → `Camera.getPhoto({ source: Photos })`.
+### 2. Auto-suggest the correct type when an income category is picked
 
-### Denied / blocked handling
-- Reuse the existing `DENIED_HINTS` toast in `usePermissionPrimer` (already shows "Camera access is blocked…" / "Photo access is blocked…").
-- Keep the existing `PermissionRetryHint` block under the uploader; add a second one so both `camera` and `photos` retry hints can surface independently.
+When the user picks a category that is inherently income (`salary`, `freelance`, `investment`), automatically flip the type to **Credit** (and vice versa for clearly-expense categories the first time). The user can still override.
 
-### Files touched
-- **New:** `src/components/avatar/AvatarSourceSheet.tsx`
-- **Edit:** `src/components/avatar/AvatarUploader.tsx`
-  - Add chooser state, two flows, second hidden input with `capture="user"`, native Capacitor branch.
-- No changes to `src/lib/permissions.ts`, `usePermissionPrimer`, primer dialog copy, or storage logic.
+Income categories: `salary`, `freelance`, `investment`.
 
-### What is NOT changed
-- Storage bucket, path layout, file validation (type/size), and the `onChange(publicUrl)` contract are all untouched.
-- Other call sites of `usePermissionPrimer` (voice input, notifications) are untouched.
-- No DB migrations, no edge functions.
+Implementation: in the `Select onValueChange` for category, if the new category is in the income set and the user hasn't manually toggled type, set type to `"income"`. Track a `userTouchedType` flag so we never override an explicit choice.
 
-## Native Capacitor note
+### 3. Update transaction list labels
 
-The Capacitor branch only activates when `window.Capacitor.isNativePlatform()` is true. On the published web app and PWA, the existing `<input type="file">` paths handle both camera (`capture="user"`) and gallery — exactly what mobile Chrome/Safari already do natively. No new npm dependency is required because `@capacitor/camera` is already imported lazily by `src/lib/permissions.ts`.
+In `src/pages/FinanceTransactions.tsx`:
+- Change the Type filter dropdown labels from "Income / Expense" to **"Credit / Debit"** for consistency. Underlying values stay `income` / `expense`.
+- Keep the existing `+` / `−` icons and green/neutral coloring (already correct for income vs expense).
 
-## Risks / call-outs
+### 4. No database / schema changes
 
-- `capture="user"` is a *hint*, not a guarantee — some Android browsers may open a chooser between camera apps. This is the platform behaviour; we cannot force-open a specific lens in a PWA.
-- If the user blocks camera at the OS level on a native build, re-enabling requires a trip to system Settings (standard Android/iOS behaviour). The toast tells them this.
+The `finance_transactions.type` column already stores `'income' | 'expense'`. Amounts are stored as positive numbers; the sign is derived from `type` at render time (already done correctly on line 126 of `FinanceTransactions.tsx`). So no migration needed.
+
+## Files changed
+
+- `src/components/finance/TransactionDialog.tsx` — rename toggle to Debit/Credit, add helper text, auto-suggest type from category, stronger active styling.
+- `src/pages/FinanceTransactions.tsx` — relabel Type filter options to "Credit / Debit".
+
+## Impact on other features
+
+- **FinanceMonthlySummary, dashboard, budgets, monthly review, AI finance chat** — all read `type === "income"` vs `"expense"`. Unchanged values, so zero impact.
+- **Card recommender** — only fires when `type === "expense"` (line 65 of TransactionDialog). Still works; renaming the button doesn't change the value.
+- **Existing transactions** — any salary already saved as "expense" will stay that way. The user can edit it via the pencil icon and switch it to Credit. (Optional follow-up: I can run a one-time data fix to flip all `category in (salary, freelance, investment) AND type = expense` rows to `type = income` — let me know if you want that.)
+
+## Out of scope
+
+- Allowing negative amounts directly (we keep amounts positive + a type flag — cleaner and matches the existing schema).
+- Adding new income categories.

@@ -82,8 +82,8 @@ const FinanceTransactions = () => {
               <SelectTrigger className="w-full sm:w-28"><SelectValue placeholder="Type" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All</SelectItem>
-                <SelectItem value="income">Income</SelectItem>
-                <SelectItem value="expense">Expense</SelectItem>
+                <SelectItem value="income">Credit</SelectItem>
+                <SelectItem value="expense">Debit</SelectItem>
               </SelectContent>
             </Select>
           </div>
