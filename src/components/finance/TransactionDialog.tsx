@@ -56,8 +56,12 @@ export const TransactionDialog = ({ open, onOpenChange, onSave, initialData, use
     }
   };
 
+  const [submitting, setSubmitting] = useState(false);
+
   const handleSave = () => {
+    if (submitting) return;
     if (!amount || Number(amount) <= 0) return;
+    setSubmitting(true);
     onSave({
       ...(initialData?.id ? { id: initialData.id } : {}),
       type: type as "income" | "expense",
@@ -68,6 +72,8 @@ export const TransactionDialog = ({ open, onOpenChange, onSave, initialData, use
       notes: notes || null,
     });
     onOpenChange(false);
+    // Re-enable shortly after the dialog has closed in case it's reopened.
+    setTimeout(() => setSubmitting(false), 600);
   };
 
   // Inline card recommendation
@@ -177,8 +183,8 @@ export const TransactionDialog = ({ open, onOpenChange, onSave, initialData, use
             />
           </div>
 
-          <Button onClick={handleSave} className="w-full">
-            {initialData ? "Update" : "Add"} Transaction
+          <Button onClick={handleSave} disabled={submitting} className="w-full">
+            {submitting ? "Saving…" : `${initialData ? "Update" : "Add"} Transaction`}
           </Button>
         </div>
       </DialogContent>

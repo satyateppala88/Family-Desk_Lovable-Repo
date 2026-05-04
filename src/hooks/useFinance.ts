@@ -281,28 +281,77 @@ export const useCreateTransaction = (householdId: string | null) => {
 
   return useMutation({
     mutationFn: async (data: Partial<FinanceTransaction>) => {
-      const { error } = await supabase.from("finance_transactions").insert({
-        household_id: householdId!,
-        created_by: user!.id,
-        amount: data.amount!,
-        type: data.type || "expense",
-        category: data.category || "other",
-        description: data.description || null,
-        transaction_date: data.transaction_date || format(new Date(), "yyyy-MM-dd"),
-        account_id: data.account_id || null,
-        is_recurring: data.is_recurring || false,
-        tagged_member: data.tagged_member || null,
-        notes: data.notes || null,
-      });
+      const { data: inserted, error } = await supabase
+        .from("finance_transactions")
+        .insert({
+          household_id: householdId!,
+          created_by: user!.id,
+          amount: data.amount!,
+          type: data.type || "expense",
+          category: data.category || "other",
+          description: data.description || null,
+          transaction_date: data.transaction_date || format(new Date(), "yyyy-MM-dd"),
+          account_id: data.account_id || null,
+          is_recurring: data.is_recurring || false,
+          tagged_member: data.tagged_member || null,
+          notes: data.notes || null,
+        })
+        .select()
+        .single();
       if (error) throw error;
+      return inserted as FinanceTransaction;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["finance-transactions"] });
-      queryClient.invalidateQueries({ queryKey: ["finance-monthly-summary"] });
-      queryClient.invalidateQueries({ queryKey: ["finance-dashboard"] });
+    onMutate: async (data) => {
+      await queryClient.cancelQueries({ queryKey: ["finance-transactions", householdId] });
+      const optimistic: FinanceTransaction = {
+        id: `optimistic-${Date.now()}`,
+        household_id: householdId!,
+        account_id: data.account_id || null,
+        amount: Number(data.amount) || 0,
+        type: (data.type as "income" | "expense") || "expense",
+        category: data.category || "other",
+        description: data.description ?? null,
+        transaction_date: data.transaction_date || format(new Date(), "yyyy-MM-dd"),
+        is_recurring: data.is_recurring || false,
+        recurring_pattern: null,
+        tagged_member: data.tagged_member ?? null,
+        notes: data.notes ?? null,
+        created_by: user?.id || "",
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      const snapshots: Array<[readonly unknown[], unknown]> = [];
+      queryClient
+        .getQueriesData<FinanceTransaction[]>({ queryKey: ["finance-transactions", householdId] })
+        .forEach(([key, prev]) => {
+          snapshots.push([key, prev]);
+          if (Array.isArray(prev)) queryClient.setQueryData(key, [optimistic, ...prev]);
+        });
       toast.success("Transaction added");
+      return { snapshots, optimisticId: optimistic.id };
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error, _vars, ctx) => {
+      ctx?.snapshots?.forEach(([key, prev]) => queryClient.setQueryData(key, prev));
+      toast.error(e.message);
+    },
+    onSuccess: (inserted, _vars, ctx) => {
+      // Replace the optimistic placeholder with the real row in-place.
+      queryClient
+        .getQueriesData<FinanceTransaction[]>({ queryKey: ["finance-transactions", householdId] })
+        .forEach(([key, list]) => {
+          if (!Array.isArray(list)) return;
+          queryClient.setQueryData(
+            key,
+            list.map((t) => (t.id === ctx?.optimisticId ? inserted : t))
+          );
+        });
+    },
+    onSettled: () => {
+      // Light reconciliation; the cache already holds the real row so this
+      // is just a safety net for edge cases (filters that excluded it, etc.).
+      queryClient.invalidateQueries({ queryKey: ["finance-monthly-summary", householdId] });
+      queryClient.invalidateQueries({ queryKey: ["finance-dashboard", householdId] });
+    },
   });
 };
 
@@ -310,18 +359,38 @@ export const useUpdateTransaction = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, ...data }: Partial<FinanceTransaction> & { id: string }) => {
-      const { error } = await supabase
+      const { data: updated, error } = await supabase
         .from("finance_transactions")
         .update({ ...data, updated_at: new Date().toISOString() })
-        .eq("id", id);
+        .eq("id", id)
+        .select()
+        .single();
       if (error) throw error;
+      return updated as FinanceTransaction;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["finance-transactions"] });
-      queryClient.invalidateQueries({ queryKey: ["finance-monthly-summary"] });
+    onMutate: async (vars) => {
+      await queryClient.cancelQueries({ queryKey: ["finance-transactions"] });
+      const snapshots: Array<[readonly unknown[], unknown]> = [];
+      queryClient
+        .getQueriesData<FinanceTransaction[]>({ queryKey: ["finance-transactions"] })
+        .forEach(([key, list]) => {
+          snapshots.push([key, list]);
+          if (!Array.isArray(list)) return;
+          queryClient.setQueryData(
+            key,
+            list.map((t) => (t.id === vars.id ? { ...t, ...vars } : t))
+          );
+        });
       toast.success("Transaction updated");
+      return { snapshots };
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error, _vars, ctx) => {
+      ctx?.snapshots?.forEach(([key, prev]) => queryClient.setQueryData(key, prev));
+      toast.error(e.message);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["finance-monthly-summary"] });
+    },
   });
 };
 
@@ -332,12 +401,27 @@ export const useDeleteTransaction = () => {
       const { error } = await supabase.from("finance_transactions").delete().eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["finance-transactions"] });
-      queryClient.invalidateQueries({ queryKey: ["finance-monthly-summary"] });
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: ["finance-transactions"] });
+      const snapshots: Array<[readonly unknown[], unknown]> = [];
+      queryClient
+        .getQueriesData<FinanceTransaction[]>({ queryKey: ["finance-transactions"] })
+        .forEach(([key, list]) => {
+          snapshots.push([key, list]);
+          if (Array.isArray(list)) {
+            queryClient.setQueryData(key, list.filter((t) => t.id !== id));
+          }
+        });
       toast.success("Transaction deleted");
+      return { snapshots };
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error, _id, ctx) => {
+      ctx?.snapshots?.forEach(([key, prev]) => queryClient.setQueryData(key, prev));
+      toast.error(e.message);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["finance-monthly-summary"] });
+    },
   });
 };
 
