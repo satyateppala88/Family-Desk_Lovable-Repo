@@ -26,6 +26,9 @@ export const TransactionDialog = ({ open, onOpenChange, onSave, initialData, use
   const [description, setDescription] = useState(initialData?.description || "");
   const [date, setDate] = useState(initialData?.transaction_date || new Date().toISOString().split("T")[0]);
   const [notes, setNotes] = useState(initialData?.notes || "");
+  const [userTouchedType, setUserTouchedType] = useState(false);
+
+  const INCOME_CATEGORIES = new Set(["salary", "freelance", "investment"]);
 
   // Reset on open change
   useEffect(() => {
@@ -36,8 +39,22 @@ export const TransactionDialog = ({ open, onOpenChange, onSave, initialData, use
       setDescription("");
       setDate(new Date().toISOString().split("T")[0]);
       setNotes("");
+      setUserTouchedType(false);
     }
   }, [open, initialData]);
+
+  const handleTypeChange = (next: string) => {
+    setUserTouchedType(true);
+    setType(next);
+  };
+
+  const handleCategoryChange = (next: string) => {
+    setCategory(next);
+    if (!userTouchedType && !initialData) {
+      if (INCOME_CATEGORIES.has(next)) setType("income");
+      else if (type === "income" && !INCOME_CATEGORIES.has(next)) setType("expense");
+    }
+  };
 
   const handleSave = () => {
     if (!amount || Number(amount) <= 0) return;
@@ -67,23 +84,28 @@ export const TransactionDialog = ({ open, onOpenChange, onSave, initialData, use
           {!initialData && <DialogDescription>Record an income or expense entry.</DialogDescription>}
         </DialogHeader>
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
-            <Button
-              type="button"
-              variant={type === "expense" ? "default" : "outline"}
-              onClick={() => setType("expense")}
-              className="w-full"
-            >
-              Expense
-            </Button>
-            <Button
-              type="button"
-              variant={type === "income" ? "default" : "outline"}
-              onClick={() => setType("income")}
-              className="w-full"
-            >
-              Income
-            </Button>
+          <div className="space-y-1.5">
+            <div className="grid grid-cols-2 gap-3">
+              <Button
+                type="button"
+                variant={type === "expense" ? "default" : "outline"}
+                onClick={() => handleTypeChange("expense")}
+                className={type === "expense" ? "w-full bg-destructive text-destructive-foreground hover:bg-destructive/90" : "w-full"}
+              >
+                − Debit
+              </Button>
+              <Button
+                type="button"
+                variant={type === "income" ? "default" : "outline"}
+                onClick={() => handleTypeChange("income")}
+                className={type === "income" ? "w-full bg-[hsl(var(--success))] text-white hover:bg-[hsl(var(--success))]/90" : "w-full"}
+              >
+                + Credit
+              </Button>
+            </div>
+            <p className="text-[11px] text-muted-foreground px-0.5">
+              Debit = money leaving your account · Credit = money coming in
+            </p>
           </div>
 
           <div className="space-y-2">
@@ -100,7 +122,7 @@ export const TransactionDialog = ({ open, onOpenChange, onSave, initialData, use
 
           <div className="space-y-2">
             <Label>Category</Label>
-            <Select value={category} onValueChange={setCategory}>
+            <Select value={category} onValueChange={handleCategoryChange}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 {FINANCE_CATEGORIES.map((c) => (
