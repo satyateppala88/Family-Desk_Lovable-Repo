@@ -31,6 +31,7 @@ import { usePantryCategories } from "@/hooks/usePantryCategories";
 import { usePantryStats } from "@/hooks/usePantryStats";
 import { useShoppingLists } from "@/hooks/useShoppingLists";
 import { useHousehold } from "@/hooks/useHousehold";
+import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
 import { useAuth } from "@/contexts/AuthContext";
 import { useFeatureTour } from "@/hooks/useFeatureTour";
 import { supabase } from "@/lib/supabase";
@@ -76,6 +77,11 @@ const Grocery = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const { householdId } = useHousehold();
+  useRealtimeSubscription([
+    { table: "shopping_lists", filter: householdId ? `household_id=eq.${householdId}` : undefined, enabled: !!householdId, queryKeys: [["shopping-lists", householdId]] },
+    { table: "shopping_list_items", enabled: !!householdId, queryKeys: [["shopping-lists", householdId]] },
+    { table: "pantry_items", filter: householdId ? `household_id=eq.${householdId}` : undefined, enabled: !!householdId, queryKeys: [["pantry-items", householdId], ["pantry-stats", householdId]] },
+  ]);
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const { pantryItems, isLoading, addPantryItem, updatePantryItem, deletePantryItem, bulkAddItems } = usePantryItems(householdId);

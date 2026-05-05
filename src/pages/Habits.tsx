@@ -8,6 +8,7 @@ import { OnboardingTour } from "@/components/onboarding/OnboardingTour";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageLoading } from "@/components/ui/page-loading";
 import { useHousehold } from "@/hooks/useHousehold";
+import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
 import { useHabits } from "@/hooks/useHabits";
 import { useHouseholdHabitStats } from "@/hooks/useHouseholdHabitStats";
 import { useHabitLeaderboard } from "@/hooks/useHabitLeaderboard";
@@ -60,6 +61,11 @@ const habitsTourSteps: Step[] = [
 const Habits = () => {
   const [view, setView] = useState<"personal" | "household">("personal");
   const { householdId, isLoading: householdLoading } = useHousehold();
+  useRealtimeSubscription([
+    { table: "habits", filter: householdId ? `household_id=eq.${householdId}` : undefined, enabled: !!householdId, queryKeys: [["habits", householdId], ["habit-assignees", householdId]] },
+    { table: "habit_logs", enabled: !!householdId, queryKeys: [["habit-logs-today"], ["household-habit-stats"], ["habit-leaderboard"], ["habit-scores"]] },
+    { table: "habit_streaks", enabled: !!householdId, queryKeys: [["habit-streaks"]] },
+  ]);
 
   const { todaysHabits, isLoading: habitsLoading, createHabit, logHabit } = useHabits(householdId);
   const { data: householdStats, isLoading: statsLoading } = useHouseholdHabitStats(householdId);

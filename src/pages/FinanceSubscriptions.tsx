@@ -10,6 +10,7 @@ import { QuickActionButton } from "@/components/ui/quick-action-button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Trash2, Pencil, RefreshCw, CalendarClock, Pause, Play } from "lucide-react";
 import { useHousehold } from "@/hooks/useHousehold";
+import { useFinanceRealtime } from "@/hooks/useFinance";
 import {
   useSubscriptions,
   useCreateSubscription,
@@ -28,6 +29,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 const FinanceSubscriptions = () => {
   const { householdId } = useHousehold();
+  useFinanceRealtime(householdId);
   const [catFilter, setCatFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("active");
   const [showAdd, setShowAdd] = useState(false);

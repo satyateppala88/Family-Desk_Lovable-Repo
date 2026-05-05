@@ -9,6 +9,7 @@ import { QuickActionButton } from "@/components/ui/quick-action-button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Plus, CreditCard, Trash2, Sparkles, Award, Gift } from "lucide-react";
 import { useHousehold } from "@/hooks/useHousehold";
+import { useFinanceRealtime } from "@/hooks/useFinance";
 import { useUserCards, useAddUserCard, useRemoveUserCard } from "@/hooks/useUserCards";
 import { CREDIT_CARD_CATALOG } from "@/data/creditCardCatalog";
 import { AddCardDialog } from "@/components/finance/AddCardDialog";
@@ -18,6 +19,7 @@ import { cn } from "@/lib/utils";
 
 const FinanceCards = () => {
   const { householdId } = useHousehold();
+  useFinanceRealtime(householdId);
   const { data: userCards, isLoading } = useUserCards(householdId);
   const addCard = useAddUserCard(householdId);
   const removeCard = useRemoveUserCard(householdId);

@@ -9,6 +9,7 @@ import { MarkAsCookedDialog } from "@/components/meals/MarkAsCookedDialog";
 import { RecipeBrowserSheet } from "@/components/meals/RecipeBrowserSheet";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useHousehold } from "@/hooks/useHousehold";
+import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
 import { useRecipes } from "@/hooks/useRecipes";
 import { useMealPlans } from "@/hooks/useMealPlans";
 import { useRecipeRating } from "@/hooks/useRecipeRating";
@@ -45,6 +46,10 @@ const DIFFICULTY_FILTERS = ["easy", "medium", "hard"];
 const Meals = () => {
   const { user } = useAuth();
   const { householdId, isLoading: loadingHousehold } = useHousehold();
+  useRealtimeSubscription([
+    { table: "meal_plans", filter: householdId ? `household_id=eq.${householdId}` : undefined, enabled: !!householdId, queryKeys: [["meal-plans", householdId]] },
+    { table: "meal_plan_items", enabled: !!householdId, queryKeys: [["meal-plans", householdId]] },
+  ]);
   const { recipes, isLoading: loadingRecipes, deleteRecipe, updateRecipe } = useRecipes(householdId);
   const [currentWeekStart, setCurrentWeekStart] = useState(() => getWeekStartDate(new Date(), "sunday"));
   const { mealPlans, isLoading: loadingMealPlans, deleteMealPlanItem } = useMealPlans(householdId, format(currentWeekStart, "yyyy-MM-dd"));

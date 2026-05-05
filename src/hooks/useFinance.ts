@@ -3,6 +3,7 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { format } from "date-fns";
 import { toast } from "sonner";
+import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
 
 // ─── Types ───────────────────────────────────────────────────
 
@@ -431,7 +432,7 @@ export const useUpsertBudget = (householdId: string | null) => {
 
   return useMutation({
     mutationFn: async (data: { month: string; category: string; planned_amount: number }) => {
-      const { error } = await supabase.from("finance_budgets").upsert(
+      const { data: row, error } = await supabase.from("finance_budgets").upsert(
         {
           household_id: householdId!,
           created_by: user!.id,
@@ -441,14 +442,54 @@ export const useUpsertBudget = (householdId: string | null) => {
           updated_at: new Date().toISOString(),
         },
         { onConflict: "household_id,month,category" }
-      );
+      ).select().single();
       if (error) throw error;
+      return row as FinanceBudget;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["finance-budgets"] });
+    onMutate: async (data) => {
+      await queryClient.cancelQueries({ queryKey: ["finance-budgets", householdId] });
+      const optimistic: FinanceBudget = {
+        id: `optimistic-${Date.now()}`,
+        household_id: householdId!,
+        month: data.month,
+        category: data.category,
+        planned_amount: data.planned_amount,
+        created_by: user?.id || "",
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      const snapshots: Array<[readonly unknown[], unknown]> = [];
+      queryClient
+        .getQueriesData<FinanceBudget[]>({ queryKey: ["finance-budgets", householdId] })
+        .forEach(([key, prev]) => {
+          snapshots.push([key, prev]);
+          if (Array.isArray(prev)) {
+            const idx = prev.findIndex((b) => b.category === data.category && b.month === data.month);
+            const next = idx >= 0
+              ? prev.map((b, i) => (i === idx ? { ...b, planned_amount: data.planned_amount } : b))
+              : [optimistic, ...prev];
+            queryClient.setQueryData(key, next);
+          }
+        });
       toast.success("Budget saved");
+      return { snapshots, optimisticId: optimistic.id };
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error, _vars, ctx) => {
+      ctx?.snapshots?.forEach(([key, prev]) => queryClient.setQueryData(key, prev));
+      toast.error(e.message);
+    },
+    onSuccess: (row, _vars, ctx) => {
+      if (!row) return;
+      queryClient
+        .getQueriesData<FinanceBudget[]>({ queryKey: ["finance-budgets", householdId] })
+        .forEach(([key, list]) => {
+          if (!Array.isArray(list)) return;
+          queryClient.setQueryData(
+            key,
+            list.map((b) => (b.id === ctx?.optimisticId || (b.category === row.category && b.month === row.month) ? row : b))
+          );
+        });
+    },
   });
 };
 
@@ -458,21 +499,56 @@ export const useCreateSavingsGoal = (householdId: string | null) => {
 
   return useMutation({
     mutationFn: async (data: Partial<FinanceSavingsGoal>) => {
-      const { error } = await supabase.from("finance_savings_goals").insert({
+      const { data: inserted, error } = await supabase.from("finance_savings_goals").insert({
         household_id: householdId!,
         created_by: user!.id,
         name: data.name!,
         target_amount: data.target_amount!,
         current_amount: data.current_amount || 0,
         target_date: data.target_date || null,
-      });
+      }).select().single();
       if (error) throw error;
+      return inserted as FinanceSavingsGoal;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["finance-savings-goals"] });
+    onMutate: async (data) => {
+      await queryClient.cancelQueries({ queryKey: ["finance-savings-goals", householdId] });
+      const optimistic: FinanceSavingsGoal = {
+        id: `optimistic-${Date.now()}`,
+        household_id: householdId!,
+        name: data.name || "",
+        target_amount: Number(data.target_amount) || 0,
+        current_amount: Number(data.current_amount) || 0,
+        target_date: data.target_date || null,
+        status: "active",
+        created_by: user?.id || "",
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      const snapshots: Array<[readonly unknown[], unknown]> = [];
+      queryClient
+        .getQueriesData<FinanceSavingsGoal[]>({ queryKey: ["finance-savings-goals", householdId] })
+        .forEach(([key, prev]) => {
+          snapshots.push([key, prev]);
+          if (Array.isArray(prev)) queryClient.setQueryData(key, [optimistic, ...prev]);
+        });
       toast.success("Savings goal created");
+      return { snapshots, optimisticId: optimistic.id };
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error, _vars, ctx) => {
+      ctx?.snapshots?.forEach(([key, prev]) => queryClient.setQueryData(key, prev));
+      toast.error(e.message);
+    },
+    onSuccess: (inserted, _vars, ctx) => {
+      queryClient
+        .getQueriesData<FinanceSavingsGoal[]>({ queryKey: ["finance-savings-goals", householdId] })
+        .forEach(([key, list]) => {
+          if (!Array.isArray(list)) return;
+          queryClient.setQueryData(
+            key,
+            list.map((g) => (g.id === ctx?.optimisticId ? inserted : g))
+          );
+        });
+    },
   });
 };
 
@@ -480,17 +556,35 @@ export const useUpdateSavingsGoal = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, ...data }: Partial<FinanceSavingsGoal> & { id: string }) => {
-      const { error } = await supabase
+      const { data: updated, error } = await supabase
         .from("finance_savings_goals")
         .update({ ...data, updated_at: new Date().toISOString() })
-        .eq("id", id);
+        .eq("id", id)
+        .select()
+        .single();
       if (error) throw error;
+      return updated as FinanceSavingsGoal;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["finance-savings-goals"] });
+    onMutate: async (vars) => {
+      await queryClient.cancelQueries({ queryKey: ["finance-savings-goals"] });
+      const snapshots: Array<[readonly unknown[], unknown]> = [];
+      queryClient
+        .getQueriesData<FinanceSavingsGoal[]>({ queryKey: ["finance-savings-goals"] })
+        .forEach(([key, list]) => {
+          snapshots.push([key, list]);
+          if (!Array.isArray(list)) return;
+          queryClient.setQueryData(
+            key,
+            list.map((g) => (g.id === vars.id ? { ...g, ...vars } : g))
+          );
+        });
       toast.success("Goal updated");
+      return { snapshots };
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error, _vars, ctx) => {
+      ctx?.snapshots?.forEach(([key, prev]) => queryClient.setQueryData(key, prev));
+      toast.error(e.message);
+    },
   });
 };
 
@@ -501,10 +595,70 @@ export const useDeleteSavingsGoal = () => {
       const { error } = await supabase.from("finance_savings_goals").delete().eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["finance-savings-goals"] });
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: ["finance-savings-goals"] });
+      const snapshots: Array<[readonly unknown[], unknown]> = [];
+      queryClient
+        .getQueriesData<FinanceSavingsGoal[]>({ queryKey: ["finance-savings-goals"] })
+        .forEach(([key, list]) => {
+          snapshots.push([key, list]);
+          if (Array.isArray(list)) {
+            queryClient.setQueryData(key, list.filter((g) => g.id !== id));
+          }
+        });
       toast.success("Goal deleted");
+      return { snapshots };
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error, _id, ctx) => {
+      ctx?.snapshots?.forEach(([key, prev]) => queryClient.setQueryData(key, prev));
+      toast.error(e.message);
+    },
   });
+};
+
+// ─── Realtime sync across household members ────────────────────
+
+/**
+ * Subscribe to all finance tables for the given household so any member's
+ * insert/update/delete is reflected on every other member's screen within ~1s.
+ */
+export const useFinanceRealtime = (householdId: string | null) => {
+  const filter = householdId ? `household_id=eq.${householdId}` : undefined;
+  useRealtimeSubscription([
+    {
+      table: "finance_transactions",
+      filter,
+      enabled: !!householdId,
+      queryKeys: [
+        ["finance-transactions", householdId],
+        ["finance-monthly-summary", householdId],
+        ["finance-dashboard", householdId],
+        ["finance-snapshot", householdId],
+      ],
+    },
+    {
+      table: "finance_budgets",
+      filter,
+      enabled: !!householdId,
+      queryKeys: [["finance-budgets", householdId]],
+    },
+    {
+      table: "finance_savings_goals",
+      filter,
+      enabled: !!householdId,
+      queryKeys: [["finance-savings-goals", householdId]],
+    },
+    {
+      table: "finance_subscriptions",
+      filter,
+      enabled: !!householdId,
+      queryKeys: [["finance-subscriptions", householdId]],
+    },
+    {
+      table: "finance_user_cards",
+      filter,
+      enabled: !!householdId,
+      queryKeys: [["user-cards", householdId]],
+    },
+  ]);
 };

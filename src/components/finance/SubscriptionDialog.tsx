@@ -64,8 +64,12 @@ export const SubscriptionDialog = ({ open, onOpenChange, onSave, initialData }: 
     }
   }, [initialData, open]);
 
+  const [submitting, setSubmitting] = useState(false);
+
   const handleSave = () => {
+    if (submitting) return;
     if (!name.trim() || !amount) return;
+    setSubmitting(true);
     onSave({
       name: name.trim(),
       amount: Number(amount),
@@ -80,6 +84,7 @@ export const SubscriptionDialog = ({ open, onOpenChange, onSave, initialData }: 
       tags: tags.split(",").map((t) => t.trim()).filter(Boolean),
     });
     onOpenChange(false);
+    setTimeout(() => setSubmitting(false), 600);
   };
 
   return (
@@ -170,8 +175,8 @@ export const SubscriptionDialog = ({ open, onOpenChange, onSave, initialData }: 
             <Switch checked={isActive} onCheckedChange={setIsActive} />
           </div>
 
-          <Button onClick={handleSave} className="w-full" disabled={!name.trim() || !amount}>
-            {initialData ? "Save Changes" : "Add Subscription"}
+          <Button onClick={handleSave} className="w-full" disabled={submitting || !name.trim() || !amount}>
+            {submitting ? "Saving..." : initialData ? "Save Changes" : "Add Subscription"}
           </Button>
         </div>
       </DialogContent>

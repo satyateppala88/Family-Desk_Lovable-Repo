@@ -13,6 +13,7 @@ import { Plus, Trash2, Pencil, ArrowLeftRight, Search } from "lucide-react";
 import { useHousehold } from "@/hooks/useHousehold";
 import {
   useFinanceTransactions,
+  useFinanceRealtime,
   useCreateTransaction,
   useUpdateTransaction,
   useDeleteTransaction,
@@ -28,6 +29,7 @@ import { cn } from "@/lib/utils";
 
 const FinanceTransactions = () => {
   const { householdId } = useHousehold();
+  useFinanceRealtime(householdId);
   const [search, setSearch] = useState("");
   const [catFilter, setCatFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");

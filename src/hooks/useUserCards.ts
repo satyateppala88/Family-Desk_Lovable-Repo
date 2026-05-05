@@ -35,19 +35,48 @@ export function useAddUserCard(householdId: string | undefined) {
   const { user } = useAuth();
   return useMutation({
     mutationFn: async (data: { card_catalog_id: string; nickname?: string }) => {
-      const { error } = await supabase.from("finance_user_cards").insert({
+      const { data: row, error } = await supabase.from("finance_user_cards").insert({
         household_id: householdId!,
         card_catalog_id: data.card_catalog_id,
         nickname: data.nickname || null,
         added_by: user!.id,
-      });
+      }).select().single();
       if (error) throw error;
+      return row as UserCard;
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["user-cards", householdId] });
+    onMutate: async (data) => {
+      await qc.cancelQueries({ queryKey: ["user-cards", householdId] });
+      const optimistic: UserCard = {
+        id: `optimistic-${Date.now()}`,
+        household_id: householdId!,
+        card_catalog_id: data.card_catalog_id,
+        nickname: data.nickname || null,
+        is_active: true,
+        added_by: user?.id || "",
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      const snapshots: Array<[readonly unknown[], unknown]> = [];
+      qc.getQueriesData<UserCard[]>({ queryKey: ["user-cards", householdId] })
+        .forEach(([key, prev]) => {
+          snapshots.push([key, prev]);
+          if (Array.isArray(prev)) qc.setQueryData(key, [optimistic, ...prev]);
+        });
       toast.success("Card added to your wallet");
+      return { snapshots, optimisticId: optimistic.id };
     },
-    onError: () => toast.error("Failed to add card"),
+    onError: (_e, _v, ctx: any) => {
+      ctx?.snapshots?.forEach(([key, prev]: any) => qc.setQueryData(key, prev));
+      toast.error("Failed to add card");
+    },
+    onSuccess: (row, _v, ctx: any) => {
+      if (!row) return;
+      qc.getQueriesData<UserCard[]>({ queryKey: ["user-cards", householdId] })
+        .forEach(([key, list]) => {
+          if (!Array.isArray(list)) return;
+          qc.setQueryData(key, list.map((c) => (c.id === ctx?.optimisticId ? row : c)));
+        });
+    },
   });
 }
 
@@ -58,10 +87,20 @@ export function useRemoveUserCard(householdId: string | undefined) {
       const { error } = await supabase.from("finance_user_cards").delete().eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["user-cards", householdId] });
+    onMutate: async (id) => {
+      await qc.cancelQueries({ queryKey: ["user-cards", householdId] });
+      const snapshots: Array<[readonly unknown[], unknown]> = [];
+      qc.getQueriesData<UserCard[]>({ queryKey: ["user-cards", householdId] })
+        .forEach(([key, list]) => {
+          snapshots.push([key, list]);
+          if (Array.isArray(list)) qc.setQueryData(key, list.filter((c) => c.id !== id));
+        });
       toast.success("Card removed");
+      return { snapshots };
     },
-    onError: () => toast.error("Failed to remove card"),
+    onError: (_e, _v, ctx: any) => {
+      ctx?.snapshots?.forEach(([key, prev]: any) => qc.setQueryData(key, prev));
+      toast.error("Failed to remove card");
+    },
   });
 }

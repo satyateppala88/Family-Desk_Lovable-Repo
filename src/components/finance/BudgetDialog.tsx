@@ -21,12 +21,17 @@ export const BudgetDialog = ({ open, onOpenChange, onSave, existingCategories = 
     (c) => !existingCategories.includes(c) && !["salary", "freelance", "investment"].includes(c)
   );
 
+  const [submitting, setSubmitting] = useState(false);
+
   const handleSave = () => {
+    if (submitting) return;
     if (!category || !amount || Number(amount) <= 0) return;
+    setSubmitting(true);
     onSave({ category, planned_amount: Number(amount) });
     onOpenChange(false);
     setCategory("");
     setAmount("");
+    setTimeout(() => setSubmitting(false), 600);
   };
 
   return (
@@ -57,7 +62,9 @@ export const BudgetDialog = ({ open, onOpenChange, onSave, existingCategories = 
               min="0"
             />
           </div>
-          <Button onClick={handleSave} className="w-full">Save Budget</Button>
+          <Button onClick={handleSave} className="w-full" disabled={submitting || !category || !amount}>
+            {submitting ? "Saving..." : "Save Budget"}
+          </Button>
         </div>
       </DialogContent>
     </Dialog>
