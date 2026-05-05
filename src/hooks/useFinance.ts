@@ -407,6 +407,27 @@ export const useUpdateTransaction = () => {
   });
 };
 
+export const useBulkUpdateTransactionCategory = (householdId: string | null) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ ids, category }: { ids: string[]; category: string }) => {
+      if (!ids.length) return;
+      const { error } = await supabase
+        .from("finance_transactions")
+        .update({ category, updated_at: new Date().toISOString() })
+        .in("id", ids);
+      if (error) throw error;
+    },
+    onSuccess: (_d, vars) => {
+      toast.success(`Moved ${vars.ids.length} transaction${vars.ids.length === 1 ? "" : "s"}`);
+      queryClient.invalidateQueries({ queryKey: ["finance-transactions", householdId] });
+      queryClient.invalidateQueries({ queryKey: ["finance-monthly-summary", householdId] });
+      queryClient.invalidateQueries({ queryKey: ["finance-dashboard", householdId] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+};
+
 export const useDeleteTransaction = () => {
   const queryClient = useQueryClient();
   return useMutation({
