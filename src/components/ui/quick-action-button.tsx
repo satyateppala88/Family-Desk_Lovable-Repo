@@ -30,7 +30,7 @@ export const QuickActionButton = ({ items, className }: QuickActionButtonProps) 
       <button
         onClick={item.onClick}
         className={cn(
-          "fixed bottom-6 right-6 z-30 flex items-center gap-2 rounded-full bg-primary text-primary-foreground shadow-lg px-5 py-3.5 text-sm font-medium transition-all hover:shadow-xl hover:scale-105 active:scale-95",
+          "fixed bottom-24 right-6 sm:bottom-6 sm:right-24 z-40 flex items-center gap-2 rounded-full bg-primary text-primary-foreground shadow-lg px-5 py-3.5 text-sm font-medium transition-all hover:shadow-xl hover:scale-105 active:scale-95",
           className
         )}
         aria-label={item.label}
