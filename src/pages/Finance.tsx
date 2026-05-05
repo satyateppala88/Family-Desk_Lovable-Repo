@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { Header } from "@/components/layout/Header";
 import { Card, CardContent } from "@/components/ui/card";
-import { PageLoading } from "@/components/ui/page-loading";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useHousehold } from "@/hooks/useHousehold";
 import { useFinanceMonthlySummary, useFinanceRealtime } from "@/hooks/useFinance";
 import { useSubscriptions } from "@/hooks/useSubscriptions";
@@ -65,17 +65,6 @@ const Finance = () => {
     { path: "/finance/review", icon: BarChart3, label: "Review", description: "Insights & trends", tintClass: "module-tint-finance", hintKey: "" },
   ];
 
-  if (isLoading) {
-    return (
-      <div className="page-container">
-        <Header />
-        <main className="page-content">
-          <PageLoading cards={4} />
-        </main>
-      </div>
-    );
-  }
-
   return (
     <div className="page-container">
       <Header />
@@ -98,7 +87,11 @@ const Finance = () => {
               <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
                 <TrendingUp className="w-3.5 h-3.5" aria-hidden="true" /> Income
               </div>
-              <p className="text-lg font-bold">{formatINR(summary?.income || 0)}</p>
+              {isLoading && !summary ? (
+                <Skeleton className="h-6 w-24" />
+              ) : (
+                <p className="text-lg font-bold">{formatINR(summary?.income || 0)}</p>
+              )}
             </CardContent>
           </Card>
           <Card>
@@ -106,7 +99,11 @@ const Finance = () => {
               <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
                 <TrendingDown className="w-3.5 h-3.5" aria-hidden="true" /> Spent
               </div>
-              <p className="text-lg font-bold">{formatINR(summary?.expenses || 0)}</p>
+              {isLoading && !summary ? (
+                <Skeleton className="h-6 w-24" />
+              ) : (
+                <p className="text-lg font-bold">{formatINR(summary?.expenses || 0)}</p>
+              )}
             </CardContent>
           </Card>
         </div>
