@@ -89,18 +89,45 @@ export const useCreateSubscription = (householdId: string | null) => {
   return useMutation({
     mutationFn: async (input: SubscriptionInput) => {
       if (!householdId || !user) throw new Error("Missing context");
-      const { error } = await supabase.from("finance_subscriptions").insert({
+      const { data, error } = await supabase.from("finance_subscriptions").insert({
         ...input,
         household_id: householdId,
         created_by: user.id,
-      });
+      }).select().single();
       if (error) throw error;
+      return data as FinanceSubscription;
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["finance-subscriptions", householdId] });
+    onMutate: async (input) => {
+      await qc.cancelQueries({ queryKey: ["finance-subscriptions", householdId] });
+      const optimistic: FinanceSubscription = {
+        id: `optimistic-${Date.now()}`,
+        household_id: householdId!,
+        created_by: user?.id || "",
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        ...input,
+      } as FinanceSubscription;
+      const snapshots: Array<[readonly unknown[], unknown]> = [];
+      qc.getQueriesData<FinanceSubscription[]>({ queryKey: ["finance-subscriptions", householdId] })
+        .forEach(([key, prev]) => {
+          snapshots.push([key, prev]);
+          if (Array.isArray(prev)) qc.setQueryData(key, [optimistic, ...prev]);
+        });
       toast.success("Subscription added");
+      return { snapshots, optimisticId: optimistic.id };
     },
-    onError: () => toast.error("Failed to add subscription"),
+    onError: (_e, _v, ctx: any) => {
+      ctx?.snapshots?.forEach(([key, prev]: any) => qc.setQueryData(key, prev));
+      toast.error("Failed to add subscription");
+    },
+    onSuccess: (row, _v, ctx: any) => {
+      if (!row) return;
+      qc.getQueriesData<FinanceSubscription[]>({ queryKey: ["finance-subscriptions", householdId] })
+        .forEach(([key, list]) => {
+          if (!Array.isArray(list)) return;
+          qc.setQueryData(key, list.map((s) => (s.id === ctx?.optimisticId ? row : s)));
+        });
+    },
   });
 };
 
@@ -115,11 +142,23 @@ export const useUpdateSubscription = () => {
         .eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["finance-subscriptions"] });
+    onMutate: async (vars) => {
+      await qc.cancelQueries({ queryKey: ["finance-subscriptions"] });
+      const snapshots: Array<[readonly unknown[], unknown]> = [];
+      qc.getQueriesData<FinanceSubscription[]>({ queryKey: ["finance-subscriptions"] })
+        .forEach(([key, list]) => {
+          snapshots.push([key, list]);
+          if (Array.isArray(list)) {
+            qc.setQueryData(key, list.map((s) => (s.id === vars.id ? { ...s, ...vars } as FinanceSubscription : s)));
+          }
+        });
       toast.success("Subscription updated");
+      return { snapshots };
     },
-    onError: () => toast.error("Failed to update"),
+    onError: (_e, _v, ctx: any) => {
+      ctx?.snapshots?.forEach(([key, prev]: any) => qc.setQueryData(key, prev));
+      toast.error("Failed to update");
+    },
   });
 };
 
@@ -130,10 +169,20 @@ export const useDeleteSubscription = () => {
       const { error } = await supabase.from("finance_subscriptions").delete().eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["finance-subscriptions"] });
+    onMutate: async (id) => {
+      await qc.cancelQueries({ queryKey: ["finance-subscriptions"] });
+      const snapshots: Array<[readonly unknown[], unknown]> = [];
+      qc.getQueriesData<FinanceSubscription[]>({ queryKey: ["finance-subscriptions"] })
+        .forEach(([key, list]) => {
+          snapshots.push([key, list]);
+          if (Array.isArray(list)) qc.setQueryData(key, list.filter((s) => s.id !== id));
+        });
       toast.success("Subscription removed");
+      return { snapshots };
     },
-    onError: () => toast.error("Failed to delete"),
+    onError: (_e, _v, ctx: any) => {
+      ctx?.snapshots?.forEach(([key, prev]: any) => qc.setQueryData(key, prev));
+      toast.error("Failed to delete");
+    },
   });
 };
