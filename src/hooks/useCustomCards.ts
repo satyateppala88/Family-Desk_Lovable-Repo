@@ -32,7 +32,7 @@ export function useCustomCards(householdId: string | undefined) {
         .eq("household_id", householdId!)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return (data || []) as CustomCard[];
+      return ((data || []) as unknown) as CustomCard[];
     },
   });
 }
@@ -60,7 +60,7 @@ export function useAddCustomCard(householdId: string | undefined) {
         .select()
         .single();
       if (error) throw error;
-      return data as CustomCard;
+      return (data as unknown) as CustomCard;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["custom-cards", householdId] });
