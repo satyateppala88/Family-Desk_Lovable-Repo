@@ -17,12 +17,15 @@ import {
 } from "@/hooks/useFinance";
 import { formatINR } from "@/lib/formatINR";
 import { BudgetDialog } from "@/components/finance/BudgetDialog";
+import { useCustomCategories } from "@/hooks/useCustomCategories";
+import { resolveCategoryLabel } from "@/components/finance/CategorySelect";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 
 const FinanceBudget = () => {
   const { householdId } = useHousehold();
   useFinanceRealtime(householdId);
+  const { categories: customCats } = useCustomCategories("transaction");
   const currentMonth = format(new Date(), "yyyy-MM");
   const { data: budgets, isLoading } = useFinanceBudgets(householdId, currentMonth);
   const { data: summary } = useFinanceMonthlySummary(householdId, currentMonth);
@@ -86,7 +89,7 @@ const FinanceBudget = () => {
                 <CardContent className="p-3 sm:p-4 space-y-2">
                   <div className="flex justify-between items-center">
                     <span className="text-sm font-medium">
-                      {CATEGORY_LABELS[row.category] || row.category}
+                      {resolveCategoryLabel(row.category, CATEGORY_LABELS, customCats)}
                     </span>
                     <div className="text-right">
                       <span className={cn(
