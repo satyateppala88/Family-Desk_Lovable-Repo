@@ -1,17 +1,22 @@
 /**
- * Vite plugin: automatically bump APP_VERSION in src/lib/versioning.ts on
- * every production build (`vite build`).
+ * Vite plugin: opt-in version bump for src/lib/versioning.ts on production
+ * builds (`vite build`). The plugin only runs when the latest git commit
+ * explicitly opts in — day-to-day edits never pollute APP_VERSION or the
+ * "What's new" changelog.
  *
  * Rules:
- *  - Default bump is MINOR (+0.1) — i.e. a normal patch release.
- *  - If the latest git commit subject starts with "feat!:" / "BREAKING:" /
- *    contains "BREAKING CHANGE", bump MAJOR (+1.0) instead.
- *  - Skipped entirely if the latest commit subject contains "[skip-version]"
- *    or if APP_CHANGELOG already has an entry dated today (idempotent: re-runs
- *    of the same build don't keep bumping).
- *
- * The plugin also prepends a new APP_CHANGELOG entry seeded from the git
- * commit subject so the change shows up automatically in Settings → What's New.
+ *  - Skipped unless the commit subject contains a release marker:
+ *      [release]            → minor bump (+0.1)
+ *      [release:minor]      → minor bump (+0.1)
+ *      [release:major]      → major bump (+1.0)
+ *      [release: My title]  → minor bump, with custom title
+ *      [release:major: My title] → major bump, with custom title
+ *  - The changelog entry is built from:
+ *      • title  → custom title from marker, else commit subject (cleaned)
+ *      • bullets → each non-empty line of the commit body becomes a bullet
+ *        (lines starting with "- ", "* " or "• " have the prefix stripped)
+ *  - Idempotent: if APP_CHANGELOG already has an entry for today at the
+ *    next-bumped version, the plugin does nothing.
  */
 import { execSync } from "node:child_process";
 import { readFileSync, writeFileSync, existsSync } from "node:fs";
@@ -19,6 +24,9 @@ import { resolve } from "node:path";
 import type { Plugin } from "vite";
 
 const VERSIONING_FILE = resolve(process.cwd(), "src/lib/versioning.ts");
+
+const RELEASE_MARKER =
+  /\[release(?::(major|minor))?(?::\s*([^\]]+?))?\]/i;
 
 function bump(version: string, type: "major" | "minor"): string {
   const [maj = "1", min = "0"] = version.split(".");
@@ -41,10 +49,20 @@ function lastCommit(): { subject: string; body: string } {
   }
 }
 
-function detectType(subject: string, body: string): "major" | "minor" {
-  const text = `${subject}\n${body}`;
-  if (/^(feat!|BREAKING)/i.test(subject) || /BREAKING CHANGE/.test(text)) return "major";
-  return "minor";
+function cleanSubject(subject: string): string {
+  return subject
+    .replace(RELEASE_MARKER, "")
+    .replace(/^(feat!?|fix|chore|docs|refactor|perf|test|build|ci)(\([^)]*\))?:\s*/i, "")
+    .trim();
+}
+
+function bulletsFromBody(body: string): string[] {
+  return body
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0)
+    .map((line) => line.replace(/^[-*•]\s+/, "").trim())
+    .filter((line) => line.length > 0);
 }
 
 export function autoBumpVersion(): Plugin {
@@ -67,10 +85,14 @@ export function autoBumpVersion(): Plugin {
         console.warn("[auto-bump-version] no git commit info, skipping");
         return;
       }
-      if (/\[skip-version\]/i.test(subject + body)) {
-        console.log("[auto-bump-version] skipped via [skip-version] marker");
+
+      const marker = subject.match(RELEASE_MARKER);
+      if (!marker) {
+        // Opt-in only — most commits are skipped on purpose.
         return;
       }
+      const type: "major" | "minor" = marker[1]?.toLowerCase() === "major" ? "major" : "minor";
+      const customTitle = marker[2]?.trim();
 
       const src = readFileSync(VERSIONING_FILE, "utf8");
       const versionMatch = src.match(/export const APP_VERSION = "([^"]+)";/);
@@ -80,24 +102,27 @@ export function autoBumpVersion(): Plugin {
       }
       const current = versionMatch[1];
       const today = new Date().toISOString().slice(0, 10);
+      const next = bump(current, type);
 
-      // Idempotency: don't bump twice on the same day.
-      if (new RegExp(`date:\\s*"${today}"`).test(src) && src.includes(`version: "${current}"`)) {
-        const head = src.match(/APP_CHANGELOG[^\[]*\[\s*\{\s*version:\s*"([^"]+)"[^}]*date:\s*"([^"]+)"/);
-        if (head && head[2] === today) {
-          console.log(`[auto-bump-version] already bumped today (v${head[1]}), skipping`);
-          return;
-        }
+      // Idempotency: skip if a v{next} entry dated today already exists.
+      if (
+        new RegExp(`version:\\s*"${next.replace(".", "\\.")}"[^}]*date:\\s*"${today}"`, "s").test(src)
+      ) {
+        console.log(`[auto-bump-version] already released v${next} today, skipping`);
+        return;
       }
 
-      const type = detectType(subject, body);
-      const next = bump(current, type);
-      const title = subject.replace(/^(feat!?|fix|chore|docs|refactor|perf|test|build|ci)(\([^)]*\))?:\s*/i, "").trim() || "Release";
+      const title = customTitle || cleanSubject(subject) || "Release";
+      const bullets = bulletsFromBody(body);
+      // If there are no body lines, fall back to the cleaned subject as a
+      // single bullet so the entry isn't empty.
+      const changes = bullets.length > 0 ? bullets : [title];
 
       // 1) Update APP_VERSION
       let updated = src.replace(/export const APP_VERSION = "[^"]+";/, `export const APP_VERSION = "${next}";`);
 
-      // 2) Prepend a changelog entry
+      // 2) Prepend a changelog entry built from commit body lines
+      const changesJson = changes.map((c) => `      ${JSON.stringify(c)},`).join("\n");
       const entry =
         `  {\n` +
         `    version: "${next}",\n` +
@@ -105,7 +130,7 @@ export function autoBumpVersion(): Plugin {
         `    type: "${type}",\n` +
         `    title: ${JSON.stringify(title)},\n` +
         `    changes: [\n` +
-        `      ${JSON.stringify(subject)},\n` +
+        `${changesJson}\n` +
         `    ],\n` +
         `  },\n`;
 
@@ -120,7 +145,9 @@ export function autoBumpVersion(): Plugin {
       }
 
       writeFileSync(VERSIONING_FILE, updated);
-      console.log(`[auto-bump-version] APP_VERSION ${current} → ${next} (${type}) — "${title}"`);
+      console.log(
+        `[auto-bump-version] APP_VERSION ${current} → ${next} (${type}) — "${title}" (${changes.length} bullets)`,
+      );
     },
   };
 }
