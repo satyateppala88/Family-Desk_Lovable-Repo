@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Sparkles, CreditCard } from "lucide-react";
 import { FINANCE_CATEGORIES, CATEGORY_LABELS, FinanceTransaction } from "@/hooks/useFinance";
+import { CategorySelect } from "@/components/finance/CategorySelect";
 import { recommendBestCard, CREDIT_CARD_CATALOG } from "@/data/creditCardCatalog";
 import { formatINR } from "@/lib/formatINR";
 
@@ -128,14 +129,13 @@ export const TransactionDialog = ({ open, onOpenChange, onSave, initialData, use
 
           <div className="space-y-2">
             <Label>Category</Label>
-            <Select value={category} onValueChange={handleCategoryChange}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {FINANCE_CATEGORIES.map((c) => (
-                  <SelectItem key={c} value={c}>{CATEGORY_LABELS[c]}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <CategorySelect
+              value={category}
+              onValueChange={handleCategoryChange}
+              builtIn={FINANCE_CATEGORIES}
+              builtInLabels={CATEGORY_LABELS}
+              scope="transaction"
+            />
           </div>
 
           {/* Inline card recommendation */}
