@@ -31,18 +31,34 @@ const HouseholdMembers = () => {
     queryFn: async () => {
       if (!householdId) return [];
 
-      const { data, error } = await supabase
+      const { data: memberRows, error: memberError } = await supabase
         .from("household_members")
-        .select(`
-          *,
-          profiles:user_id (display_name)
-        `)
+        .select("id, household_id, user_id, role, joined_at")
         .eq("household_id", householdId)
         .not("user_id", "is", null)
         .order("joined_at", { ascending: true });
 
-      if (error) throw error;
-      return (data ?? []).filter((row: any) => !!row.user_id);
+      if (memberError) throw memberError;
+
+      const userIds = (memberRows ?? [])
+        .map((row) => row.user_id)
+        .filter(Boolean);
+
+      if (userIds.length === 0) return [];
+
+      const { data: profileRows, error: profileError } = await supabase
+        .from("profiles")
+        .select("id, display_name")
+        .in("id", userIds);
+
+      if (profileError) throw profileError;
+
+      const profilesById = new Map((profileRows ?? []).map((profile) => [profile.id, profile]));
+
+      return (memberRows ?? []).map((row) => ({
+        ...row,
+        profiles: profilesById.get(row.user_id) ?? null,
+      }));
     },
     enabled: !!householdId,
     staleTime: 0,
