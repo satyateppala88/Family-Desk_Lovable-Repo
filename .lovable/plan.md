@@ -1,52 +1,77 @@
-## Problem
+## Goal
 
-Two related bugs in **Finance → Add Transaction**:
+1. Apply the optimistic-update pattern (used in transactions) to **budgets, savings goals, subscriptions, and cards** so writes feel instant and submit buttons can't double-fire.
+2. Make **all household data live across members** — when one member adds/edits/deletes anything in finance (or other shared modules), every other member sees the change without manually refreshing.
 
-1. **Salary (and other income) saves as an expense.** The dialog defaults Type = "Expense". When a user picks the "Salary" category but doesn't notice the Expense/Income toggle, the transaction is saved as `type: "expense"` with category `"salary"`. It then shows with a `−` sign and red styling.
-2. **"All Categories" view appears to be missing the transaction.** It isn't actually missing — the query correctly returns all categories when the filter is `"all"` (verified in `useFinance.ts` line 164). But because the salary entry is saved as an expense, the user sees a `−₹X` row that doesn't look like their salary, so it feels missing. Filtering by category = "Salary" still shows it (same row, still mislabeled as expense).
+## What's already true (no change needed)
 
-The underlying cause for both is the same: **category and transaction type aren't linked, and the labels "Expense/Income" are easy to overlook.**
+- RLS on every `finance_*` table already grants **all household_members** read/write access — so member B can already query member A's data; the gap is just stale React Query cache on B's device.
+- `finance_transactions`, `finance_subscriptions`, `finance_savings_goals`, `finance_budgets`, `habits`, `habit_logs`, `tasks`, `meal_plans`, `pantry_items`, etc. are **already in the `supabase_realtime` publication**.
+- A reusable `useRealtimeSubscription` hook already exists and is wired into Taskmaster pages.
 
-## Fix
+So this is mostly a **frontend wiring** job, plus one tiny migration to add cards to realtime.
 
-### 1. Rename the toggle to "Debit / Credit" and make it more prominent
+## Changes
 
-In `src/components/finance/TransactionDialog.tsx`:
-- Replace the two `Expense` / `Income` buttons with clearer **Debit (money out)** and **Credit (money in)** buttons.
-- Keep the underlying values as `"expense"` (debit) and `"income"` (credit) so no DB schema change is needed.
-- Add a one-line helper text under the toggle: *"Debit = money leaving your account · Credit = money coming in"*.
-- Style the selected state more strongly (color the active button red for Debit, green for Credit) so it's visually obvious which one is selected.
+### 1. Optimistic mutations in `src/hooks/useFinance.ts`
+Apply the same pattern already used by `useCreateTransaction` to:
+- `useUpsertBudget`
+- `useCreateSavingsGoal`, `useUpdateSavingsGoal`, `useDeleteSavingsGoal`
+- (also `useContributeSavingsGoal` if present)
 
-### 2. Auto-suggest the correct type when an income category is picked
+Pattern per mutation:
+- `.select().single()` to return the row
+- `onMutate`: cancel queries, snapshot, push optimistic row into `["finance-budgets", householdId]` / `["finance-savings-goals", householdId]` caches via `setQueryData`, show toast immediately
+- `onError`: restore snapshots, show error toast
+- `onSuccess`: swap optimistic row with returned real row
+- `onSettled`: light invalidate of dependent summary keys only
 
-When the user picks a category that is inherently income (`salary`, `freelance`, `investment`), automatically flip the type to **Credit** (and vice versa for clearly-expense categories the first time). The user can still override.
+### 2. Optimistic mutations in `src/hooks/useSubscriptions.ts`
+Same pattern for `useCreateSubscription`, `useUpdateSubscription`, `useDeleteSubscription`.
 
-Income categories: `salary`, `freelance`, `investment`.
+### 3. Optimistic mutations in `src/hooks/useUserCards.ts`
+Same pattern for `useAddUserCard`, `useRemoveUserCard`.
 
-Implementation: in the `Select onValueChange` for category, if the new category is in the income set and the user hasn't manually toggled type, set type to `"income"`. Track a `userTouchedType` flag so we never override an explicit choice.
+### 4. Submit-button guards
+Mirror the `submitting` state already in `TransactionDialog.tsx` for:
+- `BudgetDialog.tsx`
+- `SavingsGoalDialog.tsx`
+- `SubscriptionDialog.tsx`
+- `AddCardDialog.tsx`
 
-### 3. Update transaction list labels
+Disable the save button while `mutation.isPending`, close dialog on click to prevent double-tap.
 
-In `src/pages/FinanceTransactions.tsx`:
-- Change the Type filter dropdown labels from "Income / Expense" to **"Credit / Debit"** for consistency. Underlying values stay `income` / `expense`.
-- Keep the existing `+` / `−` icons and green/neutral coloring (already correct for income vs expense).
+### 5. Cross-member live sync — wire `useRealtimeSubscription`
+Add a single `useFinanceRealtime(householdId)` hook (in `src/hooks/useFinance.ts`) that subscribes to:
+- `finance_transactions` → invalidates `finance-transactions`, `finance-monthly-summary`, `finance-dashboard`
+- `finance_budgets` → invalidates `finance-budgets`
+- `finance_savings_goals` → invalidates `finance-savings-goals`
+- `finance_subscriptions` → invalidates `finance-subscriptions`
+- `finance_user_cards` → invalidates `user-cards`
 
-### 4. No database / schema changes
+All filtered by `household_id=eq.<id>`. Mount it once at the top of each finance page (`Finance.tsx`, `FinanceTransactions.tsx`, `FinanceBudget.tsx`, `FinanceSavings.tsx`, `FinanceSubscriptions.tsx`, `FinanceCards.tsx`). One subscription per page is fine — it auto-cleans on unmount.
 
-The `finance_transactions.type` column already stores `'income' | 'expense'`. Amounts are stored as positive numbers; the sign is derived from `type` at render time (already done correctly on line 126 of `FinanceTransactions.tsx`). So no migration needed.
+### 6. One small migration
+Add `finance_user_cards` to the realtime publication (the only finance table currently missing):
+```sql
+ALTER PUBLICATION supabase_realtime ADD TABLE public.finance_user_cards;
+```
 
-## Files changed
+### 7. Extend live sync to other shared modules
+Mount `useRealtimeSubscription` for already-published tables on their main pages so member B sees member A's changes instantly:
+- `Habits.tsx` → `habits`, `habit_logs`, `habit_streaks` (add `habit_streaks` to publication too)
+- `Meals.tsx` → `meal_plans`, `meal_plan_items`
+- `Grocery.tsx` → `shopping_lists`, `shopping_list_items`, `pantry_items`
+- `Calendar.tsx` → already covered if needed; skip if calendar uses Google sync only
 
-- `src/components/finance/TransactionDialog.tsx` — rename toggle to Debit/Credit, add helper text, auto-suggest type from category, stronger active styling.
-- `src/pages/FinanceTransactions.tsx` — relabel Type filter options to "Credit / Debit".
+Taskmaster already has it.
 
-## Impact on other features
+### Out of scope
+- No RLS changes (already correct).
+- No schema changes beyond the two `ALTER PUBLICATION` lines.
+- No changes to AI chat / notifications.
 
-- **FinanceMonthlySummary, dashboard, budgets, monthly review, AI finance chat** — all read `type === "income"` vs `"expense"`. Unchanged values, so zero impact.
-- **Card recommender** — only fires when `type === "expense"` (line 65 of TransactionDialog). Still works; renaming the button doesn't change the value.
-- **Existing transactions** — any salary already saved as "expense" will stay that way. The user can edit it via the pencil icon and switch it to Credit. (Optional follow-up: I can run a one-time data fix to flip all `category in (salary, freelance, investment) AND type = expense` rows to `type = income` — let me know if you want that.)
-
-## Out of scope
-
-- Allowing negative amounts directly (we keep amounts positive + a type flag — cleaner and matches the existing schema).
-- Adding new income categories.
+## Result for the user
+- Add/edit/delete in any finance area → UI updates in <50ms, no duplicate entries possible (button disabled).
+- Member A adds a transaction / budget / goal / subscription / card on their phone → Member B's screen updates within ~1s automatically.
+- Same live behavior extended to Habits, Meals, and Grocery.
