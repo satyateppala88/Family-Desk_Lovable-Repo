@@ -18,6 +18,7 @@ import {
   SUBSCRIPTION_CATEGORY_LABELS,
   FREQUENCY_LABELS,
 } from "@/hooks/useSubscriptions";
+import { CategorySelect } from "@/components/finance/CategorySelect";
 
 interface Props {
   open: boolean;
@@ -119,14 +120,13 @@ export const SubscriptionDialog = ({ open, onOpenChange, onSave, initialData }: 
 
           <div className="space-y-1.5">
             <Label>Category</Label>
-            <Select value={category} onValueChange={setCategory}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {SUBSCRIPTION_CATEGORIES.map((c) => (
-                  <SelectItem key={c} value={c}>{SUBSCRIPTION_CATEGORY_LABELS[c]}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <CategorySelect
+              value={category}
+              onValueChange={setCategory}
+              builtIn={SUBSCRIPTION_CATEGORIES}
+              builtInLabels={SUBSCRIPTION_CATEGORY_LABELS}
+              scope="subscription"
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-3">

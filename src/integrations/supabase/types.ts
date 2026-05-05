@@ -615,6 +615,39 @@ export type Database = {
         }
         Relationships: []
       }
+      finance_custom_categories: {
+        Row: {
+          created_at: string
+          created_by: string
+          household_id: string
+          id: string
+          key: string
+          label: string
+          scope: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          household_id: string
+          id?: string
+          key: string
+          label: string
+          scope?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          household_id?: string
+          id?: string
+          key?: string
+          label?: string
+          scope?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       finance_monthly_snapshots: {
         Row: {
           budget_health_score: number | null

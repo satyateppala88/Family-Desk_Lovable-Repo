@@ -22,6 +22,8 @@ import {
   FinanceTransaction,
 } from "@/hooks/useFinance";
 import { useUserCards } from "@/hooks/useUserCards";
+import { useCustomCategories } from "@/hooks/useCustomCategories";
+import { resolveCategoryLabel } from "@/components/finance/CategorySelect";
 import { formatINR } from "@/lib/formatINR";
 import { TransactionDialog } from "@/components/finance/TransactionDialog";
 import { format } from "date-fns";
@@ -30,6 +32,7 @@ import { cn } from "@/lib/utils";
 const FinanceTransactions = () => {
   const { householdId } = useHousehold();
   useFinanceRealtime(householdId);
+  const { categories: customCats } = useCustomCategories("transaction");
   const [search, setSearch] = useState("");
   const [catFilter, setCatFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
@@ -78,6 +81,9 @@ const FinanceTransactions = () => {
                 {FINANCE_CATEGORIES.map((c) => (
                   <SelectItem key={c} value={c}>{CATEGORY_LABELS[c]}</SelectItem>
                 ))}
+                {customCats.map((c) => (
+                  <SelectItem key={c.key} value={c.key}>{c.label}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
             <Select value={typeFilter} onValueChange={setTypeFilter}>
@@ -116,11 +122,11 @@ const FinanceTransactions = () => {
                     {tx.type === "income" ? "+" : "−"}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{tx.description || CATEGORY_LABELS[tx.category] || tx.category}</p>
+                    <p className="text-sm font-medium truncate">{tx.description || resolveCategoryLabel(tx.category, CATEGORY_LABELS, customCats)}</p>
                     <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
                       <span>{format(new Date(tx.transaction_date), "MMM d")}</span>
                       <span>·</span>
-                      <span>{CATEGORY_LABELS[tx.category] || tx.category}</span>
+                      <span>{resolveCategoryLabel(tx.category, CATEGORY_LABELS, customCats)}</span>
                       {tx.is_recurring && <Badge variant="outline" className="text-[9px] px-1 py-0">Recurring</Badge>}
                     </div>
                   </div>
