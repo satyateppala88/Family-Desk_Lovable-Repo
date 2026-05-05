@@ -1,5 +1,5 @@
 import { useState } from "react";
-import Joyride, { CallBackProps, STATUS, Step } from "react-joyride";
+import Joyride, { ACTIONS, CallBackProps, EVENTS, STATUS, Step } from "react-joyride";
 
 interface OnboardingTourProps {
   run: boolean;
@@ -52,14 +52,23 @@ export const OnboardingTour = ({ run, onComplete, steps, featureName }: Onboardi
   const [stepIndex, setStepIndex] = useState(0);
 
   const handleJoyrideCallback = async (data: CallBackProps) => {
-    const { status, index, type } = data;
+    const { status, index, type, action } = data;
 
-    if ([STATUS.FINISHED, STATUS.SKIPPED].includes(status as any)) {
-      // Call the onComplete handler which should mark the feature tour as complete
+    // Mark complete when the tour ends for ANY reason — finished, skipped,
+    // closed via the X, or otherwise dismissed. Otherwise the tour replays
+    // on every visit because only FINISHED/SKIPPED were being persisted.
+    const tourEnded =
+      [STATUS.FINISHED, STATUS.SKIPPED].includes(status as any) ||
+      type === EVENTS.TOUR_END ||
+      action === ACTIONS.CLOSE ||
+      action === ACTIONS.SKIP;
+
+    if (tourEnded) {
       onComplete();
+      return;
     }
 
-    if (type === "step:after") {
+    if (type === EVENTS.STEP_AFTER) {
       setStepIndex(index + 1);
     }
   };
