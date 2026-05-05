@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { format } from "date-fns";
@@ -128,6 +128,8 @@ export const useFinanceAccounts = (householdId: string | null) => {
       return data as FinanceAccount[];
     },
     enabled: !!householdId,
+    staleTime: 1000 * 60 * 5,
+    placeholderData: keepPreviousData,
   });
 };
 
@@ -177,6 +179,8 @@ export const useFinanceTransactions = (
       return data as FinanceTransaction[];
     },
     enabled: !!householdId,
+    staleTime: 1000 * 60 * 2,
+    placeholderData: keepPreviousData,
   });
 };
 
@@ -195,6 +199,8 @@ export const useFinanceBudgets = (householdId: string | null, month?: string) =>
       return data as FinanceBudget[];
     },
     enabled: !!householdId,
+    staleTime: 1000 * 60 * 5,
+    placeholderData: keepPreviousData,
   });
 };
 
@@ -211,6 +217,8 @@ export const useFinanceSavingsGoals = (householdId: string | null) => {
       return data as FinanceSavingsGoal[];
     },
     enabled: !!householdId,
+    staleTime: 1000 * 60 * 5,
+    placeholderData: keepPreviousData,
   });
 };
 
@@ -229,6 +237,8 @@ export const useFinanceMonthlySnapshot = (householdId: string | null, month?: st
       return data as FinanceMonthlySnapshot | null;
     },
     enabled: !!householdId,
+    staleTime: 1000 * 60 * 5,
+    placeholderData: keepPreviousData,
   });
 };
 
@@ -242,14 +252,14 @@ export const useFinanceMonthlySummary = (householdId: string | null, month?: str
 
       const { data, error } = await supabase
         .from("finance_transactions")
-        .select("*")
+        .select("amount,type,category")
         .eq("household_id", householdId!)
         .gte("transaction_date", `${currentMonth}-01`)
         .lt("transaction_date", `${nextMonth}-01`);
 
       if (error) throw error;
 
-      const transactions = data as FinanceTransaction[];
+      const transactions = (data as Array<Pick<FinanceTransaction, "amount" | "type" | "category">>) || [];
       const income = transactions.filter((t) => t.type === "income").reduce((s, t) => s + Number(t.amount), 0);
       const expenses = transactions.filter((t) => t.type === "expense").reduce((s, t) => s + Number(t.amount), 0);
 
@@ -271,6 +281,8 @@ export const useFinanceMonthlySummary = (householdId: string | null, month?: str
       };
     },
     enabled: !!householdId,
+    staleTime: 1000 * 60 * 2,
+    placeholderData: keepPreviousData,
   });
 };
 
