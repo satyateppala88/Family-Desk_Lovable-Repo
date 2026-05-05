@@ -1415,6 +1415,7 @@ export type Database = {
         Row: {
           budget_consciousness: string | null
           children_ages: number[] | null
+          completed_module_setups: Json
           cooking_skill_level: string | null
           created_at: string | null
           diet_type: string | null
@@ -1445,6 +1446,7 @@ export type Database = {
         Insert: {
           budget_consciousness?: string | null
           children_ages?: number[] | null
+          completed_module_setups?: Json
           cooking_skill_level?: string | null
           created_at?: string | null
           diet_type?: string | null
@@ -1475,6 +1477,7 @@ export type Database = {
         Update: {
           budget_consciousness?: string | null
           children_ages?: number[] | null
+          completed_module_setups?: Json
           cooking_skill_level?: string | null
           created_at?: string | null
           diet_type?: string | null
