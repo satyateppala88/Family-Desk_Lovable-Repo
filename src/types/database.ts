@@ -162,6 +162,7 @@ export interface HouseholdPreferences {
   organic_preference: 'always' | 'sometimes' | 'rarely' | 'never' | null;
   budget_consciousness: 'very_conscious' | 'somewhat' | 'not_much' | null;
   week_start_day: 'sunday' | 'monday' | null;
+  completed_module_setups?: Record<string, boolean> | null;
   created_at: string;
   updated_at: string;
 }
