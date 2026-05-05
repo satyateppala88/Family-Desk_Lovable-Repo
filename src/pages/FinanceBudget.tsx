@@ -11,6 +11,7 @@ import { useHousehold } from "@/hooks/useHousehold";
 import {
   useFinanceBudgets,
   useFinanceMonthlySummary,
+  useFinanceRealtime,
   useUpsertBudget,
   CATEGORY_LABELS,
 } from "@/hooks/useFinance";
@@ -21,6 +22,7 @@ import { cn } from "@/lib/utils";
 
 const FinanceBudget = () => {
   const { householdId } = useHousehold();
+  useFinanceRealtime(householdId);
   const currentMonth = format(new Date(), "yyyy-MM");
   const { data: budgets, isLoading } = useFinanceBudgets(householdId, currentMonth);
   const { data: summary } = useFinanceMonthlySummary(householdId, currentMonth);

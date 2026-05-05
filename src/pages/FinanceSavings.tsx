@@ -11,6 +11,7 @@ import { Plus, Trash2, Target, PartyPopper, Loader2 } from "lucide-react";
 import { useHousehold } from "@/hooks/useHousehold";
 import {
   useFinanceSavingsGoals,
+  useFinanceRealtime,
   useCreateSavingsGoal,
   useUpdateSavingsGoal,
   useDeleteSavingsGoal,
@@ -22,6 +23,7 @@ import { cn } from "@/lib/utils";
 
 const FinanceSavings = () => {
   const { householdId } = useHousehold();
+  useFinanceRealtime(householdId);
   const { data: goals, isLoading } = useFinanceSavingsGoals(householdId);
   const createGoal = useCreateSavingsGoal(householdId);
   const updateGoal = useUpdateSavingsGoal();

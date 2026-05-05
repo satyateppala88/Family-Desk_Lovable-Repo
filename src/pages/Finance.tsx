@@ -3,7 +3,7 @@ import { Header } from "@/components/layout/Header";
 import { Card, CardContent } from "@/components/ui/card";
 import { PageLoading } from "@/components/ui/page-loading";
 import { useHousehold } from "@/hooks/useHousehold";
-import { useFinanceMonthlySummary } from "@/hooks/useFinance";
+import { useFinanceMonthlySummary, useFinanceRealtime } from "@/hooks/useFinance";
 import { useSubscriptions } from "@/hooks/useSubscriptions";
 import { useFinanceSavingsGoals } from "@/hooks/useFinance";
 import { useUserCards } from "@/hooks/useUserCards";
@@ -24,6 +24,7 @@ import {
 
 const Finance = () => {
   const { householdId } = useHousehold();
+  useFinanceRealtime(householdId);
   const { data: summary, isLoading } = useFinanceMonthlySummary(householdId);
   const { data: subscriptions } = useSubscriptions(householdId);
   const { data: savingsGoals } = useFinanceSavingsGoals(householdId);
