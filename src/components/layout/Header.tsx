@@ -129,7 +129,10 @@ export const Header = (_props: HeaderProps) => {
   const pageTitle = getPageTitle();
 
   return (
-    <header className="sticky top-0 z-40 bg-background/90 backdrop-blur-xl border-b border-border/60">
+    <header
+      className="sticky top-0 z-40 bg-background/90 backdrop-blur-xl border-b border-border/60"
+      style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
+    >
       <div
         className="w-full mx-auto flex h-14 items-center justify-between gap-3"
         style={{
