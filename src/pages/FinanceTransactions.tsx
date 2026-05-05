@@ -141,6 +141,17 @@ const FinanceTransactions = () => {
             </CardContent>
           </Card>
         )}
+
+        {!!transactions?.length && (
+          <Button
+            variant="outline"
+            className="w-full border-dashed h-12 text-muted-foreground"
+            onClick={() => setShowAdd(true)}
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Add another transaction
+          </Button>
+        )}
       </main>
 
       <QuickActionButton
