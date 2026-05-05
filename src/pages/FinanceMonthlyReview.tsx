@@ -114,7 +114,7 @@ const FinanceMonthlyReview = () => {
                   {underBudgetCategories.map((b) => (
                     <div key={b.id} className="flex items-start gap-2 text-sm">
                       <Badge variant="success" className="mt-0.5 shrink-0">Under</Badge>
-                      <span className="text-muted-foreground">{CATEGORY_LABELS[b.category]} stayed well within budget — great restraint!</span>
+                      <span className="text-muted-foreground">{resolveCategoryLabel(b.category, CATEGORY_LABELS, customCats)} stayed well within budget — great restraint!</span>
                     </div>
                   ))}
                   {savingsRate >= 20 && (
@@ -142,7 +142,7 @@ const FinanceMonthlyReview = () => {
                       <div key={b.id} className="flex items-start gap-2 text-sm">
                         <Badge variant="destructive" className="mt-0.5 shrink-0">Over</Badge>
                         <span className="text-muted-foreground">
-                          {CATEGORY_LABELS[b.category]}: spent {formatINR(actual)} against a {formatINR(Number(b.planned_amount))} budget
+                          {resolveCategoryLabel(b.category, CATEGORY_LABELS, customCats)}: spent {formatINR(actual)} against a {formatINR(Number(b.planned_amount))} budget
                         </span>
                       </div>
                     );
@@ -166,7 +166,7 @@ const FinanceMonthlyReview = () => {
                     return (
                       <div key={cat} className="space-y-1">
                         <div className="flex justify-between text-sm">
-                          <span className="text-foreground font-medium">{CATEGORY_LABELS[cat] || cat}</span>
+                          <span className="text-foreground font-medium">{resolveCategoryLabel(cat, CATEGORY_LABELS, customCats)}</span>
                           <span className="text-muted-foreground">{formatINR(amount as number)}</span>
                         </div>
                         {budget && <Progress value={pct} className="h-1.5" />}
@@ -219,7 +219,7 @@ const FinanceMonthlyReview = () => {
                 )}
                 {overBudgetCategories.length > 0 && (
                   <p className="text-sm text-muted-foreground">
-                    Your {overBudgetCategories.map((b) => CATEGORY_LABELS[b.category]).join(" and ")} spending ran over — try setting a weekly allowance to stay on track.
+                    Your {overBudgetCategories.map((b) => resolveCategoryLabel(b.category, CATEGORY_LABELS, customCats)).join(" and ")} spending ran over — try setting a weekly allowance to stay on track.
                   </p>
                 )}
                 {activeGoals.length === 0 && (
