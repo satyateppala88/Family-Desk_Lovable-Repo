@@ -3,8 +3,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { FINANCE_CATEGORIES, CATEGORY_LABELS } from "@/hooks/useFinance";
+import { CategorySelect } from "@/components/finance/CategorySelect";
+import { useCustomCategories } from "@/hooks/useCustomCategories";
 
 interface BudgetDialogProps {
   open: boolean;
@@ -16,10 +17,15 @@ interface BudgetDialogProps {
 export const BudgetDialog = ({ open, onOpenChange, onSave, existingCategories = [] }: BudgetDialogProps) => {
   const [category, setCategory] = useState("");
   const [amount, setAmount] = useState("");
+  const { categories: customCats } = useCustomCategories("transaction");
 
-  const availableCategories = FINANCE_CATEGORIES.filter(
-    (c) => !existingCategories.includes(c) && !["salary", "freelance", "investment"].includes(c)
-  );
+  // Build the visible built-in list (income + already-budgeted excluded)
+  const excludedBuiltIn = [
+    "salary",
+    "freelance",
+    "investment",
+    ...FINANCE_CATEGORIES.filter((c) => existingCategories.includes(c)),
+  ];
 
   const [submitting, setSubmitting] = useState(false);
 
@@ -43,14 +49,20 @@ export const BudgetDialog = ({ open, onOpenChange, onSave, existingCategories = 
         <div className="space-y-4">
           <div className="space-y-2">
             <Label>Category</Label>
-            <Select value={category} onValueChange={setCategory}>
-              <SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger>
-              <SelectContent>
-                {availableCategories.map((c) => (
-                  <SelectItem key={c} value={c}>{CATEGORY_LABELS[c]}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <CategorySelect
+              value={category}
+              onValueChange={setCategory}
+              builtIn={FINANCE_CATEGORIES}
+              builtInLabels={CATEGORY_LABELS}
+              scope="transaction"
+              excludeBuiltIn={excludedBuiltIn}
+              placeholder="Select category"
+            />
+            {customCats.some((c) => existingCategories.includes(c.key)) && (
+              <p className="text-[10px] text-muted-foreground">
+                Custom categories already budgeted are still listed — pick a different one.
+              </p>
+            )}
           </div>
           <div className="space-y-2">
             <Label>Monthly Budget (₹)</Label>
