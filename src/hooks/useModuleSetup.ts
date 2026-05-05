@@ -1,6 +1,5 @@
 import { useEffect, useMemo } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabase";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { useHousehold } from "@/hooks/useHousehold";
 import { useHouseholdPreferences } from "@/hooks/useHouseholdPreferences";
@@ -22,38 +21,20 @@ interface CompletedMap {
 export const useModuleSetup = (key: ModuleSetupKey) => {
   const { user } = useAuth();
   const { householdId } = useHousehold();
-  const { preferences } = useHouseholdPreferences(householdId);
+  const { preferences, updatePreferences, isLoading } = useHouseholdPreferences(householdId);
   const queryClient = useQueryClient();
 
-  const { data: completed, isLoading } = useQuery({
-    queryKey: ["module-setup", user?.id],
-    queryFn: async () => {
-      if (!user?.id) return {} as CompletedMap;
-      const { data } = await supabase
-        .from("profiles")
-        .select("completed_tours")
-        .eq("id", user.id)
-        .single();
-      return ((data?.completed_tours as CompletedMap) ?? {});
-    },
-    enabled: !!user?.id,
-    staleTime: 60 * 1000,
-  });
+  const completed = (preferences?.completed_module_setups as CompletedMap | undefined) ?? {};
 
   const markComplete = useMutation({
     mutationFn: async () => {
-      if (!user?.id) throw new Error("Not authenticated");
-      const next = { ...(completed ?? {}), [key]: true };
-      const { error } = await supabase
-        .from("profiles")
-        .update({ completed_tours: next })
-        .eq("id", user.id);
-      if (error) throw error;
+      if (!householdId) throw new Error("No household");
+      const next = { ...completed, [key]: true };
+      await updatePreferences({ completed_module_setups: next } as any);
       return next;
     },
-    onSuccess: (next) => {
-      queryClient.setQueryData(["module-setup", user?.id], next);
-      queryClient.invalidateQueries({ queryKey: ["completed-tours", user?.id] });
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["household-preferences", householdId] });
     },
   });
 
@@ -62,20 +43,22 @@ export const useModuleSetup = (key: ModuleSetupKey) => {
   const hasRequiredData = useMemo(() => {
     if (!preferences) return false;
     const fields = MODULE_SETUP_FIELDS[key];
-    return fields.every((f) => {
+    return fields.some((f) => {
       const v = (preferences as unknown as Record<string, unknown>)[f as string];
-      return v !== null && v !== undefined && v !== "";
+      if (v === null || v === undefined || v === "") return false;
+      if (Array.isArray(v) && v.length === 0) return false;
+      return true;
     });
   }, [preferences, key]);
 
   useEffect(() => {
     if (isLoading) return;
     if (completed?.[key]) return;
-    if (hasRequiredData && user?.id) {
+    if (hasRequiredData && householdId) {
       markComplete.mutate();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLoading, completed, hasRequiredData, key, user?.id]);
+  }, [isLoading, completed, hasRequiredData, key, householdId]);
 
   const isComplete = !!completed?.[key] || hasRequiredData;
   const needsSetup = !isLoading && !!user?.id && !!householdId && !isComplete;
