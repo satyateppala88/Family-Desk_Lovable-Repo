@@ -17,6 +17,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Users, ArrowLeft, Mail } from "lucide-react";
 import { InviteMemberDialog } from "@/components/household/InviteMemberDialog";
 import { FamilyMembersSection } from "@/components/household/FamilyMembersSection";
+import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
 
 const HouseholdMembers = () => {
   const navigate = useNavigate();
@@ -44,6 +45,8 @@ const HouseholdMembers = () => {
       return (data ?? []).filter((row: any) => !!row.user_id);
     },
     enabled: !!householdId,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
   });
 
   // Member emails (pulled via SECURITY DEFINER RPC, restricted to fellow members)
@@ -61,6 +64,20 @@ const HouseholdMembers = () => {
     staleTime: 1000 * 60 * 5,
   });
   const emailByUserId = new Map((emailRows ?? []).map((r) => [r.user_id, r.email]));
+
+  // Live-update the members list when anyone is added/removed/role-changed,
+  // including direct DB or admin-side changes.
+  useRealtimeSubscription([
+    {
+      table: "household_members",
+      filter: householdId ? `household_id=eq.${householdId}` : undefined,
+      enabled: !!householdId,
+      queryKeys: [
+        ["household-members", householdId],
+        ["household-member-emails", householdId],
+      ],
+    },
+  ]);
 
   const { data: household } = useQuery({
     queryKey: ["household-info", householdId],
