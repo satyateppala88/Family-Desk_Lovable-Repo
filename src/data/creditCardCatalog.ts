@@ -242,6 +242,376 @@ export const CREDIT_CARD_CATALOG: CreditCard[] = [
     milestones: [],
     perks: ["RuPay benefits at IRCTC & National parks", "1% fuel surcharge waiver", "No annual fee"],
   },
+  // ── HDFC (more) ─────────────────────────────────
+  {
+    id: "hdfc-diners-black",
+    name: "Diners Club Black",
+    bank: "HDFC",
+    network: "Diners",
+    annualFee: 10000,
+    color: "#0f0f1a",
+    benefits: [
+      { category: "all", type: "reward_points", value: 5, description: "5 reward points per ₹150 spent" },
+      { category: "dining_out", type: "reward_points", value: 10, description: "10× points on weekend dining" },
+      { category: "transport", type: "reward_points", value: 10, description: "10× on SmartBuy travel" },
+    ],
+    milestones: [
+      { threshold: 80000, reward: "₹500 BookMyShow voucher" },
+      { threshold: 1500000, reward: "Annual fee reversal" },
+    ],
+    perks: ["Unlimited domestic & intl lounge access", "Golf privileges", "6 free golf games/qtr", "Concierge"],
+  },
+  {
+    id: "hdfc-tata-neu-infinity",
+    name: "Tata Neu Infinity",
+    bank: "HDFC",
+    network: "Visa",
+    annualFee: 1499,
+    color: "#486581",
+    benefits: [
+      { category: "all", type: "cashback", value: 1.5, description: "1.5% NeuCoins on all spends" },
+      { category: "entertainment", type: "cashback", value: 5, description: "5% NeuCoins on Tata Neu app" },
+      { category: "groceries", type: "cashback", value: 5, description: "5% on BigBasket via Tata Neu" },
+    ],
+    milestones: [],
+    perks: ["8 lounge visits/yr (4 dom + 4 intl)", "1% fuel surcharge waiver"],
+  },
+  {
+    id: "hdfc-marriott-bonvoy",
+    name: "Marriott Bonvoy",
+    bank: "HDFC",
+    network: "Diners",
+    annualFee: 3000,
+    color: "#8b5a3c",
+    benefits: [
+      { category: "all", type: "reward_points", value: 2, description: "2 Marriott points per ₹150" },
+      { category: "dining_out", type: "reward_points", value: 4, description: "4× on dining" },
+      { category: "transport", type: "reward_points", value: 8, description: "8× on Marriott bookings" },
+    ],
+    milestones: [
+      { threshold: 600000, reward: "1 free hotel night (cat 1-4)" },
+    ],
+    perks: ["Free night on joining", "Marriott Silver Elite status", "12 lounge visits/yr"],
+  },
+  // ── SBI (more) ──────────────────────────────────
+  {
+    id: "sbi-cashback",
+    name: "Cashback",
+    bank: "SBI",
+    network: "Visa",
+    annualFee: 999,
+    color: "#0a4f9c",
+    benefits: [
+      { category: "all", type: "cashback", value: 1, description: "1% cashback on offline spends" },
+      { category: "entertainment", type: "cashback", value: 5, description: "5% cashback on online spends" },
+    ],
+    milestones: [
+      { threshold: 200000, reward: "Annual fee reversal" },
+    ],
+    perks: ["No category restrictions on online cashback", "₹5,000 monthly cap"],
+  },
+  {
+    id: "sbi-elite",
+    name: "Elite",
+    bank: "SBI",
+    network: "Mastercard",
+    annualFee: 4999,
+    color: "#1a1a2e",
+    benefits: [
+      { category: "all", type: "reward_points", value: 2, description: "2 points per ₹100 spent" },
+      { category: "dining_out", type: "reward_points", value: 5, description: "5× on dining, groceries, departmental" },
+    ],
+    milestones: [
+      { threshold: 500000, reward: "₹5,000 e-voucher" },
+      { threshold: 1000000, reward: "₹10,000 e-voucher" },
+    ],
+    perks: ["6 international + 8 domestic lounge visits/yr", "Club Vistara Silver", "Trident Privilege Red"],
+  },
+  {
+    id: "sbi-prime",
+    name: "PRIME",
+    bank: "SBI",
+    network: "Visa",
+    annualFee: 2999,
+    color: "#003f7d",
+    benefits: [
+      { category: "all", type: "reward_points", value: 2, description: "2 points per ₹100 spent" },
+      { category: "dining_out", type: "reward_points", value: 10, description: "10× on dining, groceries, movies" },
+      { category: "utilities", type: "reward_points", value: 10, description: "10× on standing instructions for utility bills" },
+    ],
+    milestones: [
+      { threshold: 50000, reward: "₹3,000 Pizza Hut voucher (quarterly)" },
+    ],
+    perks: ["Club Vistara Silver", "Trident Privilege Red Tier", "8 domestic + 4 intl lounge visits/yr"],
+  },
+  // ── ICICI (more) ────────────────────────────────
+  {
+    id: "icici-coral",
+    name: "Coral",
+    bank: "ICICI",
+    network: "Visa",
+    annualFee: 500,
+    color: "#ff6b6b",
+    benefits: [
+      { category: "all", type: "reward_points", value: 2, description: "2 points per ₹100 spent" },
+      { category: "groceries", type: "reward_points", value: 2, description: "2× on grocery & departmental" },
+    ],
+    milestones: [
+      { threshold: 150000, reward: "Annual fee reversal" },
+    ],
+    perks: ["1 complimentary movie ticket/month (BookMyShow)", "4 lounge visits/yr (domestic)"],
+  },
+  {
+    id: "icici-emeralde",
+    name: "Emeralde Private Metal",
+    bank: "ICICI",
+    network: "Amex",
+    annualFee: 12499,
+    color: "#0f4c3a",
+    benefits: [
+      { category: "all", type: "reward_points", value: 6, description: "6 points per ₹200 spent" },
+      { category: "transport", type: "reward_points", value: 12, description: "12× on flights & hotels via portal" },
+    ],
+    milestones: [
+      { threshold: 4000000, reward: "Annual fee waiver" },
+    ],
+    perks: ["Unlimited domestic & intl lounge access", "Golf privileges", "Taj Epicure membership", "EazyDiner Prime"],
+  },
+  {
+    id: "icici-makemytrip",
+    name: "MakeMyTrip ICICI Signature",
+    bank: "ICICI",
+    network: "Mastercard",
+    annualFee: 2500,
+    color: "#eb2026",
+    benefits: [
+      { category: "all", type: "reward_points", value: 6, description: "6% myCash on all spends" },
+      { category: "transport", type: "reward_points", value: 6, description: "6% myCash on MakeMyTrip travel" },
+    ],
+    milestones: [],
+    perks: ["Welcome MMT vouchers worth ₹3,000+", "8 domestic + 4 intl lounge visits/yr", "MMT Black status"],
+  },
+  // ── Axis (more) ─────────────────────────────────
+  {
+    id: "axis-magnus",
+    name: "Magnus",
+    bank: "Axis",
+    network: "Mastercard",
+    annualFee: 12500,
+    color: "#16213e",
+    benefits: [
+      { category: "all", type: "reward_points", value: 12, description: "12 EDGE points per ₹200" },
+      { category: "transport", type: "reward_points", value: 35, description: "35× on Travel Edge portal" },
+    ],
+    milestones: [
+      { threshold: 150000, reward: "25,000 EDGE bonus points (monthly)" },
+    ],
+    perks: ["Unlimited domestic + 8 intl lounge visits/yr", "Tata CLiQ vouchers", "Concierge", "BookMyShow buy-one-get-one"],
+  },
+  {
+    id: "axis-atlas",
+    name: "Atlas",
+    bank: "Axis",
+    network: "Visa",
+    annualFee: 5000,
+    color: "#1f4e79",
+    benefits: [
+      { category: "all", type: "reward_points", value: 2, description: "2 EDGE Miles per ₹100" },
+      { category: "transport", type: "reward_points", value: 5, description: "5× on direct travel bookings" },
+    ],
+    milestones: [
+      { threshold: 300000, reward: "2,500 bonus EDGE Miles" },
+      { threshold: 750000, reward: "5,000 bonus EDGE Miles" },
+    ],
+    perks: ["8 domestic + 4 intl lounge visits/yr", "Convert miles 1:2 with airline partners"],
+  },
+  {
+    id: "axis-vistara-signature",
+    name: "Vistara Signature",
+    bank: "Axis",
+    network: "Visa",
+    annualFee: 3000,
+    color: "#5d2e8c",
+    benefits: [
+      { category: "all", type: "reward_points", value: 4, description: "4 CV Points per ₹200" },
+      { category: "transport", type: "reward_points", value: 4, description: "Vistara flight bookings" },
+    ],
+    milestones: [
+      { threshold: 750000, reward: "1 Premium Economy ticket" },
+    ],
+    perks: ["Welcome Vistara Premium Economy ticket", "Club Vistara Silver", "8 lounge visits/yr"],
+  },
+  // ── IDFC FIRST ─────────────────────────────────
+  {
+    id: "idfc-first-millennia",
+    name: "FIRST Millennia",
+    bank: "IDFC FIRST",
+    network: "Visa",
+    annualFee: 0,
+    color: "#9b1d20",
+    benefits: [
+      { category: "all", type: "reward_points", value: 3, description: "3× points on spends ≤ ₹20K/mo" },
+      { category: "all", type: "reward_points", value: 6, description: "6× points on spends > ₹20K/mo" },
+      { category: "entertainment", type: "reward_points", value: 10, description: "10× on online spends" },
+    ],
+    milestones: [],
+    perks: ["Lifetime free", "Low forex 1.99%", "Roadside assistance"],
+  },
+  {
+    id: "idfc-first-wealth",
+    name: "FIRST Wealth",
+    bank: "IDFC FIRST",
+    network: "Visa",
+    annualFee: 0,
+    color: "#2c3e50",
+    benefits: [
+      { category: "all", type: "reward_points", value: 3, description: "3× points on spends ≤ ₹20K/mo" },
+      { category: "all", type: "reward_points", value: 10, description: "10× points on spends > ₹20K/mo" },
+      { category: "entertainment", type: "reward_points", value: 10, description: "10× on online spends" },
+    ],
+    milestones: [],
+    perks: ["Lifetime free", "4 complimentary domestic lounge visits/qtr", "2 intl lounge visits/qtr", "Golf privileges"],
+  },
+  // ── Kotak ──────────────────────────────────────
+  {
+    id: "kotak-811",
+    name: "811 #DreamDifferent",
+    bank: "Kotak",
+    network: "Visa",
+    annualFee: 0,
+    color: "#d2232a",
+    benefits: [
+      { category: "all", type: "reward_points", value: 2, description: "2 points per ₹100 spent" },
+      { category: "entertainment", type: "reward_points", value: 4, description: "4× on online spends" },
+    ],
+    milestones: [],
+    perks: ["Lifetime free", "1% fuel surcharge waiver"],
+  },
+  {
+    id: "kotak-white",
+    name: "White Reserve",
+    bank: "Kotak",
+    network: "Visa",
+    annualFee: 3000,
+    color: "#1a1a1a",
+    benefits: [
+      { category: "all", type: "reward_points", value: 4, description: "4 White Pass points per ₹200" },
+      { category: "transport", type: "reward_points", value: 10, description: "10× on travel" },
+    ],
+    milestones: [
+      { threshold: 1500000, reward: "₹15,000 worth Tata CLiQ vouchers" },
+    ],
+    perks: ["12 intl lounge visits/yr", "Unlimited domestic lounge visits", "Golf privileges", "Concierge"],
+  },
+  // ── Yes Bank ───────────────────────────────────
+  {
+    id: "yes-marquee",
+    name: "Marquee",
+    bank: "Yes Bank",
+    network: "Mastercard",
+    annualFee: 9999,
+    color: "#003366",
+    benefits: [
+      { category: "all", type: "reward_points", value: 12, description: "12 reward points per ₹200" },
+      { category: "transport", type: "reward_points", value: 24, description: "24× on travel & dining" },
+    ],
+    milestones: [
+      { threshold: 1500000, reward: "Annual fee reversal" },
+    ],
+    perks: ["Unlimited intl + domestic lounge visits", "Golf privileges", "Buy-one-get-one BookMyShow"],
+  },
+  // ── Standard Chartered ─────────────────────────
+  {
+    id: "sc-ultimate",
+    name: "Ultimate",
+    bank: "Standard Chartered",
+    network: "Mastercard",
+    annualFee: 5000,
+    color: "#0072ce",
+    benefits: [
+      { category: "all", type: "reward_points", value: 5, description: "5 points per ₹150 (3.33% rewards)" },
+      { category: "transport", type: "cashback", value: 5, description: "5% cashback on duty-free spends" },
+    ],
+    milestones: [],
+    perks: ["4 intl + unlimited domestic lounge visits", "Golf privileges", "1% fuel surcharge waiver"],
+  },
+  // ── RBL ────────────────────────────────────────
+  {
+    id: "rbl-shoprite",
+    name: "Shoprite",
+    bank: "RBL",
+    network: "Mastercard",
+    annualFee: 500,
+    color: "#6a1b9a",
+    benefits: [
+      { category: "groceries", type: "reward_points", value: 20, description: "20 points per ₹100 on grocery" },
+      { category: "all", type: "reward_points", value: 2, description: "2 points per ₹100 on other spends" },
+    ],
+    milestones: [],
+    perks: ["1% fuel surcharge waiver", "Welcome ₹500 grocery voucher"],
+  },
+  // ── IndusInd ───────────────────────────────────
+  {
+    id: "indusind-legend",
+    name: "Legend",
+    bank: "IndusInd",
+    network: "Visa",
+    annualFee: 0,
+    color: "#7b1f3b",
+    benefits: [
+      { category: "all", type: "reward_points", value: 1, description: "1 point per ₹100 (1.5× on weekends)" },
+      { category: "dining_out", type: "reward_points", value: 1.5, description: "1.5× on weekend dining" },
+    ],
+    milestones: [],
+    perks: ["Lifetime free (on referral)", "2 lounge visits/qtr", "Golf privileges (Pioneer)"],
+  },
+  // ── Amex (more) ────────────────────────────────
+  {
+    id: "amex-platinum-travel",
+    name: "Platinum Travel",
+    bank: "American Express",
+    network: "Amex",
+    annualFee: 5000,
+    color: "#1f3a5f",
+    benefits: [
+      { category: "all", type: "reward_points", value: 1, description: "1 MR point per ₹50 spent" },
+      { category: "transport", type: "reward_points", value: 3, description: "3× on travel via portal" },
+    ],
+    milestones: [
+      { threshold: 190000, reward: "₹7,700 Travel Vouchers" },
+      { threshold: 400000, reward: "₹11,800 Taj/SeleQtions voucher" },
+    ],
+    perks: ["8 lounge visits/yr (Priority Pass)", "Taj benefits", "Milestone vouchers"],
+  },
+  {
+    id: "amex-platinum-charge",
+    name: "Platinum Charge",
+    bank: "American Express",
+    network: "Amex",
+    annualFee: 66000,
+    color: "#c0c0c0",
+    benefits: [
+      { category: "all", type: "reward_points", value: 1, description: "1 MR point per ₹40 spent" },
+      { category: "transport", type: "reward_points", value: 5, description: "5× on travel via Amex Travel" },
+    ],
+    milestones: [],
+    perks: ["Unlimited lounge access (Priority Pass + Centurion)", "Taj Epicure", "Marriott Gold", "Hilton Gold", "Dedicated concierge"],
+  },
+  // ── OneCard / Fintech ──────────────────────────
+  {
+    id: "onecard-metal",
+    name: "OneCard Metal",
+    bank: "OneCard",
+    network: "Visa",
+    annualFee: 0,
+    color: "#404040",
+    benefits: [
+      { category: "all", type: "reward_points", value: 1, description: "1 point per ₹50 (5× on top category)" },
+      { category: "entertainment", type: "reward_points", value: 5, description: "5× on top spend category" },
+    ],
+    milestones: [],
+    perks: ["Lifetime free", "App-first experience", "Real-time controls"],
+  },
 ];
 
 // ─── Helpers ─────────────────────────────────────────────────

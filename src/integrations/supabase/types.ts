@@ -564,6 +564,57 @@ export type Database = {
           },
         ]
       }
+      finance_custom_cards: {
+        Row: {
+          added_by: string
+          annual_fee: number
+          bank: string
+          benefits: Json
+          color: string
+          created_at: string
+          household_id: string
+          id: string
+          milestones: Json
+          name: string
+          network: string
+          perks: Json
+          source: string | null
+          updated_at: string
+        }
+        Insert: {
+          added_by: string
+          annual_fee?: number
+          bank: string
+          benefits?: Json
+          color?: string
+          created_at?: string
+          household_id: string
+          id?: string
+          milestones?: Json
+          name: string
+          network?: string
+          perks?: Json
+          source?: string | null
+          updated_at?: string
+        }
+        Update: {
+          added_by?: string
+          annual_fee?: number
+          bank?: string
+          benefits?: Json
+          color?: string
+          created_at?: string
+          household_id?: string
+          id?: string
+          milestones?: Json
+          name?: string
+          network?: string
+          perks?: Json
+          source?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       finance_monthly_snapshots: {
         Row: {
           budget_health_score: number | null
