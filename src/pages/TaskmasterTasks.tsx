@@ -86,6 +86,7 @@ const TaskmasterTasks = () => {
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [projectFilter, setProjectFilter] = useState<string>("all");
   const [priorityFilter, setPriorityFilter] = useState<string>("all");
+  const [sortBy, setSortBy] = useState<string>("priority");
 
   const getPriorityLabel = (level: number) => {
     switch (level) {
@@ -118,6 +119,35 @@ const TaskmasterTasks = () => {
     if (projectFilter !== "all" && task.project_id !== projectFilter) return false;
     if (priorityFilter !== "all" && task.priority_level?.toString() !== priorityFilter) return false;
     return true;
+  });
+
+  const sortedTasks = [...filteredTasks].sort((a: any, b: any) => {
+    switch (sortBy) {
+      case "priority":
+        return (a.priority_level || 3) - (b.priority_level || 3);
+      case "priority_desc":
+        return (b.priority_level || 3) - (a.priority_level || 3);
+      case "due_date": {
+        const aDate = a.due_date ? new Date(a.due_date).getTime() : Infinity;
+        const bDate = b.due_date ? new Date(b.due_date).getTime() : Infinity;
+        return aDate - bDate;
+      }
+      case "due_date_desc": {
+        const aDate = a.due_date ? new Date(a.due_date).getTime() : -Infinity;
+        const bDate = b.due_date ? new Date(b.due_date).getTime() : -Infinity;
+        return bDate - aDate;
+      }
+      case "created_desc":
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      case "created_asc":
+        return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+      case "title":
+        return (a.title || "").localeCompare(b.title || "");
+      case "status":
+        return (a.task_status || "").localeCompare(b.task_status || "");
+      default:
+        return 0;
+    }
   });
 
   const handleCreateTask = () => {
@@ -286,6 +316,22 @@ const TaskmasterTasks = () => {
                 <SelectItem value="4">P4 (Lowest)</SelectItem>
               </SelectContent>
             </Select>
+
+            <Select value={sortBy} onValueChange={setSortBy}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Sort by" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="priority">Priority (High → Low)</SelectItem>
+                <SelectItem value="priority_desc">Priority (Low → High)</SelectItem>
+                <SelectItem value="due_date">Due date (Earliest)</SelectItem>
+                <SelectItem value="due_date_desc">Due date (Latest)</SelectItem>
+                <SelectItem value="created_desc">Newest first</SelectItem>
+                <SelectItem value="created_asc">Oldest first</SelectItem>
+                <SelectItem value="title">Title (A → Z)</SelectItem>
+                <SelectItem value="status">Status</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
@@ -306,7 +352,7 @@ const TaskmasterTasks = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredTasks.length === 0 ? (
+                {sortedTasks.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={8} className="text-center py-8">
                       <p className="text-muted-foreground mb-4">No tasks found</p>
@@ -317,7 +363,7 @@ const TaskmasterTasks = () => {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredTasks.map((task: any) => {
+                  sortedTasks.map((task: any) => {
                     const priority = getPriorityLabel(task.priority_level || 3);
                     const status = getStatusBadge(task.task_status || 'backlog');
                     const ageDays = getAgeDays(task.created_at);
