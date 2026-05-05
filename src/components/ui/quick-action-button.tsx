@@ -43,7 +43,7 @@ export const QuickActionButton = ({ items, className }: QuickActionButtonProps) 
 
   // Multiple actions — expand on click
   return (
-    <div className={cn("fixed bottom-6 right-6 z-30 flex flex-col-reverse items-end gap-2", className)}>
+    <div className={cn("fixed bottom-24 right-6 sm:bottom-6 sm:right-24 z-40 flex flex-col-reverse items-end gap-2", className)}>
       {open && (
         <div className="flex flex-col-reverse gap-2 animate-fade-up">
           {items.map((item, i) => {
