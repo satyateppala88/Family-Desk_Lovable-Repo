@@ -9,7 +9,8 @@ import { PageLoading } from "@/components/ui/page-loading";
 import { QuickActionButton } from "@/components/ui/quick-action-button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, Pencil, ArrowLeftRight, Search } from "lucide-react";
+import { Plus, Trash2, Pencil, ArrowLeftRight, Search, X } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useHousehold } from "@/hooks/useHousehold";
 import {
   useFinanceTransactions,
@@ -17,6 +18,7 @@ import {
   useCreateTransaction,
   useUpdateTransaction,
   useDeleteTransaction,
+  useBulkUpdateTransactionCategory,
   CATEGORY_LABELS,
   FINANCE_CATEGORIES,
   FinanceTransaction,
@@ -39,6 +41,8 @@ const FinanceTransactions = () => {
   const [showAdd, setShowAdd] = useState(false);
   const [editTx, setEditTx] = useState<FinanceTransaction | null>(null);
   const [deleteTx, setDeleteTx] = useState<FinanceTransaction | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkCategory, setBulkCategory] = useState<string>("");
 
   const { data: transactions, isLoading } = useFinanceTransactions(householdId, {
     category: catFilter,
@@ -50,6 +54,33 @@ const FinanceTransactions = () => {
   const createTx = useCreateTransaction(householdId);
   const updateTx = useUpdateTransaction();
   const deleteMut = useDeleteTransaction();
+  const bulkUpdate = useBulkUpdateTransactionCategory(householdId);
+
+  const toggleSelected = (id: string) =>
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+
+  const allVisibleSelected = !!transactions?.length && transactions.every((t) => selectedIds.has(t.id));
+  const toggleAllVisible = () => {
+    if (!transactions) return;
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (allVisibleSelected) transactions.forEach((t) => next.delete(t.id));
+      else transactions.forEach((t) => next.add(t.id));
+      return next;
+    });
+  };
+
+  const clearSelection = () => { setSelectedIds(new Set()); setBulkCategory(""); };
+
+  const handleBulkMove = async () => {
+    if (!bulkCategory || selectedIds.size === 0) return;
+    await bulkUpdate.mutateAsync({ ids: Array.from(selectedIds), category: bulkCategory });
+    clearSelection();
+  };
 
   return (
     <div className="page-container">
@@ -111,10 +142,53 @@ const FinanceTransactions = () => {
             action={{ label: "Add Transaction", onClick: () => setShowAdd(true) }}
           />
         ) : (
+          <>
+          {selectedIds.size > 0 && (
+            <Card className="bg-accent/30 border-primary/30">
+              <CardContent className="p-3 flex flex-col sm:flex-row sm:items-center gap-2">
+                <div className="flex items-center gap-2 text-sm">
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={clearSelection}>
+                    <X className="w-3.5 h-3.5" />
+                  </Button>
+                  <span className="font-medium">{selectedIds.size} selected</span>
+                </div>
+                <div className="flex-1 flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-end">
+                  <Select value={bulkCategory} onValueChange={setBulkCategory}>
+                    <SelectTrigger className="w-full sm:w-48">
+                      <SelectValue placeholder="Move to category…" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {FINANCE_CATEGORIES.map((c) => (
+                        <SelectItem key={c} value={c}>{CATEGORY_LABELS[c]}</SelectItem>
+                      ))}
+                      {customCats.map((c) => (
+                        <SelectItem key={c.key} value={c.key}>{c.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button size="sm" onClick={handleBulkMove} disabled={!bulkCategory || bulkUpdate.isPending}>
+                    Move
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
           <Card>
             <CardContent className="p-0 divide-y divide-border/50">
+              <div className="flex items-center gap-3 px-3 py-2 bg-muted/30 text-[11px] text-muted-foreground">
+                <Checkbox checked={allVisibleSelected} onCheckedChange={toggleAllVisible} aria-label="Select all" />
+                <span>Select all on this view</span>
+              </div>
               {transactions.map((tx) => (
-                <div key={tx.id} className="flex items-center gap-3 p-3 hover:bg-accent/30 transition-colors group">
+                <div key={tx.id} className={cn(
+                  "flex items-center gap-3 p-3 hover:bg-accent/30 transition-colors group",
+                  selectedIds.has(tx.id) && "bg-accent/40"
+                )}>
+                  <Checkbox
+                    checked={selectedIds.has(tx.id)}
+                    onCheckedChange={() => toggleSelected(tx.id)}
+                    aria-label="Select transaction"
+                  />
                   <div className={cn(
                     "w-8 h-8 rounded-lg flex items-center justify-center text-xs font-semibold shrink-0",
                     tx.type === "income" ? "bg-[hsl(var(--success))]/10 text-[hsl(var(--success))]" : "bg-muted text-muted-foreground"
@@ -146,6 +220,7 @@ const FinanceTransactions = () => {
               ))}
             </CardContent>
           </Card>
+          </>
         )}
 
         {!!transactions?.length && (
