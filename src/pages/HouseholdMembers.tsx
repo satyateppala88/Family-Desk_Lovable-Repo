@@ -46,6 +46,22 @@ const HouseholdMembers = () => {
     enabled: !!householdId,
   });
 
+  // Member emails (pulled via SECURITY DEFINER RPC, restricted to fellow members)
+  const { data: emailRows } = useQuery({
+    queryKey: ["household-member-emails", householdId],
+    queryFn: async () => {
+      if (!householdId) return [];
+      const { data, error } = await supabase.rpc("get_household_member_emails", {
+        _household_id: householdId,
+      });
+      if (error) throw error;
+      return (data ?? []) as Array<{ user_id: string; email: string }>;
+    },
+    enabled: !!householdId,
+    staleTime: 1000 * 60 * 5,
+  });
+  const emailByUserId = new Map((emailRows ?? []).map((r) => [r.user_id, r.email]));
+
   const { data: household } = useQuery({
     queryKey: ["household-info", householdId],
     queryFn: async () => {
@@ -172,10 +188,19 @@ const HouseholdMembers = () => {
                           {member.profiles?.display_name || "Member"}
                           {isCurrentUser && " (You)"}
                         </p>
-                        <div className="flex gap-2 items-center">
-                          <p className="text-sm text-muted-foreground">
-                            Joined: {member.joined_at
-                              ? new Date(member.joined_at).toLocaleDateString()
+                        {emailByUserId.get(member.user_id) && (
+                          <p className="text-sm text-muted-foreground break-all">
+                            {emailByUserId.get(member.user_id)}
+                          </p>
+                        )}
+                        <div className="flex gap-2 items-center flex-wrap">
+                          <p className="text-xs text-muted-foreground">
+                            Joined {member.joined_at
+                              ? new Date(member.joined_at).toLocaleDateString(undefined, {
+                                  day: "numeric",
+                                  month: "short",
+                                  year: "numeric",
+                                })
                               : "recently"}
                           </p>
                           {isCreator && (
