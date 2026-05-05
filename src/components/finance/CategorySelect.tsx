@@ -42,7 +42,12 @@ export const CategorySelect = ({
   const handleCreate = async () => {
     if (!newLabel.trim()) return;
     try {
-      const created = await addCategory.mutateAsync({ label: newLabel, scope });
+      const created = await addCategory.mutateAsync({
+        label: newLabel,
+        scope,
+        reservedKeys: builtIn,
+        reservedLabels: builtInLabels,
+      });
       onValueChange(created.key);
       setNewLabel("");
       setAdding(false);
