@@ -70,11 +70,19 @@ export function useAddCustomCategory() {
   const { user } = useAuth();
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (input: { label: string; scope?: CategoryScope }) => {
+    mutationFn: async (input: { label: string; scope?: CategoryScope; reservedKeys?: readonly string[]; reservedLabels?: Record<string, string> }) => {
       const label = input.label.trim();
       if (!label) throw new Error("Category name is required");
       const key = slugifyCategoryKey(label);
       if (!key) throw new Error("Please use letters or numbers");
+      const reservedKeys = (input.reservedKeys || []).map((k) => k.toLowerCase());
+      if (reservedKeys.includes(key)) {
+        throw new Error("RESERVED_KEY");
+      }
+      const reservedLabels = Object.values(input.reservedLabels || {}).map((l) => l.trim().toLowerCase());
+      if (reservedLabels.includes(label.toLowerCase())) {
+        throw new Error("RESERVED_KEY");
+      }
       const { data, error } = await supabase
         .from("finance_custom_categories")
         .insert({
@@ -95,7 +103,9 @@ export function useAddCustomCategory() {
     },
     onError: (e: any) => {
       const msg = String(e?.message || "");
-      if (msg.includes("duplicate") || msg.includes("unique")) {
+      if (msg === "RESERVED_KEY") {
+        toast.error("That name matches a built-in category. Pick a different name.");
+      } else if (msg.includes("duplicate") || msg.includes("unique")) {
         toast.error("That category already exists");
       } else {
         toast.error(msg || "Failed to add category");
