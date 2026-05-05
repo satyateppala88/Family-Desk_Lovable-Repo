@@ -15,10 +15,13 @@ import { formatINR } from "@/lib/formatINR";
 import { format } from "date-fns";
 import { TrendingUp, TrendingDown, AlertTriangle, CheckCircle, Lightbulb, PartyPopper, Shield, BarChart3 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useCustomCategories } from "@/hooks/useCustomCategories";
+import { resolveCategoryLabel } from "@/components/finance/CategorySelect";
 
 const FinanceMonthlyReview = () => {
   const { householdId } = useHousehold();
   const currentMonth = format(new Date(), "yyyy-MM");
+  const { categories: customCats } = useCustomCategories("transaction");
   const { data: summary } = useFinanceMonthlySummary(householdId, currentMonth);
   const { data: budgets } = useFinanceBudgets(householdId, currentMonth);
   const { data: goals } = useFinanceSavingsGoals(householdId);
