@@ -2693,6 +2693,13 @@ export type Database = {
         Returns: undefined
       }
       generate_invite_code: { Args: never; Returns: string }
+      get_household_member_emails: {
+        Args: { _household_id: string }
+        Returns: {
+          email: string
+          user_id: string
+        }[]
+      }
       has_household_role: {
         Args: {
           _household_id: string
