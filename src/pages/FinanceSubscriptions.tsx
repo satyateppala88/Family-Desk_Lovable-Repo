@@ -22,6 +22,8 @@ import {
   FinanceSubscription,
 } from "@/hooks/useSubscriptions";
 import { SubscriptionDialog } from "@/components/finance/SubscriptionDialog";
+import { useCustomCategories } from "@/hooks/useCustomCategories";
+import { resolveCategoryLabel } from "@/components/finance/CategorySelect";
 import { formatINR } from "@/lib/formatINR";
 import { format, isPast, isToday, addDays } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -30,6 +32,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 const FinanceSubscriptions = () => {
   const { householdId } = useHousehold();
   useFinanceRealtime(householdId);
+  const { categories: customCats } = useCustomCategories("subscription");
   const [catFilter, setCatFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("active");
   const [showAdd, setShowAdd] = useState(false);
@@ -115,6 +118,9 @@ const FinanceSubscriptions = () => {
               {SUBSCRIPTION_CATEGORIES.map((c) => (
                 <SelectItem key={c} value={c}>{SUBSCRIPTION_CATEGORY_LABELS[c]}</SelectItem>
               ))}
+              {customCats.map((c) => (
+                <SelectItem key={c.key} value={c.key}>{c.label}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
@@ -150,7 +156,7 @@ const FinanceSubscriptions = () => {
                         {!sub.is_active && <Badge variant="outline" className="text-[9px] px-1 py-0">Paused</Badge>}
                       </div>
                       <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground flex-wrap">
-                        <span>{SUBSCRIPTION_CATEGORY_LABELS[sub.category] || sub.category}</span>
+                        <span>{resolveCategoryLabel(sub.category, SUBSCRIPTION_CATEGORY_LABELS, customCats)}</span>
                         <span>·</span>
                         <span>{FREQUENCY_LABELS[sub.frequency] || sub.frequency}</span>
                         {sub.next_due_date && (
