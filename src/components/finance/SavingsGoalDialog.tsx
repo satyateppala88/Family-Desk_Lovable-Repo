@@ -16,8 +16,12 @@ export const SavingsGoalDialog = ({ open, onOpenChange, onSave }: SavingsGoalDia
   const [current, setCurrent] = useState("0");
   const [targetDate, setTargetDate] = useState("");
 
+  const [submitting, setSubmitting] = useState(false);
+
   const handleSave = () => {
+    if (submitting) return;
     if (!name || !target || Number(target) <= 0) return;
+    setSubmitting(true);
     onSave({
       name,
       target_amount: Number(target),
@@ -29,6 +33,7 @@ export const SavingsGoalDialog = ({ open, onOpenChange, onSave }: SavingsGoalDia
     setTarget("");
     setCurrent("0");
     setTargetDate("");
+    setTimeout(() => setSubmitting(false), 600);
   };
 
   return (
@@ -54,7 +59,9 @@ export const SavingsGoalDialog = ({ open, onOpenChange, onSave }: SavingsGoalDia
             <Label>Target Date (optional)</Label>
             <Input type="date" value={targetDate} onChange={(e) => setTargetDate(e.target.value)} />
           </div>
-          <Button onClick={handleSave} className="w-full">Create Goal</Button>
+          <Button onClick={handleSave} className="w-full" disabled={submitting || !name || !target}>
+            {submitting ? "Creating..." : "Create Goal"}
+          </Button>
         </div>
       </DialogContent>
     </Dialog>
