@@ -12,6 +12,9 @@ type SubscriptionConfig = {
   enabled?: boolean;
 };
 
+const isDev =
+  typeof import.meta !== "undefined" && (import.meta as any).env?.DEV === true;
+
 /**
  * Subscribe to one or more Postgres tables and invalidate React-Query caches
  * on any insert/update/delete so all household members see live updates.
@@ -55,7 +58,15 @@ export function useRealtimeSubscription(configs: SubscriptionConfig[]) {
       );
     });
 
-    channel.subscribe();
+    channel.subscribe((status, err) => {
+      if (isDev) {
+        // eslint-disable-next-line no-console
+        console.debug(`[realtime] ${channelName} → ${status}`, err ?? "");
+      } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+        // eslint-disable-next-line no-console
+        console.warn(`[realtime] ${channelName} ${status}`, err ?? "");
+      }
+    });
 
     return () => {
       supabase.removeChannel(channel);
