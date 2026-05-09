@@ -15,6 +15,7 @@ import { createPersistedQueryClient } from "@/lib/query-client";
 import { NotificationPermissionPrompt } from "@/components/notifications/NotificationPermissionPrompt";
 import { NotificationActionRunner } from "@/components/notifications/NotificationActionRunner";
 import { InstallPrompt } from "@/components/install/InstallPrompt";
+import { HouseholdRealtimeProvider } from "@/components/realtime/HouseholdRealtimeProvider";
 
 // Eagerly loaded (auth flow)
 import Auth from "./pages/Auth";
@@ -83,6 +84,7 @@ const App = () => (
           <AuthProvider>
             <ScrollToTop />
             <NotificationActionRunner />
+            <HouseholdRealtimeProvider />
             <Suspense fallback={<PageLoader />}>
               <Routes>
                 <Route path="/" element={<AppEntryGate />} />
