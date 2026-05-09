@@ -98,6 +98,19 @@ function buildKeyMap(householdId: string): Record<string, (string | undefined)[]
   };
 }
 
+// Tables that do not have a `household_id` column — subscribed unfiltered.
+// RLS still scopes the events to rows the user can read.
+const TABLES_WITHOUT_HOUSEHOLD_ID = new Set<string>([
+  "task_assignees",
+  "task_comments",
+  "daily_plan_items",
+  "meal_plan_items",
+  "shopping_list_items",
+  "habit_assignees",
+  "habit_logs",
+  "habit_streaks",
+]);
+
 export const HouseholdRealtimeProvider = () => {
   const { user } = useAuth();
   const { householdId } = useHousehold();
@@ -108,15 +121,17 @@ export const HouseholdRealtimeProvider = () => {
 
     const keyMap = buildKeyMap(householdId);
     const tables = Object.keys(keyMap);
-    const filter = `household_id=eq.${householdId}`;
     const channelName = `household-${householdId}`;
 
     let channel = supabase.channel(channelName);
 
     tables.forEach((table) => {
+      const filterObj = TABLES_WITHOUT_HOUSEHOLD_ID.has(table)
+        ? { event: "*", schema: "public", table }
+        : { event: "*", schema: "public", table, filter: `household_id=eq.${householdId}` };
       channel = channel.on(
         "postgres_changes" as any,
-        { event: "*", schema: "public", table, filter },
+        filterObj,
         () => {
           for (const key of keyMap[table]) {
             // Use prefix-based invalidation so all variants (filters, paginations) update.
