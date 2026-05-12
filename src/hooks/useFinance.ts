@@ -695,3 +695,170 @@ export const useFinanceRealtime = (householdId: string | null) => {
     },
   ]);
 };
+
+// ─── Carry-forward & Annual rollup ───────────────────────────
+
+/**
+ * Clones the most recent prior month's budgets into `month` if `month` has
+ * no rows yet. Returns { cloned: number, sourceMonth: string | null }.
+ */
+export const useCarryForwardBudgets = (householdId: string | null) => {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  return useMutation({
+    mutationFn: async (month: string) => {
+      if (!householdId) return { cloned: 0, sourceMonth: null as string | null, insertedIds: [] as string[] };
+      // Skip if already populated.
+      const { data: existing, error: existingErr } = await supabase
+        .from("finance_budgets")
+        .select("id")
+        .eq("household_id", householdId)
+        .eq("month", month)
+        .limit(1);
+      if (existingErr) throw existingErr;
+      if (existing && existing.length > 0) return { cloned: 0, sourceMonth: null, insertedIds: [] };
+
+      // Find the most recent prior month with budgets.
+      const { data: prior, error: priorErr } = await supabase
+        .from("finance_budgets")
+        .select("month")
+        .eq("household_id", householdId)
+        .lt("month", month)
+        .order("month", { ascending: false })
+        .limit(1);
+      if (priorErr) throw priorErr;
+      const sourceMonth = prior?.[0]?.month as string | undefined;
+      if (!sourceMonth) return { cloned: 0, sourceMonth: null, insertedIds: [] };
+
+      const { data: rows, error: rowsErr } = await supabase
+        .from("finance_budgets")
+        .select("category,planned_amount")
+        .eq("household_id", householdId)
+        .eq("month", sourceMonth);
+      if (rowsErr) throw rowsErr;
+      if (!rows || rows.length === 0) return { cloned: 0, sourceMonth, insertedIds: [] };
+
+      const payload = rows.map((r) => ({
+        household_id: householdId,
+        created_by: user!.id,
+        month,
+        category: r.category,
+        planned_amount: r.planned_amount,
+      }));
+
+      const { data: inserted, error: insErr } = await supabase
+        .from("finance_budgets")
+        .upsert(payload, { onConflict: "household_id,month,category", ignoreDuplicates: true })
+        .select("id");
+      if (insErr) throw insErr;
+      return {
+        cloned: inserted?.length || 0,
+        sourceMonth,
+        insertedIds: (inserted || []).map((r) => r.id as string),
+      };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["finance-budgets", householdId] });
+    },
+  });
+};
+
+export interface AnnualBudgetRow {
+  category: string;
+  monthlyPlanned: number[]; // length 12, index 0 = Jan
+  monthlyActual: number[];
+  annualPlanned: number;
+  annualActual: number;
+}
+
+export interface AnnualBudgetData {
+  year: number;
+  totalPlanned: number;
+  totalActual: number;
+  monthlyPlanned: number[]; // length 12
+  monthlyActual: number[];
+  rows: AnnualBudgetRow[];
+}
+
+export const useFinanceAnnualBudget = (householdId: string | null, year: number) => {
+  return useQuery({
+    queryKey: ["finance-annual-budget", householdId, year],
+    enabled: !!householdId,
+    staleTime: 60_000,
+    queryFn: async (): Promise<AnnualBudgetData> => {
+      const yStart = `${year}-01`;
+      const yEnd = `${year}-12`;
+      const dateStart = `${year}-01-01`;
+      const dateEnd = `${year + 1}-01-01`;
+
+      const [budgetsRes, txnsRes] = await Promise.all([
+        supabase
+          .from("finance_budgets")
+          .select("month,category,planned_amount")
+          .eq("household_id", householdId!)
+          .gte("month", yStart)
+          .lte("month", yEnd),
+        supabase
+          .from("finance_transactions")
+          .select("transaction_date,category,amount,type")
+          .eq("household_id", householdId!)
+          .eq("type", "expense")
+          .gte("transaction_date", dateStart)
+          .lt("transaction_date", dateEnd),
+      ]);
+      if (budgetsRes.error) throw budgetsRes.error;
+      if (txnsRes.error) throw txnsRes.error;
+
+      const byCat = new Map<string, AnnualBudgetRow>();
+      const ensure = (cat: string): AnnualBudgetRow => {
+        let r = byCat.get(cat);
+        if (!r) {
+          r = {
+            category: cat,
+            monthlyPlanned: Array(12).fill(0),
+            monthlyActual: Array(12).fill(0),
+            annualPlanned: 0,
+            annualActual: 0,
+          };
+          byCat.set(cat, r);
+        }
+        return r;
+      };
+
+      (budgetsRes.data || []).forEach((b: any) => {
+        const m = parseInt(String(b.month).slice(5, 7), 10) - 1;
+        if (m < 0 || m > 11) return;
+        const row = ensure(b.category);
+        row.monthlyPlanned[m] += Number(b.planned_amount) || 0;
+        row.annualPlanned += Number(b.planned_amount) || 0;
+      });
+      (txnsRes.data || []).forEach((t: any) => {
+        const m = parseInt(String(t.transaction_date).slice(5, 7), 10) - 1;
+        if (m < 0 || m > 11) return;
+        const row = ensure(t.category);
+        row.monthlyActual[m] += Number(t.amount) || 0;
+        row.annualActual += Number(t.amount) || 0;
+      });
+
+      const rows = Array.from(byCat.values()).sort(
+        (a, b) => b.annualPlanned + b.annualActual - (a.annualPlanned + a.annualActual)
+      );
+      const monthlyPlanned = Array(12).fill(0);
+      const monthlyActual = Array(12).fill(0);
+      rows.forEach((r) => {
+        for (let i = 0; i < 12; i++) {
+          monthlyPlanned[i] += r.monthlyPlanned[i];
+          monthlyActual[i] += r.monthlyActual[i];
+        }
+      });
+      return {
+        year,
+        totalPlanned: monthlyPlanned.reduce((a, b) => a + b, 0),
+        totalActual: monthlyActual.reduce((a, b) => a + b, 0),
+        monthlyPlanned,
+        monthlyActual,
+        rows,
+      };
+    },
+  });
+};
