@@ -121,7 +121,7 @@ const Finance = () => {
               ) : (
                 <>
                   <p className="text-lg font-bold">{formatINR(summary?.income || 0)}</p>
-                  {prevSummary && renderDelta(summary?.income || 0, prevSummary.income, true)}
+                  {prevSummary && renderDelta(summary?.income || 0, prevSummary.income, false)}
                 </>
               )}
             </CardContent>
@@ -136,7 +136,7 @@ const Finance = () => {
               ) : (
                 <>
                   <p className="text-lg font-bold">{formatINR(summary?.expenses || 0)}</p>
-                  {prevSummary && renderDelta(summary?.expenses || 0, prevSummary.expenses, false)}
+                  {prevSummary && renderDelta(summary?.expenses || 0, prevSummary.expenses, true)}
                 </>
               )}
             </CardContent>
