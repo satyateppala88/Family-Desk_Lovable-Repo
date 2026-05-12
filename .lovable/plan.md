@@ -1,10 +1,10 @@
-## Refactor `createMealPlan` mutationFn in `src/hooks/useMealPlans.ts`
+## Replace `src/hooks/useRealtimeSubscription.ts`
 
-Replace lines 67–113 (the entire body of the `mutationFn`) with the upsert-based flow:
+Overwrite the entire file with the new implementation that:
 
-1. Upsert plan header on `(household_id, week_start_date)` — safe if it already exists.
-2. Delete existing items for that plan id.
-3. Insert new items mapped with `meal_plan_id`.
-4. Return `mealPlan`.
+- Computes a stable signature from `configs` (table, filter, enabled).
+- Derives a deterministic channel name via a 32-bit hash, eliminating `Math.random()` zombie channels across rerenders.
+- Subscribes to all enabled configs on a single channel; invalidates the listed `queryKeys` on any change.
+- Re-subscribes only when the signature or `queryClient` changes.
 
-Removes the prior delete-then-insert of the plan row (which broke FK references) in favor of a stable plan id reused across saves. Requires a unique constraint on `(household_id, week_start_date)` — already implied by the existing dedup logic. No changes to onSuccess/onError or any other code.
+No other files are modified. The public API (`useRealtimeSubscription(configs)`) and `SubscriptionConfig` shape are unchanged, so existing call sites continue to work.
