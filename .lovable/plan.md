@@ -1,54 +1,43 @@
-## Plan: Refactor `useHousehold` queryFn to a single join
+## Plan: Clean up `useFinanceTransactions` queryFn
 
-Replace the two sequential queries with one join, as you specified — but with one important tweak to preserve existing behavior.
+The current implementation has a bug: when `filters.month` is set, it rebuilds the query from scratch, which drops any previously-applied `category`/`type`/`search` filters that were chained before. It also has dead code (a `gte`/`lt` pair using the same date) and an inconsistent `limit` story.
 
-### Concern with the literal replacement
+### Replace lines 142–180 with the clean version you provided
 
-Your proposed snippet uses `.limit(1).maybeSingle()` with no `ORDER BY`. The current code intentionally orders by `households.created_at DESC` because users who belong to multiple households would otherwise land in an arbitrary one (Postgres returns rows in undefined order without an `ORDER BY`). The existing inline comment calls this out explicitly.
-
-If we drop the ordering, we re-introduce that bug for any user with >1 household membership.
-
-### Proposed queryFn (your structure + preserved ordering)
+- Single `query` builder, conditionally extended.
+- Correct month-end calculation (handles December rollover to next year).
+- All filters compose correctly together.
+- `.limit(500)` (up from current 200, per your snippet).
 
 ```ts
 queryFn: async () => {
-  if (!user) return { householdId: null, onboardingCompleted: false,
-                      householdName: null, householdAvatarUrl: null };
+  let query = supabase
+    .from("finance_transactions")
+    .select("*")
+    .eq("household_id", householdId!)
+    .order("transaction_date", { ascending: false })
+    .limit(500);
 
-  // Single join query instead of two sequential round-trips.
-  // Order by household created_at DESC so users in multiple households
-  // deterministically land in the most recently created one.
-  const { data: memberData, error: memberError } = await (supabase as any)
-    .from("household_members")
-    .select("household_id, households!inner(onboarding_completed, name, avatar_url, created_at)")
-    .eq("user_id", user.id)
-    .order("created_at", { foreignTable: "households", ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (memberError) throw memberError;
-
-  const householdId = memberData?.household_id || null;
-  if (!householdId) {
-    return { householdId: null, onboardingCompleted: false,
-             householdName: null, householdAvatarUrl: null };
+  if (filters?.month) {
+    const [y, m] = filters.month.split("-").map(Number);
+    const nextMonth = m === 12
+      ? `${y + 1}-01`
+      : `${y}-${String(m + 1).padStart(2, "0")}`;
+    query = query
+      .gte("transaction_date", `${filters.month}-01`)
+      .lt("transaction_date", `${nextMonth}-01`);
   }
+  if (filters?.category && filters.category !== "all")
+    query = query.eq("category", filters.category);
+  if (filters?.type && filters.type !== "all")
+    query = query.eq("type", filters.type);
+  if (filters?.search)
+    query = query.ilike("description", `%${filters.search}%`);
 
-  const householdData = memberData?.households;
-  return {
-    householdId,
-    onboardingCompleted: householdData?.onboarding_completed || false,
-    householdName: householdData?.name || null,
-    householdAvatarUrl: householdData?.avatar_url || null,
-  };
+  const { data, error } = await query;
+  if (error) throw error;
+  return data as FinanceTransaction[];
 },
 ```
 
-### Changes from current code
-- Two queries → one join (your goal).
-- `.maybeSingle()` instead of throwing when no row exists (your goal).
-- Keeps the `ORDER BY households.created_at DESC` for multi-household correctness.
-- Drops the dev-only `console.warn` for multi-household users (it required fetching all rows; not worth a second query).
-
-### Confirm
-Want me to apply this version (with ordering preserved), or your literal snippet (no ordering)? Default: apply the version with ordering preserved.
+No other changes — wrapper (`useQuery` options, key, `enabled`, `staleTime`, `placeholderData`) stays identical.
