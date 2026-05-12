@@ -108,7 +108,7 @@ const FinanceTransactions = () => {
             onClick={() => setAllTime((v) => !v)}
             className="shrink-0"
           >
-            {allTime ? "All time" : "All time"}
+            {allTime ? "Showing all" : "All time"}
           </Button>
         </div>
         {!allTime && (
