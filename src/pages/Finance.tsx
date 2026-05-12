@@ -8,7 +8,9 @@ import { useSubscriptions } from "@/hooks/useSubscriptions";
 import { useFinanceSavingsGoals } from "@/hooks/useFinance";
 import { useUserCards } from "@/hooks/useUserCards";
 import { formatINR } from "@/lib/formatINR";
-import { format, isPast, addDays } from "date-fns";
+import { format, isPast, addDays, parse, addMonths } from "date-fns";
+import { useSelectedMonth } from "@/hooks/useSelectedMonth";
+import { MonthSwitcher } from "@/components/finance/MonthSwitcher";
 import {
   ArrowLeftRight,
   Target,
@@ -20,12 +22,18 @@ import {
   TrendingUp,
   TrendingDown,
   Shield,
+  LineChart,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
 
 const Finance = () => {
   const { householdId } = useHousehold();
   useFinanceRealtime(householdId);
-  const { data: summary, isLoading } = useFinanceMonthlySummary(householdId);
+  const { month, label: monthLabel, isCurrent } = useSelectedMonth();
+  const prevMonth = format(addMonths(parse(month + "-01", "yyyy-MM-dd", new Date()), -1), "yyyy-MM");
+  const { data: summary, isLoading } = useFinanceMonthlySummary(householdId, month);
+  const { data: prevSummary } = useFinanceMonthlySummary(householdId, prevMonth);
   const { data: subscriptions } = useSubscriptions(householdId);
   const { data: savingsGoals } = useFinanceSavingsGoals(householdId);
   const { data: userCards } = useUserCards(householdId);
@@ -63,7 +71,24 @@ const Finance = () => {
     { path: "/finance/cards", icon: CreditCard, label: "Cards", description: "Card optimizer", tintClass: "module-tint-finance", hintKey: "cards" },
     { path: "/finance/chat", icon: Bot, label: "AI Advisor", description: "Ask about finances", tintClass: "module-tint-finance", hintKey: "" },
     { path: "/finance/review", icon: BarChart3, label: "Review", description: "Insights & trends", tintClass: "module-tint-finance", hintKey: "" },
+    { path: "/finance/trends", icon: LineChart, label: "Trends", description: "6-month comparison", tintClass: "module-tint-finance", hintKey: "" },
   ];
+
+  const renderDelta = (current: number, prev: number, invert = false) => {
+    if (prev === 0) return null;
+    const pct = Math.round(((current - prev) / prev) * 100);
+    if (pct === 0) return <span className="text-[10px] text-muted-foreground">— vs prev</span>;
+    const up = pct > 0;
+    // For income: up is good. For expenses: up is bad.
+    const isGood = invert ? !up : up;
+    const Icon = up ? ArrowUp : ArrowDown;
+    return (
+      <span className={`text-[10px] font-medium inline-flex items-center gap-0.5 ${isGood ? "text-[hsl(var(--success))]" : "text-destructive"}`}>
+        <Icon className="w-2.5 h-2.5" />
+        {Math.abs(pct)}% vs prev
+      </span>
+    );
+  };
 
   return (
     <div className="page-container">
@@ -71,8 +96,12 @@ const Finance = () => {
       <main className="page-content space-y-4 animate-fade-in">
         <div>
           <h1 className="page-heading">Finance</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">{format(new Date(), "MMMM yyyy")}</p>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            {monthLabel}{!isCurrent && " · viewing past month"}
+          </p>
         </div>
+
+        <MonthSwitcher />
 
         {/* Privacy cue */}
         <div className="trust-badge" role="status">
@@ -90,7 +119,10 @@ const Finance = () => {
               {isLoading && !summary ? (
                 <Skeleton className="h-6 w-24" />
               ) : (
-                <p className="text-lg font-bold">{formatINR(summary?.income || 0)}</p>
+                <>
+                  <p className="text-lg font-bold">{formatINR(summary?.income || 0)}</p>
+                  {prevSummary && renderDelta(summary?.income || 0, prevSummary.income, true)}
+                </>
               )}
             </CardContent>
           </Card>
@@ -102,7 +134,10 @@ const Finance = () => {
               {isLoading && !summary ? (
                 <Skeleton className="h-6 w-24" />
               ) : (
-                <p className="text-lg font-bold">{formatINR(summary?.expenses || 0)}</p>
+                <>
+                  <p className="text-lg font-bold">{formatINR(summary?.expenses || 0)}</p>
+                  {prevSummary && renderDelta(summary?.expenses || 0, prevSummary.expenses, false)}
+                </>
               )}
             </CardContent>
           </Card>
