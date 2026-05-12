@@ -19,7 +19,8 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Plus, Loader2 } from "lucide-react";
+import { Plus, Loader2, Settings2 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import {
   CategoryScope,
   useCustomCategories,
@@ -58,6 +59,7 @@ export const CategorySelect = ({
 }: CategorySelectProps) => {
   const { categories: custom } = useCustomCategories(scope);
   const addCategory = useAddCustomCategory();
+  const navigate = useNavigate();
   const [selectOpen, setSelectOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [newLabel, setNewLabel] = useState("");
@@ -138,6 +140,20 @@ export const CategorySelect = ({
               }}
             >
               <Plus className="w-3.5 h-3.5 mr-1.5" /> Create new category
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="w-full justify-start h-8 text-xs text-muted-foreground hover:text-foreground"
+              onPointerDown={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setSelectOpen(false);
+                navigate("/finance/budget/categories");
+              }}
+            >
+              <Settings2 className="w-3.5 h-3.5 mr-1.5" /> Manage all categories
             </Button>
           </div>
         </SelectContent>
