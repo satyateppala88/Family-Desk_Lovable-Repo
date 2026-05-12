@@ -1,53 +1,54 @@
-## Plan: Add `AdminRoute` guard for platform admin pages
+## Plan: Refactor `useHousehold` queryFn to a single join
 
-Create a new route guard that checks both authentication and platform-admin status, then apply it to the two `/admin/*` routes.
+Replace the two sequential queries with one join, as you specified — but with one important tweak to preserve existing behavior.
 
-### 1. New file: `src/components/layout/AdminRoute.tsx`
+### Concern with the literal replacement
 
-Modeled after the existing `ProtectedRoute`, but additionally gates on `useIsPlatformAdmin`. Behavior:
+Your proposed snippet uses `.limit(1).maybeSingle()` with no `ORDER BY`. The current code intentionally orders by `households.created_at DESC` because users who belong to multiple households would otherwise land in an arbitrary one (Postgres returns rows in undefined order without an `ORDER BY`). The existing inline comment calls this out explicitly.
 
-- While `auth` or `admin` status is loading → render the same skeleton shell as `ProtectedRoute` for visual consistency.
-- If no user → `<Navigate to="/auth" replace />`.
-- If user is not a platform admin → `<Navigate to="/" replace />`.
-- Otherwise render `children`.
+If we drop the ordering, we re-introduce that bug for any user with >1 household membership.
 
-```tsx
-import { useAuth } from "@/contexts/AuthContext";
-import { useIsPlatformAdmin } from "@/hooks/useIsPlatformAdmin";
-import { Navigate } from "react-router-dom";
-import { Skeleton } from "@/components/ui/skeleton";
+### Proposed queryFn (your structure + preserved ordering)
 
-export const AdminRoute = ({ children }: { children: React.ReactNode }) => {
-  const { user, loading: authLoading } = useAuth();
-  const { isPlatformAdmin, isLoading: adminLoading } = useIsPlatformAdmin();
+```ts
+queryFn: async () => {
+  if (!user) return { householdId: null, onboardingCompleted: false,
+                      householdName: null, householdAvatarUrl: null };
 
-  if (authLoading || adminLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <div className="space-y-4 w-full max-w-md p-4">
-          <Skeleton className="h-12 w-full" />
-          <Skeleton className="h-12 w-full" />
-          <Skeleton className="h-12 w-full" />
-        </div>
-      </div>
-    );
+  // Single join query instead of two sequential round-trips.
+  // Order by household created_at DESC so users in multiple households
+  // deterministically land in the most recently created one.
+  const { data: memberData, error: memberError } = await (supabase as any)
+    .from("household_members")
+    .select("household_id, households!inner(onboarding_completed, name, avatar_url, created_at)")
+    .eq("user_id", user.id)
+    .order("created_at", { foreignTable: "households", ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (memberError) throw memberError;
+
+  const householdId = memberData?.household_id || null;
+  if (!householdId) {
+    return { householdId: null, onboardingCompleted: false,
+             householdName: null, householdAvatarUrl: null };
   }
 
-  if (!user) return <Navigate to="/auth" replace />;
-  if (!isPlatformAdmin) return <Navigate to="/" replace />;
-  return <>{children}</>;
-};
+  const householdData = memberData?.households;
+  return {
+    householdId,
+    onboardingCompleted: householdData?.onboarding_completed || false,
+    householdName: householdData?.name || null,
+    householdAvatarUrl: householdData?.avatar_url || null,
+  };
+},
 ```
 
-### 2. Update `src/App.tsx`
+### Changes from current code
+- Two queries → one join (your goal).
+- `.maybeSingle()` instead of throwing when no row exists (your goal).
+- Keeps the `ORDER BY households.created_at DESC` for multi-household correctness.
+- Drops the dev-only `console.warn` for multi-household users (it required fetching all rows; not worth a second query).
 
-- Add `import { AdminRoute } from "@/components/layout/AdminRoute";` next to the existing `ProtectedRoute` import.
-- Replace `<ProtectedRoute>` wrappers with `<AdminRoute>` for these two routes only:
-  - `/admin/access-requests` (around line 98–102)
-  - `/admin/permission-analytics` (around line 229–232)
-
-All other routes remain on `ProtectedRoute` unchanged.
-
-### Notes
-- I'll verify `useIsPlatformAdmin` actually returns `{ isPlatformAdmin, isLoading }` before writing — if the property names differ, I'll match the hook's real shape.
-- This adds a defense-in-depth client redirect; underlying RLS on `access_requests` / permission analytics already enforces server-side admin checks.
+### Confirm
+Want me to apply this version (with ordering preserved), or your literal snippet (no ordering)? Default: apply the version with ordering preserved.
