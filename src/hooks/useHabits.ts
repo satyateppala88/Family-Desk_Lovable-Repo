@@ -231,7 +231,7 @@ export const useHabits = (householdId: string | null, userId?: string) => {
             logged_at: new Date().toISOString(),
           },
           {
-            onConflict: "habit_id,log_date",
+            onConflict: "habit_id,log_date,user_id",
           }
         )
         .select()
