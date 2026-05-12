@@ -1,72 +1,75 @@
-# Month-wise Finance Tracking (Axio-style)
+# Stop the "preferences" prompt loop
 
-## What you'll get
+## What's actually happening
 
-Today the Finance module always shows "this month". Once a month rolls over, last month's view is gone unless you eyeball Transactions. This adds first-class month navigation and historical comparisons — similar to how Axio/Walnut let you swipe between months and see trends.
+Three independent mechanisms each re-prompt for preferences. Any one of them firing makes it feel like the app is constantly asking for setup.
 
-### New capabilities
+### 1. Login redirect (the worst offender)
 
-1. **Global month switcher** — A `← July 2026 →` control at the top of Finance hub, Transactions, Budget, and Monthly Review. Selected month persists across these pages (URL `?m=2026-07`) so you can drill into a past month seamlessly.
-2. **Month-over-month chips** on Finance hub — Income, Spent, Saved show "▲ 12% vs Jun" deltas.
-3. **Trends page** (new `/finance/trends`) — Axio's signature view:
-   - 6-month bar chart: Income vs Expenses
-   - 6-month line: Savings rate %
-   - Top 5 categories trend (stacked bars)
-   - "Biggest movers" list — categories that grew/shrank most vs last month
-4. **Daily spending pattern** card on Monthly Review — small bar chart of spend per day in the selected month, with weekend highlights.
-5. **Past month transactions** — Transactions page filters by selected month by default (with "All time" toggle), so historical browsing is one click away.
-6. **Hub tile addition** — replace nothing; add a "Trends" tile in the Finance hub grid pointing to `/finance/trends`.
+`src/pages/Auth.tsx` (lines 201–215) runs this on every successful sign-in:
 
-### Out of scope (can be follow-ups)
+```ts
+const { data: householdData } = await supabase
+  .from("households")
+  .select("onboarding_completed")
+  .eq("id", memberData.household_id).single();
 
-- Year-end report / annual review
-- Forecasting next month's spend
-- Exporting a month as PDF/CSV (already partially possible via Review)
-- Per-member month-wise split
+if (!householdData?.onboarding_completed) {
+  navigate("/onboarding/preferences");   // ← every session start
+  return;
+}
+```
 
----
+If the user ever opened the onboarding wizard but didn't reach the final "Finish" tap (closed the tab, hit back, lost network at the upsert, joined a household that someone else created without finishing setup), `households.onboarding_completed` stays `false` forever — so **every login** drops them back into the wizard.
 
-## Technical Details
+### 2. Per-module non-dismissible gate
 
-**Data layer** — no schema change needed. `useFinanceTransactions`, `useFinanceBudgets`, `useFinanceMonthlySummary`, `useFinanceMonthlySnapshot` already accept a `month` parameter. We just thread a selected-month value through the UI.
+`src/components/onboarding/ModuleSetupGate.tsx` wraps Finance, Grocery, Meals, Tasks, Habits, Calendar. It opens a **non-dismissible** dialog (no X, no Esc, no outside-click) whenever `useModuleSetup(key).needsSetup` is true.
 
-**New shared hook** — `useSelectedMonth()` reads/writes `?m=YYYY-MM` from the URL with `useSearchParams`, defaulting to current IST month. Used by all Finance pages.
+`useModuleSetup` only auto-completes when `MODULE_SETUP_FIELDS[key]` has data. For finance the required fields are `monthly_grocery_budget` + `budget_consciousness`. The new simplified `UserPreferencesOnboarding` (post-rewrite) **doesn't collect any of these**. Result: the user finishes onboarding, opens Finance → blocked by "Budget setup" dialog. Closes the tab → opens Finance tomorrow → blocked again. Same for Grocery (`pantry_size`, `shopping_frequency`), Meals, etc.
 
-**New components**
-- `src/components/finance/MonthSwitcher.tsx` — `← Month YYYY →` with prev/next/jump-to-current; disables "next" when at current month.
-- `src/components/finance/TrendsChart.tsx` — wraps `recharts` (already in project) for the 6-month bar/line.
-- `src/components/finance/DailySpendChart.tsx` — small daily bar chart for Monthly Review.
+The session replay confirms this: user is on `/finance`, sees a "Preferences updated!" toast (= `useHouseholdPreferences.updatePreferences`) after interacting with element 251 — that's the ModuleSetupGate dialog firing on entry.
 
-**New hook** — `useFinanceTrends(householdId, monthsBack=6)` — runs one query for the last N months of transactions, aggregates client-side into `{ month, income, expenses, byCategory }[]`. Cached 5 min.
+### 3. Dashboard "Let's finish setting up" banner
 
-**New page** — `src/pages/FinanceTrends.tsx` registered in `src/App.tsx` under `/finance/trends`, wrapped in `ModuleSetupGate("finance_setup")`.
-
-**Edits**
-- `src/pages/Finance.tsx` — add MonthSwitcher, MoM delta chips on summary cards, "Trends" tile in module grid.
-- `src/pages/FinanceTransactions.tsx` — read `?m`, pass to `useFinanceTransactions`, add MonthSwitcher + "All time" toggle.
-- `src/pages/FinanceBudget.tsx` — read `?m`, pass to budgets/summary so you can plan/review past or future months.
-- `src/pages/FinanceMonthlyReview.tsx` — read `?m`, replace hardcoded `currentMonth`, add DailySpendChart card.
-
-**Routing** — add `/finance/trends` to the router; no nav-component changes (uses existing FinanceNav if present, otherwise the hub tile).
-
-**Performance** — Trends hook does one bounded query (`transaction_date >= 6 months ago`) and aggregates in memory; well under the 1000-row Supabase limit for typical households. If a household exceeds that, fall back to running monthly summary queries in parallel for each of the 6 months.
-
-**Realtime** — existing `useFinanceRealtime` already invalidates summary/transaction caches; trends will piggy-back via the same invalidation key pattern.
+`src/pages/Index.tsx` (lines 166–191) shows a CTA whenever `progressData.percentage < 100`. The percentage in `useOnboardingProgress` weights six categories totalling 100% — five of which depend on fields the new wizard no longer collects. So percentage is **permanently stuck at 20–40%** for users who completed the new wizard, and the banner never goes away.
 
 ---
 
-## Files touched
+## Fix (root cause, three changes)
 
-- new: `src/hooks/useSelectedMonth.ts`
-- new: `src/hooks/useFinanceTrends.ts`
-- new: `src/components/finance/MonthSwitcher.tsx`
-- new: `src/components/finance/TrendsChart.tsx`
-- new: `src/components/finance/DailySpendChart.tsx`
-- new: `src/pages/FinanceTrends.tsx`
-- edit: `src/App.tsx` (add route)
-- edit: `src/pages/Finance.tsx`
-- edit: `src/pages/FinanceTransactions.tsx`
-- edit: `src/pages/FinanceBudget.tsx`
-- edit: `src/pages/FinanceMonthlyReview.tsx`
+### A. Login: stop redirecting on incomplete onboarding
 
-No DB migration. No backend changes. ~1 medium build.
+In `src/pages/Auth.tsx` `handleSignIn`, drop the `onboarding_completed` redirect entirely. Always send signed-in users to `/dashboard`. The dashboard already exposes a clearly-labelled "Continue Setup" button for anyone who wants to finish — that's the right place to nudge, not a forced redirect on every sign-in. Leave the `household-setup` redirect (no household at all) intact, since that one really is required.
+
+### B. Per-module gate: make it dismissible + remember the dismissal
+
+In `src/components/onboarding/ModuleSetupGate.tsx`:
+1. Render the dialog with `dismissible={true}` (it already accepts the prop on `ModuleSetupDialog`, the gate hard-codes `false` on line 306).
+2. Add a "Skip for now" button that marks the module setup complete (`markComplete()`), so the user is never re-prompted on that module unless they explicitly choose to set it up from Settings.
+3. Keep the "Save & continue" path unchanged — saving still upserts the fields and marks the key complete.
+
+This converts the gate from a hard wall to a soft, one-time prompt per module. Re-running setup later is already possible via Settings → "Re-run onboarding" or by a new "Set up [module]" link in each module's empty state.
+
+### C. Dashboard banner: only show when the wizard genuinely wasn't finished
+
+In `src/pages/Index.tsx`, replace `progressData.percentage < 100` with `!onboardingCompleted`. The progress hook's percentage was designed for the old long-form wizard and is now misleading. The household-level `onboarding_completed` flag is the right signal for "did the user finish the simplified wizard". Once true, the banner disappears for good.
+
+(Bonus: simplify `useOnboardingProgress` to only count what the current wizard actually captures — `productsSelected` + `householdBasics` — so the percentage on the Settings page also stops looking incomplete-by-default. Optional, but recommended for consistency.)
+
+---
+
+## Files to change
+
+- `src/pages/Auth.tsx` — remove the `onboarding/preferences` redirect block in `handleSignIn`; always go to `/dashboard` once a household exists.
+- `src/components/onboarding/ModuleSetupGate.tsx` — `ModuleSetupGate` passes `dismissible={true}` and adds a "Skip for now → markComplete" handler.
+- `src/pages/Index.tsx` — banner condition changes from `progressData.percentage < 100` to `!onboardingCompleted`.
+- (optional) `src/hooks/useOnboardingProgress.ts` — narrow the weighted criteria to what the new wizard collects.
+
+No DB migration. No new tables. No backend changes.
+
+## Verification after the fix
+
+1. Sign out → sign in with an account whose `households.onboarding_completed = false` → should land on `/dashboard` (not `/onboarding/preferences`).
+2. Open Finance/Grocery on a fresh household → setup dialog appears with a working "Skip for now" → close the tab → reopen Finance → no dialog the second time.
+3. Dashboard banner gone for users with `onboarding_completed = true`, regardless of how many module-specific fields are blank.
