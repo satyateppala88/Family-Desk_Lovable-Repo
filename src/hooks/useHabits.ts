@@ -342,9 +342,16 @@ export const useHabits = (householdId: string | null, userId?: string) => {
     }
 
     // Check if all habits completed today for bonus
-    const completedToday = todaysLogs?.filter((l) => l.completed).length || 0;
+    const { count: completedTodayCount } = await supabase
+      .from("habit_logs")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .eq("log_date", today)
+      .eq("completed", true);
+
     const totalToday = todaysHabits.length;
-    if (completedToday + 1 >= totalToday && totalToday > 0) {
+    const completedToday = completedTodayCount ?? 0;
+    if (completedToday >= totalToday && totalToday > 0) {
       dailyScore += ALL_HABITS_BONUS;
     }
 
