@@ -1,133 +1,54 @@
-## What I found
+## Why she sees the old household
 
-The architecture can support synchronous household updates, but production is currently not fully wired for it.
+Rajashree (`rajashreeudupi88@gmail.com`) has **two `household_members` rows** in production:
 
-Key finding: in production, only these tables are enabled for realtime change events:
+1. `Teppalas` (created Nov 4, 2025) — only her, leftover from her first signup
+2. `Teppala House` (created Feb 3, 2026) — the real household she shares with Satya
 
-```text
-task_comments
-tasks
+`useHousehold` runs `select household_id … limit(1).single()` with no `ORDER BY`, so Postgres returns whichever row it scans first. For her, that's the old "Teppalas" row, so the app loads the empty household every time. Satya only has one membership, so he's unaffected.
+
+## Fix (two parts)
+
+### 1. Data cleanup — production
+
+Remove Rajashree's stale membership in the old "Teppalas" household, and (optionally) delete the now-empty household so it can't be picked up again.
+
+```sql
+-- Confirm the old household has no other members
+SELECT count(*) FROM household_members
+ WHERE household_id = 'f75725b0-6886-4add-b2f4-656b106fddfa';
+
+-- Remove her membership in the old household
+DELETE FROM household_members
+ WHERE user_id = 'a59514a3-bc5e-4501-bbb4-b755821b1f2a'
+   AND household_id = 'f75725b0-6886-4add-b2f4-656b106fddfa';
+
+-- If no members remain, archive/delete the empty household
+DELETE FROM households
+ WHERE id = 'f75725b0-6886-4add-b2f4-656b106fddfa'
+   AND NOT EXISTS (
+     SELECT 1 FROM household_members WHERE household_id = 'f75725b0-6886-4add-b2f4-656b106fddfa'
+   );
 ```
 
-But the app is subscribing to many shared household tables such as finance cards, transactions, budgets, groceries, habits, meal plans, household members, etc. Since those tables are not in the production realtime publication, other household members will not receive live update events for most modules. They may only see changes after manual refresh, cache expiry, or navigating away/back.
+After this runs and she signs out + back in, she'll land in "Teppala House" with Satya.
 
-I also checked the test backend: it has the expected realtime tables enabled. So this looks like a Test vs Live schema/publication drift issue, not a fundamental limitation of the multi-user household model.
+### 2. Code hardening — `src/hooks/useHousehold.ts`
 
-## Recommended fix
+So this never silently happens again to anyone else:
 
-Implement a focused household realtime hardening pass, without removing individual users.
+- Replace the unordered `.limit(1).single()` with a deterministic query: select **all** memberships for the user, ordered by household `created_at DESC` (most-recently-joined wins), and pick the first.
+- If a user has more than one membership, log a `console.warn` in dev so we catch it early.
+- (Future, optional) Add a `last_active_household_id` column on `profiles` so users with multiple households can switch — out of scope for this fix.
 
-### 1. Repair Live realtime publication coverage
+### 3. Verify
 
-Create a safe migration that idempotently adds the shared household tables to realtime publication and ensures full row payloads for update/delete events.
+- Run the prod SELECT again to confirm only one membership remains for her.
+- Ask Rajashree to hard-refresh + sign in; confirm she sees "Teppala House" and Satya in Members.
 
-Tables to include:
+## Files touched
 
-```text
-household_members
-household_enabled_products
-household_family_members
-projects
-tasks
-task_assignees
-task_comments
-daily_plans
-daily_plan_items
-meal_plans
-meal_plan_items
-shopping_lists
-shopping_list_items
-pantry_items
-finance_accounts
-finance_transactions
-finance_budgets
-finance_savings_goals
-finance_subscriptions
-finance_user_cards
-finance_custom_cards
-finance_custom_categories
-finance_monthly_snapshots
-habits
-habit_assignees
-habit_logs
-habit_scores
-habit_streaks
-household_habit_goals
-ai_suggestions
-calendar_settings
-```
+- New migration: `supabase/migrations/<ts>_cleanup_rajashree_stale_household.sql` (data cleanup above)
+- `src/hooks/useHousehold.ts` (deterministic ordering + dev warning)
 
-This will be written defensively so duplicate publication entries do not break the migration.
-
-### 2. Add one household-level realtime sync provider
-
-Add a single app-level component, e.g. `HouseholdRealtimeProvider`, mounted inside authenticated routes/app shell, that subscribes once per logged-in household to the major shared tables and invalidates the relevant React Query caches.
-
-This avoids the current page-by-page pattern where realtime only runs if a user happens to be on that page. With the provider, if one member changes finance, grocery, habits, or household settings, other logged-in members get cache invalidation even if they are on another module.
-
-### 3. Expand and normalize query invalidation keys
-
-Update realtime invalidation so it covers both list queries and dependent summaries, for example:
-
-```text
-finance_transactions -> finance-transactions, finance-monthly-summary, finance-dashboard, finance-snapshot
-finance_user_cards/custom_cards -> user-cards, custom-cards
-pantry_items -> pantry-items, pantry-stats, dashboard-stats
-shopping_list_items -> shopping-lists
-habits/logs/scores/streaks -> habits, habit logs, stats, leaderboard
-household_members/family_members -> members, member emails, household, admin checks
-household_enabled_products -> enabled-products, onboarding progress
-```
-
-### 4. Make realtime subscriptions easier to debug
-
-Improve the existing `useRealtimeSubscription` hook to:
-
-- log subscription status in development/preview,
-- expose channel errors/timeouts clearly,
-- keep production silent unless there is a meaningful failure,
-- avoid unnecessary random channel churn.
-
-This will make future sync issues much easier to pinpoint.
-
-### 5. Reduce stale-cache windows for shared household data
-
-Some queries use long stale times, and the app persists React Query cache in production. That is good for offline support, but bad if realtime is missing or delayed.
-
-I will reduce stale windows for frequently edited shared data and add safer refetch behavior for critical shared modules. The offline experience remains, but online users should see current household state faster.
-
-### 6. Keep local optimistic updates, but rely on realtime for other members
-
-Current optimistic updates are useful for the member making the change. I will keep that pattern, but ensure other members get the server-confirmed update via realtime invalidation.
-
-## Why I do not recommend removing users for this issue
-
-The data sync problem is not caused by having individual users under one household. It is caused by production not publishing most shared tables to realtime, plus fragmented page-level subscriptions and cached data.
-
-Removing users would be a much larger rewrite and would reduce security/auditability, while still needing household-level realtime and cache invalidation. Fixing realtime is the direct solution.
-
-## Expected outcome
-
-After implementation and publish:
-
-- When one household member adds/removes a card, transaction, grocery item, habit log, task, etc., other logged-in household members should see the update automatically.
-- Shared summaries should refresh too, not just raw lists.
-- Members page and household settings should update more reliably.
-- Offline cache still works, but should no longer mask fresh online data for long periods.
-
-## Validation plan
-
-I will verify by checking:
-
-1. Production realtime publication includes all intended shared tables after publish.
-2. The frontend has a single household-level subscription active for the current household.
-3. Finance cards, finance transactions, grocery pantry/list, habits, and household members all invalidate the correct query keys.
-4. No security weakening: RLS remains household-based and user-specific where needed.
-
-## Files likely to change
-
-- `supabase/migrations/...` new migration for realtime publication coverage
-- `src/hooks/useRealtimeSubscription.ts`
-- new `src/components/realtime/HouseholdRealtimeProvider.tsx` or similar
-- `src/App.tsx`
-- selected hooks/pages where duplicate or missing realtime subscriptions need cleanup/coverage, especially finance cards/custom cards, household products, family members, and dashboard-related queries
+No UI or RLS changes needed.
