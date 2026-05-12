@@ -8,7 +8,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { QuickActionButton } from "@/components/ui/quick-action-button";
 import { Check, Pencil, Plus, Tag, Target, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useHousehold } from "@/hooks/useHousehold";
 import { useSelectedMonth } from "@/hooks/useSelectedMonth";
@@ -41,6 +41,7 @@ const FinanceBudget = () => {
   const upsertBudget = useUpsertBudget(householdId);
   const carryForward = useCarryForwardBudgets(householdId);
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [showAdd, setShowAdd] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editAmount, setEditAmount] = useState<string>("");
@@ -229,7 +230,7 @@ const FinanceBudget = () => {
       <QuickActionButton
         items={[
           { label: "Add Budget", icon: Plus, onClick: () => setShowAdd(true) },
-          { label: "Categories", icon: Tag, to: "/finance/budget/categories" } as any,
+          { label: "Categories", icon: Tag, onClick: () => navigate("/finance/budget/categories") },
         ]}
         className="sm:hidden"
       />
