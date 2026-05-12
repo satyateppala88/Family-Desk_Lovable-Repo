@@ -1,27 +1,21 @@
-## Replace todaysHabits filter in `src/hooks/useHabits.ts`
+## Replace stale-closure check in `updateScore`
 
-Replace lines 136–146 with the new filter that properly respects weekly habit configuration.
+In `src/hooks/useHabits.ts` (lines 344–349), replace the cached `todaysLogs` count with a live DB query so the all-habits bonus uses fresh data.
 
 ```ts
-const todaysHabits = habitsWithStreaks.filter((habit) => {
-  const todayDayOfWeek = new Date().getDay(); // 0=Sun, 1=Mon, ...
+// Check if all habits completed today for bonus
+const { count: completedTodayCount } = await supabase
+  .from('habit_logs')
+  .select('id', { count: 'exact', head: true })
+  .eq('user_id', userId)
+  .eq('log_date', today)
+  .eq('completed', true);
 
-  if (habit.frequency_type === 'daily') return true;
-
-  if (habit.frequency_type === 'specific_days') {
-    return habit.frequency_days.includes(todayDayOfWeek);
-  }
-
-  if (habit.frequency_type === 'weekly') {
-    // If user configured specific days, respect them; otherwise default to Monday.
-    if (habit.frequency_days && habit.frequency_days.length > 0) {
-      return habit.frequency_days.includes(todayDayOfWeek);
-    }
-    return todayDayOfWeek === 1;
-  }
-
-  return true;
-});
+const totalToday = todaysHabits.length;
+const completedToday = completedTodayCount ?? 0;
+if (completedToday >= totalToday && totalToday > 0) {
+  dailyScore += ALL_HABITS_BONUS;
+}
 ```
 
-Behavior change: weekly habits no longer show every day; they show on configured days, defaulting to Monday. No other changes.
+No other changes.
