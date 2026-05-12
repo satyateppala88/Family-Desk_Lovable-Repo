@@ -129,3 +129,52 @@ export function useDeleteCustomCategory() {
     onError: () => toast.error("Failed to remove category"),
   });
 }
+
+export function useUpdateCustomCategory() {
+  const { householdId } = useHousehold();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      id: string;
+      label?: string;
+      scope?: CategoryScope;
+      reservedLabels?: Record<string, string>;
+    }) => {
+      const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
+      if (typeof input.label === "string") {
+        const label = input.label.trim();
+        if (!label) throw new Error("Category name is required");
+        const reservedLabels = Object.values(input.reservedLabels || {}).map((l) =>
+          l.trim().toLowerCase()
+        );
+        if (reservedLabels.includes(label.toLowerCase())) {
+          throw new Error("RESERVED_LABEL");
+        }
+        patch.label = label;
+      }
+      if (input.scope) patch.scope = input.scope;
+      const { data, error } = await supabase
+        .from("finance_custom_categories")
+        .update(patch)
+        .eq("id", input.id)
+        .select()
+        .single();
+      if (error) throw error;
+      return data as CustomCategory;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["finance-custom-categories", householdId] });
+      toast.success("Category updated");
+    },
+    onError: (e: any) => {
+      const msg = String(e?.message || "");
+      if (msg === "RESERVED_LABEL") {
+        toast.error("That name matches a built-in category. Pick a different name.");
+      } else if (msg.includes("duplicate") || msg.includes("unique")) {
+        toast.error("Another category already uses that name");
+      } else {
+        toast.error(msg || "Failed to update category");
+      }
+    },
+  });
+}
