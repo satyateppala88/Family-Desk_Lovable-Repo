@@ -8,6 +8,8 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { QuickActionButton } from "@/components/ui/quick-action-button";
 import { Plus, Target } from "lucide-react";
 import { useHousehold } from "@/hooks/useHousehold";
+import { useSelectedMonth } from "@/hooks/useSelectedMonth";
+import { MonthSwitcher } from "@/components/finance/MonthSwitcher";
 import {
   useFinanceBudgets,
   useFinanceMonthlySummary,
@@ -26,7 +28,7 @@ const FinanceBudget = () => {
   const { householdId } = useHousehold();
   useFinanceRealtime(householdId);
   const { categories: customCats } = useCustomCategories("transaction");
-  const currentMonth = format(new Date(), "yyyy-MM");
+  const { month: currentMonth, label: monthLabel } = useSelectedMonth();
   const { data: budgets, isLoading } = useFinanceBudgets(householdId, currentMonth);
   const { data: summary } = useFinanceMonthlySummary(householdId, currentMonth);
   const upsertBudget = useUpsertBudget(householdId);
@@ -54,13 +56,13 @@ const FinanceBudget = () => {
           </Button>
         </div>
 
-        
+        <MonthSwitcher allowFuture />
 
         {/* Overall progress */}
         <Card>
           <CardContent className="p-4 space-y-2">
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">{format(new Date(), "MMMM yyyy")}</span>
+              <span className="text-muted-foreground">{monthLabel}</span>
               <span className={cn("font-medium", overallPct > 90 ? "text-destructive" : "")}>
                 {formatINR(totalActual)} / {formatINR(totalPlanned)}
               </span>
