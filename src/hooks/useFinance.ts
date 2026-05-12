@@ -145,25 +145,17 @@ export const useFinanceTransactions = (
         .select("*")
         .eq("household_id", householdId!)
         .order("transaction_date", { ascending: false })
-        .limit(200);
+        .limit(500);
 
       if (filters?.month) {
+        const [y, m] = filters.month.split("-").map(Number);
+        const nextMonth = m === 12
+          ? `${y + 1}-01`
+          : `${y}-${String(m + 1).padStart(2, "0")}`;
         query = query
           .gte("transaction_date", `${filters.month}-01`)
-          .lt("transaction_date", `${filters.month}-01`);
-        // Calculate end of month
-        const [y, m] = filters.month.split("-").map(Number);
-        const nextMonth = m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, "0")}`;
-        query = supabase
-          .from("finance_transactions")
-          .select("*")
-          .eq("household_id", householdId!)
-          .gte("transaction_date", `${filters.month}-01`)
-          .lt("transaction_date", `${nextMonth}-01`)
-          .order("transaction_date", { ascending: false })
-          .limit(200);
+          .lt("transaction_date", `${nextMonth}-01`);
       }
-
       if (filters?.category && filters.category !== "all") {
         query = query.eq("category", filters.category);
       }
