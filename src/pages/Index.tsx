@@ -163,7 +163,7 @@ const Index = () => {
           onClose={() => setShowPermissionsTutorial(false)}
         />
 
-        {!onboardingCompleted && progressData && progressData.percentage < 100 && (
+        {!onboardingCompleted && (
           <Card className="mb-4 border-primary/15">
             <CardContent className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4">
               <div className="flex items-center gap-4 flex-1 w-full sm:w-auto">

@@ -198,23 +198,8 @@ const Auth = () => {
         return;
       }
 
-      // Check if onboarding is complete
-      const { data: householdData } = await supabase
-        .from("households")
-        .select("onboarding_completed")
-        .eq("id", memberData.household_id)
-        .single();
-
-      if (!householdData?.onboarding_completed) {
-        toast({
-          title: "Welcome back!",
-          description: "Let's continue setting up your preferences.",
-        });
-        navigate("/onboarding/preferences");
-        return;
-      }
-
-      // Fully onboarded - go to dashboard
+      // Always land on the dashboard. Users with incomplete setup see a
+      // dismissible "Continue Setup" banner there — no forced redirect.
       toast({
         title: "Welcome back!",
         description: "You've successfully signed in.",
