@@ -105,6 +105,9 @@ const FinanceMonthlyReview = () => {
               </Card>
             </div>
 
+            {/* Daily spending pattern */}
+            <DailySpendChart householdId={householdId} month={currentMonth} />
+
             {/* Wins — celebration moment */}
             {(underBudgetCategories.length > 0 || savingsRate >= 20) && (
               <Card className="border-[hsl(var(--success))]/20 bg-[hsl(var(--success))]/3">
