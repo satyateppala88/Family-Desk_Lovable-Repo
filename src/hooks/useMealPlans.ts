@@ -67,48 +67,35 @@ export const useMealPlans = (householdId: string | null, weekStartDate?: string)
     }) => {
       if (!householdId) throw new Error("No household ID");
 
-      // Remove existing plans for this week to prevent duplicates
-      const { data: existingPlans } = await (supabase as any)
-        .from("meal_plans")
-        .select("id")
-        .eq("household_id", householdId)
-        .eq("week_start_date", weekStartDate);
-
-      if (existingPlans && existingPlans.length > 0) {
-        const existingIds = existingPlans.map((p: any) => p.id);
-        await (supabase as any)
-          .from("meal_plan_items")
-          .delete()
-          .in("meal_plan_id", existingIds);
-        await (supabase as any)
-          .from("meal_plans")
-          .delete()
-          .in("id", existingIds);
-      }
-
-      // Create the meal plan
+      // Step 1: Upsert plan header — safe even if it already exists
       const { data: mealPlan, error: planError } = await (supabase as any)
         .from("meal_plans")
-        .insert({
-          household_id: householdId,
-          week_start_date: weekStartDate,
-        })
+        .upsert(
+          { household_id: householdId, week_start_date: weekStartDate },
+          { onConflict: "household_id,week_start_date" }
+        )
         .select()
         .single();
-
       if (planError) throw planError;
 
-      // Create the meal plan items
-      const itemsWithPlanId = items.map(item => ({
-        ...item,
-        meal_plan_id: mealPlan.id,
-      }));
-
-      const { error: itemsError } = await (supabase as any)
+      // Step 2: Delete old items — plan row exists so this is safe
+      const { error: deleteError } = await (supabase as any)
         .from("meal_plan_items")
-        .insert(itemsWithPlanId);
+        .delete()
+        .eq("meal_plan_id", mealPlan.id);
+      if (deleteError) throw deleteError;
 
-      if (itemsError) throw itemsError;
+      // Step 3: Insert new items
+      if (items.length > 0) {
+        const itemsWithPlanId = items.map(item => ({
+          ...item,
+          meal_plan_id: mealPlan.id,
+        }));
+        const { error: itemsError } = await (supabase as any)
+          .from("meal_plan_items")
+          .insert(itemsWithPlanId);
+        if (itemsError) throw itemsError;
+      }
 
       return mealPlan;
     },

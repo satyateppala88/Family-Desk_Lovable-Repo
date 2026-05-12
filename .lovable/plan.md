@@ -1,21 +1,10 @@
-## Replace stale-closure check in `updateScore`
+## Refactor `createMealPlan` mutationFn in `src/hooks/useMealPlans.ts`
 
-In `src/hooks/useHabits.ts` (lines 344–349), replace the cached `todaysLogs` count with a live DB query so the all-habits bonus uses fresh data.
+Replace lines 67–113 (the entire body of the `mutationFn`) with the upsert-based flow:
 
-```ts
-// Check if all habits completed today for bonus
-const { count: completedTodayCount } = await supabase
-  .from('habit_logs')
-  .select('id', { count: 'exact', head: true })
-  .eq('user_id', userId)
-  .eq('log_date', today)
-  .eq('completed', true);
+1. Upsert plan header on `(household_id, week_start_date)` — safe if it already exists.
+2. Delete existing items for that plan id.
+3. Insert new items mapped with `meal_plan_id`.
+4. Return `mealPlan`.
 
-const totalToday = todaysHabits.length;
-const completedToday = completedTodayCount ?? 0;
-if (completedToday >= totalToday && totalToday > 0) {
-  dailyScore += ALL_HABITS_BONUS;
-}
-```
-
-No other changes.
+Removes the prior delete-then-insert of the plan row (which broke FK references) in favor of a stable plan id reused across saves. Requires a unique constraint on `(household_id, week_start_date)` — already implied by the existing dedup logic. No changes to onSuccess/onError or any other code.
