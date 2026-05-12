@@ -43,6 +43,8 @@ const Habits = lazy(() => import("./pages/Habits"));
 const Finance = lazy(() => import("./pages/Finance"));
 const FinanceTransactions = lazy(() => import("./pages/FinanceTransactions"));
 const FinanceBudget = lazy(() => import("./pages/FinanceBudget"));
+const FinanceBudgetAnnual = lazy(() => import("./pages/FinanceBudgetAnnual"));
+const FinanceBudgetCategories = lazy(() => import("./pages/FinanceBudgetCategories"));
 const FinanceSavings = lazy(() => import("./pages/FinanceSavings"));
 const FinanceChat = lazy(() => import("./pages/FinanceChat"));
 const FinanceMonthlyReview = lazy(() => import("./pages/FinanceMonthlyReview"));
@@ -204,6 +206,8 @@ const App = () => (
                 <Route path="/finance/transactions" element={<ProtectedRoute><FinanceTransactions /></ProtectedRoute>} />
                 <Route path="/finance/subscriptions" element={<ProtectedRoute><FinanceSubscriptions /></ProtectedRoute>} />
                 <Route path="/finance/budget" element={<ProtectedRoute><FinanceBudget /></ProtectedRoute>} />
+                <Route path="/finance/budget/annual" element={<ProtectedRoute><FinanceBudgetAnnual /></ProtectedRoute>} />
+                <Route path="/finance/budget/categories" element={<ProtectedRoute><FinanceBudgetCategories /></ProtectedRoute>} />
                 <Route path="/finance/savings" element={<ProtectedRoute><FinanceSavings /></ProtectedRoute>} />
                 <Route path="/finance/chat" element={<ProtectedRoute><FinanceChat /></ProtectedRoute>} />
                 <Route path="/finance/review" element={<ProtectedRoute><FinanceMonthlyReview /></ProtectedRoute>} />
