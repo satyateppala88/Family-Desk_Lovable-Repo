@@ -1,23 +1,53 @@
-## Plan: Rotate Supabase API keys
+## Plan: Add `AdminRoute` guard for platform admin pages
 
-Since the `.env` file (containing the anon/publishable key) was previously committed to the repository, rotating the keys is the right next step to invalidate the exposed credentials.
+Create a new route guard that checks both authentication and platform-admin status, then apply it to the two `/admin/*` routes.
 
-### What will happen
+### 1. New file: `src/components/layout/AdminRoute.tsx`
 
-I'll use the `rotate_api_keys` tool, which will:
-1. Generate fresh API keys for your Lovable Cloud backend
-2. Automatically update the `.env` file with the new `VITE_SUPABASE_PUBLISHABLE_KEY`
-3. Update the internal Supabase client integration to use the new keys
-4. Disable the old/legacy keys so any previously exposed values stop working
+Modeled after the existing `ProtectedRoute`, but additionally gates on `useIsPlatformAdmin`. Behavior:
 
-### After rotation
+- While `auth` or `admin` status is loading → render the same skeleton shell as `ProtectedRoute` for visual consistency.
+- If no user → `<Navigate to="/auth" replace />`.
+- If user is not a platform admin → `<Navigate to="/" replace />`.
+- Otherwise render `children`.
 
-- The app will continue to work normally — the Supabase client picks up the new key automatically.
-- Any external scripts, third-party tools, or documentation that hardcoded the old anon key will need to be updated with the new value.
-- The internal service role key (used only by edge functions) is also rotated; edge functions automatically receive the updated value, no redeploy needed.
+```tsx
+import { useAuth } from "@/contexts/AuthContext";
+import { useIsPlatformAdmin } from "@/hooks/useIsPlatformAdmin";
+import { Navigate } from "react-router-dom";
+import { Skeleton } from "@/components/ui/skeleton";
 
-### Note
+export const AdminRoute = ({ children }: { children: React.ReactNode }) => {
+  const { user, loading: authLoading } = useAuth();
+  const { isPlatformAdmin, isLoading: adminLoading } = useIsPlatformAdmin();
 
-This rotates the **anon (publishable) key** and the **service role key** together — they're rotated as a pair by Supabase. There's no way to rotate just the anon key in isolation.
+  if (authLoading || adminLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <div className="space-y-4 w-full max-w-md p-4">
+          <Skeleton className="h-12 w-full" />
+          <Skeleton className="h-12 w-full" />
+          <Skeleton className="h-12 w-full" />
+        </div>
+      </div>
+    );
+  }
 
-Confirm and I'll run the rotation.
+  if (!user) return <Navigate to="/auth" replace />;
+  if (!isPlatformAdmin) return <Navigate to="/" replace />;
+  return <>{children}</>;
+};
+```
+
+### 2. Update `src/App.tsx`
+
+- Add `import { AdminRoute } from "@/components/layout/AdminRoute";` next to the existing `ProtectedRoute` import.
+- Replace `<ProtectedRoute>` wrappers with `<AdminRoute>` for these two routes only:
+  - `/admin/access-requests` (around line 98–102)
+  - `/admin/permission-analytics` (around line 229–232)
+
+All other routes remain on `ProtectedRoute` unchanged.
+
+### Notes
+- I'll verify `useIsPlatformAdmin` actually returns `{ isPlatformAdmin, isLoading }` before writing — if the property names differ, I'll match the hook's real shape.
+- This adds a defense-in-depth client redirect; underlying RLS on `access_requests` / permission analytics already enforces server-side admin checks.
