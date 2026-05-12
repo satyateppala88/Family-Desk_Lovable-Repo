@@ -10,16 +10,27 @@ export const useHousehold = () => {
     queryFn: async () => {
       if (!user) return { householdId: null, onboardingCompleted: false, householdName: null, householdAvatarUrl: null };
 
-      const { data: memberData, error: memberError } = await (supabase as any)
+      // Fetch ALL memberships, deterministically ordered by the household's
+      // created_at DESC so the most recently created household wins. This
+      // prevents users who happen to belong to multiple households from
+      // landing in a stale/empty one (Postgres returns rows in arbitrary
+      // order without an ORDER BY).
+      const { data: memberRows, error: memberError } = await (supabase as any)
         .from("household_members")
-        .select("household_id")
+        .select("household_id, households!inner(id, created_at)")
         .eq("user_id", user.id)
-        .limit(1)
-        .single();
+        .order("created_at", { foreignTable: "households", ascending: false });
 
       if (memberError) throw memberError;
-      
-      const householdId = memberData?.household_id || null;
+
+      if (import.meta.env.DEV && memberRows && memberRows.length > 1) {
+        console.warn(
+          `[useHousehold] User ${user.id} belongs to ${memberRows.length} households. Picking most recent:`,
+          memberRows.map((r: any) => r.household_id)
+        );
+      }
+
+      const householdId = memberRows?.[0]?.household_id || null;
       
       if (!householdId) {
         return { householdId: null, onboardingCompleted: false, householdName: null, householdAvatarUrl: null };
