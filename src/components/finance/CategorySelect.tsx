@@ -58,6 +58,7 @@ export const CategorySelect = ({
 }: CategorySelectProps) => {
   const { categories: custom } = useCustomCategories(scope);
   const addCategory = useAddCustomCategory();
+  const [selectOpen, setSelectOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [newLabel, setNewLabel] = useState("");
 
@@ -83,7 +84,12 @@ export const CategorySelect = ({
 
   return (
     <>
-      <Select value={value} onValueChange={onValueChange}>
+      <Select
+        value={value}
+        onValueChange={onValueChange}
+        open={selectOpen}
+        onOpenChange={setSelectOpen}
+      >
         <SelectTrigger>
           <SelectValue placeholder={placeholder} />
         </SelectTrigger>
@@ -123,10 +129,11 @@ export const CategorySelect = ({
               size="sm"
               className="w-full justify-start h-8 text-xs text-muted-foreground hover:text-foreground"
               // Stop the click from being treated as a SelectItem activation,
-              // close the popover, then open the dialog.
+              // close the Select popover, then open the dialog.
               onPointerDown={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
+                setSelectOpen(false);
                 setCreateOpen(true);
               }}
             >
