@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { Eye, EyeOff, Mail, RefreshCw } from "lucide-react";
-import logoImg from "@/assets/logo-family-desk-primary.png";
+import lockupImg from "@/assets/familydesk-lockup.png";
 
 type AuthState = "form" | "verification-pending";
 
@@ -286,15 +286,12 @@ const Auth = () => {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-3">
-            <div className="bg-white/90 rounded-2xl p-2.5 shadow-lg ring-1 ring-black/5">
-              <img 
-                src={logoImg} 
-                alt="Family Desk Logo" 
-                className="h-16 w-16 sm:h-24 sm:w-24 object-contain"
-              />
-            </div>
+            <img
+              src={lockupImg}
+              alt="FamilyDesk — Household OS"
+              className="h-16 sm:h-20 w-auto object-contain"
+            />
           </div>
-          <CardTitle className="text-2xl sm:text-3xl">Family Desk</CardTitle>
           <CardDescription>
             Manage your household with ease
           </CardDescription>
