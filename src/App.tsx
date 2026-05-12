@@ -6,6 +6,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/layout/ProtectedRoute";
+import { AdminRoute } from "@/components/layout/AdminRoute";
 import { ErrorBoundary } from "@/components/layout/ErrorBoundary";
 import { AIChatWidget } from "./components/ai/AIChatWidget";
 import ScrollToTop from "./components/ScrollToTop";
@@ -97,9 +98,9 @@ const App = () => (
                 <Route
                   path="/admin/access-requests"
                   element={
-                    <ProtectedRoute>
+                    <AdminRoute>
                       <AdminAccessRequests />
-                    </ProtectedRoute>
+                    </AdminRoute>
                   }
                 />
                 <Route path="/household-setup" element={
@@ -227,9 +228,9 @@ const App = () => (
                   </ProtectedRoute>
                 } />
                 <Route path="/admin/permission-analytics" element={
-                  <ProtectedRoute>
+                  <AdminRoute>
                     <AdminPermissionAnalytics />
-                  </ProtectedRoute>
+                  </AdminRoute>
                 } />
                 <Route path="/how-to-use" element={
                   <ProtectedRoute>
