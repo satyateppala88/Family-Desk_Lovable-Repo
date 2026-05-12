@@ -10,44 +10,31 @@ export const useHousehold = () => {
     queryFn: async () => {
       if (!user) return { householdId: null, onboardingCompleted: false, householdName: null, householdAvatarUrl: null };
 
-      // Fetch ALL memberships, deterministically ordered by the household's
-      // created_at DESC so the most recently created household wins. This
-      // prevents users who happen to belong to multiple households from
-      // landing in a stale/empty one (Postgres returns rows in arbitrary
-      // order without an ORDER BY).
-      const { data: memberRows, error: memberError } = await (supabase as any)
+      // Single join query instead of two sequential round-trips.
+      // Order by household created_at DESC so users in multiple households
+      // deterministically land in the most recently created one.
+      // maybeSingle() returns null instead of throwing when no row exists.
+      const { data: memberData, error: memberError } = await (supabase as any)
         .from("household_members")
-        .select("household_id, households!inner(id, created_at)")
+        .select("household_id, households!inner(onboarding_completed, name, avatar_url, created_at)")
         .eq("user_id", user.id)
-        .order("created_at", { foreignTable: "households", ascending: false });
+        .order("created_at", { foreignTable: "households", ascending: false })
+        .limit(1)
+        .maybeSingle();
 
       if (memberError) throw memberError;
 
-      if (import.meta.env.DEV && memberRows && memberRows.length > 1) {
-        console.warn(
-          `[useHousehold] User ${user.id} belongs to ${memberRows.length} households. Picking most recent:`,
-          memberRows.map((r: any) => r.household_id)
-        );
-      }
-
-      const householdId = memberRows?.[0]?.household_id || null;
-      
+      const householdId = memberData?.household_id || null;
       if (!householdId) {
         return { householdId: null, onboardingCompleted: false, householdName: null, householdAvatarUrl: null };
       }
 
-      // Fetch household onboarding status and name
-      const { data: householdData } = await supabase
-        .from("households")
-        .select("onboarding_completed, name, avatar_url")
-        .eq("id", householdId)
-        .single();
-
+      const householdData = memberData?.households;
       return {
         householdId,
         onboardingCompleted: householdData?.onboarding_completed || false,
         householdName: householdData?.name || null,
-        householdAvatarUrl: (householdData as any)?.avatar_url || null,
+        householdAvatarUrl: householdData?.avatar_url || null,
       };
     },
     enabled: !!user,
