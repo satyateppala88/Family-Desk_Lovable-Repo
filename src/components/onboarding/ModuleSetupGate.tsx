@@ -297,13 +297,29 @@ export const ModuleSetupGate = ({ module, children }: ModuleSetupGateProps) => {
   const { householdId } = useHousehold();
   const { preferences, updatePreferences, isUpdating } = useHouseholdPreferences(householdId);
   const meta = MODULE_SETUP_META[module];
+  const [open, setOpen] = useState(true);
 
   if (!needsSetup) return <>{children}</>;
 
   return (
     <>
       {children}
-      <ModuleSetupDialog module={module} open={true} dismissible={false} />
+      <ModuleSetupDialog
+        module={module}
+        open={open}
+        dismissible={true}
+        onOpenChange={(next) => {
+          setOpen(next);
+          // Dismissing without saving = "skip for now". Mark complete so the
+          // user is never re-prompted on this module unless they explicitly
+          // re-run setup from Settings.
+          if (!next) {
+            markComplete().catch(() => {/* non-fatal: gate just reappears next visit */});
+          }
+        }}
+        onComplete={() => setOpen(false)}
+        onSkip={() => setOpen(false)}
+      />
     </>
   );
 };
