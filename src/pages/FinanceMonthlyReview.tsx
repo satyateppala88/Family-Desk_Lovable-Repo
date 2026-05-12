@@ -5,6 +5,9 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { EmptyState } from "@/components/ui/empty-state";
 import { useHousehold } from "@/hooks/useHousehold";
+import { useSelectedMonth } from "@/hooks/useSelectedMonth";
+import { MonthSwitcher } from "@/components/finance/MonthSwitcher";
+import { DailySpendChart } from "@/components/finance/DailySpendChart";
 import {
   useFinanceMonthlySummary,
   useFinanceBudgets,
@@ -20,7 +23,7 @@ import { resolveCategoryLabel } from "@/components/finance/CategorySelect";
 
 const FinanceMonthlyReview = () => {
   const { householdId } = useHousehold();
-  const currentMonth = format(new Date(), "yyyy-MM");
+  const { month: currentMonth, label: monthLabel } = useSelectedMonth();
   const { categories: customCats } = useCustomCategories("transaction");
   const { data: summary } = useFinanceMonthlySummary(householdId, currentMonth);
   const { data: budgets } = useFinanceBudgets(householdId, currentMonth);
@@ -54,10 +57,10 @@ const FinanceMonthlyReview = () => {
       <main className="page-content space-y-4 animate-fade-in">
         <div>
           <h1 className="page-heading">Monthly Review</h1>
-          <p className="text-sm text-muted-foreground mt-1">{format(new Date(), "MMMM yyyy")} — your household's financial health</p>
+          <p className="text-sm text-muted-foreground mt-1">{monthLabel} — your household's financial health</p>
         </div>
 
-        
+        <MonthSwitcher />
 
         {/* Privacy cue */}
         <div className="trust-badge" role="status">
@@ -101,6 +104,9 @@ const FinanceMonthlyReview = () => {
                 </CardContent>
               </Card>
             </div>
+
+            {/* Daily spending pattern */}
+            <DailySpendChart householdId={householdId} month={currentMonth} />
 
             {/* Wins — celebration moment */}
             {(underBudgetCategories.length > 0 || savingsRate >= 20) && (

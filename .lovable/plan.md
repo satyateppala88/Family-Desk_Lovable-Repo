@@ -1,54 +1,72 @@
-## Why she sees the old household
+# Month-wise Finance Tracking (Axio-style)
 
-Rajashree (`rajashreeudupi88@gmail.com`) has **two `household_members` rows** in production:
+## What you'll get
 
-1. `Teppalas` (created Nov 4, 2025) — only her, leftover from her first signup
-2. `Teppala House` (created Feb 3, 2026) — the real household she shares with Satya
+Today the Finance module always shows "this month". Once a month rolls over, last month's view is gone unless you eyeball Transactions. This adds first-class month navigation and historical comparisons — similar to how Axio/Walnut let you swipe between months and see trends.
 
-`useHousehold` runs `select household_id … limit(1).single()` with no `ORDER BY`, so Postgres returns whichever row it scans first. For her, that's the old "Teppalas" row, so the app loads the empty household every time. Satya only has one membership, so he's unaffected.
+### New capabilities
 
-## Fix (two parts)
+1. **Global month switcher** — A `← July 2026 →` control at the top of Finance hub, Transactions, Budget, and Monthly Review. Selected month persists across these pages (URL `?m=2026-07`) so you can drill into a past month seamlessly.
+2. **Month-over-month chips** on Finance hub — Income, Spent, Saved show "▲ 12% vs Jun" deltas.
+3. **Trends page** (new `/finance/trends`) — Axio's signature view:
+   - 6-month bar chart: Income vs Expenses
+   - 6-month line: Savings rate %
+   - Top 5 categories trend (stacked bars)
+   - "Biggest movers" list — categories that grew/shrank most vs last month
+4. **Daily spending pattern** card on Monthly Review — small bar chart of spend per day in the selected month, with weekend highlights.
+5. **Past month transactions** — Transactions page filters by selected month by default (with "All time" toggle), so historical browsing is one click away.
+6. **Hub tile addition** — replace nothing; add a "Trends" tile in the Finance hub grid pointing to `/finance/trends`.
 
-### 1. Data cleanup — production
+### Out of scope (can be follow-ups)
 
-Remove Rajashree's stale membership in the old "Teppalas" household, and (optionally) delete the now-empty household so it can't be picked up again.
+- Year-end report / annual review
+- Forecasting next month's spend
+- Exporting a month as PDF/CSV (already partially possible via Review)
+- Per-member month-wise split
 
-```sql
--- Confirm the old household has no other members
-SELECT count(*) FROM household_members
- WHERE household_id = 'f75725b0-6886-4add-b2f4-656b106fddfa';
+---
 
--- Remove her membership in the old household
-DELETE FROM household_members
- WHERE user_id = 'a59514a3-bc5e-4501-bbb4-b755821b1f2a'
-   AND household_id = 'f75725b0-6886-4add-b2f4-656b106fddfa';
+## Technical Details
 
--- If no members remain, archive/delete the empty household
-DELETE FROM households
- WHERE id = 'f75725b0-6886-4add-b2f4-656b106fddfa'
-   AND NOT EXISTS (
-     SELECT 1 FROM household_members WHERE household_id = 'f75725b0-6886-4add-b2f4-656b106fddfa'
-   );
-```
+**Data layer** — no schema change needed. `useFinanceTransactions`, `useFinanceBudgets`, `useFinanceMonthlySummary`, `useFinanceMonthlySnapshot` already accept a `month` parameter. We just thread a selected-month value through the UI.
 
-After this runs and she signs out + back in, she'll land in "Teppala House" with Satya.
+**New shared hook** — `useSelectedMonth()` reads/writes `?m=YYYY-MM` from the URL with `useSearchParams`, defaulting to current IST month. Used by all Finance pages.
 
-### 2. Code hardening — `src/hooks/useHousehold.ts`
+**New components**
+- `src/components/finance/MonthSwitcher.tsx` — `← Month YYYY →` with prev/next/jump-to-current; disables "next" when at current month.
+- `src/components/finance/TrendsChart.tsx` — wraps `recharts` (already in project) for the 6-month bar/line.
+- `src/components/finance/DailySpendChart.tsx` — small daily bar chart for Monthly Review.
 
-So this never silently happens again to anyone else:
+**New hook** — `useFinanceTrends(householdId, monthsBack=6)` — runs one query for the last N months of transactions, aggregates client-side into `{ month, income, expenses, byCategory }[]`. Cached 5 min.
 
-- Replace the unordered `.limit(1).single()` with a deterministic query: select **all** memberships for the user, ordered by household `created_at DESC` (most-recently-joined wins), and pick the first.
-- If a user has more than one membership, log a `console.warn` in dev so we catch it early.
-- (Future, optional) Add a `last_active_household_id` column on `profiles` so users with multiple households can switch — out of scope for this fix.
+**New page** — `src/pages/FinanceTrends.tsx` registered in `src/App.tsx` under `/finance/trends`, wrapped in `ModuleSetupGate("finance_setup")`.
 
-### 3. Verify
+**Edits**
+- `src/pages/Finance.tsx` — add MonthSwitcher, MoM delta chips on summary cards, "Trends" tile in module grid.
+- `src/pages/FinanceTransactions.tsx` — read `?m`, pass to `useFinanceTransactions`, add MonthSwitcher + "All time" toggle.
+- `src/pages/FinanceBudget.tsx` — read `?m`, pass to budgets/summary so you can plan/review past or future months.
+- `src/pages/FinanceMonthlyReview.tsx` — read `?m`, replace hardcoded `currentMonth`, add DailySpendChart card.
 
-- Run the prod SELECT again to confirm only one membership remains for her.
-- Ask Rajashree to hard-refresh + sign in; confirm she sees "Teppala House" and Satya in Members.
+**Routing** — add `/finance/trends` to the router; no nav-component changes (uses existing FinanceNav if present, otherwise the hub tile).
+
+**Performance** — Trends hook does one bounded query (`transaction_date >= 6 months ago`) and aggregates in memory; well under the 1000-row Supabase limit for typical households. If a household exceeds that, fall back to running monthly summary queries in parallel for each of the 6 months.
+
+**Realtime** — existing `useFinanceRealtime` already invalidates summary/transaction caches; trends will piggy-back via the same invalidation key pattern.
+
+---
 
 ## Files touched
 
-- New migration: `supabase/migrations/<ts>_cleanup_rajashree_stale_household.sql` (data cleanup above)
-- `src/hooks/useHousehold.ts` (deterministic ordering + dev warning)
+- new: `src/hooks/useSelectedMonth.ts`
+- new: `src/hooks/useFinanceTrends.ts`
+- new: `src/components/finance/MonthSwitcher.tsx`
+- new: `src/components/finance/TrendsChart.tsx`
+- new: `src/components/finance/DailySpendChart.tsx`
+- new: `src/pages/FinanceTrends.tsx`
+- edit: `src/App.tsx` (add route)
+- edit: `src/pages/Finance.tsx`
+- edit: `src/pages/FinanceTransactions.tsx`
+- edit: `src/pages/FinanceBudget.tsx`
+- edit: `src/pages/FinanceMonthlyReview.tsx`
 
-No UI or RLS changes needed.
+No DB migration. No backend changes. ~1 medium build.
