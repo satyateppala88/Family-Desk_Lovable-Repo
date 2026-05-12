@@ -15,8 +15,7 @@ export default {
   	extend: {
 		fontFamily: {
 			sans: [
-				'DM Sans',
-				'Inter',
+				'Poppins',
 				'ui-sans-serif',
 				'system-ui',
 				'-apple-system',
@@ -88,6 +87,20 @@ export default {
   			'module-calendar': 'hsl(var(--module-calendar))',
   			'module-habits': 'hsl(var(--module-habits))',
   			'module-finance': 'hsl(var(--module-finance))',
+  			brand: {
+  				DEFAULT: '#0F6E56',
+  				dark: '#085041',
+  				mid: '#1D9E75',
+  				light: '#5DCAA5',
+  				muted: '#E1F5EE',
+  			},
+  			ink: {
+  				DEFAULT: '#2C2C2A',
+  				secondary: '#5F5E5A',
+  				muted: '#888780',
+  				border: '#D3D1C7',
+  				surface: '#F1EFE8',
+  			},
   		},
   		borderRadius: {
   			lg: 'var(--radius)',

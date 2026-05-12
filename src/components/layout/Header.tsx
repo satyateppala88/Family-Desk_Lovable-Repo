@@ -16,6 +16,7 @@ import { useHousehold } from "@/hooks/useHousehold";
 import { useIsHouseholdAdmin } from "@/hooks/useIsHouseholdAdmin";
 import { usePendingInvitations } from "@/hooks/usePendingInvitations";
 import { useIsPlatformAdmin } from "@/hooks/useIsPlatformAdmin";
+import brandIcon from "@/assets/familydesk-icon.png";
 
 interface HeaderProps {
   onStartOnboarding?: () => void;
@@ -155,14 +156,22 @@ export const Header = (_props: HeaderProps) => {
             </button>
           ) : null}
 
-          <div className="flex items-center gap-2 min-w-0">
-            <span
-              className="text-lg font-semibold text-foreground tracking-tight cursor-pointer truncate"
-              onClick={() => navigate("/dashboard")}
-            >
+          <button
+            type="button"
+            onClick={() => navigate("/dashboard")}
+            className="flex items-center gap-2 min-w-0"
+            aria-label="FamilyDesk home"
+          >
+            <img
+              src={brandIcon}
+              alt=""
+              aria-hidden="true"
+              className="h-7 w-7 object-contain shrink-0"
+            />
+            <span className="text-lg font-semibold text-foreground tracking-tight truncate">
               {isHomePage ? "FamilyDesk" : pageTitle || "FamilyDesk"}
             </span>
-          </div>
+          </button>
         </div>
 
         {/* Right: Avatar / Profile */}
