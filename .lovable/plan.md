@@ -1,18 +1,23 @@
-## Plan: Add `.env` entries to `.gitignore`
+## Plan: Rotate Supabase API keys
 
-Append three lines to the existing `.gitignore` so environment files stop being tracked. `*.local` is already covered (line 13), which handles `.env.local` and `.env*.local` via the existing wildcard, but I'll still add the explicit lines per your instructions for clarity.
+Since the `.env` file (containing the anon/publishable key) was previously committed to the repository, rotating the keys is the right next step to invalidate the exposed credentials.
 
-### Change
+### What will happen
 
-Append to `.gitignore`:
+I'll use the `rotate_api_keys` tool, which will:
+1. Generate fresh API keys for your Lovable Cloud backend
+2. Automatically update the `.env` file with the new `VITE_SUPABASE_PUBLISHABLE_KEY`
+3. Update the internal Supabase client integration to use the new keys
+4. Disable the old/legacy keys so any previously exposed values stop working
 
-```
-.env
-.env.local
-.env*.local
-```
+### After rotation
 
-### Notes
-- No other lines in `.gitignore` will be touched.
-- `.env` will not be modified.
-- Untracking the already-committed `.env` from git history requires a `git rm --cached .env` operation, which I cannot run (git state is managed by the platform). After this `.gitignore` update, you'll want to remove `.env` from tracking via your normal git workflow so it's no longer committed going forward.
+- The app will continue to work normally — the Supabase client picks up the new key automatically.
+- Any external scripts, third-party tools, or documentation that hardcoded the old anon key will need to be updated with the new value.
+- The internal service role key (used only by edge functions) is also rotated; edge functions automatically receive the updated value, no redeploy needed.
+
+### Note
+
+This rotates the **anon (publishable) key** and the **service role key** together — they're rotated as a pair by Supabase. There's no way to rotate just the anon key in isolation.
+
+Confirm and I'll run the rotation.
