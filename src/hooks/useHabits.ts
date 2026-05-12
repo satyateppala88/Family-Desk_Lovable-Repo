@@ -134,14 +134,23 @@ export const useHabits = (householdId: string | null, userId?: string) => {
 
   // Filter habits that are due today based on frequency
   const todaysHabits = habitsWithStreaks.filter((habit) => {
+    const todayDayOfWeek = new Date().getDay(); // 0=Sun, 1=Mon, ...
+
     if (habit.frequency_type === "daily") return true;
-    if (habit.frequency_type === "weekly") {
-      return true;
-    }
+
     if (habit.frequency_type === "specific_days") {
-      const dayOfWeek = new Date().getDay();
-      return habit.frequency_days.includes(dayOfWeek);
+      return habit.frequency_days.includes(todayDayOfWeek);
     }
+
+    if (habit.frequency_type === "weekly") {
+      // If user configured specific days, respect them;
+      // otherwise default to Monday.
+      if (habit.frequency_days && habit.frequency_days.length > 0) {
+        return habit.frequency_days.includes(todayDayOfWeek);
+      }
+      return todayDayOfWeek === 1;
+    }
+
     return true;
   });
 
