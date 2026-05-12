@@ -12,6 +12,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Plus, Trash2, Pencil, ArrowLeftRight, Search, X } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useHousehold } from "@/hooks/useHousehold";
+import { useSelectedMonth } from "@/hooks/useSelectedMonth";
+import { MonthSwitcher } from "@/components/finance/MonthSwitcher";
 import {
   useFinanceTransactions,
   useFinanceRealtime,
@@ -38,13 +40,16 @@ const FinanceTransactions = () => {
   const [search, setSearch] = useState("");
   const [catFilter, setCatFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
+  const [allTime, setAllTime] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
   const [editTx, setEditTx] = useState<FinanceTransaction | null>(null);
   const [deleteTx, setDeleteTx] = useState<FinanceTransaction | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkCategory, setBulkCategory] = useState<string>("");
+  const { month, label: monthLabel } = useSelectedMonth();
 
   const { data: transactions, isLoading } = useFinanceTransactions(householdId, {
+    month: allTime ? undefined : month,
     category: catFilter,
     type: typeFilter,
     search: search || undefined,
@@ -92,6 +97,23 @@ const FinanceTransactions = () => {
             <Plus className="w-4 h-4 mr-1" /> Add
           </Button>
         </div>
+
+        <div className="flex items-center gap-2">
+          <div className={allTime ? "flex-1 opacity-50 pointer-events-none" : "flex-1"}>
+            <MonthSwitcher />
+          </div>
+          <Button
+            variant={allTime ? "default" : "outline"}
+            size="sm"
+            onClick={() => setAllTime((v) => !v)}
+            className="shrink-0"
+          >
+            {allTime ? "All time" : "All time"}
+          </Button>
+        </div>
+        {!allTime && (
+          <p className="text-[11px] text-muted-foreground -mt-2">Showing transactions for {monthLabel}</p>
+        )}
 
         {/* Filters */}
         <div className="flex flex-col sm:flex-row gap-2">
