@@ -184,10 +184,10 @@ const HouseholdSetup = () => {
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
             <div className="bg-white/90 rounded-2xl p-3 shadow-lg ring-1 ring-black/5">
-              <img 
-                src={logoImg} 
-                alt="Family Desk Logo" 
-                className="h-20 w-20 object-contain"
+              <img
+                src={logoImg}
+                alt="FamilyDesk"
+                className="h-20 object-contain"
               />
             </div>
           </div>
