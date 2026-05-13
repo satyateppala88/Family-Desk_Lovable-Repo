@@ -1,85 +1,51 @@
 ## Goal
 
-Stop the "Couldn't add" / "Error: …" toasts in Meals (and elsewhere) by:
-1. Adding the missing unique constraint that the `meal_plans` upsert requires.
-2. Replacing raw `error.message` text in mutation `onError` toasts across the app with short, friendly messages.
+Give the "Generate Recipes" button on the **All Recipes** tab proper loading / success / error feedback, replace the empty-state copy, and stop the success path from blanking the screen with a full reload. No backend / AI logic changes.
 
-## Part 1 — Database migration
+## Why feedback is currently invisible
 
-Confirmed via `psql`: `meal_plans` currently has only the primary key and FK constraints. The mutation in `useMealPlans.ts` calls `.upsert(..., { onConflict: "household_id,week_start_date" })`, which Postgres rejects without a matching unique constraint, surfacing as a "Couldn't add" / generic error toast.
+`handleGeneratePlan` already sets `generatingPlan = true`, but:
+- The `EmptyState` action button doesn't read that flag, so it stays enabled with the static label "Generate Recipes".
+- On success the page calls `window.location.reload()`, which wipes the toast before it can render — looking like "nothing happened".
+- There is no timeout, so a stalled edge function leaves the user waiting indefinitely with no UI feedback.
 
-Run a migration that adds:
+## Changes
 
-```sql
-ALTER TABLE public.meal_plans
-ADD CONSTRAINT meal_plans_household_week_unique
-UNIQUE (household_id, week_start_date);
-```
-
-Note: if duplicate `(household_id, week_start_date)` rows already exist they will block the constraint. The migration will pre-collapse duplicates by keeping the most recently updated `meal_plans` row per `(household_id, week_start_date)` and reparenting any `meal_plan_items` from the older rows before adding the constraint, so the upsert path is finally consistent.
-
-## Part 2 — Friendly mutation error messages
-
-Add a small helper `src/lib/friendlyError.ts`:
-
+### 1. `src/components/ui/empty-state.tsx`
+Extend the `action` prop to support a loading state:
 ```ts
-export function friendlyMutationError(fallback = "Something went wrong. Please try again.") {
-  return fallback;
-}
+action?: {
+  label: string;
+  onClick: () => void;
+  variant?: "default" | "outline" | "secondary";
+  loading?: boolean;
+  loadingLabel?: string;
+};
 ```
+When `loading` is true, render the action button as `disabled` with a `Loader2` spinner and `loadingLabel` (fallback "Working…"). Same for the meal-plan tab's existing button so both flows share one source of truth.
 
-Then sweep mutation `onError` handlers and replace `description: error.message` (or `error.message || "..."`) with a short, plain-language message tailored to the action. The raw error stays in `console.error` for debugging. No business logic, no payload, no validation changes.
+### 2. `src/pages/Meals.tsx` — `handleGeneratePlan`
+- Wrap the `supabase.functions.invoke(...)` call in a 30-second timeout (`Promise.race` with `setTimeout` rejecting `new Error("timeout")`). On timeout, throw → existing friendly error path runs.
+- Replace `window.location.reload()` with:
+  - `queryClient.invalidateQueries({ queryKey: ["recipes", householdId] })`
+  - `queryClient.invalidateQueries({ queryKey: ["meal-plans", householdId] })`
+- When the **All Recipes empty-state** triggered the call (i.e. `recipes.length === 0` before the call), show the toast `"Recipes generated for your household"`. The existing weekly-plan success toast stays for the Plan tab path. Track which path triggered it via an optional `source: "recipes" | "plan"` argument so we don't conflate copy.
 
-### Files to update (mutation onError handlers only — not form-level catch blocks unless they were already toasting raw DB errors)
+### 3. `src/pages/Meals.tsx` — All Recipes tab UI
+- While `generatingPlan && recipes.length === 0`, render a small skeleton grid (3 `Skeleton` cards using existing `@/components/ui/skeleton`) **in place of** the `EmptyState`.
+- Otherwise show `EmptyState` with:
+  - Updated `description`: `"Tap 'Generate Recipes' to get personalised meal ideas for your family"`
+  - Action: `{ label: "Generate Recipes", loading: generatingPlan, loadingLabel: "Generating recipes…", onClick: () => handleGeneratePlan("full", "recipes") }`
 
-Meals (priority — fixes the reported flow):
-- `src/hooks/useMealPlans.ts` — 4 handlers → "Couldn't save meal plan. Please try again." / "Couldn't update this meal." / "Couldn't remove this meal." / "Couldn't delete this plan."
-- `src/pages/Meals.tsx` lines 136, 172 → "We couldn't generate the meal plan. Please try again." / "Couldn't add this meal. Please try again."
-- `src/components/meals/AddMealSheet.tsx`, `AiSuggestSheet.tsx`, `AddIngredientsDialog.tsx` — replace "Couldn't add" descriptions that pass `e.message` with a static "Please try again." string.
-- `src/hooks/useRegenerateMeals.ts` → "Couldn't refresh meals. Please try again."
-
-Grocery / Pantry:
-- `src/pages/Grocery.tsx` (4 sites) → action-specific friendly text.
-- `src/hooks/useShoppingLists.ts` (7 sites)
-- `src/hooks/usePantryItems.ts` (4 sites)
-- `src/hooks/usePantryCategories.ts` (1 site)
-
-Tasks / Taskmaster / Habits / Recipes:
-- `src/hooks/useTasks.ts` (3)
-- `src/hooks/useTaskmaster.ts` (6)
-- `src/hooks/useHabits.ts` (3)
-- `src/hooks/useRecipes.ts` (3)
-
-Auth / Account / Household / Admin (mutation toasts only — keep auth-screen messages where the user *needs* to know which credential failed; replace generic catch-all toasts):
-- `src/pages/AccountSettings.tsx` (2)
-- `src/pages/HouseholdSetup.tsx` (1) — keep current fallback string, drop `error.message`.
-- `src/pages/HouseholdProductSettings.tsx` (2)
-- `src/pages/AdminAccessRequests.tsx` (2)
-- `src/pages/RequestAccess.tsx` (1)
-- `src/pages/Auth.tsx` (3) — **keep** the surfaced message because users genuinely need "Invalid login credentials" / "Email not confirmed" feedback. Out of scope.
-- `src/components/voice/VoiceInputButton.tsx` — already shows a friendly fallback; keep.
-
-For each replaced site, pattern is:
-
-```ts
-onError: (error) => {
-  console.error("<context> error:", error);
-  toast({
-    title: "<short title>",
-    description: "<friendly action-specific message>",
-    variant: "destructive",
-  });
-},
-```
+### 4. Existing Plan tab button
+Already uses `generatingPlan` to swap label — no further change other than passing `"plan"` as the source.
 
 ## Verification
-
-1. Migration applies cleanly (constraint visible in `pg_constraint`).
-2. Reload Meals → click "Use this" on an AI dinner suggestion → meal saves, grid updates, no "Couldn't add" toast.
-3. Trigger a failure (e.g. temporarily revoke RLS in a test) → user sees only the friendly toast; raw error appears only in the browser console.
+- Click "Generate Recipes" on empty All Recipes tab → button disables, shows spinner + "Generating recipes…", skeleton cards appear, no blank screen.
+- On success → recipes render via cache invalidation, toast "Recipes generated for your household".
+- Force a failure (offline / kill the function) → after up to 30 s, button restores, toast "Couldn't generate recipes. Please try again."
+- Plan tab "Generate Meal Plan" still works and shows its existing success toast.
 
 ## Out of scope
-
-- Auth screen specific error surfacing (intentional UX).
-- Refactoring non-mutation try/catch blocks that already display friendly text.
-- Editing the auto-generated `src/integrations/supabase/types.ts`.
+- AI generation logic, edge function, or request payload.
+- Other Meals empty states or the Plan tab UX beyond the success-path reload removal.
