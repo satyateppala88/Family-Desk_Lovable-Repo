@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2, Mail, RefreshCw } from "lucide-react";
 import logoImg from "@/assets/familydesk-lockup.png";
 
 const HouseholdSetup = () => {
@@ -21,6 +21,9 @@ const HouseholdSetup = () => {
   const [joiningHousehold, setJoiningHousehold] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   const [verifyError, setVerifyError] = useState<string | null>(null);
+  const [joinError, setJoinError] = useState<string | null>(null);
+  const [pendingRequest, setPendingRequest] = useState<{ householdName: string } | null>(null);
+  const [checkingStatus, setCheckingStatus] = useState(false);
   const joinButtonRef = useRef<HTMLButtonElement | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -43,6 +46,29 @@ const HouseholdSetup = () => {
     };
     validateSession();
   }, [navigate, toast]);
+
+  // On mount, check if the user already has a pending join request — if so,
+  // show the pending state directly so they don't re-submit.
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("household_invitations")
+        .select("household_id, status, households!inner(name)")
+        .eq("invitee_user_id", user.id)
+        .eq("status", "pending")
+        .maybeSingle();
+      if (cancelled) return;
+      if (data) {
+        const name = (data as any).households?.name ?? "your household";
+        setPendingRequest({ householdName: name });
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
 
   const handleCreateHousehold = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -145,6 +171,7 @@ const HouseholdSetup = () => {
   const handleJoinHousehold = async () => {
     if (!verifiedHousehold || !user) return;
 
+    setJoinError(null);
     setJoiningHousehold(true);
     try {
       const { error: inviteError } = await supabase
@@ -156,27 +183,111 @@ const HouseholdSetup = () => {
           invitee_name: user.user_metadata?.display_name || user.email?.split('@')[0],
           requested_role: 'member',
           status: 'pending',
+          invitation_type: 'join_request',
         });
 
-      if (inviteError) throw inviteError;
+      if (inviteError) {
+        // Duplicate request (unique household_id+invitee_user_id) → treat as success.
+        const isDuplicate =
+          (inviteError as any).code === "23505" ||
+          /duplicate key|unique/i.test(inviteError.message ?? "");
+        if (!isDuplicate) {
+          console.error("Join insert error:", inviteError);
+          setJoinError(
+            "We couldn't send your request. Please check your invite code and try again."
+          );
+          return;
+        }
+      }
 
       toast({
         title: "Request sent!",
         description: `Your request to join ${verifiedHousehold.name} has been sent to the admin.`,
       });
 
-      navigate("/");
+      setPendingRequest({ householdName: verifiedHousehold.name });
     } catch (error: any) {
       console.error("Join error:", error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to send join request",
-        variant: "destructive",
-      });
+      setJoinError(error.message || "Failed to send join request");
     } finally {
       setJoiningHousehold(false);
     }
   };
+
+  const handleCheckStatus = async () => {
+    if (!user) return;
+    setCheckingStatus(true);
+    try {
+      const { data: memberData } = await supabase
+        .from("household_members")
+        .select("household_id")
+        .eq("user_id", user.id)
+        .limit(1)
+        .maybeSingle();
+      if (memberData?.household_id) {
+        queryClient.invalidateQueries({ queryKey: ["household"] });
+        navigate("/onboarding/preferences");
+        return;
+      }
+      toast({
+        title: "Still pending",
+        description: "Your request hasn't been approved yet. We'll email you once it is.",
+      });
+    } finally {
+      setCheckingStatus(false);
+    }
+  };
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    navigate("/auth");
+  };
+
+  if (pendingRequest) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-secondary/5 p-4">
+        <Card className="w-full max-w-md text-center">
+          <CardHeader>
+            <div className="flex justify-center mb-4">
+              <div className="h-16 w-16 bg-primary/10 rounded-full flex items-center justify-center">
+                <Mail className="h-8 w-8 text-primary" />
+              </div>
+            </div>
+            <CardTitle className="text-2xl">Request sent</CardTitle>
+            <CardDescription className="mt-2">
+              We've asked the admin of <strong>{pendingRequest.householdName}</strong> to add you.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              You'll get an email the moment they approve. You can wait here or come back later.
+            </p>
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={handleCheckStatus}
+              disabled={checkingStatus}
+            >
+              {checkingStatus ? (
+                <>
+                  <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                  Checking…
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  Check status
+                </>
+              )}
+            </Button>
+            <Button variant="ghost" className="w-full" onClick={handleSignOut}>
+              Sign out
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-secondary/5 p-4">
@@ -275,6 +386,9 @@ const HouseholdSetup = () => {
                   >
                     {joiningHousehold ? "Sending Request..." : `Request to join ${verifiedHousehold.name}`}
                   </Button>
+                  {joinError && (
+                    <p className="text-sm text-destructive" role="alert">{joinError}</p>
+                  )}
                 </div>
               )}
 
