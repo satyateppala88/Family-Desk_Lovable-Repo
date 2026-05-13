@@ -28,16 +28,19 @@ export const ModuleSetupQueue = ({ products, onAllDone }: ModuleSetupQueueProps)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [queue.length]);
 
-  if (queue.length === 0 || index >= queue.length) return null;
+  // Hooks must run unconditionally — pick a stable key even when the
+  // queue is empty (the dialog itself is gated by `done` below).
+  const done = queue.length === 0 || index >= queue.length;
+  const current = (done ? queue[0] : queue[index]) as ModuleSetupKey | undefined;
+  const { markComplete } = useModuleSetup((current ?? "meals_setup") as ModuleSetupKey);
+
+  if (done || !current) return null;
 
   const advance = () => {
     if (index + 1 >= queue.length) onAllDone();
     else setIndex(index + 1);
   };
 
-  const current = queue[index];
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  const { markComplete } = useModuleSetup(current);
   return (
     <ModuleSetupDialog
       key={current}
