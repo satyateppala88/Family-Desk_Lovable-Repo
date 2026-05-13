@@ -52,6 +52,7 @@ const FinanceMonthlyReview = lazy(() => import("./pages/FinanceMonthlyReview"));
 const FinanceSubscriptions = lazy(() => import("./pages/FinanceSubscriptions"));
 const FinanceCards = lazy(() => import("./pages/FinanceCards"));
 const FinanceTrends = lazy(() => import("./pages/FinanceTrends"));
+const FinanceReport = lazy(() => import("./pages/FinanceReport"));
 const TermsOfService = lazy(() => import("./pages/TermsOfService"));
 const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
 const HouseholdInvitations = lazy(() => import("./pages/HouseholdInvitations"));
@@ -216,6 +217,7 @@ const App = () => (
                 <Route path="/finance/review" element={<ProtectedRoute><FinanceMonthlyReview /></ProtectedRoute>} />
                 <Route path="/finance/cards" element={<ProtectedRoute><FinanceCards /></ProtectedRoute>} />
                 <Route path="/finance/trends" element={<ProtectedRoute><FinanceTrends /></ProtectedRoute>} />
+                <Route path="/finance/report" element={<ProtectedRoute><FinanceReport /></ProtectedRoute>} />
                 <Route path="/terms" element={<TermsOfService />} />
                 <Route path="/privacy" element={<PrivacyPolicy />} />
                 <Route path="/install" element={<Install />} />

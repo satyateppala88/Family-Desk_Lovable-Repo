@@ -217,6 +217,26 @@ const Meals = () => {
       queryClient.invalidateQueries({ queryKey: ["pantry-items", householdId] });
       queryClient.invalidateQueries({ queryKey: ["pantry-stats", householdId] });
 
+      // Mark the meal_plan_item as cooked today (used by Monthly Report)
+      try {
+        const today = new Date().toISOString().slice(0, 10);
+        const { data: plans } = await supabase
+          .from("meal_plans")
+          .select("id")
+          .eq("household_id", householdId);
+        const planIds = (plans || []).map((p) => p.id);
+        if (planIds.length > 0) {
+          await supabase
+            .from("meal_plan_items")
+            .update({ cooked_at: new Date().toISOString() })
+            .in("meal_plan_id", planIds)
+            .eq("recipe_id", cookingRecipe.id)
+            .eq("scheduled_date", today);
+        }
+      } catch {
+        // non-fatal
+      }
+
       if (used.length === 0) {
         toast({ title: "Marked as cooked! 👨‍🍳", description: "No matching pantry items to deduct." });
       } else {

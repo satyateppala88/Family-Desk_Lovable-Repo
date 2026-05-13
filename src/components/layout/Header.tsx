@@ -245,6 +245,9 @@ export const Header = (_props: HeaderProps) => {
             <DropdownMenuItem onClick={() => navigate("/how-to-use")}>
               How to use
             </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => navigate("/finance/report")}>
+              Monthly Report
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={() => navigate("/whats-new")}>
               What's new
             </DropdownMenuItem>
