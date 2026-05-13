@@ -12,8 +12,7 @@ export type ModuleSetupKey =
   | "grocery_setup"
   | "finance_setup"
   | "habits_setup"
-  | "calendar_setup"
-  | "tasks_setup";
+  | "calendar_setup";
 
 export const MODULE_SETUP_KEYS: Record<ProductName, ModuleSetupKey> = {
   meals: "meals_setup",
@@ -21,7 +20,10 @@ export const MODULE_SETUP_KEYS: Record<ProductName, ModuleSetupKey> = {
   finance: "finance_setup",
   habits: "habits_setup",
   calendar: "calendar_setup",
-  tasks: "tasks_setup",
+  // Tasks shares the Routine setup with Habits — both consume
+  // `preferred_task_time` and `household_concerns`, so we don't
+  // re-prompt the user with the same questions twice.
+  tasks: "habits_setup",
 };
 
 import type { HouseholdPreferences } from "@/types/database";
@@ -38,7 +40,6 @@ export const MODULE_SETUP_FIELDS: Record<ModuleSetupKey, (keyof HouseholdPrefere
   finance_setup: ["monthly_grocery_budget", "budget_consciousness"],
   habits_setup: ["preferred_task_time"],
   calendar_setup: ["work_schedule"],
-  tasks_setup: ["preferred_task_time"],
 };
 
 export const MODULE_SETUP_META: Record<ModuleSetupKey, { title: string; description: string }> = {
@@ -62,10 +63,6 @@ export const MODULE_SETUP_META: Record<ModuleSetupKey, { title: string; descript
     title: "Calendar setup",
     description: "How is the household's work schedule set up?",
   },
-  tasks_setup: {
-    title: "Task planning setup",
-    description: "When are you most likely to tackle tasks?",
-  },
 };
 
 /**
@@ -78,7 +75,6 @@ export const MODULE_SETUP_META: Record<ModuleSetupKey, { title: string; descript
 export const MODULE_TO_FEATURE_TOUR: Partial<Record<ModuleSetupKey, FeatureName>> = {
   meals_setup: "meals",
   grocery_setup: "grocery",
-  tasks_setup: "tasks",
   habits_setup: "habits",
   calendar_setup: "calendar",
 };
