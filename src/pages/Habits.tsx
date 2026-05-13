@@ -1,10 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { format } from "date-fns";
 import { Users, User, Leaf, PartyPopper } from "lucide-react";
 import { Header } from "@/components/layout/Header";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
-import { OnboardingTour } from "@/components/onboarding/OnboardingTour";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageLoading } from "@/components/ui/page-loading";
 import { useHousehold } from "@/hooks/useHousehold";
@@ -13,7 +12,6 @@ import { useHabits } from "@/hooks/useHabits";
 import { useHouseholdHabitStats } from "@/hooks/useHouseholdHabitStats";
 import { useHabitLeaderboard } from "@/hooks/useHabitLeaderboard";
 import { useHouseholdMembers } from "@/hooks/useHouseholdMembers";
-import { useFeatureTour } from "@/hooks/useFeatureTour";
 import { HabitCard } from "@/components/habits/HabitCard";
 import { HabitCreateDialog } from "@/components/habits/HabitCreateDialog";
 import { HabitCoachInsight } from "@/components/habits/HabitCoachInsight";
@@ -22,41 +20,6 @@ import { MemberProgressCard } from "@/components/habits/MemberProgressCard";
 import { HabitLeaderboard } from "@/components/habits/HabitLeaderboard";
 import { HabitAssignmentType, HabitFrequencyType } from "@/types/habits";
 import { cn } from "@/lib/utils";
-import type { Step } from "react-joyride";
-
-const habitsTourSteps: Step[] = [
-  {
-    target: "body",
-    content: "Welcome to Habits! Build healthy routines that stick — for yourself and your family.",
-    placement: "center",
-    disableBeacon: true,
-  },
-  {
-    target: "[data-tour='view-toggle']",
-    content: "Switch between your personal habits and household-wide progress.",
-    placement: "bottom",
-  },
-  {
-    target: "[data-tour='progress-summary']",
-    content: "See how your day is going at a glance.",
-    placement: "bottom",
-  },
-  {
-    target: "[data-tour='habit-list']",
-    content: "Tap a habit to check it off. Watch your streaks grow!",
-    placement: "top",
-  },
-  {
-    target: "[data-tour='create-habit']",
-    content: "Create habits for yourself or the whole household, with optional reminders.",
-    placement: "top",
-  },
-  {
-    target: ".user-menu",
-    content: "You can restart this guide anytime from the menu.",
-    placement: "bottom",
-  },
-];
 
 const Habits = () => {
   const [view, setView] = useState<"personal" | "household">("personal");
@@ -71,21 +34,6 @@ const Habits = () => {
   const { data: householdStats, isLoading: statsLoading } = useHouseholdHabitStats(householdId);
   const { data: leaderboardEntries, isLoading: leaderboardLoading } = useHabitLeaderboard(householdId);
   const { data: householdMembers } = useHouseholdMembers(householdId);
-
-  const { shouldShowTour, tourChecked, markTourComplete } = useFeatureTour("habits");
-  const [runOnboarding, setRunOnboarding] = useState(false);
-
-  useEffect(() => {
-    if (tourChecked && shouldShowTour && householdId) {
-      setTimeout(() => setRunOnboarding(true), 500);
-    }
-  }, [tourChecked, shouldShowTour, householdId]);
-
-  const handleStartOnboarding = () => setRunOnboarding(true);
-  const handleOnboardingComplete = () => {
-    setRunOnboarding(false);
-    markTourComplete();
-  };
 
   const today = new Date();
   const completedCount = todaysHabits.filter((h) => h.todayLog?.completed).length;
@@ -127,7 +75,7 @@ const Habits = () => {
 
   return (
     <div className="page-container">
-      <Header onStartOnboarding={handleStartOnboarding} />
+      <Header />
 
       <main className="page-content">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
@@ -269,13 +217,6 @@ const Habits = () => {
           </div>
         )}
       </main>
-
-      <OnboardingTour
-        run={runOnboarding}
-        onComplete={handleOnboardingComplete}
-        steps={habitsTourSteps}
-        featureName="habits"
-      />
     </div>
   );
 };
