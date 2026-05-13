@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CheckCircle2, Mail, RefreshCw } from "lucide-react";
-import logoImg from "@/assets/familydesk-lockup.png";
+import lockupImg from "@/assets/familydesk-wordmark.png";
 
 const HouseholdSetup = () => {
   const [householdName, setHouseholdName] = useState("");
@@ -293,12 +293,12 @@ const HouseholdSetup = () => {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-secondary/5 p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <div className="flex justify-center mb-4">
-            <div className="bg-white/90 rounded-2xl p-3 shadow-lg ring-1 ring-black/5">
+          <div className="flex justify-center mb-3">
+            <div className="overflow-hidden w-[260px] flex justify-center">
               <img
-                src={logoImg}
-                alt="FamilyDesk"
-                className="h-20 object-contain"
+                src={lockupImg}
+                alt="FamilyDesk — Household OS"
+                className="h-16 sm:h-20 w-auto object-contain"
               />
             </div>
           </div>
