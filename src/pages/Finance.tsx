@@ -26,6 +26,7 @@ import {
   LineChart,
   ArrowUp,
   ArrowDown,
+  FileBarChart,
 } from "lucide-react";
 
 const Finance = () => {
@@ -73,6 +74,7 @@ const Finance = () => {
     { path: "/finance/chat", icon: Bot, label: "AI Advisor", description: "Ask about finances", tintClass: "module-tint-finance", hintKey: "" },
     { path: "/finance/review", icon: BarChart3, label: "Review", description: "Insights & trends", tintClass: "module-tint-finance", hintKey: "" },
     { path: "/finance/trends", icon: LineChart, label: "Trends", description: "6-month comparison", tintClass: "module-tint-finance", hintKey: "" },
+    { path: "/finance/report", icon: FileBarChart, label: "Monthly Report", description: "Shareable recap", tintClass: "module-tint-finance", hintKey: "" },
   ];
 
   const renderDelta = (current: number, prev: number, invert = false) => {
