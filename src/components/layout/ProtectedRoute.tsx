@@ -32,7 +32,7 @@ export const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
   return (
     <>
-      {children}
+      <div className="pb-16 lg:pb-0">{children}</div>
       <BottomNav />
     </>
   );
