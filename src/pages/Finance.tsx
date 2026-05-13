@@ -144,6 +144,9 @@ const Finance = () => {
           </Card>
         </div>
 
+        {/* Member contributions (hidden for single-member households) */}
+        <MemberContributions householdId={householdId} month={month} />
+
         {/* Module grid */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           {financeModules.map(({ path, icon: Icon, label, description, tintClass, hintKey }) => {
