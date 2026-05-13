@@ -3,6 +3,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { CalendarIcon } from "lucide-react";
+import { format, parse } from "date-fns";
+import { cn } from "@/lib/utils";
 
 interface SavingsGoalDialogProps {
   open: boolean;
@@ -57,7 +62,27 @@ export const SavingsGoalDialog = ({ open, onOpenChange, onSave }: SavingsGoalDia
           </div>
           <div className="space-y-2">
             <Label>Target Date (optional)</Label>
-            <Input type="date" value={targetDate} onChange={(e) => setTargetDate(e.target.value)} />
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className={cn("w-full justify-start text-left font-normal", !targetDate && "text-muted-foreground")}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {targetDate ? format(parse(targetDate, "yyyy-MM-dd", new Date()), "dd/MM/yyyy") : "Pick a date"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={targetDate ? parse(targetDate, "yyyy-MM-dd", new Date()) : undefined}
+                  onSelect={(d) => setTargetDate(d ? format(d, "yyyy-MM-dd") : "")}
+                  initialFocus
+                  className={cn("p-3 pointer-events-auto")}
+                />
+              </PopoverContent>
+            </Popover>
           </div>
           <Button onClick={handleSave} className="w-full" disabled={submitting || !name || !target}>
             {submitting ? "Creating..." : "Create Goal"}
