@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2, Mic, MicOff, Sparkles } from "lucide-react";
@@ -145,7 +145,7 @@ export const AIPantryImportDialog = ({
           </div>
         </div>
 
-        <div className="flex gap-2 justify-end">
+        <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isProcessing}>
             Cancel
           </Button>
@@ -153,7 +153,7 @@ export const AIPantryImportDialog = ({
             {isProcessing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Extract Items
           </Button>
-        </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
