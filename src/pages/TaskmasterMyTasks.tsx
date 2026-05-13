@@ -18,7 +18,8 @@ import {
   Clock, 
   Folder,
   Star,
-  ListTodo
+  ListTodo,
+  Repeat as RepeatIcon
 } from "lucide-react";
 import { format, differenceInDays } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -192,8 +193,11 @@ const TaskmasterMyTasks = () => {
                                 )}
                               </div>
 
-                              <h3 className="font-semibold text-base mb-1">
-                                {task.title}
+                              <h3 className="font-semibold text-base mb-1 flex items-center gap-1.5">
+                                <span>{task.title}</span>
+                                {(task as any).recurring && (
+                                  <RepeatIcon className="h-3.5 w-3.5 text-muted-foreground" />
+                                )}
                               </h3>
 
                               {task.description && (
