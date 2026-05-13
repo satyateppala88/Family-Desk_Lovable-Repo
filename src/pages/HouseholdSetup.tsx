@@ -113,7 +113,7 @@ const HouseholdSetup = () => {
       console.error("Complete error:", error);
       toast({
         title: "Error",
-        description: error.message || "Failed to create household",
+        description: "Failed to create household. Please try again.",
         variant: "destructive",
       });
     } finally {

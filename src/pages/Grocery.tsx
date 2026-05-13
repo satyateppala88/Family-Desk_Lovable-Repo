@@ -121,7 +121,7 @@ const Grocery = () => {
         setSearchParams(next, { replace: true });
         setActiveTab("shopping");
       } catch (e: any) {
-        toast({ title: "Couldn't create list", description: e?.message || "Try again.", variant: "destructive" });
+        toast({ title: "Couldn't create list", description: "Please try again.", variant: "destructive" });
       }
     })();
     return () => { cancelled = true; };
@@ -223,7 +223,7 @@ const Grocery = () => {
     } catch (err: any) {
       toast({
         title: "Could not save",
-        description: err?.message || "Please try again.",
+        description: "Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -286,7 +286,7 @@ const Grocery = () => {
       console.error("Error generating shopping list:", error);
       toast({
         title: "Something went wrong",
-        description: error.message || "We couldn't generate the shopping list. Please try again.",
+        description: "We couldn't generate the shopping list. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -399,7 +399,7 @@ const Grocery = () => {
     } catch (e: any) {
       toast({
         title: "Couldn't add item",
-        description: e?.message || "Please try again.",
+        description: "Please try again.",
         variant: "destructive",
       });
     } finally {
