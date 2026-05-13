@@ -17,8 +17,11 @@ import { useEnabledProducts, isProductEnabled, ProductName } from "@/hooks/useEn
 import { useHouseholdPreferences } from "@/hooks/useHouseholdPreferences";
 import { MODULE_SETUP_KEYS } from "@/lib/moduleSetup";
 import { OnboardingProgressIndicator } from "@/components/onboarding/OnboardingProgressIndicator";
-import { FamilyPulse } from "@/components/dashboard/FamilyPulse";
 import { FestivalBanner } from "@/components/dashboard/FestivalBanner";
+import { TodaySnapshot } from "@/components/dashboard/TodaySnapshot";
+import { QuickActionsRow } from "@/components/dashboard/QuickActionsRow";
+import { useDashboardSnapshot } from "@/hooks/useDashboardSnapshot";
+import { format } from "date-fns";
 import { PermissionsTutorial } from "@/components/permissions/PermissionsTutorial";
 import { getHasSeenPermissionsTutorial } from "@/lib/launchStorage";
 import {
@@ -64,6 +67,7 @@ const Index = () => {
   const { data: enabledProducts } = useEnabledProducts(householdId);
   const { data: progressData } = useOnboardingProgress(householdId);
   const { data: dashStats } = useDashboardStats(householdId);
+  const { moduleSubtitles } = useDashboardSnapshot(householdId);
   const { preferences } = useHouseholdPreferences(householdId);
   const completedModuleSetups =
     ((preferences as any)?.completed_module_setups as Record<string, boolean> | undefined) ?? {};
@@ -129,17 +133,7 @@ const Index = () => {
   );
 
   const getModuleHint = (product: ProductName): string | null => {
-    if (!dashStats) return null;
-    switch (product) {
-      case "tasks":
-        return dashStats.pendingTasksCount > 0 ? `${dashStats.pendingTasksCount} to do` : "All clear ✓";
-      case "meals":
-        return dashStats.todayMeals?.length > 0 ? `${dashStats.todayMeals.length} planned today` : null;
-      case "grocery":
-        return dashStats.pantryItemsCount > 0 ? `${dashStats.pantryItemsCount} items tracked` : null;
-      default:
-        return null;
-    }
+    return moduleSubtitles?.[product] ?? null;
   };
 
   if (isLoading || !household) {
@@ -206,11 +200,16 @@ const Index = () => {
 
         <div className="mb-5">
           <h1 className="page-heading">{greeting}</h1>
-          <p className="text-sm text-muted-foreground mt-1">{household.name}</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            {household.name} · {format(new Date(), "EEEE, d MMM")}
+          </p>
         </div>
 
-        {/* Family Pulse — lightweight weekly snapshot */}
-        <FamilyPulse stats={dashStats} enabledProducts={enabledProducts} />
+        {/* Today's snapshot — live status cards */}
+        {householdId && <TodaySnapshot householdId={householdId} />}
+
+        {/* Quick actions */}
+        {householdId && <QuickActionsRow householdId={householdId} />}
 
         {/* Module grid */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4 module-grid">
