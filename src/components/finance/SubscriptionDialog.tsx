@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -175,10 +175,12 @@ export const SubscriptionDialog = ({ open, onOpenChange, onSave, initialData }: 
             <Switch checked={isActive} onCheckedChange={setIsActive} />
           </div>
 
+        </div>
+        <DialogFooter>
           <Button onClick={handleSave} className="w-full" disabled={submitting || !name.trim() || !amount}>
             {submitting ? "Saving..." : initialData ? "Save Changes" : "Add Subscription"}
           </Button>
-        </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
