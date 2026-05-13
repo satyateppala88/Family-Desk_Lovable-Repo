@@ -6,6 +6,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogBody,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -66,7 +67,8 @@ export const ProjectDialog = ({ project, open, onOpenChange, onSave }: ProjectDi
         <DialogHeader>
           <DialogTitle>{project ? "Edit Project" : "Create Project"}</DialogTitle>
         </DialogHeader>
-        <div className="grid gap-4 py-4">
+        <DialogBody>
+          <div className="grid gap-4 py-4">
           <div className="grid gap-2">
             <Label>Name</Label>
             <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Project name" />
@@ -105,7 +107,8 @@ export const ProjectDialog = ({ project, open, onOpenChange, onSave }: ProjectDi
             <Label>Target Date</Label>
             <Input type="date" value={targetDate} onChange={(e) => setTargetDate(e.target.value)} />
           </div>
-        </div>
+          </div>
+        </DialogBody>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
           <Button onClick={handleSave} disabled={!name.trim()}>{project ? "Save" : "Create"}</Button>
