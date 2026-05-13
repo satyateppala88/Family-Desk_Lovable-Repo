@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -102,24 +102,27 @@ export const AddCardDialog = ({ open, onOpenChange, onAdd, existingCardIds, isAd
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg max-h-[85vh] flex flex-col">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            {view === "lookup" && (
-              <Button variant="ghost" size="icon" className="h-7 w-7 -ml-1" onClick={() => { setView("catalog"); setLookupResult(null); }}>
-                <ArrowLeft className="w-4 h-4" />
-              </Button>
-            )}
-            <CreditCard className="w-5 h-5" />
-            {view === "catalog" ? "Add Credit Cards" : "Find your card"}
-          </DialogTitle>
-          <DialogDescription>
-            {view === "catalog"
-              ? "Pick cards from the catalog. You can add multiple cards at once."
-              : "Tell us the bank and card name — we'll look up the benefits for you."}
-          </DialogDescription>
-        </DialogHeader>
+    <BottomSheet
+      isOpen={open}
+      onClose={() => onOpenChange(false)}
+      title={
+        <span className="flex items-center gap-2">
+          {view === "lookup" && (
+            <Button variant="ghost" size="icon" className="h-7 w-7 -ml-1" onClick={() => { setView("catalog"); setLookupResult(null); }}>
+              <ArrowLeft className="w-4 h-4" />
+            </Button>
+          )}
+          <CreditCard className="w-5 h-5" />
+          {view === "catalog" ? "Add Credit Cards" : "Find your card"}
+        </span>
+      }
+      description={
+        view === "catalog"
+          ? "Pick cards from the catalog. You can add multiple cards at once."
+          : "Tell us the bank and card name — we'll look up the benefits for you."
+      }
+    >
+      <div className="flex flex-col gap-3">
 
         {view === "catalog" && (
         <>
@@ -311,7 +314,7 @@ export const AddCardDialog = ({ open, onOpenChange, onAdd, existingCardIds, isAd
             )}
           </div>
         )}
-      </DialogContent>
-    </Dialog>
+      </div>
+    </BottomSheet>
   );
 };
