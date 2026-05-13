@@ -27,7 +27,8 @@ export const MODULE_SETUP_KEYS: Record<ProductName, ModuleSetupKey> = {
 };
 
 import type { HouseholdPreferences } from "@/types/database";
-import type { FeatureName } from "@/hooks/useFeatureTour";
+import type { LucideIcon } from "lucide-react";
+import { UtensilsCrossed, ShoppingCart, Wallet, Leaf, Calendar } from "lucide-react";
 
 /**
  * Fields that the per-module setup is responsible for capturing.
@@ -42,39 +43,35 @@ export const MODULE_SETUP_FIELDS: Record<ModuleSetupKey, (keyof HouseholdPrefere
   calendar_setup: ["work_schedule"],
 };
 
-export const MODULE_SETUP_META: Record<ModuleSetupKey, { title: string; description: string }> = {
+export const MODULE_SETUP_META: Record<ModuleSetupKey, { title: string; moduleName: string; description: string; icon: LucideIcon }> = {
   meals_setup: {
-    title: "Quick meal setup",
+    title: "Quick setup for Meals",
+    moduleName: "Meals",
     description: "Tell us about your diet so meal plans actually fit your family.",
+    icon: UtensilsCrossed,
   },
   grocery_setup: {
-    title: "Pantry & shopping setup",
+    title: "Quick setup for Grocery",
+    moduleName: "Grocery",
     description: "A few quick questions so we can size your shopping list correctly.",
+    icon: ShoppingCart,
   },
   finance_setup: {
-    title: "Budget setup",
+    title: "Quick setup for Finance",
+    moduleName: "Finance",
     description: "Set your monthly grocery budget and how strict you'd like us to be.",
+    icon: Wallet,
   },
   habits_setup: {
-    title: "Routine setup",
+    title: "Quick setup for Habits",
+    moduleName: "Habits",
     description: "When do you usually have time for habits?",
+    icon: Leaf,
   },
   calendar_setup: {
-    title: "Calendar setup",
+    title: "Quick setup for Calendar",
+    moduleName: "Calendar",
     description: "How is the household's work schedule set up?",
+    icon: Calendar,
   },
-};
-
-/**
- * Maps a module setup to its corresponding welcome-tour feature name.
- * The setup gate uses this to defer showing the setup dialog until the
- * tour for that feature has been completed/dismissed — preventing the
- * tour modal and setup modal from stacking on top of each other.
- * Modules without a tour (e.g. finance) are simply omitted.
- */
-export const MODULE_TO_FEATURE_TOUR: Partial<Record<ModuleSetupKey, FeatureName>> = {
-  meals_setup: "meals",
-  grocery_setup: "grocery",
-  habits_setup: "habits",
-  calendar_setup: "calendar",
 };
