@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { useHousehold } from "@/hooks/useHousehold";
@@ -23,6 +23,7 @@ export const useModuleSetup = (key: ModuleSetupKey) => {
   const { householdId } = useHousehold();
   const { preferences, updatePreferences, isLoading } = useHouseholdPreferences(householdId);
   const queryClient = useQueryClient();
+  const backfillFiredRef = useRef(false);
 
   const completed = (preferences?.completed_module_setups as CompletedMap | undefined) ?? {};
 
@@ -54,8 +55,13 @@ export const useModuleSetup = (key: ModuleSetupKey) => {
   useEffect(() => {
     if (isLoading) return;
     if (completed?.[key]) return;
+    if (backfillFiredRef.current) return;
     if (hasRequiredData && householdId) {
-      markComplete.mutate();
+      backfillFiredRef.current = true;
+      // Silent backfill — never surface a toast for this background write.
+      markComplete.mutateAsync().catch(() => {
+        backfillFiredRef.current = false;
+      });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoading, completed, hasRequiredData, key, householdId]);
