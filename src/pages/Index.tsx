@@ -71,17 +71,20 @@ const Index = () => {
   const { preferences } = useHouseholdPreferences(householdId);
   const completedModuleSetups =
     ((preferences as any)?.completed_module_setups as Record<string, boolean> | undefined) ?? {};
+  // Banner progress is driven by which enabled modules have been set up,
+  // so the percentage and the hide-when-complete logic agree.
+  const moduleSetupTotal = (enabledProducts ?? []).length;
+  const moduleSetupDone = (enabledProducts ?? []).reduce((n, p) => {
+    const key = MODULE_SETUP_KEYS[p as ProductName];
+    return key && completedModuleSetups[key] ? n + 1 : n;
+  }, 0);
+  const moduleSetupPct =
+    moduleSetupTotal > 0
+      ? Math.round((moduleSetupDone / moduleSetupTotal) * 100)
+      : 0;
   const allModuleSetupsDone =
-    !!enabledProducts &&
-    enabledProducts.length > 0 &&
-    enabledProducts.every((p) => {
-      const key = MODULE_SETUP_KEYS[p as ProductName];
-      return key ? !!completedModuleSetups[key] : true;
-    });
-  const showSetupBanner =
-    !onboardingCompleted &&
-    (progressData?.percentage ?? 0) < 100 &&
-    !allModuleSetupsDone;
+    moduleSetupTotal > 0 && moduleSetupDone === moduleSetupTotal;
+  const showSetupBanner = !onboardingCompleted && !allModuleSetupsDone;
 
   const { shouldShowTour, tourChecked, markTourComplete } = useFeatureTour("dashboard");
   const [runOnboarding, setRunOnboarding] = useState(false);
@@ -176,14 +179,14 @@ const Index = () => {
             <CardContent className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4">
               <div className="flex items-center gap-4 flex-1 w-full sm:w-auto">
                 <OnboardingProgressIndicator
-                  percentage={progressData.percentage}
+                  percentage={moduleSetupPct}
                   size="small"
                   showLabel={false}
                 />
                 <div className="flex-1">
                   <h3 className="font-medium text-sm">Let's finish setting up</h3>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    {progressData.percentage}% done — just a few more steps
+                    {moduleSetupPct}% done — {moduleSetupDone} of {moduleSetupTotal} modules ready
                   </p>
                 </div>
               </div>
