@@ -1,79 +1,80 @@
-## Root cause
+## Findings
 
-The shared `DialogContent` (`src/components/ui/dialog.tsx`) sets no max-height and no scroll. Long forms (Taskmaster create-task, Add Pantry Item, all Settings dialogs, etc.) overflow the viewport and the footer disappears below the fold. The `SheetContent` and `DrawerContent` primitives have the same issue when their consumers render long content with a footer at the end.
+The architecture already exists:
+- `useFeatureTour` (per-user, `profiles.completed_tours`) drives the welcome tour.
+- `useModuleSetup` (per-household, `household_preferences.completed_module_setups jsonb DEFAULT '{}'`) drives whether a module setup gate shows.
 
-Rather than patch every consumer one by one (30+ files), the right fix is at the primitive layer plus a thin convention for the body wrapper.
+The DB column already exists. The bugs are in the wiring.
 
-## Fix — primitives (3 files)
+### Problem 1 — setup modal reappears every visit
 
-### 1. `src/components/ui/dialog.tsx`
-- `DialogContent`: add `flex max-h-[90dvh] flex-col` (keep existing `gap-4`, `p-6`, transforms). This makes the content a vertical flex column constrained to 90% of viewport height.
-- `DialogHeader`: add `flex-shrink-0`.
-- `DialogFooter`: add `mt-auto flex-shrink-0 sticky bottom-0 z-10 bg-background -mx-6 -mb-6 px-6 py-4 border-t border-border` so it pins to the bottom of `DialogContent` while content scrolls behind it. Keep existing `flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2`.
+In `src/components/onboarding/ModuleSetupGate.tsx` (the standalone `ModuleSetupDialog`), the inner `onSkip` handler reads:
 
-### 2. `src/components/ui/sheet.tsx`
-- `SheetContent` (side="right"/"left"): add `flex flex-col` and ensure `h-full`. Already full-height, just needs flex column.
-- `SheetHeader`: add `flex-shrink-0`.
-- `SheetFooter`: add `mt-auto flex-shrink-0 sticky bottom-0 z-10 bg-background border-t border-border px-6 py-4` (mirroring dialog).
-
-### 3. `src/components/ui/drawer.tsx`
-- `DrawerContent`: add `max-h-[90dvh] flex flex-col`.
-- `DrawerHeader`/`DrawerFooter`: same `flex-shrink-0` + sticky/border treatment on footer.
-
-## Fix — body scroll wrapper (per-dialog, mechanical)
-
-For the primitive fix to actually scroll, the body that sits between `<DialogHeader>` and `<DialogFooter>` needs `flex-1 overflow-y-auto -mx-6 px-6` (negative margin keeps fields edge-to-edge, padding keeps inner spacing). In all the listed dialogs the body is already a single `<div className="grid gap-4 py-4">` (or similar) — we just append the scroll classes. No structural changes.
-
-Files to update (body wrapper className only — no logic changes):
-
-Taskmaster + grocery (called out by user):
-- `src/components/taskmaster/TaskmasterTaskDialog.tsx`
-- `src/components/taskmaster/ProjectDialog.tsx`
-- `src/components/taskmaster/CalendarTaskScanDialog.tsx`
-- `src/components/grocery/AddPantryItemDialog.tsx`
-- `src/components/grocery/CreateShoppingListDialog.tsx`
-- `src/components/grocery/ScanBillDialog.tsx`
-- `src/components/grocery/BillReviewDialog.tsx`
-- `src/components/grocery/AIPantryImportDialog.tsx`
-- `src/components/grocery/QuickAddChecklist.tsx` (if it uses Dialog)
-
-Other form Sheets/Dialogs in the app:
-- `src/components/tasks/TaskDialog.tsx`
-- `src/components/meals/RecipeRatingDialog.tsx`
-- `src/components/meals/MarkAsCookedDialog.tsx`
-- `src/components/finance/TransactionDialog.tsx`
-- `src/components/finance/BudgetDialog.tsx`
-- `src/components/finance/SubscriptionDialog.tsx`
-- `src/components/finance/AddCardDialog.tsx`
-- `src/components/finance/SavingsGoalDialog.tsx`
-- `src/components/finance/CategorySelect.tsx`
-- `src/components/habits/HabitCreateDialog.tsx`
-- `src/components/household/InviteMemberDialog.tsx`
-- `src/components/calendar/CalendarEventDialog.tsx`
-- `src/components/calendar/ConnectCalendarDialog.tsx`
-- `src/components/permissions/PermissionPrimerDialog.tsx`
-- `src/components/onboarding/ModuleSetupGate.tsx`
-- `src/components/settings/Edit*PreferencesDialog.tsx` (9 files)
-- `src/components/taskmaster/TaskCompletionSheet.tsx` (Sheet)
-- `src/components/meals/RecipeBrowserSheet.tsx` (Sheet)
-- `src/components/avatar/AvatarSourceSheet.tsx` (Sheet)
-
-For each, the change is one className edit on the body wrapper between header and footer:
-```diff
-- <div className="grid gap-4 py-4">
-+ <div className="flex-1 overflow-y-auto -mx-6 px-6 grid gap-4 py-4">
+```ts
+if (!dismissible) await markComplete();
+onSkip?.();
 ```
 
-## What is NOT touched
-- `ConfirmDialog`, `AlertDialog`, `RecipeDetailDialog` (no form footer / already small or already scrollable) — only review for visual regressions; no code changes unless they break.
-- `AIChatWidget` Sheet (custom layout, already manages its own scroll).
-- `CalendarSidebar` / `CalendarHeader` Sheets (navigation drawers, not forms).
-- Sidebar primitive (`src/components/ui/sidebar.tsx`) — unrelated nav.
-- No changes to data fetching, validation, props, or component APIs.
+i.e. when `dismissible=true` (which the per-page `ModuleSetupGate` uses), clicking **Skip for now** intentionally does NOT persist completion — only the surrounding gate's `onOpenChange` does. But the footer's Skip button calls `skipRef.current?.()` which goes through that inner handler, then the parent gate's `onSkip` callback just runs `setOpen(false)`. Since `setOpen` is a controlled-prop change, Radix doesn't fire `onOpenChange`, so the gate's `markComplete()` (lines 311–319) never runs. Net effect: clicking Skip closes the dialog visually but leaves `completed_module_setups[key]` unset → re-prompts forever.
+
+**Fix:** in `ModuleSetupDialog.onSkip`, always `await markComplete()` (drop the `if (!dismissible)` guard). Save & continue already calls `markComplete()` directly, so it works. The X / Esc / outside-click paths already mark complete via `ModuleSetupGate.onOpenChange`.
+
+### Problem 2 — tour and setup modal stack on first visit
+
+Pages like `Grocery.tsx`, `Meals.tsx`, `Tasks.tsx`, `Calendar.tsx`, `Habits.tsx`, `Index.tsx` render an `<OnboardingTour run={runOnboarding} ... />` *and* are wrapped in `<ModuleSetupGate module="…">`. Both fire on first visit — gate doesn't know the tour is showing.
+
+**Fix:** add a `paused?: boolean` prop to `ModuleSetupGate`. When `paused=true`, render `{children}` only — don't render the dialog. Each page passes `paused={shouldShowTour && tourChecked}` (i.e. tour is queued to show or actively running). Once the user finishes / dismisses the tour, `markTourComplete()` flips `shouldShowTour` to false, the gate un-pauses, and the setup dialog appears.
+
+To avoid editing every page's wrapper plumbing twice, expose the "tour active" signal via a tiny context the wrapper can read, OR just lift the wrapper inside the page component (where `shouldShowTour` is already in scope) and pass the prop directly. The lighter change: keep the existing `<PageWithGate>` wrappers but pass `paused` from outside via React Query — `ModuleSetupGate` reads `useFeatureTour(featureName)` for the matching feature.
+
+Concrete approach (minimal intrusion):
+- Map each `ModuleSetupKey` → `FeatureName` (e.g. `grocery_setup` → `grocery`, `meals_setup` → `meals`, `tasks_setup` → `tasks`, `calendar_setup` → `calendar`, `habits_setup` → `habits`, `finance_setup` → no tour today; treat as never paused).
+- Inside `ModuleSetupGate`, call `useFeatureTour(matchingFeatureName)`. If `shouldShowTour || !tourChecked`, render only `{children}`.
+
+This keeps page-level code untouched and handles the dashboard/Finance pages too.
+
+### Problem 3 — X button advances queue instead of dismissing
+
+In `src/components/onboarding/ModuleSetupQueue.tsx`:
+```ts
+onOpenChange={(o) => { if (!o) advance(); }}
+```
+This is the X / Esc / outside-click path. It calls `advance()` which moves to the next module in the queue. The user expects X to dismiss the entire flow.
+
+**Fix:** when the user closes the dialog (X / Esc / outside), end the queue (`onAllDone()`) AND mark the current module complete so it doesn't re-appear next visit:
+```ts
+onOpenChange={(o) => {
+  if (o) return;
+  // Closing via X: mark current complete, end the queue.
+  // markComplete is owned by the inner ModuleSetupDialog via its own
+  // onOpenChange contract — we just need to stop the queue.
+  onAllDone();
+}}
+```
+The inner `ModuleSetupDialog.onSkip` change from Problem 1 ensures the current module also gets persisted. (The inner dialog's `onOpenChange` from X already handles its own `markComplete` because it sits inside `ModuleSetupGate`-style controllers — but in the queue the dialog is rendered without a gate, so we additionally call `useModuleSetup(current).markComplete()` from inside `ModuleSetupQueue` before `onAllDone()`.)
+
+## Files to change
+
+1. **`src/components/onboarding/ModuleSetupGate.tsx`**
+   - In `ModuleSetupDialog`'s inner `onSkip` (around line 658), drop the `if (!dismissible)` and always `await markComplete()` before calling `onSkip?.()`. Also call `clearModuleSetupDraft(householdId, module)` so the saved partial answers don't linger.
+   - In `ModuleSetupGate`, add `useFeatureTour` lookup using a `MODULE_TO_FEATURE_TOUR` map (defined locally or in `lib/moduleSetup.ts`). If the tour is unfinished, return `<>{children}</>` without the dialog.
+
+2. **`src/components/onboarding/ModuleSetupQueue.tsx`**
+   - Track current module's `markComplete` via `useModuleSetup(current)`.
+   - Change `onOpenChange` to: if closing, `await markComplete().catch(noop); onAllDone();`.
+   - Keep `onSkip` as-is (advances within the queue) so the "Skip for now" footer button still walks through modules one-by-one — that's the intended behavior; only the X dismisses the whole flow.
+
+3. **`src/lib/moduleSetup.ts`** (small addition)
+   - Export `MODULE_TO_FEATURE_TOUR: Partial<Record<ModuleSetupKey, FeatureName>>` mapping `meals_setup→meals`, `grocery_setup→grocery`, `tasks_setup→tasks`, `habits_setup→habits`, `calendar_setup→calendar`. `finance_setup` has no tour today → omit (treated as not paused).
+
+No page files (`Grocery.tsx`, `Meals.tsx`, etc.) need to change — the tour-pausing logic lives inside the gate.
+No DB migration is needed — `completed_module_setups` and `completed_tours` already exist.
 
 ## Verification
-1. Open Taskmaster → type task → "Complete task details" — footer pinned, content scrolls.
-2. Open Grocery → Add Pantry Item — same.
-3. Spot-check a tall settings dialog (e.g. Edit Dietary Preferences) at mobile viewport (375×667) — footer pinned.
-4. Spot-check a short dialog (Mark as Cooked) — looks identical to before (no oversized whitespace, since `mt-auto` only pushes when content is short, and `max-h-[90dvh]` is a ceiling not a floor).
-5. Smoke test desktop (1280) and mobile (375) viewports.
+
+Manual on the test account:
+1. Reset a tour/setup flag for the test household and reload Grocery → confirm only the welcome tour shows; finishing it then reveals the setup dialog (no stack).
+2. Click **Skip for now** → reload Grocery → confirm the setup dialog does NOT reappear.
+3. Click **Save & continue** on a different module → reload → confirm it does NOT reappear.
+4. From Settings → enable two new products to trigger `ModuleSetupQueue`; click X on the first dialog → confirm the entire queue closes (no second module dialog appears) and neither module re-prompts on next page visit.
+5. Re-run the existing Vitest suite: `bunx vitest run` to make sure `ModuleSetupGate.test.tsx` still passes (or update fixtures if the new prop changes default behavior).
