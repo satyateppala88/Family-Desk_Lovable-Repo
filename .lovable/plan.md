@@ -1,139 +1,174 @@
-## E-07 — Habit Challenges, Streak Freeze & Stacking Suggestions
+## E-08 — Manual Events upgrade, Indian Festival Layer, Festival→Tasks
 
-### Change 1 — Household Habit Challenges
+### Current state vs. spec
 
-**New tab.** Habits page tabs become **Me / Household / Challenges**. A `useChallenges` hook drives the new tab.
+`manual_calendar_events` already exists and the "Add Event" button already opens `CreateEventDialog` (no Google connection required) — Change 1 is partially done. The form is missing **Repeat** and **Who** controls; events table is missing **repeat_type / member_ids / is_system_generated**. We also need a system events layer and a dashboard banner.
 
-**Catalog.** Pre-built challenges live in a static client file `src/data/challengeCatalog.ts`:
+We will reuse `manual_calendar_events` rather than introduce a new `calendar_events` table (less churn, fetch path + RLS already wired). System festivals live in a separate `system_calendar_events` table because they're shared across every household and must be read-only.
+
+---
+
+### Change 1 — Manual event form upgrade
+
+**Migration** (additive only, no data destruction):
+
+```sql
+ALTER TABLE public.manual_calendar_events
+  ADD COLUMN repeat_type text NOT NULL DEFAULT 'none',
+  ADD COLUMN member_ids uuid[] NOT NULL DEFAULT '{}',
+  ADD COLUMN is_system_generated boolean NOT NULL DEFAULT false;
+
+-- Lock down system rows (defence in depth; users never insert these into this table,
+-- but enforce no-edit/no-delete on any future system rows).
+CREATE POLICY "Block updates to system rows" ON public.manual_calendar_events
+  AS RESTRICTIVE FOR UPDATE TO authenticated
+  USING (is_system_generated = false) WITH CHECK (is_system_generated = false);
+CREATE POLICY "Block deletes of system rows" ON public.manual_calendar_events
+  AS RESTRICTIVE FOR DELETE TO authenticated
+  USING (is_system_generated = false);
+```
+
+**`CreateEventDialog`** gains:
+- `RepeatSelect` (None / Daily / Weekly / Monthly / Yearly).
+- `Who` checklist using `useHouseholdMembers` — defaults to all members checked.
+- Description label changed to "Notes" to match spec.
+
+Form submits via the existing `useCreateManualEvent` hook, now extended to forward `repeat_type` and `member_ids`. The "Add Event" entry point in `CalendarHeader` and the empty-state CTA both already open this dialog without forcing Google connect — kept as-is.
+
+**Recurrence expansion (server-side).** `supabase/functions/fetch-calendar-events/index.ts` already reads `manual_calendar_events` for the requested window. Update its manual-events block to expand `repeat_type !== 'none'` rows into occurrences inside `[startDate, endDate]`:
+- daily — every day from `start_at` until end of window
+- weekly — same day-of-week
+- monthly — same day-of-month (clamped to month length)
+- yearly — same month/day
+
+Each emitted occurrence reuses the parent id with a date-suffixed key (`manual-<uuid>-<yyyymmdd>`) so the grid de-duplicates correctly. `member_ids` is forwarded through the response so the day cell can show a small avatar tag (out of scope for this change — kept for future).
+
+### Change 2 — Indian Festival & Holiday Layer
+
+**New table** (no household_id — shared, read-only):
+
+```sql
+CREATE TABLE public.system_calendar_events (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  name text NOT NULL,
+  event_date date NOT NULL,
+  kind text NOT NULL CHECK (kind IN ('festival','national_holiday')),
+  is_recurring_annual boolean NOT NULL DEFAULT false,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX idx_system_calendar_events_date ON public.system_calendar_events(event_date);
+
+ALTER TABLE public.system_calendar_events ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Anyone signed in can read" ON public.system_calendar_events
+  FOR SELECT TO authenticated USING (true);
+-- No insert/update/delete policies → blocked for users; only service role.
+```
+
+**Seed data** (in the migration via `INSERT … ON CONFLICT DO NOTHING`, with a unique index on `(name, event_date)`):
+- Recurring annual fixed-date entries seeded for **2026 and 2027**:
+  - National holidays (`kind='national_holiday'`): Republic Day 01-26, Ambedkar Jayanti 04-14, Independence Day 08-15, Gandhi Jayanti 10-02, Christmas 12-25.
+- Variable festivals seeded only for the year(s) provided in the spec (`kind='festival'`, `is_recurring_annual=false`):
+  - 2026: Holi 03-14, Eid ul-Fitr 03-31, Good Friday 04-03, Eid ul-Adha 06-07, Janmashtami 08-15, Dussehra 10-02, Navratri starts 10-21, Diwali 10-20.
+
+**Edge function update.** Inside `fetch-calendar-events`, add a third pull alongside Google + manual:
 
 ```ts
-{ id: "walk-together", emoji: "🚶", name: "Walk Together",
-  description: "Every adult walks 30 minutes daily",
-  durationDays: 7, scope: "all_adults" }
-// + the other 6 from the prompt, with 7d or 21d durations
+const { data: sys } = await supabase
+  .from("system_calendar_events")
+  .select("*")
+  .gte("event_date", startDay)
+  .lt("event_date", endDay);
+for (const s of sys ?? []) {
+  allEvents.push({
+    id: `system-${s.id}`,
+    title: s.name,
+    start: `${s.event_date}T00:00:00Z`,
+    end:   `${s.event_date}T23:59:59Z`,
+    allDay: true,
+    color: s.kind === 'festival' ? '#F97316' /* orange */ : '#3B82F6' /* blue */,
+    calendarName: s.kind === 'festival' ? 'Festivals' : 'National holidays',
+    calendarOwner: 'system',
+    calendarId: 'system',
+  });
+}
 ```
 
-**Schema (one migration):**
+**Calendar grid styling.** `CalendarGrid` already paints events. We will:
+- Render system events as a **small coloured dot row beneath the day number** (orange/blue depending on `calendarId === 'system'` + color), instead of the regular event chip.
+- Tapping a dot opens a tiny popover/tooltip with the festival name (no edit dialog).
+- Other clicks on system events are intercepted in `Calendar.tsx`'s `onEventClick` — if `event.calendarId === 'system'`, ignore (no `CalendarEventDialog` open).
 
-```text
-household_challenges
-  id, household_id, template_id text, name text, emoji text,
-  duration_days int, start_date date, end_date date,
-  status text default 'active'  -- active | completed | abandoned
-  started_by uuid, created_at
+`CalendarLegend` gets two extra rows: orange "Festivals", blue "National holidays".
 
-challenge_participants
-  id, challenge_id uuid, user_id uuid, joined_at, UNIQUE(challenge_id,user_id)
+### Change 3 — Festival → Task suggestions
 
-challenge_logs
-  id, challenge_id, user_id, log_date date, completed bool default true,
-  created_at, UNIQUE(challenge_id,user_id,log_date)
-```
+**New hook** `src/hooks/useUpcomingFestival.ts`:
+- Queries `system_calendar_events` for `kind = 'festival'` AND `event_date BETWEEN today AND today+14d`, returns the soonest one.
 
-RLS: members of the challenge's `household_id` can SELECT all three; users INSERT their own `challenge_logs` and `challenge_participants` rows; admins can `UPDATE` `household_challenges.status` (abandon/complete). All policies via existing `is_household_member()` SECURITY DEFINER helper.
-
-Why a separate `challenge_logs` table instead of reusing `habit_logs`: keeps streak math, scoring, and the existing "Me" habit list untouched; challenges can run in parallel with personal habits without polluting them.
-
-**Components:**
-
-- `src/components/habits/ChallengePickerSheet.tsx` — bottom sheet with the 7 templates as cards, each with a "Start (7 days)" / "Start (21 days)" button (uses `durationDays` from catalog). On confirm, inserts a `household_challenges` row and a `challenge_participants` row for the creator.
-- `src/components/habits/ChallengeCard.tsx` — used in both the Challenges tab (full size) and pinned on Me tab (compact variant via `compact` prop):
-  - Header: emoji + name + `Day X of Y`.
-  - Progress ring (existing `Progress` primitive in a circular wrapper) showing today's `participants_completed / participants_total`.
-  - Member-by-member row of avatars with a ✓ or ○ badge for today.
-  - Days remaining counter pill.
-  - "Mark today done" button (inserts `challenge_logs` for current user, today). If already done shows a check.
-  - "Invite family to join" button — calls a new edge function `notify-challenge-invite` that uses the existing `dispatch_push` infra to ping non-participants.
-- `src/hooks/useChallenges.ts` — fetches active challenges, today's logs, participants; exposes `joinChallenge`, `markDone`, `startChallenge`, `inviteMembers`.
-
-**Pinned in Me tab.** When `useChallenges().userActiveChallenges.length > 0`, render `<ChallengeCard compact />` at the very top of the Me tab habit list (above the Progress summary card), visually separated by a subtle divider and a "Family Challenges" label.
-
-**Edge function** `supabase/functions/notify-challenge-invite/index.ts`:
-- JWT auth + Zod (`challengeId`).
-- Verifies caller is a household member of the challenge's household.
-- Looks up household members not in `challenge_participants`, calls existing `dispatch_push` SQL helper or directly invokes `send-push` for each.
-
-### Change 2 — Streak Recovery (Forgiveness)
-
-**Schema (same migration):**
-
-- `profiles`: add `streak_freezes_remaining int default 1`, `streak_freeze_period text` (yyyy-MM, the period the count belongs to), `last_freeze_used_at timestamptz`.
-- `habit_logs`: add `is_freeze boolean default false`.
-
-**Replenishment.** Done lazily client-side: when reading the profile, if `streak_freeze_period !== current yyyy-MM`, the `useStreakFreeze` hook UPDATEs `streak_freezes_remaining=1, streak_freeze_period=<current month>`. (No cron needed — covers anyone who logs in that month; profile RLS already allows self-update.)
-
-**"Missed yesterday" detection.** New hook `useMissedHabitsYesterday` runs after habits load:
-- Yesterday = `subDays(today, 1)`.
-- Pulls user's `habit_streaks` where `current_streak > 0` AND (`last_completed_date IS NULL OR last_completed_date < yesterday`) AND the habit was scheduled yesterday (using existing `frequency_type`/`frequency_days`).
-- If at least one match, render a `StreakRecoveryBanner` at the top of the Me tab listing the affected habit with the largest `current_streak`.
-
-**Banner component** `src/components/habits/StreakRecoveryBanner.tsx`:
-- Copy: "You missed yesterday — use your streak freeze to protect your X-day streak?" plus context line listing the habit name(s).
-- "Use Freeze" button: disabled if `streak_freezes_remaining === 0` (shows "0 freezes left this month — try again next month").
-- "Let it reset" dismisses for the day (localStorage key `streak-banner-dismissed-<userId>-<yyyy-MM-dd>`).
-
-**Use Freeze action** in `useStreakFreeze.applyFreeze(habitIds[])`:
-1. For each affected habit: insert a synthetic `habit_logs` row `{habit_id, user_id, log_date: yesterday, completed: true, is_freeze: true, notes: 'Streak freeze used'}` (UNIQUE handles re-runs).
-2. Update `habit_streaks.last_completed_date = yesterday` for each. Streak count is preserved as-is (since `current_streak` was the count *up to the prior gap*, and tomorrow's normal log will increment it).
-3. Decrement `profiles.streak_freezes_remaining`, set `last_freeze_used_at = now()`.
-4. Toast: "❄️ Streak protected".
-
-**Snowflake render.** `HabitCard` already shows streak history (or will). We surface freeze days by reading `is_freeze` from `habit_logs` and showing a ❄️ chip in any per-day strip. (If no per-day strip exists today, scope-limit to a small "❄️ used yesterday" annotation under the streak count.)
-
-**Freeze badge.** Shown next to the page heading: `❄️ {n} freeze{s} left this month` (always rendered; muted style when 0).
-
-### Change 3 — Habit Stacking Suggestions
-
-Pure client-side, no schema/edge changes.
-
-**Suggestions map** `src/data/habitStackSuggestions.ts`:
+**Pre-built checklists** in `src/data/festivalChecklists.ts`:
 
 ```ts
-export const HABIT_STACK_SUGGESTIONS: { match: RegExp; suggestions: string[] }[] = [
-  { match: /walk|run|jog/i, suggestions: ["5 min stretching", "8 glasses water"] },
-  { match: /read/i,           suggestions: ["No screens 30 min before bed", "5 min stretching"] },
-  { match: /meditat|mindful/i,suggestions: ["Gratitude journal", "Deep breathing"] },
-  { match: /water|hydrate/i,  suggestions: ["Morning walk", "5 min stretching"] },
-  { match: /journal|gratitude/i, suggestions: ["Meditate", "Read 10 pages"] },
-  // fallback returns ["8 glasses water", "5 min stretching"]
-];
+export const FESTIVAL_CHECKLISTS: Record<string, string[]> = {
+  Diwali: [
+    "Deep clean the house",
+    "Buy diyas and candles",
+    "Order sweets and dry fruits",
+    "Book fireworks",
+    "Send Diwali wishes",
+    "Prepare rangoli materials",
+  ],
+  Holi: [
+    "Buy colours",
+    "Arrange water balloons",
+    "Plan menu for Holi party",
+  ],
+  "Eid ul-Fitr": [
+    "Plan sevai recipe",
+    "Buy new clothes",
+    "Arrange family gathering",
+  ],
+  "Eid ul-Adha": [
+    "Plan biryani menu",
+    "Arrange family gathering",
+    "Buy new clothes",
+  ],
+  // Default fallback used when a matching key is missing
+};
 ```
 
-**Trigger.** `Habits.tsx` already calls `createHabit.mutate(data)`. We:
-1. Capture the just-created name in component state on mutate `onSuccess`.
-2. Render `<HabitStackSuggestion name={lastCreated} onPick={...} onDismiss={...} />` in a small Card directly below the create button.
-3. Suggestion picks calls `setPrefillName(suggestion)` and reopens `HabitCreateDialog` with the form pre-filled.
-4. State clears once dismissed or another habit is created. Only ever shown once per creation (a `dismissed` set of names).
+A `matchChecklist(name)` helper does a case-insensitive `includes` lookup so "Eid ul-Fitr" / "Diwali" / "Holi" map even with extra qualifiers.
 
-**Dialog change.** `HabitCreateDialog` accepts an optional `defaultName` prop and, when provided, sets that on the form (and opens automatically via a `controlledOpen` prop). All other fields keep their existing defaults — the user adjusts assignment/frequency before saving.
+**Banner component** `src/components/dashboard/FestivalBanner.tsx`:
+- Pulls `useUpcomingFestival()`. If a match exists and the user has not dismissed it (localStorage key `festival-banner-dismissed-<festivalId>`), show:
+  - Copy: `"{Name} is in {N} day{s} — want to add a preparation checklist to Tasks?"`
+  - Buttons: "Add checklist" (primary), "Dismiss" (ghost).
+- "Add checklist" iterates `FESTIVAL_CHECKLISTS[match]` and inserts each as a `tasks` row via `supabase.from("tasks").insert({ household_id, created_by: user.id, title, status: 'pending', due_date: festivalDateMinus1 })`. Then dismisses the banner and toasts `"Added N tasks. Open Taskmaster ▸"`.
+
+**Mount.** Render `<FestivalBanner />` in `src/pages/Index.tsx` directly above the Family Pulse section (between `PendingInvitationBanner` and the heading), because that area already hosts other awareness banners.
 
 ### Files
 
 **Migration (one):**
-- New tables `household_challenges`, `challenge_participants`, `challenge_logs` + RLS.
-- Add `streak_freezes_remaining`, `streak_freeze_period`, `last_freeze_used_at` to `profiles`.
-- Add `is_freeze boolean default false` to `habit_logs`.
+- `manual_calendar_events`: add `repeat_type`, `member_ids`, `is_system_generated` + restrictive policies.
+- New `system_calendar_events` + RLS + seed for 2026/2027 (insert ... on conflict do nothing; unique on `(name,event_date)`).
 
 **New:**
-- `src/data/challengeCatalog.ts`
-- `src/data/habitStackSuggestions.ts`
-- `src/hooks/useChallenges.ts`
-- `src/hooks/useStreakFreeze.ts`
-- `src/hooks/useMissedHabitsYesterday.ts`
-- `src/components/habits/ChallengePickerSheet.tsx`
-- `src/components/habits/ChallengeCard.tsx`
-- `src/components/habits/StreakRecoveryBanner.tsx`
-- `src/components/habits/HabitStackSuggestion.tsx`
-- `supabase/functions/notify-challenge-invite/index.ts`
+- `src/data/festivalChecklists.ts`
+- `src/hooks/useUpcomingFestival.ts`
+- `src/components/dashboard/FestivalBanner.tsx`
 
 **Edited:**
-- `src/pages/Habits.tsx` — three-tab bar; pinned challenge on Me; streak banner; freeze badge in heading row; stacking suggestion render.
-- `src/components/habits/HabitCreateDialog.tsx` — accept `defaultName` + `controlledOpen` props.
-- `src/types/habits.ts` — add Challenge / ChallengeLog types.
+- `src/components/calendar/CreateEventDialog.tsx` — add Repeat select + Who checklist; relabel Description→Notes.
+- `src/hooks/useManualCalendarEvents.ts` — accept and persist `repeat_type` + `member_ids`.
+- `supabase/functions/fetch-calendar-events/index.ts` — recurrence expansion + system events merge.
+- `src/components/calendar/CalendarGrid.tsx` — dot rendering for `calendarId === 'system'` events with tooltip; suppress event-click routing through to dialog.
+- `src/components/calendar/CalendarLegend.tsx` — Festivals + National holidays rows.
+- `src/pages/Calendar.tsx` — guard `onEventClick` against system events.
+- `src/pages/Index.tsx` — mount `<FestivalBanner />`.
 
 ### Out of scope
 
-- Custom user-defined challenges (catalog only, per spec).
-- Multi-freeze plans (strictly 1/month per spec).
-- Retroactive freeze for days >1 day in the past (only "yesterday").
-- Challenge analytics dashboards (kept lightweight; just live progress).
+- Per-member event filtering UI on the calendar grid (just persisting `member_ids` for now).
+- Re-seeding future years automatically (admins re-run a small script when a new year's variable dates are known).
+- Editing system events into household-local copies.
+- WhatsApp push for upcoming festival (banner only).

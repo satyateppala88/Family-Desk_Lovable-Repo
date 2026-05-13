@@ -1675,7 +1675,10 @@ export type Database = {
           end_at: string
           household_id: string
           id: string
+          is_system_generated: boolean
           location: string | null
+          member_ids: string[]
+          repeat_type: string
           start_at: string
           title: string
           updated_at: string
@@ -1688,7 +1691,10 @@ export type Database = {
           end_at: string
           household_id: string
           id?: string
+          is_system_generated?: boolean
           location?: string | null
+          member_ids?: string[]
+          repeat_type?: string
           start_at: string
           title: string
           updated_at?: string
@@ -1701,7 +1707,10 @@ export type Database = {
           end_at?: string
           household_id?: string
           id?: string
+          is_system_generated?: boolean
           location?: string | null
+          member_ids?: string[]
+          repeat_type?: string
           start_at?: string
           title?: string
           updated_at?: string
@@ -2442,6 +2451,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      system_calendar_events: {
+        Row: {
+          created_at: string
+          event_date: string
+          id: string
+          is_recurring_annual: boolean
+          kind: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          event_date: string
+          id?: string
+          is_recurring_annual?: boolean
+          kind: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          event_date?: string
+          id?: string
+          is_recurring_annual?: boolean
+          kind?: string
+          name?: string
+        }
+        Relationships: []
       }
       task_assignees: {
         Row: {
