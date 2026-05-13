@@ -22,7 +22,8 @@ import {
   Play,
   MoreHorizontal,
   Edit,
-  Trash2
+  Trash2,
+  Repeat as RepeatIcon
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -237,10 +238,13 @@ const TaskmasterProjectDetail = () => {
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1">
                         <h3 className={cn(
-                          "font-medium mb-1",
+                          "font-medium mb-1 flex items-center gap-1.5",
                           isDone && "line-through text-muted-foreground"
                         )}>
-                          {task.title}
+                          <span>{task.title}</span>
+                          {task.recurring && (
+                            <RepeatIcon className="h-3.5 w-3.5 text-muted-foreground" />
+                          )}
                         </h3>
                         <div className="flex flex-wrap items-center gap-2">
                           <Badge className={cn("text-xs", priority.color)}>
