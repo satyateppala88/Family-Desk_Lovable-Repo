@@ -1,49 +1,63 @@
-# Verification: Security hardening migration
+# Fix cut-off action buttons in all sheets, drawers, and dialogs
 
-I checked the live database against every item in your SQL block. **Everything in the script is already applied.** Running it would either be a no-op or, in the case of `push_subscriptions`, actively wrong (it would try to recreate the table with a different shape).
+## Root cause
 
-## Item-by-item audit
+Two separate problems:
 
-### 1. `finance_transactions` RLS — already secured
-- RLS: **enabled**
-- Policies present (semantically equivalent to your script, using `EXISTS` instead of `IN`):
-  - `Members can view finance transactions` (SELECT)
-  - `Members can create finance transactions` (INSERT)
-  - `Members can update finance transactions` (UPDATE)
-  - `Members can delete finance transactions` (DELETE)
-- All scoped to `household_members` for `auth.uid()`. **Data is not public.**
+1. **Primitive components** — `DialogFooter`, `SheetFooter`, `DrawerFooter` are already `sticky bottom-0` but lack `padding-bottom: max(16px, env(safe-area-inset-bottom))`. On mobile devices with a home indicator (iOS) or in PWAs/Capacitor, the bottom row gets clipped behind the safe-area inset. `DialogContent` also uses `grid` + `overflow-y-auto`, which makes sticky positioning brittle inside a scrollable grid.
+2. **17 dialogs use an ad-hoc `<div className="flex gap-2 justify-end">`** for their button row instead of `<DialogFooter>`, so they get no sticky behavior at all and their buttons scroll off-screen.
 
-### 2. `household_members` RLS — already secured
-- RLS: **enabled**
-- `Members can view household members` uses the `is_household_member(auth.uid(), household_id)` SECURITY DEFINER function. This is **better** than your proposed self-referential subquery, which would risk infinite recursion on RLS evaluation. Keep the existing policy.
+## Fix — Part A: harden the three primitives
 
-### 3. `households` RLS — already secured
-- RLS: **enabled**
-- `Members can view their households` already restricts SELECT to households the user belongs to. Admin UPDATE/DELETE/INSERT policies also present.
+### `src/components/ui/dialog.tsx`
+- `DialogContent`: switch from `grid` to `flex flex-col`. Replace `overflow-y-auto` with `overflow-hidden` on the outer container so the footer can be sticky without competing scrollers.
+- Wrap `{children}` in an inner `<div className="flex-1 overflow-y-auto -mx-6 px-6">` so the body scrolls and the footer remains pinned.
+- Actually simpler and less invasive: keep `grid` + `overflow-y-auto` on `DialogContent`, but extend `DialogFooter` with `pb-[max(1rem,env(safe-area-inset-bottom))]`. Sticky already works for grid scroll containers in current Chromium/WebKit.
 
-### 4. `habit_logs` unique constraint — already exists
-- `habit_logs_habit_id_log_date_user_id_key UNIQUE (habit_id, log_date, user_id)` is present. The DO-block in your script would find no matching old constraint and the ADD would be a no-op.
+I will go with the simpler approach: only patch `DialogFooter` to add safe-area padding. No layout restructure — minimises regression risk on the dozens of existing dialogs.
 
-### 5. `meal_plans` unique constraint — already exists
-- `meal_plans_household_id_week_start_date_key UNIQUE (household_id, week_start_date)` is present.
+### `src/components/ui/sheet.tsx`
+- `SheetContent` already has `flex flex-col overflow-y-auto`. Extend `SheetFooter` className with `pb-[max(1rem,env(safe-area-inset-bottom))]`.
 
-### 6. `push_subscriptions` — exists, but with a different (correct) schema
-This is the one place the script is **not safe to run**. The table already exists with the Web Push standard shape used by `supabase/functions/push-subscribe` and `send-push`:
+### `src/components/ui/drawer.tsx`
+- Extend `DrawerFooter` className with `pb-[max(1rem,env(safe-area-inset-bottom))]`.
+
+## Fix — Part B: refactor 17 dialogs to use `DialogFooter`
+
+Each of these files currently ends its form with a bare `<div className="flex … justify-end">…buttons…</div>`. Replace that div with `<DialogFooter>…buttons…</DialogFooter>` (and add `DialogFooter` to the existing `@/components/ui/dialog` import). No logic, validation, or mutation calls touched.
+
+Files:
 
 ```text
-id, user_id, endpoint, p256dh, auth, user_agent, created_at, last_seen_at
+src/components/grocery/AddPantryItemDialog.tsx
+src/components/grocery/AIPantryImportDialog.tsx
+src/components/grocery/CreateShoppingListDialog.tsx
+src/components/grocery/ScanBillDialog.tsx
+src/components/grocery/QuickAddChecklist.tsx
+src/components/grocery/BillReviewDialog.tsx
+src/components/finance/TransactionDialog.tsx
+src/components/finance/SubscriptionDialog.tsx
+src/components/finance/BudgetDialog.tsx
+src/components/finance/SavingsGoalDialog.tsx
+src/components/finance/AddCardDialog.tsx
+src/components/habits/HabitCreateDialog.tsx
+src/components/calendar/CreateEventDialog.tsx
+src/components/calendar/CalendarEventDialog.tsx
+src/components/calendar/ConnectCalendarDialog.tsx
+src/components/meals/AddIngredientsDialog.tsx
+src/components/meals/MarkAsCookedDialog.tsx
 ```
 
-Your `CREATE TABLE IF NOT EXISTS` would be skipped (so no harm), but the assumption behind it (a single `subscription jsonb` column with a `UNIQUE(user_id, subscription)` index) does not match production. RLS is already enabled with four owner-scoped policies (SELECT/INSERT/UPDATE/DELETE on `user_id = auth.uid()`).
+The Taskmaster task creation dialog (`TaskmasterTaskDialog.tsx`) and Add Pantry Item (`AddPantryItemDialog.tsx`) — the two cases the user explicitly called out — are both fixed by this combined Part A + Part B change.
 
-Also note: PostgreSQL does not support `CREATE POLICY IF NOT EXISTS` or `ADD CONSTRAINT IF NOT EXISTS` (those are syntax errors on current PG versions). Running the script as written would fail at parse time before applying anything.
+## Out of scope
 
-## Recommendation
+- No business-logic changes to any dialog.
+- No Sheet refactors needed in product code: every `Sheet*` consumer (`AiSuggestSheet`, `RecipeBrowserSheet`, `MoreSheet`, `TemplatePreviewSheet`, `TaskCompletionSheet`, `AvatarSourceSheet`, `ChallengePickerSheet`, `PantrySettingsSheet`, `AddMealSheet`) either has no footer or already uses a sticky footer — the primitive patch is sufficient.
+- `DialogContent` layout (`grid` vs `flex`) left as-is to avoid touching dozens of existing dialogs that depend on the grid `gap-4` spacing.
 
-**Do not run this migration.** The intent behind every clause is already satisfied by the current schema and policies, and the `push_subscriptions` block encodes a stale assumption about that table's shape.
+## Verification
 
-If you want, I can instead:
-1. Run the Supabase linter to surface any *actual* current security gaps, or
-2. Generate a one-page summary of all current RLS policies on these six tables for your records.
-
-Just tell me which (or both) and I'll switch to build mode to do it.
+After the patch:
+1. TypeScript compiles cleanly.
+2. Open `/taskmaster` and `/grocery` on a 390×754 viewport, open task creation and Add Pantry Item, confirm Save/Cancel buttons stay visible while scrolling the form.

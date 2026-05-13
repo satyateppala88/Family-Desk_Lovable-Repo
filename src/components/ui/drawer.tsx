@@ -51,7 +51,7 @@ DrawerHeader.displayName = "DrawerHeader";
 const DrawerFooter = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
     className={cn(
-      "sticky bottom-0 z-10 mt-auto flex flex-col gap-2 border-t border-border bg-background p-4",
+      "sticky bottom-0 z-10 mt-auto flex flex-col gap-2 border-t border-border bg-background px-4 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]",
       className,
     )}
     {...props}

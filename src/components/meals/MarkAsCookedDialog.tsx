@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Info, CheckCircle2 } from "lucide-react";
@@ -90,14 +90,14 @@ export const MarkAsCookedDialog = ({
           </div>
         </div>
 
-        <div className="flex gap-2 justify-end">
+        <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isConfirming}>
             Cancel
           </Button>
           <Button onClick={handleConfirm} disabled={isConfirming}>
             {isConfirming ? "Updating..." : "Confirm & Mark as Cooked"}
           </Button>
-        </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -194,14 +194,14 @@ export const AddPantryItemDialog = ({
           </div>
         </div>
 
-        <div className="flex gap-2 justify-end">
+        <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
           <Button onClick={handleSubmit} disabled={!name}>
             {editItem ? "Update" : "Add"} Item
           </Button>
-        </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

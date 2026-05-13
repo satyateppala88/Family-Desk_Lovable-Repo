@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -74,10 +74,12 @@ export const BudgetDialog = ({ open, onOpenChange, onSave, existingCategories = 
               min="0"
             />
           </div>
+        </div>
+        <DialogFooter>
           <Button onClick={handleSave} className="w-full" disabled={submitting || !category || !amount}>
             {submitting ? "Saving..." : "Save Budget"}
           </Button>
-        </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

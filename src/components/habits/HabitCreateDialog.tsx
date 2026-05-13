@@ -6,6 +6,7 @@ import * as z from "zod";
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -429,7 +430,7 @@ export const HabitCreateDialog = ({
             />
 
             {/* Submit */}
-            <div className="flex justify-end gap-2 pt-4">
+            <DialogFooter>
               <Button
                 type="button"
                 variant="outline"
@@ -440,7 +441,7 @@ export const HabitCreateDialog = ({
               <Button type="submit" disabled={isLoading}>
                 {isLoading ? "Creating..." : "Create Habit"}
               </Button>
-            </div>
+            </DialogFooter>
           </form>
         </Form>
       </DialogContent>

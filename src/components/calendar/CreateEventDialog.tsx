@@ -4,6 +4,7 @@ import { CalendarIcon, Loader2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogDescription,
@@ -195,6 +196,8 @@ export const CreateEventDialog = ({ open, onOpenChange, defaultDate }: CreateEve
             />
           </div>
 
+        </div>
+        <DialogFooter>
           <Button onClick={handleSubmit} disabled={createEvent.isPending} className="w-full">
             {createEvent.isPending ? (
               <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Adding…</>
@@ -202,7 +205,7 @@ export const CreateEventDialog = ({ open, onOpenChange, defaultDate }: CreateEve
               "Save Event"
             )}
           </Button>
-        </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
