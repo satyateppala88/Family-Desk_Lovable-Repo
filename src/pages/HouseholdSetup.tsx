@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
@@ -19,6 +19,9 @@ const HouseholdSetup = () => {
   const [verifiedHousehold, setVerifiedHousehold] = useState<{ id: string; name: string } | null>(null);
   const [verifyingCode, setVerifyingCode] = useState(false);
   const [joiningHousehold, setJoiningHousehold] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
+  const [verifyError, setVerifyError] = useState<string | null>(null);
+  const joinButtonRef = useRef<HTMLButtonElement | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
@@ -43,6 +46,12 @@ const HouseholdSetup = () => {
 
   const handleCreateHousehold = async (e: React.FormEvent) => {
     e.preventDefault();
+    const trimmed = householdName.trim();
+    if (!trimmed) {
+      setCreateError("Please enter a household name");
+      return;
+    }
+    setCreateError(null);
     setLoading(true);
 
     try {
@@ -50,7 +59,7 @@ const HouseholdSetup = () => {
       
       // Call the edge function to create household
       const { data, error } = await supabase.functions.invoke('create-household', {
-        body: { householdName },
+        body: { householdName: trimmed },
       });
 
       if (error) {
@@ -88,14 +97,11 @@ const HouseholdSetup = () => {
 
   const handleVerifyCode = async () => {
     if (!inviteCode || inviteCode.length !== 6) {
-      toast({
-        title: "Invalid code",
-        description: "Please enter a valid 6-digit invite code",
-        variant: "destructive",
-      });
+      setVerifyError("Please enter a valid 6-digit invite code");
       return;
     }
 
+    setVerifyError(null);
     setVerifyingCode(true);
     try {
       const { data, error } = await supabase
@@ -105,12 +111,8 @@ const HouseholdSetup = () => {
         .single();
 
       if (error || !data) {
-        toast({
-          title: "Invalid code",
-          description: "No household found with this invite code",
-          variant: "destructive",
-        });
         setVerifiedHousehold(null);
+        setVerifyError("Invalid invite code. Please check with your household admin.");
         return;
       }
 
@@ -126,10 +128,19 @@ const HouseholdSetup = () => {
         description: "Failed to verify invite code",
         variant: "destructive",
       });
+      setVerifyError("Invalid invite code. Please check with your household admin.");
     } finally {
       setVerifyingCode(false);
     }
   };
+
+  // Focus the join CTA the moment the household is verified so the user
+  // sees it's the obvious next step rather than thinking they're done.
+  useEffect(() => {
+    if (verifiedHousehold && joinButtonRef.current) {
+      joinButtonRef.current.focus();
+    }
+  }, [verifiedHousehold]);
 
   const handleJoinHousehold = async () => {
     if (!verifiedHousehold || !user) return;
@@ -201,9 +212,14 @@ const HouseholdSetup = () => {
                   type="text"
                   placeholder="Smith Family, Apartment 4B, etc."
                   value={householdName}
-                  onChange={(e) => setHouseholdName(e.target.value)}
-                  required
+                  onChange={(e) => {
+                    setHouseholdName(e.target.value);
+                    if (createError) setCreateError(null);
+                  }}
                 />
+                {createError && (
+                  <p className="text-sm text-destructive" role="alert">{createError}</p>
+                )}
               </div>
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading ? "Creating..." : "Create Household"}
@@ -222,7 +238,10 @@ const HouseholdSetup = () => {
                     placeholder="123456"
                     maxLength={6}
                     value={inviteCode}
-                    onChange={(e) => setInviteCode(e.target.value.replace(/\D/g, ''))}
+                    onChange={(e) => {
+                      setInviteCode(e.target.value.replace(/\D/g, ''));
+                      if (verifyError) setVerifyError(null);
+                    }}
                   />
                   <Button 
                     type="button" 
@@ -233,24 +252,28 @@ const HouseholdSetup = () => {
                     {verifyingCode ? "Verifying..." : "Verify"}
                   </Button>
                 </div>
+                {verifyError && (
+                  <p className="text-sm text-destructive" role="alert">{verifyError}</p>
+                )}
               </div>
 
               {verifiedHousehold && (
                 <div className="p-4 border rounded-lg bg-primary/5 space-y-3">
                   <div className="flex items-center gap-2 text-green-600">
                     <CheckCircle2 className="h-5 w-5" />
-                    <span className="font-medium">Household Found</span>
+                    <span className="font-medium">Household found — request to join</span>
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    You're about to request to join:
+                    We'll send a request to the household admin. You'll get an email when they approve.
                   </p>
                   <p className="font-semibold text-lg">{verifiedHousehold.name}</p>
                   <Button 
+                    ref={joinButtonRef}
                     className="w-full" 
                     onClick={handleJoinHousehold}
                     disabled={joiningHousehold}
                   >
-                    {joiningHousehold ? "Sending Request..." : "Send Join Request"}
+                    {joiningHousehold ? "Sending Request..." : `Request to join ${verifiedHousehold.name}`}
                   </Button>
                 </div>
               )}
