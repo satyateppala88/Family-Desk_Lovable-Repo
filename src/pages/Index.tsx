@@ -14,6 +14,8 @@ import { Button } from "@/components/ui/button";
 import { PageLoadingGrid } from "@/components/ui/page-loading";
 import { Household } from "@/types/database";
 import { useEnabledProducts, isProductEnabled, ProductName } from "@/hooks/useEnabledProducts";
+import { useHouseholdPreferences } from "@/hooks/useHouseholdPreferences";
+import { MODULE_SETUP_KEYS } from "@/lib/moduleSetup";
 import { OnboardingProgressIndicator } from "@/components/onboarding/OnboardingProgressIndicator";
 import { FamilyPulse } from "@/components/dashboard/FamilyPulse";
 import { PermissionsTutorial } from "@/components/permissions/PermissionsTutorial";
@@ -66,6 +68,20 @@ const Index = () => {
   const { data: enabledProducts } = useEnabledProducts(householdId);
   const { data: progressData } = useOnboardingProgress(householdId);
   const { data: dashStats } = useDashboardStats(householdId);
+  const { preferences } = useHouseholdPreferences(householdId);
+  const completedModuleSetups =
+    ((preferences as any)?.completed_module_setups as Record<string, boolean> | undefined) ?? {};
+  const allModuleSetupsDone =
+    !!enabledProducts &&
+    enabledProducts.length > 0 &&
+    enabledProducts.every((p) => {
+      const key = MODULE_SETUP_KEYS[p as ProductName];
+      return key ? !!completedModuleSetups[key] : true;
+    });
+  const showSetupBanner =
+    !onboardingCompleted &&
+    (progressData?.percentage ?? 0) < 100 &&
+    !allModuleSetupsDone;
 
   const { shouldShowTour, tourChecked, markTourComplete } = useFeatureTour("dashboard");
   const [runOnboarding, setRunOnboarding] = useState(false);
@@ -163,7 +179,7 @@ const Index = () => {
           onClose={() => setShowPermissionsTutorial(false)}
         />
 
-        {!onboardingCompleted && (
+        {showSetupBanner && (
           <Card className="mb-4 border-primary/15">
             <CardContent className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4">
               <div className="flex items-center gap-4 flex-1 w-full sm:w-auto">

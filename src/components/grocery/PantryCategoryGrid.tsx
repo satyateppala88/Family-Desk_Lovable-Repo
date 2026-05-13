@@ -53,8 +53,21 @@ export const PantryCategoryGrid = ({
 
   // Sort categories by sort_order
   const sortedCategories = useMemo(() => {
-    return [...categories].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
-  }, [categories]);
+    const known = new Set(categories.map((c) => c.name));
+    const extras: PantryCategory[] = Object.keys(categoryStats)
+      .filter((name) => !known.has(name))
+      .map((name, idx) => ({
+        id: `virtual-${name}`,
+        household_id: "",
+        name,
+        icon: "📦",
+        sort_order: 9999 + idx,
+        created_at: "",
+      }));
+    return [...categories, ...extras].sort(
+      (a, b) => (a.sort_order || 0) - (b.sort_order || 0)
+    );
+  }, [categories, categoryStats]);
 
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
