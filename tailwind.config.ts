@@ -118,15 +118,6 @@ export default {
   				border: '#D3D1C7',
   				surface: '#F1EFE8',
   			},
-  			// Mobile design-system semantic tokens (raw hex)
-  			surface: {
-  				DEFAULT: '#FFFFFF',
-  				raised: '#F8F7F4',
-  			},
-  			'text-primary': '#2C2C2A',
-  			'text-secondary': '#6B6965',
-  			'text-disabled': '#A8A5A0',
-  			error: '#DC2626',
   		},
   		borderRadius: {
   			lg: 'var(--radius)',
