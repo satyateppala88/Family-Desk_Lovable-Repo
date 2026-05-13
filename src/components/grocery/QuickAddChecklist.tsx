@@ -108,7 +108,7 @@ export const QuickAddChecklist = ({ open, onOpenChange, onSubmit, householdId, u
             household_id: householdId,
             added_by: userId,
             name: item.name,
-            category: categoryGroup.category,
+            category: categoryGroup.category === "Staples" ? "Other" : categoryGroup.category,
             unit: item.unit,
             quantity: 1,
             is_staple: true,
