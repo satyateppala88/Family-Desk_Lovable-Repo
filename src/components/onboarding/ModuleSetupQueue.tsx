@@ -2,6 +2,7 @@ import { useMemo, useState, useEffect } from "react";
 import { ModuleSetupDialog } from "./ModuleSetupGate";
 import { MODULE_SETUP_KEYS, type ModuleSetupKey } from "@/lib/moduleSetup";
 import type { ProductName } from "@/hooks/useEnabledProducts";
+import { useModuleSetup } from "@/hooks/useModuleSetup";
 
 interface ModuleSetupQueueProps {
   /** Modules to walk the user through, in order. */
@@ -35,6 +36,8 @@ export const ModuleSetupQueue = ({ products, onAllDone }: ModuleSetupQueueProps)
   };
 
   const current = queue[index];
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const { markComplete } = useModuleSetup(current);
   return (
     <ModuleSetupDialog
       key={current}
@@ -43,7 +46,14 @@ export const ModuleSetupQueue = ({ products, onAllDone }: ModuleSetupQueueProps)
       dismissible={true}
       onComplete={advance}
       onSkip={advance}
-      onOpenChange={(o) => { if (!o) advance(); }}
+      onOpenChange={(o) => {
+        if (o) return;
+        // X / Esc / outside-click dismisses the ENTIRE flow — not just
+        // the current step. Mark the current module complete first so
+        // it doesn't reappear on next visit, then end the queue.
+        markComplete().catch(() => {/* non-fatal */});
+        onAllDone();
+      }}
     />
   );
 };
