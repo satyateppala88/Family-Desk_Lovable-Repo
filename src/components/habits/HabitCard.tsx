@@ -5,6 +5,7 @@ import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { HabitWithStreak } from "@/types/habits";
 import { useState } from "react";
+import { SwipeFillRow } from "@/components/ui/SwipeRow";
 
 interface HabitCardProps {
   habit: HabitWithStreak;
@@ -63,7 +64,7 @@ export const HabitCard = ({ habit, onToggle, onUpdateValue }: HabitCardProps) =>
     ? Math.min(100, (currentValue / habit.target_value) * 100)
     : 0;
 
-  return (
+  const cardEl = (
     <Card
       className={cn(
         "p-4 transition-all duration-200 relative overflow-hidden",
@@ -151,5 +152,24 @@ export const HabitCard = ({ habit, onToggle, onUpdateValue }: HabitCardProps) =>
         </div>
       </div>
     </Card>
+  );
+
+  // Habits with a quantitative target use the +/- counter; swipe-to-complete
+  // only applies to simple yes/no habits that haven't been logged today.
+  if (hasTarget || isCompleted) {
+    return cardEl;
+  }
+
+  return (
+    <SwipeFillRow
+      radiusClass="rounded-lg"
+      fillClass="bg-primary"
+      onTrigger={() => {
+        onToggle(habit.id, true);
+        triggerCelebration();
+      }}
+    >
+      {cardEl}
+    </SwipeFillRow>
   );
 };
