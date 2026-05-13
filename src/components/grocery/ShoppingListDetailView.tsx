@@ -1,4 +1,4 @@
-import { ArrowLeft, Trash2, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, Trash2, CheckCircle2, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -8,6 +8,7 @@ import { ShoppingList } from "@/hooks/useShoppingLists";
 import { cn } from "@/lib/utils";
 import { groupAndSort } from "@/lib/groceryCategories";
 import { ShareOnWhatsAppButton } from "@/components/grocery/ShareOnWhatsAppButton";
+import { SwipeRow } from "@/components/ui/SwipeRow";
 
 interface ShoppingListDetailViewProps {
   list: ShoppingList;
@@ -78,10 +79,21 @@ export const ShoppingListDetailView = ({
               <Card>
                 <CardContent className="p-0 divide-y divide-border/50">
                   {items.map((item) => (
-                    <div
+                    <SwipeRow
                       key={item.id}
+                      radiusClass=""
+                      disabled={item.is_checked}
+                      actions={[{
+                        key: "bought",
+                        label: "Bought",
+                        icon: <Check className="w-4 h-4" />,
+                        bgClass: "bg-[hsl(var(--success))]",
+                        onAction: () => onToggleItem(item.id, true),
+                      }]}
+                    >
+                    <div
                       className={cn(
-                        "flex items-center gap-3 px-3 py-3 transition-colors",
+                        "flex items-center gap-3 px-3 py-3 transition-colors bg-background",
                         item.is_checked && "bg-muted/30"
                       )}
                     >
@@ -113,6 +125,7 @@ export const ShoppingListDetailView = ({
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>
                     </div>
+                    </SwipeRow>
                   ))}
                 </CardContent>
               </Card>
