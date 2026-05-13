@@ -191,8 +191,8 @@ const TaskmasterToday = () => {
           />
         </div>
 
-        {/* Plan Status Banner */}
-        {dailyPlan && (dailyPlan.items?.length ?? 0) > 0 && (
+        {/* Plan Status Banner — only show when there are real, resolvable tasks */}
+        {dailyPlan && (dailyPlan.items?.filter((i: any) => i?.task)?.length ?? 0) > 0 && (
           <Card className={cn(
             "mb-6",
             dailyPlan.accepted ? "border-green-500/50 bg-green-50 dark:bg-green-950/20" : "border-amber-500/50 bg-amber-50 dark:bg-amber-950/20"
@@ -210,7 +210,7 @@ const TaskmasterToday = () => {
                   </span>
                   <span className="text-sm text-muted-foreground flex items-center gap-1">
                     <Sparkles className="w-3 h-3" />
-                    ({dailyPlan.items?.length || 0} tasks prioritized)
+                    ({dailyPlan.items?.filter((i: any) => i?.task)?.length || 0} tasks prioritized)
                   </span>
                 </div>
                 {!dailyPlan.accepted && (
