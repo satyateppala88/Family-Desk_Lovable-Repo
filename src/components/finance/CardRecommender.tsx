@@ -57,7 +57,7 @@ export const CardRecommender = ({ userCardIds }: CardRecommenderProps) => {
             <Select value={category} onValueChange={setCategory}>
               <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Select" /></SelectTrigger>
               <SelectContent>
-                {FINANCE_CATEGORIES.filter(c => !["salary", "freelance", "investment", "savings"].includes(c)).map((c) => (
+                {FINANCE_CATEGORIES.filter(c => !["salary", "freelance", "investment_returns", "sip_investment"].includes(c)).map((c) => (
                   <SelectItem key={c} value={c}>{CATEGORY_LABELS[c]}</SelectItem>
                 ))}
               </SelectContent>
