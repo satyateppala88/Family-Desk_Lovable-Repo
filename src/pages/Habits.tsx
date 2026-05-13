@@ -86,14 +86,8 @@ const Habits = () => {
     : 0;
   const householdTooNew = householdAgeDays < 3;
   const neutralCoachCopy = "Add your first habit to start tracking your household's daily routine.";
-  const householdCompletedToday = householdStats?.memberStats?.reduce(
-    (sum, m) => sum + (m.completedToday || 0),
-    0,
-  ) ?? 0;
-  const householdTotalHabits = householdStats?.memberStats?.reduce(
-    (sum, m) => sum + (m.totalHabits || 0),
-    0,
-  ) ?? 0;
+  const householdCompletedToday = householdStats?.completedToday ?? 0;
+  const householdTotalHabits = householdStats?.totalHabits ?? 0;
 
   const handleToggleHabit = (habitId: string, completed: boolean) => {
     logHabit.mutate({ habitId, completed });
