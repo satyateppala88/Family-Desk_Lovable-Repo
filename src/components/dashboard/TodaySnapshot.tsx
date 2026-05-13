@@ -30,7 +30,10 @@ export const TodaySnapshot = ({ householdId }: Props) => {
 
   return (
     <div className="mb-5 -mx-4 sm:mx-0">
-      <div className="flex gap-3 overflow-x-auto px-4 sm:px-0 pb-2 snap-x snap-mandatory scrollbar-hide">
+      <div
+        className="flex gap-3 overflow-x-auto px-4 sm:px-0 pb-2 snap-x snap-mandatory"
+        style={{ scrollbarWidth: "none" }}
+      >
         {visible.map((item) => (
           <button
             key={item.key}
