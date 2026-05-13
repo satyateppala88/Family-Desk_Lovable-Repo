@@ -671,11 +671,12 @@ export const ModuleSetupDialog = ({
                 }
               }}
               onSkip={async () => {
-                // Skip does NOT mark complete when dismissible (so the gate
-                // can re-prompt on first visit). When non-dismissible (legacy
-                // gate), keep the prior behavior to avoid trapping users.
+                // Always mark complete on Skip — once the user has
+                // dismissed the questionnaire we should never re-prompt
+                // automatically. They can re-run setup from Settings.
                 try {
-                  if (!dismissible) await markComplete();
+                  await markComplete();
+                  clearModuleSetupDraft(householdId, module);
                   onSkip?.();
                 } catch (err: any) {
                   toast.error(err.message ?? "Failed");
