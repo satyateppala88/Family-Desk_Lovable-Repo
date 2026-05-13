@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -84,10 +84,12 @@ export const SavingsGoalDialog = ({ open, onOpenChange, onSave }: SavingsGoalDia
               </PopoverContent>
             </Popover>
           </div>
+        </div>
+        <DialogFooter>
           <Button onClick={handleSave} className="w-full" disabled={submitting || !name || !target}>
             {submitting ? "Creating..." : "Create Goal"}
           </Button>
-        </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
