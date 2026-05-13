@@ -2,13 +2,13 @@ import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import { CalendarIcon, Loader2 } from "lucide-react";
 import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+  SheetFooter,
+} from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -84,14 +84,14 @@ export const CreateEventDialog = ({ open, onOpenChange, defaultDate }: CreateEve
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Create Event</DialogTitle>
-          <DialogDescription>Add a manual event to your family calendar.</DialogDescription>
-        </DialogHeader>
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent side="bottom" className="h-[90vh] sm:h-[85vh] overflow-y-auto rounded-t-2xl px-4 pb-6 pt-5">
+        <SheetHeader className="text-left">
+          <SheetTitle>Create Event</SheetTitle>
+          <SheetDescription>Add a manual event to your family calendar.</SheetDescription>
+        </SheetHeader>
 
-        <div className="space-y-4">
+        <div className="space-y-4 mt-4">
           <div className="space-y-2">
             <Label htmlFor="event-title">Title</Label>
             <Input
@@ -197,7 +197,7 @@ export const CreateEventDialog = ({ open, onOpenChange, defaultDate }: CreateEve
           </div>
 
         </div>
-        <DialogFooter>
+        <SheetFooter className="mt-6">
           <Button onClick={handleSubmit} disabled={createEvent.isPending} className="w-full">
             {createEvent.isPending ? (
               <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Adding…</>
@@ -205,8 +205,8 @@ export const CreateEventDialog = ({ open, onOpenChange, defaultDate }: CreateEve
               "Save Event"
             )}
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
   );
 };
