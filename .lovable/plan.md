@@ -1,83 +1,79 @@
-## Findings on the proposed SQL
+## Root cause
 
-I checked the database before planning. Most of this migration is already in place, and a couple of statements would actually break things if run as-is.
+The shared `DialogContent` (`src/components/ui/dialog.tsx`) sets no max-height and no scroll. Long forms (Taskmaster create-task, Add Pantry Item, all Settings dialogs, etc.) overflow the viewport and the footer disappears below the fold. The `SheetContent` and `DrawerContent` primitives have the same issue when their consumers render long content with a footer at the end.
 
-### 1. finance_transactions RLS — already done ✅
-RLS is enabled and there are already 4 policies (SELECT/INSERT/UPDATE/DELETE) restricting access to household members via `household_members`. The proposed policies are semantically identical to the existing ones. No change needed.
+Rather than patch every consumer one by one (30+ files), the right fix is at the primitive layer plus a thin convention for the body wrapper.
 
-### 2. household_members RLS — already done ✅ (and the proposed policy is dangerous)
-RLS is enabled. Existing policies already scope visibility to the user's households via the `is_household_member` SECURITY DEFINER function.
+## Fix — primitives (3 files)
 
-The proposed `own_household_only` policy queries `household_members` from inside a `household_members` policy. Postgres will throw **infinite recursion detected in policy** — this is exactly why the project uses `is_household_member()` instead of an inline subquery.
+### 1. `src/components/ui/dialog.tsx`
+- `DialogContent`: add `flex max-h-[90dvh] flex-col` (keep existing `gap-4`, `p-6`, transforms). This makes the content a vertical flex column constrained to 90% of viewport height.
+- `DialogHeader`: add `flex-shrink-0`.
+- `DialogFooter`: add `mt-auto flex-shrink-0 sticky bottom-0 z-10 bg-background -mx-6 -mb-6 px-6 py-4 border-t border-border` so it pins to the bottom of `DialogContent` while content scrolls behind it. Keep existing `flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2`.
 
-### 3. households RLS — already done ✅
-RLS is enabled and a SELECT policy already restricts to member households. No change needed.
+### 2. `src/components/ui/sheet.tsx`
+- `SheetContent` (side="right"/"left"): add `flex flex-col` and ensure `h-full`. Already full-height, just needs flex column.
+- `SheetHeader`: add `flex-shrink-0`.
+- `SheetFooter`: add `mt-auto flex-shrink-0 sticky bottom-0 z-10 bg-background border-t border-border px-6 py-4` (mirroring dialog).
 
-### 4. habit_logs unique constraint — needs change ⚠️
-Current constraint: `UNIQUE (habit_id, log_date)` — this prevents two household members from both logging the same habit on the same day. We should replace it with `UNIQUE (habit_id, log_date, user_id)`.
+### 3. `src/components/ui/drawer.tsx`
+- `DrawerContent`: add `max-h-[90dvh] flex flex-col`.
+- `DrawerHeader`/`DrawerFooter`: same `flex-shrink-0` + sticky/border treatment on footer.
 
-Note: `ALTER TABLE ... ADD CONSTRAINT IF NOT EXISTS UNIQUE (...)` is not valid Postgres syntax. Need a `DO $$ ... $$` guard or plain `ADD CONSTRAINT`.
+## Fix — body scroll wrapper (per-dialog, mechanical)
 
-### 5. meal_plans unique constraint — needs to be added ⚠️
-No unique constraint exists today. We should add `UNIQUE (household_id, week_start_date)` so the meal-plan deduplication logic (delete-before-insert per week) can rely on it and upserts work.
+For the primitive fix to actually scroll, the body that sits between `<DialogHeader>` and `<DialogFooter>` needs `flex-1 overflow-y-auto -mx-6 px-6` (negative margin keeps fields edge-to-edge, padding keeps inner spacing). In all the listed dialogs the body is already a single `<div className="grid gap-4 py-4">` (or similar) — we just append the scroll classes. No structural changes.
 
-Same syntax caveat as above.
+Files to update (body wrapper className only — no logic changes):
 
-### Other syntax issues in the pasted SQL
-- `CREATE POLICY IF NOT EXISTS` is only supported on Postgres 16+; safer to use `DROP POLICY IF EXISTS … ; CREATE POLICY …`.
-- `ADD CONSTRAINT IF NOT EXISTS <name> UNIQUE (…)` is not valid; must be guarded with a `DO` block or `pg_constraint` lookup.
+Taskmaster + grocery (called out by user):
+- `src/components/taskmaster/TaskmasterTaskDialog.tsx`
+- `src/components/taskmaster/ProjectDialog.tsx`
+- `src/components/taskmaster/CalendarTaskScanDialog.tsx`
+- `src/components/grocery/AddPantryItemDialog.tsx`
+- `src/components/grocery/CreateShoppingListDialog.tsx`
+- `src/components/grocery/ScanBillDialog.tsx`
+- `src/components/grocery/BillReviewDialog.tsx`
+- `src/components/grocery/AIPantryImportDialog.tsx`
+- `src/components/grocery/QuickAddChecklist.tsx` (if it uses Dialog)
 
----
+Other form Sheets/Dialogs in the app:
+- `src/components/tasks/TaskDialog.tsx`
+- `src/components/meals/RecipeRatingDialog.tsx`
+- `src/components/meals/MarkAsCookedDialog.tsx`
+- `src/components/finance/TransactionDialog.tsx`
+- `src/components/finance/BudgetDialog.tsx`
+- `src/components/finance/SubscriptionDialog.tsx`
+- `src/components/finance/AddCardDialog.tsx`
+- `src/components/finance/SavingsGoalDialog.tsx`
+- `src/components/finance/CategorySelect.tsx`
+- `src/components/habits/HabitCreateDialog.tsx`
+- `src/components/household/InviteMemberDialog.tsx`
+- `src/components/calendar/CalendarEventDialog.tsx`
+- `src/components/calendar/ConnectCalendarDialog.tsx`
+- `src/components/permissions/PermissionPrimerDialog.tsx`
+- `src/components/onboarding/ModuleSetupGate.tsx`
+- `src/components/settings/Edit*PreferencesDialog.tsx` (9 files)
+- `src/components/taskmaster/TaskCompletionSheet.tsx` (Sheet)
+- `src/components/meals/RecipeBrowserSheet.tsx` (Sheet)
+- `src/components/avatar/AvatarSourceSheet.tsx` (Sheet)
 
-## Proposed migration (only the parts that are actually needed)
-
-```sql
--- habit_logs: allow per-user uniqueness instead of per-habit/day
-ALTER TABLE public.habit_logs
-  DROP CONSTRAINT IF EXISTS habit_logs_habit_id_log_date_key;
-
-DO $$
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_constraint
-    WHERE conrelid = 'public.habit_logs'::regclass
-      AND conname = 'habit_logs_habit_id_log_date_user_id_key'
-  ) THEN
-    ALTER TABLE public.habit_logs
-      ADD CONSTRAINT habit_logs_habit_id_log_date_user_id_key
-      UNIQUE (habit_id, log_date, user_id);
-  END IF;
-END $$;
-
--- meal_plans: one plan per household per week
-DO $$
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_constraint
-    WHERE conrelid = 'public.meal_plans'::regclass
-      AND conname = 'meal_plans_household_id_week_start_date_key'
-  ) THEN
-    ALTER TABLE public.meal_plans
-      ADD CONSTRAINT meal_plans_household_id_week_start_date_key
-      UNIQUE (household_id, week_start_date);
-  END IF;
-END $$;
+For each, the change is one className edit on the body wrapper between header and footer:
+```diff
+- <div className="grid gap-4 py-4">
++ <div className="flex-1 overflow-y-auto -mx-6 px-6 grid gap-4 py-4">
 ```
 
-### Pre-flight check before running
-Both new constraints will fail if duplicate rows already exist. I'll run these checks against Test first and clean up duplicates if any are found:
+## What is NOT touched
+- `ConfirmDialog`, `AlertDialog`, `RecipeDetailDialog` (no form footer / already small or already scrollable) — only review for visual regressions; no code changes unless they break.
+- `AIChatWidget` Sheet (custom layout, already manages its own scroll).
+- `CalendarSidebar` / `CalendarHeader` Sheets (navigation drawers, not forms).
+- Sidebar primitive (`src/components/ui/sidebar.tsx`) — unrelated nav.
+- No changes to data fetching, validation, props, or component APIs.
 
-```sql
-SELECT habit_id, log_date, user_id, COUNT(*)
-FROM public.habit_logs
-GROUP BY 1,2,3 HAVING COUNT(*) > 1;
-
-SELECT household_id, week_start_date, COUNT(*)
-FROM public.meal_plans
-GROUP BY 1,2 HAVING COUNT(*) > 1;
-```
-
-### What I will NOT run
-The RLS sections (1, 2, 3) from your pasted SQL — already implemented correctly, and section 2 in particular would introduce infinite recursion.
-
-Confirm and I'll execute the migration above (Test first; Live applies on publish).
+## Verification
+1. Open Taskmaster → type task → "Complete task details" — footer pinned, content scrolls.
+2. Open Grocery → Add Pantry Item — same.
+3. Spot-check a tall settings dialog (e.g. Edit Dietary Preferences) at mobile viewport (375×667) — footer pinned.
+4. Spot-check a short dialog (Mark as Cooked) — looks identical to before (no oversized whitespace, since `mt-auto` only pushes when content is short, and `max-h-[90dvh]` is a ceiling not a floor).
+5. Smoke test desktop (1280) and mobile (375) viewports.
