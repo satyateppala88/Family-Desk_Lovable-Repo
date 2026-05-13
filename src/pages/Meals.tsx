@@ -360,6 +360,7 @@ const Meals = () => {
                     }}
                     onMarkAsCooked={setCookingRecipe}
                     onAddToList={setShoppingForRecipe}
+                    onAiSuggest={(_day, mealType) => setAiSheet({ open: true, mealType: mealType as SlotMealType })}
                   />
                 </div>
 
