@@ -104,3 +104,6 @@ verify_jwt = false
 
 [functions.ai-scan-bill]
 verify_jwt = false
+
+[functions.pantry-low-reminder]
+verify_jwt = false
