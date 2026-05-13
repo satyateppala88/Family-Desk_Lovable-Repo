@@ -1,48 +1,49 @@
-## Goal
+# Verification: Security hardening migration
 
-Run a full audit of the 9-layer checklist and produce a pass/fail report with file references and a short fix list. No feature work in this loop — only verification and any one-line corrections needed to make a claim true.
+I checked the live database against every item in your SQL block. **Everything in the script is already applied.** Running it would either be a no-op or, in the case of `push_subscriptions`, actively wrong (it would try to recreate the table with a different shape).
 
-## Method
+## Item-by-item audit
 
-For each item I'll do one of three checks:
+### 1. `finance_transactions` RLS — already secured
+- RLS: **enabled**
+- Policies present (semantically equivalent to your script, using `EXISTS` instead of `IN`):
+  - `Members can view finance transactions` (SELECT)
+  - `Members can create finance transactions` (INSERT)
+  - `Members can update finance transactions` (UPDATE)
+  - `Members can delete finance transactions` (DELETE)
+- All scoped to `household_members` for `auth.uid()`. **Data is not public.**
 
-- **C** — code inspection (read the relevant file/component to confirm logic and wiring)
-- **R** — runtime check via signed-in preview using the test account (`testuser@dealcompass.test`) to confirm UI/behaviour
-- **D** — DB read via `supabase--read_query` to confirm schema/data assumptions
+### 2. `household_members` RLS — already secured
+- RLS: **enabled**
+- `Members can view household members` uses the `is_household_member(auth.uid(), household_id)` SECURITY DEFINER function. This is **better** than your proposed self-referential subquery, which would risk infinite recursion on RLS evaluation. Keep the existing policy.
 
-Each layer gets a section in the final report with: item, status (✅ / ⚠️ / ❌), evidence (file:line or screenshot/log), and — if failing — the smallest fix needed.
+### 3. `households` RLS — already secured
+- RLS: **enabled**
+- `Members can view their households` already restricts SELECT to households the user belongs to. Admin UPDATE/DELETE/INSERT policies also present.
 
-## Coverage matrix
+### 4. `habit_logs` unique constraint — already exists
+- `habit_logs_habit_id_log_date_user_id_key UNIQUE (habit_id, log_date, user_id)` is present. The DO-block in your script would find no matching old constraint and the ADD would be a no-op.
 
-| Layer | Items | Primary check |
-|---|---|---|
-| 1 Bottom nav | 5 items | C: `src/components/layout/BottomNav.tsx`, `MoreSheet`, route highlighting; R: mobile + desktop viewport |
-| 2 Onboarding | 4 items | C: onboarding step config, `MODULE_SETUP_KEYS`, `useHouseholdPreferences.completed_module_setups`; R: first-visit module modal |
-| 3 Meals tonight | 4 items | C: `src/pages/Meals.tsx` "Tonight's dinner" card, AI suggest hook (timeout + retry), "Add ingredients to list" mutation |
-| 4 Meals↔Grocery↔Finance | 5 items | C: pantry deduction on "Mark as cooked", `FINANCE_CATEGORIES`, `MemberContributions`, monthly report share; R: spot click |
-| 5 Habits | 4 items | C: challenges tab, catalog count (≥7), streak-freeze quota logic, `HabitStackSuggestion` after create |
-| 6 Calendar | 4 items | C: `CreateEventDialog` no-Google path, festival rendering on grid, `FestivalBanner`, `matchFestivalChecklist` insert |
-| 7 Grocery | 4 items | C: `RunningLowChips`, add-to-list handler, `whatsappShare`, category grouping in `ShoppingListDetailView` |
-| 8 Taskmaster | 5 items | C: `RecurrenceSelector`, `markTaskDone` clone logic, `/taskmaster/templates` route, `bulkCreateFromTemplate`, `useSpeechRecognition` + `QuickTaskInput` |
-| 9 Dashboard | 4 items | C: `TodaySnapshot`, `FestivalBanner`, module subtitle wiring via `useDashboardSnapshot`, `QuickActionsRow`; R: dashboard render |
+### 5. `meal_plans` unique constraint — already exists
+- `meal_plans_household_id_week_start_date_key UNIQUE (household_id, week_start_date)` is present.
 
-## Runtime sweep (R items)
+### 6. `push_subscriptions` — exists, but with a different (correct) schema
+This is the one place the script is **not safe to run**. The table already exists with the Web Push standard shape used by `supabase/functions/push-subscribe` and `send-push`:
 
-Single signed-in preview pass on mobile viewport:
-1. Dashboard → confirm snapshot cards, festival banner state, quick actions open dialogs, AI quick action opens widget.
-2. Bottom nav → tap each tab, open More sheet, switch to desktop viewport to confirm hidden.
-3. Meals → "Tonight's dinner", AI suggest (wait for 3 results or 30s retry), "Add ingredients" → check Grocery list created.
-4. Grocery → Running Low chips, add to list, WhatsApp share text, category grouping.
-5. Taskmaster → templates page, recurring task create + complete, voice button tooltip.
-6. Habits → challenges tab presence, freeze applied state.
-7. Calendar → manual "Add Event" without Google, festival dot.
+```text
+id, user_id, endpoint, p256dh, auth, user_agent, created_at, last_seen_at
+```
 
-## Deliverable
+Your `CREATE TABLE IF NOT EXISTS` would be skipped (so no harm), but the assumption behind it (a single `subscription jsonb` column with a `UNIQUE(user_id, subscription)` index) does not match production. RLS is already enabled with four owner-scoped policies (SELECT/INSERT/UPDATE/DELETE on `user_id = auth.uid()`).
 
-Single report grouped by layer with ✅/⚠️/❌ per item, evidence pointers, and a numbered fix list at the end (any ⚠️/❌ that can be corrected with a one- or two-line patch — surfaced for approval before I implement).
+Also note: PostgreSQL does not support `CREATE POLICY IF NOT EXISTS` or `ADD CONSTRAINT IF NOT EXISTS` (those are syntax errors on current PG versions). Running the script as written would fail at parse time before applying anything.
 
-## Out of scope
+## Recommendation
 
-- Building any new feature.
-- Restructuring components that already pass.
-- Performance/load testing.
+**Do not run this migration.** The intent behind every clause is already satisfied by the current schema and policies, and the `push_subscriptions` block encodes a stale assumption about that table's shape.
+
+If you want, I can instead:
+1. Run the Supabase linter to surface any *actual* current security gaps, or
+2. Generate a one-page summary of all current RLS policies on these six tables for your records.
+
+Just tell me which (or both) and I'll switch to build mode to do it.
