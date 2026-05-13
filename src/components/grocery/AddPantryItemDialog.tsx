@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -79,16 +79,23 @@ export const AddPantryItemDialog = ({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>{editItem ? "Edit Pantry Item" : "Add Pantry Item"}</DialogTitle>
-          <DialogDescription>
-            {editItem ? "Update the item details below." : "Add a new item to your pantry inventory."}
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-4 py-4">
+    <BottomSheet
+      isOpen={open}
+      onClose={() => onOpenChange(false)}
+      title={editItem ? "Edit Pantry Item" : "Add Pantry Item"}
+      description={editItem ? "Update the item details below." : "Add a new item to your pantry inventory."}
+      footer={
+        <div className="flex gap-2 justify-end">
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button onClick={handleSubmit} disabled={!name}>
+            {editItem ? "Update" : "Add"} Item
+          </Button>
+        </div>
+      }
+    >
+      <div className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="name">Item Name *</Label>
             <Input
@@ -192,17 +199,7 @@ export const AddPantryItemDialog = ({
               onCheckedChange={setIsStaple}
             />
           </div>
-        </div>
-
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
-          <Button onClick={handleSubmit} disabled={!name}>
-            {editItem ? "Update" : "Add"} Item
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </BottomSheet>
   );
 };
