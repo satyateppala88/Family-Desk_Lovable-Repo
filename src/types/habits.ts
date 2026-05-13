@@ -37,6 +37,7 @@ export interface HabitLog {
   notes: string | null;
   logged_at: string;
   created_at: string;
+  is_freeze?: boolean;
 }
 
 export interface HabitStreak {
@@ -142,4 +143,40 @@ export interface LeaderboardEntry {
   rank: number;
   previousRank: number | null;
   streakBonus: number;
+}
+
+export interface Challenge {
+  id: string;
+  household_id: string;
+  template_id: string;
+  name: string;
+  emoji: string;
+  description: string | null;
+  duration_days: number;
+  start_date: string;
+  end_date: string;
+  status: 'active' | 'completed' | 'abandoned';
+  started_by: string;
+  created_at: string;
+}
+
+export interface ChallengeParticipant {
+  id: string;
+  challenge_id: string;
+  user_id: string;
+  joined_at: string;
+}
+
+export interface ChallengeLog {
+  id: string;
+  challenge_id: string;
+  user_id: string;
+  log_date: string;
+  completed: boolean;
+  created_at: string;
+}
+
+export interface ChallengeWithDetails extends Challenge {
+  participants: ChallengeParticipant[];
+  todayLogs: ChallengeLog[];
 }
