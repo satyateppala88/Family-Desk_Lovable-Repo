@@ -475,8 +475,46 @@ export const ModuleSetupDialog = ({
     [setProgressStable],
   );
 
+  /**
+   * Single dismissal path used by the X button, Escape key, and outside
+   * click. Marks the module setup complete (so it never re-prompts), wipes
+   * the in-progress draft, then closes the Sheet. Replaces the previous
+   * behaviour where the X button silently closed without persisting and
+   * the gate had to re-fire markComplete on its side — that double-write
+   * raced cache invalidation and could leave the modal flickering open
+   * on the next render.
+   */
+  const dismissAndComplete = useCallback(() => {
+    if (isSaving) return;
+    // Fire-and-forget but await internally so the cache is invalidated
+    // before the next mount re-checks `needsSetup`.
+    (async () => {
+      try {
+        await markComplete();
+      } catch {
+        /* non-fatal — gate will simply re-appear on next visit */
+      } finally {
+        clearModuleSetupDraft(householdId, module);
+        onSkip?.();
+        onOpenChange?.(false);
+      }
+    })();
+  }, [isSaving, markComplete, householdId, module, onSkip, onOpenChange]);
+
   return (
-    <Sheet open={open} onOpenChange={(next) => { if (dismissible) onOpenChange?.(next); }}>
+    <Sheet
+      open={open}
+      onOpenChange={(next) => {
+        if (!dismissible) return;
+        if (next) {
+          onOpenChange?.(true);
+          return;
+        }
+        // Closing — funnel through the single dismissal path so X /
+        // Escape / outside click all persist completion identically.
+        dismissAndComplete();
+      }}
+    >
       <SheetContent
         side="bottom"
         className={cn(
