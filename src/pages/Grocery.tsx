@@ -2,7 +2,6 @@ import { useState, useEffect, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import { Header } from "@/components/layout/Header";
-import { OnboardingTour } from "@/components/onboarding/OnboardingTour";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -33,45 +32,9 @@ import { useShoppingLists } from "@/hooks/useShoppingLists";
 import { useHousehold } from "@/hooks/useHousehold";
 import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
 import { useAuth } from "@/contexts/AuthContext";
-import { useFeatureTour } from "@/hooks/useFeatureTour";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
-import type { Step } from "react-joyride";
 import type { PantryItem } from "@/hooks/usePantryItems";
-
-const groceryTourSteps: Step[] = [
-  {
-    target: "body",
-    content: "Welcome to Grocery! Keep track of what's in your pantry and what you need to buy.",
-    placement: "center",
-    disableBeacon: true,
-  },
-  {
-    target: "[data-tour='ai-import']",
-    content: "Describe what's in your kitchen and let AI organize it for you.",
-    placement: "bottom",
-  },
-  {
-    target: "[data-tour='quick-add']",
-    content: "Quickly add common pantry staples with one tap.",
-    placement: "bottom",
-  },
-  {
-    target: "[role='tablist']",
-    content: "Switch between your pantry inventory, shopping lists, and usage insights.",
-    placement: "bottom",
-  },
-  {
-    target: "[data-tour='category-grid']",
-    content: "Browse items by category. We'll flag anything that's running low or expiring soon.",
-    placement: "top",
-  },
-  {
-    target: ".user-menu",
-    content: "You can restart this guide anytime from the menu.",
-    placement: "bottom",
-  },
-];
 
 const Grocery = () => {
   const { user } = useAuth();
@@ -107,26 +70,11 @@ const Grocery = () => {
   const [selectedCategoryDetail, setSelectedCategoryDetail] = useState<string | null>(null);
   const [cartItemCount, setCartItemCount] = useState(0);
 
-  const { shouldShowTour, tourChecked, markTourComplete } = useFeatureTour("grocery");
-  const [runOnboarding, setRunOnboarding] = useState(false);
-
-  useEffect(() => {
-    if (tourChecked && shouldShowTour && householdId) {
-      setTimeout(() => setRunOnboarding(true), 500);
-    }
-  }, [tourChecked, shouldShowTour, householdId]);
-
   useEffect(() => {
     if (householdId && categories.length === 0 && !categoriesLoading) {
       initializeDefaultCategories.mutate(householdId);
     }
   }, [householdId, categories.length, categoriesLoading]);
-
-  const handleStartOnboarding = () => setRunOnboarding(true);
-  const handleOnboardingComplete = () => {
-    setRunOnboarding(false);
-    markTourComplete();
-  };
 
   const handleAddItem = (item: Partial<PantryItem>) => {
     if (!householdId || !user?.id) return;
@@ -447,7 +395,7 @@ const Grocery = () => {
   if (!user || !householdId) {
     return (
       <div className="page-container">
-        <Header onStartOnboarding={handleStartOnboarding} />
+        <Header />
         <main className="page-content">
           <EmptyState
             icon={Package}
@@ -461,7 +409,7 @@ const Grocery = () => {
 
   return (
     <div className="page-container">
-      <Header onStartOnboarding={handleStartOnboarding} />
+      <Header />
       <main className="page-content flex-1">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
           <div>
@@ -700,13 +648,6 @@ const Grocery = () => {
         confirmLabel="Delete List"
         variant="destructive"
         onConfirm={confirmDeleteList}
-      />
-
-      <OnboardingTour 
-        run={runOnboarding} 
-        onComplete={handleOnboardingComplete} 
-        steps={groceryTourSteps}
-        featureName="grocery"
       />
     </div>
   );
