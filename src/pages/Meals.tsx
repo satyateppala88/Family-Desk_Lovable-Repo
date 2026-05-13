@@ -25,6 +25,7 @@ import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageLoading } from "@/components/ui/page-loading";
 import { Sparkles, Calendar, LayoutGrid, UtensilsCrossed, Search, ChevronDown, ChevronRight } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
@@ -121,20 +122,38 @@ const Meals = () => {
     });
   }, [recipes, recipeSearch, recipeCuisine, recipeDifficulty]);
 
-  const handleGeneratePlan = async (daysToGenerate: "full" | "remaining") => {
+  const handleGeneratePlan = async (
+    daysToGenerate: "full" | "remaining",
+    source: "plan" | "recipes" = "plan",
+  ) => {
     if (!householdId || !user) return;
     const numDays = daysToGenerate === "full" ? 7 : getRemainingDaysOfWeek("sunday");
     setGeneratingPlan(true);
     try {
-      const { data, error } = await supabase.functions.invoke("generate-meal-suggestions", {
+      const invokePromise = supabase.functions.invoke("generate-meal-suggestions", {
         body: { householdId, userId: user.id, numDays, weekStartDate: format(currentWeekStart, "yyyy-MM-dd"), generateFrom: daysToGenerate === "remaining" ? "today" : "start" },
       });
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("timeout")), 30000),
+      );
+      const { data, error } = (await Promise.race([invokePromise, timeoutPromise])) as Awaited<typeof invokePromise>;
       if (error) throw error;
-      toast({ title: "Meal plan ready! 🍽️", description: `Created ${data.meals?.length || 0} recipes for your family this week.` });
-      window.location.reload();
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["recipes", householdId] }),
+        queryClient.invalidateQueries({ queryKey: ["meal-plans", householdId] }),
+      ]);
+      if (source === "recipes") {
+        toast({ title: "Recipes generated for your household" });
+      } else {
+        toast({ title: "Meal plan ready! 🍽️", description: `Created ${data?.meals?.length || 0} recipes for your family this week.` });
+      }
     } catch (error: any) {
       console.error("Generate meal plan error:", error);
-      toast({ title: "Something went wrong", description: "We couldn't generate the meal plan. Please try again.", variant: "destructive" });
+      toast({
+        title: "Couldn't generate recipes",
+        description: "Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setGeneratingPlan(false);
     }
@@ -378,13 +397,28 @@ const Meals = () => {
           </TabsContent>
 
           <TabsContent value="recipes" className="space-y-4">
-            {recipes.length === 0 ? (
+            {recipes.length === 0 && generatingPlan ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 animate-fade-in">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="rounded-xl border border-border/40 p-4 space-y-3">
+                    <Skeleton className="h-32 w-full rounded-lg" />
+                    <Skeleton className="h-4 w-3/4" />
+                    <Skeleton className="h-3 w-1/2" />
+                  </div>
+                ))}
+              </div>
+            ) : recipes.length === 0 ? (
               <EmptyState
                 icon={UtensilsCrossed}
                 title="Your recipe collection is empty"
-                description="Generate a meal plan and your AI-created recipes will appear here."
+                description="Tap 'Generate Recipes' to get personalised meal ideas for your family"
                 encouragement="Each recipe is tailored to your household's dietary preferences."
-                action={{ label: "Generate Recipes", onClick: () => handleGeneratePlan("full") }}
+                action={{
+                  label: "Generate Recipes",
+                  loading: generatingPlan,
+                  loadingLabel: "Generating recipes…",
+                  onClick: () => handleGeneratePlan("full", "recipes"),
+                }}
               />
             ) : (
               <>

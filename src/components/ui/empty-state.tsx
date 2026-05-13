@@ -1,6 +1,6 @@
 import React from "react";
 import { cn } from "@/lib/utils";
-import { LucideIcon, Inbox } from "lucide-react";
+import { LucideIcon, Inbox, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface EmptyStateProps {
@@ -11,6 +11,8 @@ interface EmptyStateProps {
     label: string;
     onClick: () => void;
     variant?: "default" | "outline" | "secondary";
+    loading?: boolean;
+    loadingLabel?: string;
   };
   secondaryAction?: {
     label: string;
@@ -50,8 +52,20 @@ export const EmptyState = ({
           </Button>
         )}
         {action && (
-          <Button variant={action.variant || "default"} size="sm" onClick={action.onClick}>
-            {action.label}
+          <Button
+            variant={action.variant || "default"}
+            size="sm"
+            onClick={action.onClick}
+            disabled={action.loading}
+          >
+            {action.loading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                {action.loadingLabel || "Working…"}
+              </>
+            ) : (
+              action.label
+            )}
           </Button>
         )}
       </div>
