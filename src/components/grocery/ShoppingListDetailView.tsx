@@ -6,6 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { ShoppingList, ShoppingListItem } from "@/hooks/useShoppingLists";
 import { cn } from "@/lib/utils";
+import { groupAndSort } from "@/lib/groceryCategories";
+import { ShareOnWhatsAppButton } from "@/components/grocery/ShareOnWhatsAppButton";
 
 interface ShoppingListDetailViewProps {
   list: ShoppingList;
@@ -22,17 +24,11 @@ export const ShoppingListDetailView = ({
   onDeleteItem,
   userId,
 }: ShoppingListDetailViewProps) => {
-  // Group items by category
-  const groupedItems = (list.items || []).reduce((acc, item) => {
-    const category = item.category || "Other";
-    if (!acc[category]) acc[category] = [];
-    acc[category].push(item);
-    return acc;
-  }, {} as Record<string, ShoppingListItem[]>);
-
+  // Group items by normalised category, with emoji headers and Other last
+  const grouped = groupAndSort(list.items || []);
   // Sort: unchecked first within each category
-  Object.keys(groupedItems).forEach((key) => {
-    groupedItems[key].sort((a, b) => (a.is_checked ? 1 : 0) - (b.is_checked ? 1 : 0));
+  grouped.forEach((g) => {
+    g.items.sort((a, b) => (a.is_checked ? 1 : 0) - (b.is_checked ? 1 : 0));
   });
 
   const checkedCount = list.items?.filter((item) => item.is_checked).length || 0;
@@ -57,6 +53,7 @@ export const ShoppingListDetailView = ({
             </span>
           </div>
         </div>
+        <ShareOnWhatsAppButton list={list} size="sm" label="Share" className="shrink-0" />
       </div>
 
       {/* Progress */}
@@ -67,12 +64,15 @@ export const ShoppingListDetailView = ({
 
       {/* Category groups */}
       <div className="space-y-4">
-        {Object.entries(groupedItems).map(([category, items]) => {
-          const catChecked = items.filter(i => i.is_checked).length;
+        {grouped.map(({ key, label, emoji, items }) => {
+          const catChecked = items.filter((i) => i.is_checked).length;
           return (
-            <div key={category}>
+            <div key={key}>
               <div className="flex items-center justify-between mb-2">
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{category}</h3>
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  <span className="mr-1.5" aria-hidden>{emoji}</span>
+                  {label}
+                </h3>
                 <span className="text-[10px] text-muted-foreground">{catChecked}/{items.length}</span>
               </div>
               <Card>
