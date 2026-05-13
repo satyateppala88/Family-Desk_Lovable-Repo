@@ -1,0 +1,2 @@
+ALTER TABLE public.meal_plans
+DROP CONSTRAINT IF EXISTS meal_plans_household_id_week_start_date_key;
