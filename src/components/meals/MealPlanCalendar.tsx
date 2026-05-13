@@ -24,7 +24,7 @@ interface MealPlanCalendarProps {
 }
 
 const BASE_MEAL_TYPES = ["breakfast", "lunch", "dinner"];
-const MOBILE_MEAL_TYPES = ["breakfast", "lunch", "dinner", "snacks"] as const;
+const MOBILE_MEAL_TYPES = ["breakfast", "lunch", "dinner", "snack"] as const;
 
 export const MealPlanCalendar = ({
   mealPlan,
@@ -64,7 +64,7 @@ export const MealPlanCalendar = ({
   };
 
   const getMealTypesForDay = (dayIndex: number) => {
-    return snackDays.has(dayIndex) ? [...BASE_MEAL_TYPES, "snacks"] : BASE_MEAL_TYPES;
+    return snackDays.has(dayIndex) ? [...BASE_MEAL_TYPES, "snack"] : BASE_MEAL_TYPES;
   };
 
   // Mobile visible indices (3-day window)
@@ -381,7 +381,7 @@ export const MealPlanCalendar = ({
           <div className="grid grid-cols-7 gap-2">
             {weekDays.map((_, dayIndex) => (
               snackDays.has(dayIndex)
-                ? <MealSlot key={dayIndex} dayIndex={dayIndex} mealType="snacks" />
+                ? <MealSlot key={dayIndex} dayIndex={dayIndex} mealType="snack" />
                 : <div key={dayIndex} className="border border-dashed border-border/30 rounded-xl p-3 min-h-[100px] flex items-center justify-center">
                     <button className="text-xs text-muted-foreground hover:text-foreground" onClick={() => toggleSnackDay(dayIndex)}>
                       <Plus className="w-3 h-3 mx-auto mb-0.5" /> Add
