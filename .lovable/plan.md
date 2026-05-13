@@ -1,66 +1,125 @@
-## Connect Meals → Grocery: missing-ingredients flow + cooked deduction
+## E-05 — Indian Bill Categories + Member Contribution View
 
-### Change 1 — "🛒 Add ingredients to list" with pantry-aware filtering
+### Change 1 — Indian-specific Finance categories
 
-Replace the current "Add ingredients to shopping list" action (which dumps every ingredient via URL params and reloads `/grocery`) with an in-place modal that filters by what's actually missing from the pantry.
+**Source of truth:** `src/hooks/useFinance.ts` exports `FINANCE_CATEGORIES` and `CATEGORY_LABELS`. Every dropdown / filter / label resolver consumes these (transactions, budget, budget categories page, card recommender, transactions filter). Replacing them propagates everywhere automatically.
 
-**New component: `src/components/meals/AddIngredientsDialog.tsx`**
-- Props: `open`, `onOpenChange`, `recipe` (or `{ title, ingredients }`), `householdId`, `userId`.
-- On open: fetches `pantry_items` for the household and computes a "missing" set.
-  - Match strategy: case-insensitive, trimmed name match. If pantry item has `quantity > 0`, treat as in-stock; otherwise treat as missing. (Quantity-aware logic mirrors `handleMarkAsCooked` style.)
-- Renders title `Missing ingredients for {Meal Name}`.
-- Checklist of missing items, **all pre-checked**. In-stock items are listed in a muted "Already in your pantry" section (collapsed, not selectable).
-- Primary button: `Add selected to shopping list`.
-- On confirm:
-  - If an `active` shopping list exists for the household, append items to it; otherwise create one named `{Meal Name} — {dd MMM}`.
-  - Insert `shopping_list_items` rows (`name`, `quantity`, `unit`, `recipe_source: meal_title`, `is_checked: false`).
-  - Invalidate `["shopping-lists", householdId]`.
-  - Toast: `"{N} items added to {List Name}"` with an action button `View list →` that navigates to `/grocery?tab=shopping&list={listId}`.
+**New category set** (keys are snake_case, kept stable for analytics + card catalog):
 
-**New helper: `src/lib/meals/groceryHelpers.ts`**
-- `findMissingIngredients(ingredients, pantryItems)` → returns `{ missing: Ingredient[]; inStock: Ingredient[] }`.
-- `addIngredientsToShoppingList({ householdId, userId, recipeTitle, items })` → upsert/insert logic shared by the dialog.
+```text
+HOUSEHOLD
+  groceries                      "Groceries"
+  vegetables_fruits              "Vegetables & Fruits"
+  dairy_eggs                     "Dairy & Eggs"
+  lpg_cylinder                   "LPG Cylinder"
+  electricity                    "Electricity"
+  water                          "Water"
+  piped_gas                      "Piped Gas"
+  society_maintenance            "Society Maintenance"
+  house_rent                     "House Rent"
+  home_loan_emi                  "Home Loan EMI"
+  domestic_help                  "Domestic Help (Maid/Cook/Driver)"
+  security_guard_tip             "Security Guard Tip"
 
-**Wiring (new entry points):**
-1. `TonightDinnerCard` — replace the existing direct-navigation `Add ingredients to shopping list` button so it opens `AddIngredientsDialog` instead.
-2. `TodayMealsRow` — when a slot is filled, add a small "🛒" icon button (or expose via long-press / overflow on the slot card). Tapping opens `AddIngredientsDialog` for that slot's recipe.
-3. `MealPlanCalendar` — add a `ShoppingCart` icon next to the existing `ChefHat` action row (line ~152), wired to open the same dialog.
-4. `RecipeDetailDialog` — add an `🛒 Add ingredients to list` button alongside existing actions for parity (same recipe path).
+FAMILY
+  school_tuition_fees            "School / Tuition Fees"
+  stationery_books               "Stationery & Books"
+  childrens_activities           "Children's Activities"
+  medical_pharmacy               "Medical / Pharmacy"
+  doctor_consultation            "Doctor Consultation"
+  temple_pooja_donation          "Temple / Pooja / Donation"
 
-**Cleanup:**
-- Remove `navigateToShoppingListWithIngredients` use from `TonightDinnerCard`. Keep `shoppingListBridge.ts` alive only for the AI suggest "Yes, add them" flow (it still needs to land on `/grocery` after suggesting), but replace its semantics: instead of URL-encoding items, route to `/grocery?tab=shopping` and have the AI sheet open `AddIngredientsDialog` *before* navigating — simpler: change the AI suggest "Yes" branch to also open `AddIngredientsDialog` for the just-assigned recipe and skip the URL-param dance entirely. Then delete `decodeIngredientsParam` from `Grocery.tsx` and `shoppingListBridge.ts`.
+LIFESTYLE
+  dining_out                     "Dining Out"
+  food_delivery                  "Food Delivery (Swiggy/Zomato)"
+  entertainment                  "Entertainment (OTT, Movies, Events)"
+  clothing_accessories           "Clothing & Accessories"
+  personal_care                  "Personal Care"
 
-### Change 2 — "✓ Cooked" on meal slots with pantry deduction
+TRANSPORT & FINANCE
+  petrol_cng                     "Petrol / CNG"
+  vehicle_emi                    "Vehicle EMI"
+  vehicle_insurance              "Vehicle Insurance"
+  auto_cab_metro                 "Auto / Cab / Metro"
+  travel                         "Travel (train/flight)"
+  personal_loan_emi              "Personal Loan EMI"
+  credit_card_bill               "Credit Card Bill"
+  life_health_insurance          "Life / Health Insurance Premium"
+  sip_investment                 "SIP / Investment"
 
-The dialog (`MarkAsCookedDialog`) and dedup logic already exist in `Meals.tsx#handleMarkAsCooked`, and the calendar already shows a `ChefHat` button. Three gaps to close:
+INCOME (kept — needed for type='income' transactions)
+  salary                         "Salary"
+  freelance                      "Freelance"
+  investment_returns             "Investment Returns"   (renamed from "investment")
 
-1. **Surface the action on Today's row + Tonight's dinner card.** Add a `✓ Cooked` button to:
-   - `TonightDinnerCard` (filled state) — between `Change` and `Add ingredients to list`.
-   - `TodayMealsRow` slot cards (filled state) — small footer row with `🛒` and `✓` icon buttons.
-   Both call back into `Meals.tsx` via a new prop `onMarkAsCooked(recipe)` that opens the existing `MarkAsCookedDialog`.
+OTHER
+  other                          "Other"
+```
 
-2. **Improve `handleMarkAsCooked` deduction**:
-   - Current logic uses `parseFloat(ingredient.quantity)` directly. Make it more resilient:
-     - Strip non-numeric chars (e.g. `"2 medium"` → `2`).
-     - If quantity is missing/NaN, fall back to default-per-unit (`1` for count items, `100` for `g`/`ml`).
-     - Skip pantry items with quantity already at 0.
-   - Collect a list of `{ name, qty, unit }` actually deducted and pass it back.
-   - Surface to user via toast: `Pantry updated. You used: onions (2), tomatoes (3), dal (100g)` — list up to 5 items, then `+N more`.
-   - **Invalidate** `["pantry-items", householdId]` and `["pantry-stats", householdId]` via `queryClient` (currently relies on realtime only).
+**Grouping in the dropdown.** `CategorySelect` currently renders one flat `Built-in` group. Extend `useFinance.ts` with a parallel constant `CATEGORY_GROUPS: { label: string; keys: string[] }[]` and update `CategorySelect` to render one `<SelectGroup>` per group (Household → Family → Lifestyle → Transport & Finance → Income → Other) so the long list is scannable. Custom categories and "Create new" continue to work as today.
 
-3. **Optional: mark slot as cooked.** No `cooked_at` column on `meal_plan_items`. Cleanest path: add `cooked_at timestamptz` via migration, set it on confirm, and dim the slot in the calendar / show a small `✓` badge. **I'll flag this as a small migration before applying** — if you'd rather skip the schema bump, we can render the cooked state purely from the toast/transient UI, but it won't persist across reloads.
+**Backwards compatibility for historical rows.** Old keys (`rent`, `utilities`, `transport`, `education`, `healthcare`, `clothing`, `household`, `subscriptions`, `gifts`, `savings`, `investment`) will still appear in existing `finance_transactions` and `finance_budgets` rows. We handle this without a DB migration via a small alias map in `useFinance.ts`:
 
-### Files touched
+```ts
+export const CATEGORY_ALIASES: Record<string, string> = {
+  rent: "house_rent",
+  utilities: "electricity",
+  transport: "auto_cab_metro",
+  education: "school_tuition_fees",
+  healthcare: "medical_pharmacy",
+  clothing: "clothing_accessories",
+  household: "society_maintenance",
+  gifts: "temple_pooja_donation",
+  savings: "sip_investment",
+  investment: "investment_returns",
+  subscriptions: "other", // tracked elsewhere
+};
+```
 
-- New: `src/components/meals/AddIngredientsDialog.tsx`, `src/lib/meals/groceryHelpers.ts`.
-- Edited: `src/components/meals/TonightDinnerCard.tsx`, `src/components/meals/TodayMealsRow.tsx`, `src/components/meals/MealPlanCalendar.tsx`, `src/components/meals/RecipeDetailDialog.tsx`, `src/components/meals/AiSuggestSheet.tsx`, `src/pages/Meals.tsx`, `src/pages/Grocery.tsx`, `src/lib/meals/shoppingListBridge.ts` (slimmed or deleted).
-- Possibly: a small migration adding `meal_plan_items.cooked_at` (only if you want persistent "cooked" state).
+`resolveCategoryLabel` is updated to consult `CATEGORY_ALIASES` first so historical rows render with the new label. `INCOME_KEYS` (in `FinanceBudgetCategories.tsx`) becomes `["salary", "freelance", "investment_returns"]`.
+
+**Card catalog:** `src/data/creditCardCatalog.ts` references category keys. Audit it and remap any keys that changed (`utilities` → `electricity`, `dining_out` stays, `transport` → `petrol_cng` for fuel cards, etc.). One pass, isolated to that file.
+
+**Files touched:**
+- `src/hooks/useFinance.ts` — replace FINANCE_CATEGORIES, CATEGORY_LABELS; add CATEGORY_GROUPS, CATEGORY_ALIASES; update resolveCategoryLabel (or wherever it lives — actually it's in CategorySelect.tsx).
+- `src/components/finance/CategorySelect.tsx` — render grouped sections; teach `resolveCategoryLabel` about aliases.
+- `src/pages/FinanceBudgetCategories.tsx` — update `INCOME_KEYS`.
+- `src/data/creditCardCatalog.ts` — remap legacy keys used in benefit definitions.
+
+No DB migration. No edge function changes. No changes to `finance_transactions`/`finance_budgets` schema.
+
+---
+
+### Change 2 — "Member contributions this month" on Finance hub
+
+Add a new section to `src/pages/Finance.tsx`, rendered **between the Income/Spent grid (line 144) and the module grid (line 147)**, only when the household has 2+ members.
+
+**Data hook (new): `src/hooks/useMemberContributions.ts`**
+- Inputs: `householdId`, `month` (yyyy-MM).
+- Query `finance_transactions` for the month range with `type='income'`, select `created_by, amount`.
+- Aggregate sums by `created_by` → `{ userId, total }[]`.
+- Join with `useHouseholdMembers` results in the page (avoid extra query) — return raw aggregated map and let the page combine with member metadata.
+
+**Render (new component): `src/components/finance/MemberContributions.tsx`**
+- Header: "Member contributions this month".
+- For each member, one row: avatar (initials fallback), display name, amount in INR, percentage of total household income, and a thin horizontal bar (`<Progress />` from shadcn or a simple div) sized to that percentage.
+- Members with `total === 0` show muted text: "₹0 — No income added yet" and an empty bar.
+- Sort: highest contribution first.
+- Total bar at the bottom (optional): "Total: ₹X,XX,XXX".
+
+**Visibility rule:** the section is hidden when `members.length <= 1` — single-occupant households don't need a split view.
+
+**Files touched:**
+- New: `src/hooks/useMemberContributions.ts`, `src/components/finance/MemberContributions.tsx`.
+- Edited: `src/pages/Finance.tsx` (insert section + wire data).
+
+No DB changes — RLS on `finance_transactions` already gates by household membership, so the query works for any member.
+
+---
 
 ### Out of scope
 
-- No edge function changes — all matching/insert is client-side via existing tables.
-- No changes to recipe/meal generation, calendar grid layout, or the AI suggest 3-card flow itself.
-
-### Open question
-
-Do you want `meal_plan_items.cooked_at` persisted (small migration) so a meal stays visibly "cooked" after reload, or is the toast + pantry update enough?
+- Migrating data in `finance_transactions.category` (keys remain old; aliases handle display).
+- Changing the subscriptions category list (`SUBSCRIPTION_CATEGORIES` in `useSubscriptions.ts`) — that's a separate dropdown the prompt didn't mention.
+- Per-member income editing UI / attribution rules (created_by drives it).
+- Trends/Review pages: they consume `CATEGORY_LABELS` so they pick up the new labels automatically; no extra work.

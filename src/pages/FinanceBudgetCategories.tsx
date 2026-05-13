@@ -41,7 +41,7 @@ const SCOPE_LABEL: Record<CategoryScope, string> = {
   subscription: "Subscriptions",
 };
 
-const INCOME_KEYS = new Set(["salary", "freelance", "investment"]);
+const INCOME_KEYS = new Set(["salary", "freelance", "investment_returns"]);
 
 export default function FinanceBudgetCategories() {
   const { categories, isLoading } = useCustomCategories("all");

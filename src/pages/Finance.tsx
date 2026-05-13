@@ -11,6 +11,7 @@ import { formatINR } from "@/lib/formatINR";
 import { format, isPast, addDays, parse, addMonths } from "date-fns";
 import { useSelectedMonth } from "@/hooks/useSelectedMonth";
 import { MonthSwitcher } from "@/components/finance/MonthSwitcher";
+import { MemberContributions } from "@/components/finance/MemberContributions";
 import {
   ArrowLeftRight,
   Target,
@@ -142,6 +143,9 @@ const Finance = () => {
             </CardContent>
           </Card>
         </div>
+
+        {/* Member contributions (hidden for single-member households) */}
+        <MemberContributions householdId={householdId} month={month} />
 
         {/* Module grid */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">

@@ -23,7 +23,7 @@ export const BudgetDialog = ({ open, onOpenChange, onSave, existingCategories = 
   const excludedBuiltIn = [
     "salary",
     "freelance",
-    "investment",
+    "investment_returns",
     ...FINANCE_CATEGORIES.filter((c) => existingCategories.includes(c)),
   ];
 
