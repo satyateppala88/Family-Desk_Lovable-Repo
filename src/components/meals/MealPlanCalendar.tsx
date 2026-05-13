@@ -260,27 +260,24 @@ export const MealPlanCalendar = ({
                 <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-1 px-1">
                   {label}
                 </p>
-                {hasMeal ? (
-                  <div className={cn(
-                    "min-h-[72px] rounded-xl",
-                    isDinner && "border-l-[3px] border-l-primary"
-                  )}>
+                <div className={cn("relative", isDinner && "pl-1")}>
+                  {isDinner && (
+                    <span className="absolute left-0 top-0 bottom-0 w-[3px] rounded-full bg-primary" aria-hidden />
+                  )}
+                  {hasMeal ? (
                     <MealSlot dayIndex={selectedDay} mealType={mealType} />
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => onAddClick(selectedDay, mealType)}
-                    className={cn(
-                      "w-full min-h-[72px] rounded-xl border border-dashed border-border/60 hover:border-primary/30 hover:bg-accent/40 transition-colors flex items-center px-4 text-left",
-                      isDinner && "border-l-[3px] border-l-primary border-l-solid"
-                    )}
-                  >
-                    <span className="text-[15px] text-muted-foreground">
-                      <Plus className="w-4 h-4 inline mr-1.5 -mt-0.5" />
-                      Add {label}
-                    </span>
-                  </button>
-                )}
+                  ) : (
+                    <button
+                      onClick={() => onAddClick(selectedDay, mealType)}
+                      className="w-full min-h-[72px] rounded-xl border border-dashed border-border/60 hover:border-primary/30 hover:bg-accent/40 transition-colors flex items-center px-4 text-left"
+                    >
+                      <span className="text-[15px] text-muted-foreground">
+                        <Plus className="w-4 h-4 inline mr-1.5 -mt-0.5" />
+                        Add {label}
+                      </span>
+                    </button>
+                  )}
+                </div>
               </div>
             );
           })}
