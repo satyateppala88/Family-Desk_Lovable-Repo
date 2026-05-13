@@ -106,7 +106,7 @@ export const useTaskmaster = (householdId: string | null) => {
 
       const { data, error } = await supabase
         .from("tasks")
-        .update(safeUpdates)
+        .update(safeUpdates as any)
         .eq("id", id)
         .select()
         .single();
