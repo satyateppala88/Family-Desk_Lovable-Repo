@@ -7,6 +7,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogBody,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -106,7 +107,8 @@ export const TaskmasterTaskDialog = ({
           </p>
         </DialogHeader>
 
-        <div className="grid gap-4 py-4">
+        <DialogBody>
+          <div className="grid gap-4 py-4">
           <div className="grid gap-2">
             <Label htmlFor="title">Title</Label>
             <div className="flex items-center gap-1.5">
@@ -195,7 +197,8 @@ export const TaskmasterTaskDialog = ({
             value={recurringPattern}
             onChange={setRecurringPattern}
           />
-        </div>
+          </div>
+        </DialogBody>
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
