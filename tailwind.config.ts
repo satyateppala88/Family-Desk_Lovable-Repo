@@ -28,6 +28,23 @@ export default {
 				'sans-serif'
 			]
   		},
+  		// Mobile-first type scale (sp ≈ px on web).
+  		// Floor: 13px. Use these tokens via `text-display`, `text-heading`,
+  		// `text-subheading`, `text-body`, `text-caption`, `text-label`.
+  		fontSize: {
+  			display: ['24px', { lineHeight: '1.3', fontWeight: '700' }],
+  			heading: ['20px', { lineHeight: '1.35', fontWeight: '600' }],
+  			subheading: ['17px', { lineHeight: '1.4', fontWeight: '600' }],
+  			body: ['15px', { lineHeight: '1.5', fontWeight: '400' }],
+  			caption: ['13px', { lineHeight: '1.5', fontWeight: '400' }],
+  			label: ['12px', { lineHeight: '1.4', fontWeight: '500' }],
+  		},
+  		minHeight: {
+  			touch: '48px',
+  		},
+  		minWidth: {
+  			touch: '48px',
+  		},
   		colors: {
   			border: 'hsl(var(--border))',
   			input: 'hsl(var(--input))',
@@ -101,6 +118,15 @@ export default {
   				border: '#D3D1C7',
   				surface: '#F1EFE8',
   			},
+  			// Mobile design-system semantic tokens (raw hex)
+  			surface: {
+  				DEFAULT: '#FFFFFF',
+  				raised: '#F8F7F4',
+  			},
+  			'text-primary': '#2C2C2A',
+  			'text-secondary': '#6B6965',
+  			'text-disabled': '#A8A5A0',
+  			error: '#DC2626',
   		},
   		borderRadius: {
   			lg: 'var(--radius)',
