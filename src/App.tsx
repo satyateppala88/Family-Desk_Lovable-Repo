@@ -52,6 +52,7 @@ const FinanceMonthlyReview = lazy(() => import("./pages/FinanceMonthlyReview"));
 const FinanceSubscriptions = lazy(() => import("./pages/FinanceSubscriptions"));
 const FinanceCards = lazy(() => import("./pages/FinanceCards"));
 const FinanceTrends = lazy(() => import("./pages/FinanceTrends"));
+const FinanceReport = lazy(() => import("./pages/FinanceReport"));
 const TermsOfService = lazy(() => import("./pages/TermsOfService"));
 const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
 const HouseholdInvitations = lazy(() => import("./pages/HouseholdInvitations"));
