@@ -378,13 +378,21 @@ export const AIChatWidget = () => {
       {/* Trigger button — hidden while the chat panel is open so it doesn't
           overlap the mic/send icons inside the input row. */}
       {!isOpen && (
-        <Button
-          size="lg"
-          className="ai-chat-fab fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg z-[60] bg-gradient-to-br from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 transition-[bottom] duration-200"
-          onClick={() => setIsOpen(true)}
-        >
-          <Sparkles className="h-6 w-6" />
-        </Button>
+        <TooltipProvider delayDuration={200}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                size="lg"
+                aria-label="Ask FamilyDesk AI"
+                className="ai-chat-fab fixed bottom-24 right-6 h-14 w-14 rounded-full shadow-lg z-[60] bg-gradient-to-br from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 transition-[bottom] duration-200"
+                onClick={() => setIsOpen(true)}
+              >
+                <Sparkles className="h-6 w-6" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="left">Ask FamilyDesk AI</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       )}
 
       {/* Mobile: bottom drawer ~65% */}
