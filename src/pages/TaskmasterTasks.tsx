@@ -42,7 +42,8 @@ import {
   Play,
   Check,
   Trash2,
-  Edit
+  Edit,
+  Repeat as RepeatIcon
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -374,8 +375,11 @@ const TaskmasterTasks = () => {
                     return (
                       <TableRow key={task.id} className={cn(isDone && "opacity-60")}>
                         <TableCell>
-                          <div className={cn(isDone && "line-through")}>
-                            {task.title}
+                          <div className={cn("flex items-center gap-1.5", isDone && "line-through")}>
+                            <span>{task.title}</span>
+                            {task.recurring && (
+                              <RepeatIcon className="h-3 w-3 text-muted-foreground" />
+                            )}
                           </div>
                         </TableCell>
                         <TableCell className="hidden sm:table-cell">
