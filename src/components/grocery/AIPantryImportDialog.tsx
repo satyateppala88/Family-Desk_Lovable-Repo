@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription, DialogBody } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2, Mic, MicOff, Sparkles } from "lucide-react";
@@ -105,7 +105,8 @@ export const AIPantryImportDialog = ({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-4">
+        <DialogBody>
+          <div className="space-y-4 py-4">
           <div className="space-y-2">
             <div className="relative">
               <Textarea
@@ -143,7 +144,8 @@ export const AIPantryImportDialog = ({
               <li>You can use colloquial terms (e.g., "atta", "haldi")</li>
             </ul>
           </div>
-        </div>
+          </div>
+        </DialogBody>
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isProcessing}>
