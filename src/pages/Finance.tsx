@@ -144,7 +144,7 @@ const Finance = () => {
         </div>
 
         {/* Module grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           {financeModules.map(({ path, icon: Icon, label, description, tintClass, hintKey }) => {
             const hint = getHint(hintKey);
             return (
