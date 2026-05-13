@@ -466,10 +466,11 @@ export const ModuleSetupDialog = ({
   );
 
   return (
-    <Dialog open={open} onOpenChange={(next) => { if (dismissible) onOpenChange?.(next); }}>
-      <DialogContent
+    <Sheet open={open} onOpenChange={(next) => { if (dismissible) onOpenChange?.(next); }}>
+      <SheetContent
+        side="bottom"
         className={cn(
-          "sm:max-w-md max-h-[90vh] flex flex-col",
+          "max-h-[85vh] flex flex-col rounded-t-2xl p-6",
           // Visually + functionally disable the built-in close (X) while
           // a write is in flight. The shared DialogContent always renders
           // a Radix Close button in the top-right; we can't remove it
@@ -495,10 +496,13 @@ export const ModuleSetupDialog = ({
         }}
         aria-busy={isSaving}
       >
-        <DialogHeader>
-          <DialogTitle>{meta.title}</DialogTitle>
-          <DialogDescription>{meta.description}</DialogDescription>
-        </DialogHeader>
+        <SheetHeader className="text-left space-y-1">
+          <SheetTitle className="flex items-center gap-2 text-left">
+            <meta.icon className="h-5 w-5 text-primary" aria-hidden="true" />
+            {meta.title}
+          </SheetTitle>
+          <SheetDescription className="text-left">{meta.description}</SheetDescription>
+        </SheetHeader>
         {progress.total > 0 && (
           <div className="-mt-1">
             <div
@@ -676,14 +680,14 @@ export const ModuleSetupDialog = ({
             />
           </div>
         </FormActionContext.Provider>
-        <DialogFooter className="flex-row justify-between sm:justify-between border-t border-border -mx-6 px-6 pt-3 mt-0 shrink-0">
+        <SheetFooter className="flex-row justify-between sm:justify-between border-t border-border -mx-6 px-6 pt-3 mt-0 shrink-0">
           <Button
             variant="ghost"
             onClick={() => { if (!isSaving) skipRef.current?.(); }}
             disabled={isSaving}
             aria-disabled={isSaving}
           >
-            Skip for now
+            Skip, I'll do this later
           </Button>
           <Button
             onClick={() => triggerSave()}
@@ -697,12 +701,12 @@ export const ModuleSetupDialog = ({
                 Saving...
               </>
             ) : (
-              "Save & continue"
+              "Set up now"
             )}
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
   );
 };
 
