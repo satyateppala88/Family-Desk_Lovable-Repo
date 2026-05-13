@@ -35,6 +35,7 @@ import { addWeeks, format } from "date-fns";
 import { useRegenerateMeals } from "@/hooks/useRegenerateMeals";
 import { RecipeCard } from "@/components/meals/RecipeCard";
 import { assignRecipeToSlot } from "@/lib/meals/assignRecipeToSlot";
+import { AddIngredientsDialog } from "@/components/meals/AddIngredientsDialog";
 
 const CUISINE_FILTERS = ["Indian", "Italian", "Chinese", "Thai", "Mexican", "Mediterranean"];
 const DIFFICULTY_FILTERS = ["easy", "medium", "hard"];
@@ -55,6 +56,7 @@ const Meals = () => {
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
   const [ratingRecipe, setRatingRecipe] = useState<Recipe | null>(null);
   const [cookingRecipe, setCookingRecipe] = useState<Recipe | null>(null);
+  const [shoppingForRecipe, setShoppingForRecipe] = useState<Recipe | null>(null);
   const [generatingPlan, setGeneratingPlan] = useState(false);
   const [view, setView] = useState<"today" | "recipes">("today");
   const [weekOpen, setWeekOpen] = useState(false);
@@ -186,18 +188,45 @@ const Meals = () => {
   const handleMarkAsCooked = async () => {
     if (!cookingRecipe || !householdId) return;
     try {
-      const ingredients = cookingRecipe.ingredients || [];
+      const ingredients = (cookingRecipe.ingredients || []) as Array<{ name: string; quantity?: string; unit?: string }>;
+      const used: { name: string; qty: number; unit: string }[] = [];
       for (const ingredient of ingredients) {
-        const itemName = ingredient.name.toLowerCase().trim();
-        const qty = parseFloat(ingredient.quantity) || 0;
-        const { data: pantryItems } = await supabase.from("pantry_items").select("id, quantity, unit").eq("household_id", householdId).ilike("name", itemName).limit(1);
+        const itemName = (ingredient.name || "").toLowerCase().trim();
+        if (!itemName) continue;
+        // Resilient quantity parsing
+        const rawQty = String(ingredient.quantity ?? "").replace(/[^0-9.]/g, "");
+        let qty = parseFloat(rawQty);
+        if (!Number.isFinite(qty) || qty <= 0) {
+          const unit = (ingredient.unit || "").toLowerCase();
+          qty = unit === "g" || unit === "ml" ? 100 : 1;
+        }
+        const { data: pantryItems } = await supabase
+          .from("pantry_items")
+          .select("id, name, quantity, unit")
+          .eq("household_id", householdId)
+          .ilike("name", `%${itemName}%`)
+          .limit(1);
         if (pantryItems && pantryItems.length > 0) {
           const pantryItem = pantryItems[0];
+          if ((pantryItem.quantity ?? 0) <= 0) continue;
           const newQty = Math.max(0, (pantryItem.quantity || 0) - qty);
           await supabase.from("pantry_items").update({ quantity: newQty }).eq("id", pantryItem.id);
+          used.push({ name: pantryItem.name, qty, unit: pantryItem.unit || ingredient.unit || "" });
         }
       }
-      toast({ title: "Marked as cooked! 👨‍🍳", description: "Your pantry has been updated to reflect what was used." });
+      queryClient.invalidateQueries({ queryKey: ["pantry-items", householdId] });
+      queryClient.invalidateQueries({ queryKey: ["pantry-stats", householdId] });
+
+      if (used.length === 0) {
+        toast({ title: "Marked as cooked! 👨‍🍳", description: "No matching pantry items to deduct." });
+      } else {
+        const preview = used.slice(0, 5).map((u) => `${u.name} (${u.qty}${u.unit ? u.unit : ""})`).join(", ");
+        const more = used.length > 5 ? ` +${used.length - 5} more` : "";
+        toast({
+          title: "Pantry updated 👨‍🍳",
+          description: `You used: ${preview}${more}`,
+        });
+      }
     } catch {
       toast({ title: "Pantry update issue", description: "Some pantry items may not have been updated.", variant: "destructive" });
     }
@@ -243,6 +272,8 @@ const Meals = () => {
                 recipe={todaysDinner}
                 onSuggest={() => openAiSheet("dinner")}
                 onChange={() => openAddSheet("dinner")}
+                onAddToList={(r) => setShoppingForRecipe(r)}
+                onMarkAsCooked={(r) => setCookingRecipe(r)}
               />
             )}
 
@@ -252,6 +283,8 @@ const Meals = () => {
                 slots={slots}
                 onAdd={(mt) => openAddSheet(mt)}
                 onOpen={(r) => setSelectedRecipe(r)}
+                onAddToList={(r) => setShoppingForRecipe(r)}
+                onMarkAsCooked={(r) => setCookingRecipe(r)}
               />
             </div>
 
@@ -306,6 +339,7 @@ const Meals = () => {
                       regenerateMeals.mutate({ householdId, weekStartDate: format(currentWeekStart, "yyyy-MM-dd"), dayOfWeek: dayIndex });
                     }}
                     onMarkAsCooked={setCookingRecipe}
+                    onAddToList={setShoppingForRecipe}
                   />
                 </div>
 
@@ -425,6 +459,16 @@ const Meals = () => {
       <RecipeDetailDialog recipe={selectedRecipe} open={!!selectedRecipe} onOpenChange={(open) => !open && setSelectedRecipe(null)} onRate={setRatingRecipe} />
       <RecipeRatingDialog recipe={ratingRecipe} open={!!ratingRecipe} onOpenChange={(open) => !open && setRatingRecipe(null)} onRate={handleRate} onHide={handleHide} onRemoveFromWeek={handleRemoveFromWeek} />
       <MarkAsCookedDialog open={!!cookingRecipe} onOpenChange={(open) => !open && setCookingRecipe(null)} recipeName={cookingRecipe?.title || ""} ingredients={cookingRecipe?.ingredients || []} onConfirm={handleMarkAsCooked} />
+      {householdId && user && shoppingForRecipe && (
+        <AddIngredientsDialog
+          open={!!shoppingForRecipe}
+          onOpenChange={(o) => !o && setShoppingForRecipe(null)}
+          recipeTitle={shoppingForRecipe.title}
+          ingredients={(shoppingForRecipe.ingredients as any[]) || []}
+          householdId={householdId}
+          userId={user.id}
+        />
+      )}
       <ConfirmDialog open={!!deleteRecipeId} onOpenChange={(open) => !open && setDeleteRecipeId(null)} title="Delete this recipe?" description="This recipe will be permanently removed from your collection." confirmLabel="Delete Recipe" variant="destructive" onConfirm={confirmDeleteRecipe} />
     </div>
   );
