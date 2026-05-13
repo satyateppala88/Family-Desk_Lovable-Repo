@@ -58,6 +58,7 @@ const HouseholdInvitations = lazy(() => import("./pages/HouseholdInvitations"));
 const HouseholdMembers = lazy(() => import("./pages/HouseholdMembers"));
 const HouseholdProductSettings = lazy(() => import("./pages/HouseholdProductSettings"));
 const VerifyEmail = lazy(() => import("./pages/VerifyEmail"));
+const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const Install = lazy(() => import("./pages/Install"));
 const NotificationSettings = lazy(() => import("./pages/NotificationSettings"));
 const PermissionsSettings = lazy(() => import("./pages/PermissionsSettings"));
@@ -94,6 +95,7 @@ const App = () => (
                 <Route path="/" element={<AppEntryGate />} />
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/verify-email" element={<VerifyEmail />} />
+                <Route path="/reset-password" element={<ResetPassword />} />
                 <Route path="/request-access" element={<RequestAccess />} />
                 <Route
                   path="/admin/access-requests"
