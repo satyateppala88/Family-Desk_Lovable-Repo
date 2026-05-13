@@ -16,7 +16,7 @@ export const useHousehold = () => {
       // maybeSingle() returns null instead of throwing when no row exists.
       const { data: memberData, error: memberError } = await (supabase as any)
         .from("household_members")
-        .select("household_id, households(onboarding_completed, name, avatar_url)")
+        .select("household_id, households(onboarding_completed, name, avatar_url, created_at)")
         .eq("user_id", user.id)
         .limit(1)
         .maybeSingle();
@@ -25,7 +25,7 @@ export const useHousehold = () => {
 
       const householdId = memberData?.household_id || null;
       if (!householdId) {
-        return { householdId: null, onboardingCompleted: false, householdName: null, householdAvatarUrl: null };
+        return { householdId: null, onboardingCompleted: false, householdName: null, householdAvatarUrl: null, householdCreatedAt: null };
       }
 
       const householdData = memberData?.households;
@@ -34,6 +34,7 @@ export const useHousehold = () => {
         onboardingCompleted: householdData?.onboarding_completed || false,
         householdName: householdData?.name || null,
         householdAvatarUrl: householdData?.avatar_url || null,
+        householdCreatedAt: householdData?.created_at || null,
       };
     },
     enabled: !!user,
@@ -45,6 +46,7 @@ export const useHousehold = () => {
     onboardingCompleted: data?.onboardingCompleted || false,
     householdName: data?.householdName || null,
     householdAvatarUrl: data?.householdAvatarUrl || null,
+    householdCreatedAt: data?.householdCreatedAt || null,
     isLoading,
   };
 };

@@ -1210,6 +1210,7 @@ export type Database = {
       habits: {
         Row: {
           assignment_type: string
+          challenge_id: string | null
           color: string | null
           created_at: string
           description: string | null
@@ -1228,6 +1229,7 @@ export type Database = {
         }
         Insert: {
           assignment_type?: string
+          challenge_id?: string | null
           color?: string | null
           created_at?: string
           description?: string | null
@@ -1246,6 +1248,7 @@ export type Database = {
         }
         Update: {
           assignment_type?: string
+          challenge_id?: string | null
           color?: string | null
           created_at?: string
           description?: string | null

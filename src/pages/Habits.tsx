@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { format } from "date-fns";
-import { Users, User, Leaf, PartyPopper, Trophy, Snowflake } from "lucide-react";
+import { format, differenceInCalendarDays } from "date-fns";
+import { Users, User, Leaf, PartyPopper, Trophy, Snowflake, Plus } from "lucide-react";
 import { Header } from "@/components/layout/Header";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageLoading } from "@/components/ui/page-loading";
 import { useHousehold } from "@/hooks/useHousehold";
@@ -32,7 +33,7 @@ import { useEffect } from "react";
 
 const Habits = () => {
   const [view, setView] = useState<"personal" | "household" | "challenges">("personal");
-  const { householdId, isLoading: householdLoading } = useHousehold();
+  const { householdId, householdCreatedAt, isLoading: householdLoading } = useHousehold();
   useRealtimeSubscription([
     { table: "habits", filter: householdId ? `household_id=eq.${householdId}` : undefined, enabled: !!householdId, queryKeys: [["habits", householdId], ["habit-assignees", householdId]] },
     { table: "habit_logs", enabled: !!householdId, queryKeys: [["habit-logs-today"], ["household-habit-stats"], ["habit-leaderboard"], ["habit-scores"]] },
@@ -79,6 +80,14 @@ const Habits = () => {
   const totalCount = todaysHabits.length;
   const completionPct = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
   const allDone = completedCount === totalCount && totalCount > 0;
+
+  const householdAgeDays = householdCreatedAt
+    ? differenceInCalendarDays(new Date(), new Date(householdCreatedAt))
+    : 0;
+  const householdTooNew = householdAgeDays < 3;
+  const neutralCoachCopy = "Add your first habit to start tracking your household's daily routine.";
+  const householdCompletedToday = householdStats?.completedToday ?? 0;
+  const householdTotalHabits = householdStats?.totalHabits ?? 0;
 
   const handleToggleHabit = (habitId: string, completed: boolean) => {
     logHabit.mutate({ habitId, completed });
@@ -237,12 +246,22 @@ const Habits = () => {
               </CardContent>
             </Card>
 
-            {todaysHabits.length > 0 && completedCount < totalCount && completedCount > 0 && (
+            <Button
+              className="w-full gap-2"
+              onClick={() => setCreateDialogOpen(true)}
+            >
+              <Plus className="h-4 w-4" />
+              Add Habit
+            </Button>
+
+            {totalCount === 0 || completedCount === 0 || householdTooNew ? (
+              <HabitCoachInsight content={neutralCoachCopy} onDismiss={() => {}} />
+            ) : completedCount < totalCount ? (
               <HabitCoachInsight
                 content="You're making progress! Keep the momentum going — every check-off counts."
                 onDismiss={() => {}}
               />
-            )}
+            ) : null}
 
             {habitsLoading ? (
               <PageLoading cards={3} heading={false} />
@@ -319,7 +338,9 @@ const Habits = () => {
                   )}
                 </div>
 
-                {householdStats.memberStats.length > 0 && (
+                {householdTotalHabits === 0 || householdCompletedToday === 0 || householdTooNew ? (
+                  <HabitCoachInsight content={neutralCoachCopy} onDismiss={() => {}} />
+                ) : (
                   <HabitCoachInsight
                     content="Your household is building great consistency! Consider adding a shared family habit like an evening walk or gratitude moment."
                     onDismiss={() => {}}
