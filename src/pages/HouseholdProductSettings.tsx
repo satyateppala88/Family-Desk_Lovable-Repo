@@ -102,8 +102,8 @@ export default function HouseholdProductSettings() {
       // user opens this module via the ModuleSetupGate on that page.
     } catch (error: any) {
       toast({
-        title: "Error",
-        description: error.message,
+        title: "Something went wrong",
+        description: "Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -133,8 +133,8 @@ export default function HouseholdProductSettings() {
       setProductToDisable(null);
     } catch (error: any) {
       toast({
-        title: "Error",
-        description: error.message,
+        title: "Something went wrong",
+        description: "Please try again.",
         variant: "destructive",
       });
     } finally {

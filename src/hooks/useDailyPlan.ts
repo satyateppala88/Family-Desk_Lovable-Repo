@@ -109,7 +109,7 @@ export const useDailyPlan = (householdId: string | null, date?: Date) => {
     onError: (error: any) => {
       toast({
         title: "Error generating plan",
-        description: error.message,
+        description: "Please try again.",
         variant: "destructive",
       });
     },
@@ -139,7 +139,7 @@ export const useDailyPlan = (householdId: string | null, date?: Date) => {
     onError: (error: any) => {
       toast({
         title: "Error",
-        description: error.message,
+        description: "Please try again.",
         variant: "destructive",
       });
     },
@@ -167,7 +167,7 @@ export const useDailyPlan = (householdId: string | null, date?: Date) => {
     onError: (error: any) => {
       toast({
         title: "Error",
-        description: error.message,
+        description: "Please try again.",
         variant: "destructive",
       });
     },

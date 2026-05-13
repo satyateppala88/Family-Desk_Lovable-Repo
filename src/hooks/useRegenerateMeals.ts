@@ -41,7 +41,7 @@ export const useRegenerateMeals = () => {
     onError: (error: any) => {
       toast({
         title: "Error",
-        description: error.message || "Failed to regenerate meals",
+        description: "Couldn't refresh meals. Please try again.",
         variant: "destructive",
       });
     },

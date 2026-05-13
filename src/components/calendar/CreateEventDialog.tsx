@@ -72,7 +72,7 @@ export const CreateEventDialog = ({ open, onOpenChange, defaultDate }: CreateEve
       toast({ title: "Event added", description: "Your event has been added to the calendar." });
       onOpenChange(false);
     } catch (err: any) {
-      toast({ title: "Couldn't add event", description: err?.message || "Please try again.", variant: "destructive" });
+      toast({ title: "Couldn't add event", description: "Please try again.", variant: "destructive" });
     }
   };
 

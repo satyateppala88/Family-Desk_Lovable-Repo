@@ -67,7 +67,7 @@ const RequestAccess = () => {
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message || "Failed to submit request. Please try again.",
+        description: "Failed to submit request. Please try again.",
         variant: "destructive",
       });
     } finally {

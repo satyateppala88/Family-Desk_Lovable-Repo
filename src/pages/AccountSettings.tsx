@@ -80,8 +80,8 @@ const AccountSettings = () => {
     } catch (error: any) {
       toast({
         variant: "destructive",
-        title: "Error",
-        description: error.message,
+        title: "Something went wrong",
+        description: "Please try again.",
       });
     } finally {
       setLoading(false);
@@ -129,8 +129,8 @@ const AccountSettings = () => {
     } catch (error: any) {
       toast({
         variant: "destructive",
-        title: "Error",
-        description: error.message,
+        title: "Something went wrong",
+        description: "Please try again.",
       });
     } finally {
       setLoading(false);

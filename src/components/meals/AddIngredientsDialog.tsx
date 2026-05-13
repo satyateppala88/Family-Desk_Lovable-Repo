@@ -97,9 +97,10 @@ export const AddIngredientsDialog = ({
       });
       onOpenChange(false);
     } catch (e: any) {
+      console.error("AddIngredientsDialog error:", e);
       toast({
-        title: "Couldn't add",
-        description: e?.message || "Try again.",
+        title: "Couldn't add ingredients",
+        description: "Please try again.",
         variant: "destructive",
       });
     } finally {

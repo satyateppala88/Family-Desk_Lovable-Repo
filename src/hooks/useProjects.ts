@@ -46,7 +46,7 @@ export const useProjects = (householdId: string | null) => {
     onError: (error: any) => {
       toast({
         title: "Error",
-        description: error.message,
+        description: "Please try again.",
         variant: "destructive",
       });
     },
@@ -74,7 +74,7 @@ export const useProjects = (householdId: string | null) => {
     onError: (error: any) => {
       toast({
         title: "Error",
-        description: error.message,
+        description: "Please try again.",
         variant: "destructive",
       });
     },
@@ -99,7 +99,7 @@ export const useProjects = (householdId: string | null) => {
     onError: (error: any) => {
       toast({
         title: "Error",
-        description: error.message,
+        description: "Please try again.",
         variant: "destructive",
       });
     },

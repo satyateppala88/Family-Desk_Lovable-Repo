@@ -40,7 +40,7 @@ export const ShareOnWhatsAppButton = ({
     } catch (e: any) {
       toast({
         title: "Couldn't share",
-        description: e?.message || "Please try again.",
+        description: "Please try again.",
         variant: "destructive",
       });
     } finally {

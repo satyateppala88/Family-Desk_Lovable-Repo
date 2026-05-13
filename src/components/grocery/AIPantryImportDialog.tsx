@@ -84,7 +84,7 @@ export const AIPantryImportDialog = ({
       console.error("Error:", error);
       toast({
         title: "Error",
-        description: error.message || "Failed to process your input. Please try again.",
+        description: "Failed to process your input. Please try again.",
         variant: "destructive",
       });
     } finally {

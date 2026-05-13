@@ -119,9 +119,10 @@ export const useMealPlans = (householdId: string | null, weekStartDate?: string)
       }
     },
     onError: (error: any) => {
+      console.error("Create meal plan error:", error);
       toast({
-        title: "Error",
-        description: error.message,
+        title: "Couldn't save meal plan",
+        description: "Please try again.",
         variant: "destructive",
       });
     },
@@ -149,9 +150,10 @@ export const useMealPlans = (householdId: string | null, weekStartDate?: string)
       queryClient.invalidateQueries({ queryKey: ["meal-plans", householdId] });
     },
     onError: (error: any) => {
+      console.error("Update meal plan item error:", error);
       toast({
-        title: "Error",
-        description: error.message,
+        title: "Couldn't update this meal",
+        description: "Please try again.",
         variant: "destructive",
       });
     },
@@ -174,9 +176,10 @@ export const useMealPlans = (householdId: string | null, weekStartDate?: string)
       });
     },
     onError: (error: any) => {
+      console.error("Delete meal plan item error:", error);
       toast({
-        title: "Error",
-        description: error.message,
+        title: "Couldn't remove this meal",
+        description: "Please try again.",
         variant: "destructive",
       });
     },
@@ -199,9 +202,10 @@ export const useMealPlans = (householdId: string | null, weekStartDate?: string)
       });
     },
     onError: (error: any) => {
+      console.error("Delete meal plan error:", error);
       toast({
-        title: "Error",
-        description: error.message,
+        title: "Couldn't delete this plan",
+        description: "Please try again.",
         variant: "destructive",
       });
     },

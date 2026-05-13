@@ -55,8 +55,8 @@ export const useRecipes = (householdId: string | null, pagination?: PaginationPa
     },
     onError: (error: any) => {
       toast({
-        title: "Error",
-        description: error.message,
+        title: "Something went wrong",
+        description: "Please try again.",
         variant: "destructive",
       });
     },
@@ -83,8 +83,8 @@ export const useRecipes = (householdId: string | null, pagination?: PaginationPa
     },
     onError: (error: any) => {
       toast({
-        title: "Error",
-        description: error.message,
+        title: "Something went wrong",
+        description: "Please try again.",
         variant: "destructive",
       });
     },
@@ -108,8 +108,8 @@ export const useRecipes = (householdId: string | null, pagination?: PaginationPa
     },
     onError: (error: any) => {
       toast({
-        title: "Error",
-        description: error.message,
+        title: "Something went wrong",
+        description: "Please try again.",
         variant: "destructive",
       });
     },

@@ -199,7 +199,7 @@ export const AIChatWidget = () => {
         }
       }
     } catch (error: any) {
-      toast({ title: "Error", description: error.message || "Failed to send message", variant: "destructive" });
+      toast({ title: "Error", description: "Failed to send message", variant: "destructive" });
       setMessages(prev => {
         const updated = [...prev];
         const last = updated[updated.length - 1];

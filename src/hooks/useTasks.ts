@@ -105,8 +105,8 @@ export const useTasks = (householdId: string | null, pagination?: PaginationPara
     },
     onError: (error: any) => {
       toast({
-        title: "Error",
-        description: error.message,
+        title: "Something went wrong",
+        description: "Please try again.",
         variant: "destructive",
       });
     },
@@ -152,8 +152,8 @@ export const useTasks = (householdId: string | null, pagination?: PaginationPara
     },
     onError: (error: any) => {
       toast({
-        title: "Error",
-        description: error.message,
+        title: "Something went wrong",
+        description: "Please try again.",
         variant: "destructive",
       });
     },
@@ -177,8 +177,8 @@ export const useTasks = (householdId: string | null, pagination?: PaginationPara
     },
     onError: (error: any) => {
       toast({
-        title: "Error",
-        description: error.message,
+        title: "Something went wrong",
+        description: "Please try again.",
         variant: "destructive",
       });
     },

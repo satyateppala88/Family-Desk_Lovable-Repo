@@ -85,7 +85,7 @@ export function usePhoneVerification() {
 
       toast({
         title: "Failed to send OTP",
-        description: error.message || "Please check your phone number and try again.",
+        description: "Please check your phone number and try again.",
         variant: "destructive",
       });
 
@@ -138,7 +138,7 @@ export function usePhoneVerification() {
 
       toast({
         title: "Verification Failed",
-        description: error.message || "Invalid or expired OTP. Please try again.",
+        description: "Invalid or expired OTP. Please try again.",
         variant: "destructive",
       });
 
