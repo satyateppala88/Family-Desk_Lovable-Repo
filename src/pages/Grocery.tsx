@@ -166,7 +166,12 @@ const Grocery = () => {
       household_id: householdId,
       added_by: user.id,
     }));
-    bulkAddItems.mutate(itemsWithRequired);
+    bulkAddItems.mutate(itemsWithRequired, {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ["pantry-items", householdId] });
+        queryClient.invalidateQueries({ queryKey: ["pantry-stats", householdId] });
+      },
+    });
   };
 
   const handleAIImport = (items: Partial<PantryItem>[]) => {
