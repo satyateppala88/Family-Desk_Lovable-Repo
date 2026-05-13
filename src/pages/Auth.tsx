@@ -23,10 +23,31 @@ const Auth = () => {
   const [authState, setAuthState] = useState<AuthState>("form");
   const [resendCooldown, setResendCooldown] = useState(0);
   const [pendingUserId, setPendingUserId] = useState<string | null>(null);
+  const [signInError, setSignInError] = useState<string | null>(null);
+  const [forgotMessage, setForgotMessage] = useState<string | null>(null);
+  const [forgotLoading, setForgotLoading] = useState(false);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
   const defaultTab = searchParams.get("tab") === "signup" ? "signup" : "signin";
+  const [tab, setTab] = useState<"signin" | "signup">(defaultTab as "signin" | "signup");
+
+  const resetFormFields = () => {
+    setEmail("");
+    setPassword("");
+    setDisplayName("");
+    setTermsAccepted(false);
+    setShowPassword(false);
+    setSignInError(null);
+    setForgotMessage(null);
+  };
+
+  const handleTabChange = (next: string) => {
+    if (next !== tab) {
+      resetFormFields();
+      setTab(next as "signin" | "signup");
+    }
+  };
 
   const sendVerificationEmail = async (userId: string, userEmail: string, userName?: string) => {
     try {
@@ -156,6 +177,8 @@ const Auth = () => {
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSignInError(null);
+    setForgotMessage(null);
     setLoading(true);
 
     try {
@@ -164,7 +187,10 @@ const Auth = () => {
         password,
       });
 
-      if (error) throw error;
+      if (error) {
+        setSignInError("Incorrect email or password. Please try again.");
+        return;
+      }
 
       // Check if email is verified
       if (data.user && !data.user.email_confirmed_at) {
@@ -213,6 +239,28 @@ const Auth = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    setSignInError(null);
+    setForgotMessage(null);
+    const trimmed = email.trim();
+    if (!trimmed || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+      setSignInError("Enter your email above first, then tap Forgot password.");
+      return;
+    }
+    setForgotLoading(true);
+    try {
+      await supabase.auth.resetPasswordForEmail(trimmed, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+    } catch (err) {
+      // Swallow — never reveal whether the address exists.
+      console.error("resetPasswordForEmail error:", err);
+    } finally {
+      setForgotLoading(false);
+      setForgotMessage("If this email is registered, you'll receive a reset link shortly.");
     }
   };
 
@@ -297,7 +345,7 @@ const Auth = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Tabs defaultValue={defaultTab} className="w-full">
+          <Tabs value={tab} onValueChange={handleTabChange} className="w-full">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="signin">Sign In</TabsTrigger>
               <TabsTrigger value="signup">Sign Up</TabsTrigger>
@@ -312,19 +360,35 @@ const Auth = () => {
                     type="email"
                     placeholder="you@example.com"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      if (signInError) setSignInError(null);
+                    }}
                     required
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="signin-password">Password</Label>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="signin-password">Password</Label>
+                    <button
+                      type="button"
+                      onClick={handleForgotPassword}
+                      disabled={forgotLoading}
+                      className="text-xs text-primary hover:underline disabled:opacity-60"
+                    >
+                      {forgotLoading ? "Sending…" : "Forgot password?"}
+                    </button>
+                  </div>
                   <div className="relative">
                     <Input
                       id="signin-password"
                       type={showPassword ? "text" : "password"}
                       placeholder="••••••••"
                       value={password}
-                      onChange={(e) => setPassword(e.target.value)}
+                      onChange={(e) => {
+                        setPassword(e.target.value);
+                        if (signInError) setSignInError(null);
+                      }}
                       required
                       className="pr-12"
                     />
@@ -345,6 +409,12 @@ const Auth = () => {
                 <Button type="submit" className="w-full" disabled={loading}>
                   {loading ? "Signing in..." : "Sign In"}
                 </Button>
+                {signInError && (
+                  <p className="text-sm text-destructive" role="alert">{signInError}</p>
+                )}
+                {forgotMessage && (
+                  <p className="text-sm text-muted-foreground" role="status">{forgotMessage}</p>
+                )}
               </form>
             </TabsContent>
             
