@@ -1,10 +1,13 @@
+import { useState } from "react";
 import { Task } from "@/types/database";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, Clock, AlertCircle, Trash2, RotateCcw, User } from "lucide-react";
+import { CheckCircle2, Check, Clock, AlertCircle, Trash2, RotateCcw, User } from "lucide-react";
 import { format, isPast, isToday, isTomorrow, differenceInDays } from "date-fns";
 import { cn } from "@/lib/utils";
+import { SwipeRow } from "@/components/ui/SwipeRow";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 interface TaskCardProps {
   task: Task;
@@ -44,8 +47,30 @@ const getDueDateStyle = (dueDate: string, status: string) => {
 export const TaskCard = ({ task, onComplete, onDelete, onClick }: TaskCardProps) => {
   const isCompleted = task.status === "completed";
   const priority = priorityConfig[task.priority] || priorityConfig.medium;
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   return (
+    <>
+    <SwipeRow
+      radiusClass="rounded-lg"
+      disabled={isCompleted}
+      actions={[
+        {
+          key: "done",
+          label: "Done",
+          icon: <Check className="w-4 h-4" />,
+          bgClass: "bg-[hsl(var(--success))]",
+          onAction: () => { if (!isCompleted) onComplete(task.id); },
+        },
+        {
+          key: "delete",
+          label: "Delete",
+          icon: <Trash2 className="w-4 h-4" />,
+          bgClass: "bg-destructive",
+          onAction: () => setConfirmOpen(true),
+        },
+      ]}
+    >
     <Card
       className={cn(
         "cursor-pointer transition-all hover:shadow-md group",
@@ -133,5 +158,16 @@ export const TaskCard = ({ task, onComplete, onDelete, onClick }: TaskCardProps)
         </div>
       </CardContent>
     </Card>
+    </SwipeRow>
+    <ConfirmDialog
+      open={confirmOpen}
+      onOpenChange={setConfirmOpen}
+      title="Delete task?"
+      description={`"${task.title}" will be permanently removed.`}
+      confirmLabel="Delete"
+      variant="destructive"
+      onConfirm={() => { onDelete(task.id); setConfirmOpen(false); }}
+    />
+    </>
   );
 };
