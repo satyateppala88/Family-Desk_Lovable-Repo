@@ -8,6 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogBody,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -61,7 +62,8 @@ export const EditHouseholdBasicsDialog = ({
             Update your family composition
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-4 py-4">
+        <DialogBody>
+          <div className="space-y-4 py-4">
           <div className="space-y-2">
             <Label>Number of Adults</Label>
             <Input
@@ -104,7 +106,8 @@ export const EditHouseholdBasicsDialog = ({
               </div>
             </RadioGroup>
           </div>
-        </div>
+          </div>
+        </DialogBody>
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)}>
             Cancel
