@@ -261,6 +261,70 @@ export type Database = {
           },
         ]
       }
+      challenge_logs: {
+        Row: {
+          challenge_id: string
+          completed: boolean
+          created_at: string
+          id: string
+          log_date: string
+          user_id: string
+        }
+        Insert: {
+          challenge_id: string
+          completed?: boolean
+          created_at?: string
+          id?: string
+          log_date?: string
+          user_id: string
+        }
+        Update: {
+          challenge_id?: string
+          completed?: boolean
+          created_at?: string
+          id?: string
+          log_date?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "challenge_logs_challenge_id_fkey"
+            columns: ["challenge_id"]
+            isOneToOne: false
+            referencedRelation: "household_challenges"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      challenge_participants: {
+        Row: {
+          challenge_id: string
+          id: string
+          joined_at: string
+          user_id: string
+        }
+        Insert: {
+          challenge_id: string
+          id?: string
+          joined_at?: string
+          user_id: string
+        }
+        Update: {
+          challenge_id?: string
+          id?: string
+          joined_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "challenge_participants_challenge_id_fkey"
+            columns: ["challenge_id"]
+            isOneToOne: false
+            referencedRelation: "household_challenges"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       daily_plan_items: {
         Row: {
           ai_reasoning: string | null
@@ -1021,6 +1085,7 @@ export type Database = {
           created_at: string
           habit_id: string
           id: string
+          is_freeze: boolean
           log_date: string
           logged_at: string
           notes: string | null
@@ -1032,6 +1097,7 @@ export type Database = {
           created_at?: string
           habit_id: string
           id?: string
+          is_freeze?: boolean
           log_date: string
           logged_at?: string
           notes?: string | null
@@ -1043,6 +1109,7 @@ export type Database = {
           created_at?: string
           habit_id?: string
           id?: string
+          is_freeze?: boolean
           log_date?: string
           logged_at?: string
           notes?: string | null
@@ -1204,6 +1271,51 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      household_challenges: {
+        Row: {
+          created_at: string
+          description: string | null
+          duration_days: number
+          emoji: string
+          end_date: string
+          household_id: string
+          id: string
+          name: string
+          start_date: string
+          started_by: string
+          status: string
+          template_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          duration_days: number
+          emoji?: string
+          end_date: string
+          household_id: string
+          id?: string
+          name: string
+          start_date?: string
+          started_by: string
+          status?: string
+          template_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          duration_days?: number
+          emoji?: string
+          end_date?: string
+          household_id?: string
+          id?: string
+          name?: string
+          start_date?: string
+          started_by?: string
+          status?: string
+          template_id?: string
+        }
+        Relationships: []
       }
       household_enabled_products: {
         Row: {
@@ -1980,12 +2092,15 @@ export type Database = {
           created_at: string
           display_name: string | null
           id: string
+          last_freeze_used_at: string | null
           onboarding_completed: boolean | null
           phone_number: string | null
           phone_verified: boolean | null
           phone_verified_at: string | null
           preferred_language: string | null
           region: string | null
+          streak_freeze_period: string | null
+          streak_freezes_remaining: number
           terms_accepted_at: string | null
           updated_at: string
           whatsapp_opted_in: boolean | null
@@ -1996,12 +2111,15 @@ export type Database = {
           created_at?: string
           display_name?: string | null
           id: string
+          last_freeze_used_at?: string | null
           onboarding_completed?: boolean | null
           phone_number?: string | null
           phone_verified?: boolean | null
           phone_verified_at?: string | null
           preferred_language?: string | null
           region?: string | null
+          streak_freeze_period?: string | null
+          streak_freezes_remaining?: number
           terms_accepted_at?: string | null
           updated_at?: string
           whatsapp_opted_in?: boolean | null
@@ -2012,12 +2130,15 @@ export type Database = {
           created_at?: string
           display_name?: string | null
           id?: string
+          last_freeze_used_at?: string | null
           onboarding_completed?: boolean | null
           phone_number?: string | null
           phone_verified?: boolean | null
           phone_verified_at?: string | null
           preferred_language?: string | null
           region?: string | null
+          streak_freeze_period?: string | null
+          streak_freezes_remaining?: number
           terms_accepted_at?: string | null
           updated_at?: string
           whatsapp_opted_in?: boolean | null
