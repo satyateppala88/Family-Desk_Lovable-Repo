@@ -86,6 +86,8 @@ const TaskmasterToday = () => {
       project_id: draft.project_id,
       household_id: householdId!,
       assignee_ids: draft.assignee_ids,
+      recurring: draft.recurring,
+      recurring_pattern: draft.recurring_pattern as any,
     });
   };
 
