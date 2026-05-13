@@ -189,7 +189,7 @@ const TaskmasterToday = () => {
         </div>
 
         {/* Plan Status Banner */}
-        {dailyPlan && (
+        {dailyPlan && (dailyPlan.items?.length ?? 0) > 0 && (
           <Card className={cn(
             "mb-6",
             dailyPlan.accepted ? "border-green-500/50 bg-green-50 dark:bg-green-950/20" : "border-amber-500/50 bg-amber-50 dark:bg-amber-950/20"
