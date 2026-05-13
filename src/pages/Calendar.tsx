@@ -68,7 +68,10 @@ const Calendar = () => {
               <CalendarGrid
                 currentDate={currentDate}
                 events={events || []}
-                onEventClick={setSelectedEvent}
+                onEventClick={(ev) => {
+                  if (ev.calendarId === "system") return;
+                  setSelectedEvent(ev);
+                }}
                 onDateClick={setCurrentDate}
               />
             </div>
