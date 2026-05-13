@@ -4,6 +4,8 @@ interface UseSpeechRecognitionOptions {
   onResult: (text: string) => void;
   language?: string;
   continuous?: boolean;
+  /** Auto-stop after this many ms. 0 disables. */
+  maxDurationMs?: number;
 }
 
 interface SpeechRecognitionEvent {
@@ -15,9 +17,11 @@ export const useSpeechRecognition = ({
   onResult,
   language = "en-IN",
   continuous = true,
+  maxDurationMs = 0,
 }: UseSpeechRecognitionOptions) => {
   const [isListening, setIsListening] = useState(false);
   const recognitionRef = useRef<any>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const onResultRef = useRef(onResult);
 
   // Keep callback ref fresh
@@ -33,6 +37,10 @@ export const useSpeechRecognition = ({
   const isSupported = !!SpeechRecognitionAPI;
 
   const stop = useCallback(() => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
     if (recognitionRef.current) {
       recognitionRef.current.stop();
       setIsListening(false);
@@ -67,16 +75,33 @@ export const useSpeechRecognition = ({
     recognition.onerror = (event: any) => {
       console.error("Speech recognition error:", event.error);
       setIsListening(false);
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
     };
 
     recognition.onend = () => {
       setIsListening(false);
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
     };
 
     recognitionRef.current = recognition;
     recognition.start();
     setIsListening(true);
-  }, [SpeechRecognitionAPI, language, continuous]);
+    if (maxDurationMs > 0) {
+      timeoutRef.current = setTimeout(() => {
+        try {
+          recognition.stop();
+        } catch {
+          /* noop */
+        }
+      }, maxDurationMs);
+    }
+  }, [SpeechRecognitionAPI, language, continuous, maxDurationMs]);
 
   // Cleanup on unmount
   useEffect(() => {
