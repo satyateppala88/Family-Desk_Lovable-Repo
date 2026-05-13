@@ -33,6 +33,84 @@ interface CalendarEvent {
   description?: string;
 }
 
+// Expand a manual event into all occurrences within [windowStart, windowEnd)
+// based on its repeat_type.
+function expandRecurrence(
+  ev: { start_at: string; end_at: string; repeat_type?: string | null },
+  windowStart: Date,
+  windowEnd: Date,
+): { start: Date; end: Date }[] {
+  const baseStart = new Date(ev.start_at);
+  const baseEnd = new Date(ev.end_at);
+  const duration = baseEnd.getTime() - baseStart.getTime();
+  const repeat = (ev.repeat_type || "none").toLowerCase();
+
+  if (repeat === "none") {
+    if (baseStart >= windowStart && baseStart < windowEnd) {
+      return [{ start: baseStart, end: baseEnd }];
+    }
+    return [];
+  }
+
+  const out: { start: Date; end: Date }[] = [];
+  // Cap iterations defensively (e.g. 5 years of daily = ~1825 entries)
+  const MAX_ITER = 2000;
+
+  if (repeat === "daily") {
+    let cur = new Date(Math.max(baseStart.getTime(), windowStart.getTime()));
+    // Align to baseStart time-of-day
+    cur.setHours(baseStart.getHours(), baseStart.getMinutes(), baseStart.getSeconds(), 0);
+    if (cur < windowStart) cur = new Date(cur.getTime() + 86400000);
+    let i = 0;
+    while (cur < windowEnd && i++ < MAX_ITER) {
+      if (cur >= baseStart) out.push({ start: new Date(cur), end: new Date(cur.getTime() + duration) });
+      cur = new Date(cur.getTime() + 86400000);
+    }
+  } else if (repeat === "weekly") {
+    let cur = new Date(baseStart);
+    while (cur < windowStart && (cur = new Date(cur.getTime() + 7 * 86400000))) {
+      if (cur.getTime() > windowEnd.getTime() + 365 * 86400000) break;
+    }
+    let i = 0;
+    while (cur < windowEnd && i++ < MAX_ITER) {
+      if (cur >= baseStart) out.push({ start: new Date(cur), end: new Date(cur.getTime() + duration) });
+      cur = new Date(cur.getTime() + 7 * 86400000);
+    }
+  } else if (repeat === "monthly") {
+    const day = baseStart.getDate();
+    let y = Math.max(baseStart.getFullYear(), windowStart.getFullYear());
+    let m = baseStart.getFullYear() === y ? baseStart.getMonth() : 0;
+    if (y === windowStart.getFullYear()) m = Math.max(m, windowStart.getMonth());
+    let i = 0;
+    while (i++ < MAX_ITER) {
+      const lastDay = new Date(y, m + 1, 0).getDate();
+      const d = Math.min(day, lastDay);
+      const occ = new Date(y, m, d, baseStart.getHours(), baseStart.getMinutes(), baseStart.getSeconds());
+      if (occ >= windowEnd) break;
+      if (occ >= baseStart && occ >= windowStart) {
+        out.push({ start: occ, end: new Date(occ.getTime() + duration) });
+      }
+      m++;
+      if (m > 11) { m = 0; y++; }
+    }
+  } else if (repeat === "yearly") {
+    const month = baseStart.getMonth();
+    const day = baseStart.getDate();
+    let y = Math.max(baseStart.getFullYear(), windowStart.getFullYear());
+    let i = 0;
+    while (i++ < MAX_ITER) {
+      const occ = new Date(y, month, day, baseStart.getHours(), baseStart.getMinutes(), baseStart.getSeconds());
+      if (occ >= windowEnd) break;
+      if (occ >= baseStart && occ >= windowStart) {
+        out.push({ start: occ, end: new Date(occ.getTime() + duration) });
+      }
+      y++;
+    }
+  }
+
+  return out;
+}
+
 // deno-lint-ignore no-explicit-any
 async function refreshAccessToken(
   connection: CalendarConnection,
