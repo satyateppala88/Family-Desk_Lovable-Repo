@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogBody } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -145,7 +145,7 @@ export const CalendarTaskScanDialog = ({ open, onOpenChange }: CalendarTaskScanD
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <CalendarSearch className="w-5 h-5" />
@@ -153,6 +153,7 @@ export const CalendarTaskScanDialog = ({ open, onOpenChange }: CalendarTaskScanD
           </DialogTitle>
         </DialogHeader>
 
+        <DialogBody className="space-y-4">
         {!hasConnections ? (
           <div className="text-center py-8 space-y-3">
             <AlertCircle className="w-10 h-10 mx-auto text-muted-foreground" />
@@ -256,6 +257,7 @@ export const CalendarTaskScanDialog = ({ open, onOpenChange }: CalendarTaskScanD
             )}
           </>
         )}
+        </DialogBody>
 
         {suggestions.length > 0 && (
           <DialogFooter>

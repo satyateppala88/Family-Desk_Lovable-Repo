@@ -7,6 +7,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogBody,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -72,7 +73,8 @@ export const TaskDialog = ({
           <DialogTitle>{task ? "Edit Task" : "New Task"}</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4 py-2">
+        <DialogBody>
+          <div className="space-y-4 py-2">
           <div className="space-y-1.5">
             <Label htmlFor="title" className="text-xs font-medium">Title</Label>
             <div className="flex items-center gap-1.5">
@@ -144,7 +146,8 @@ export const TaskDialog = ({
               />
             </div>
           </div>
-        </div>
+          </div>
+        </DialogBody>
 
         <DialogFooter className="gap-2 sm:gap-0">
           <Button variant="outline" onClick={() => onOpenChange(false)}>

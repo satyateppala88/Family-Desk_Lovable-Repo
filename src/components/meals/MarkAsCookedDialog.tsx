@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription, DialogBody } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Info, CheckCircle2 } from "lucide-react";
@@ -40,7 +40,7 @@ export const MarkAsCookedDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>Mark as Cooked</DialogTitle>
           <DialogDescription>
@@ -48,7 +48,8 @@ export const MarkAsCookedDialog = ({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-4">
+        <DialogBody>
+          <div className="space-y-4 py-4">
           <Alert>
             <Info className="h-4 w-4" />
             <AlertDescription className="text-xs">
@@ -88,7 +89,8 @@ export const MarkAsCookedDialog = ({
               </div>
             </div>
           </div>
-        </div>
+          </div>
+        </DialogBody>
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isConfirming}>
