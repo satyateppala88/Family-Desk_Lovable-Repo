@@ -8,7 +8,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useHousehold } from "@/hooks/useHousehold";
 import { useHouseholdPreferences } from "@/hooks/useHouseholdPreferences";
 import { useModuleSetup } from "@/hooks/useModuleSetup";
-import { MODULE_SETUP_META, type ModuleSetupKey } from "@/lib/moduleSetup";
+import { MODULE_SETUP_META, MODULE_TO_FEATURE_TOUR, type ModuleSetupKey } from "@/lib/moduleSetup";
+import { useFeatureTour } from "@/hooks/useFeatureTour";
 import { toast } from "sonner";
 import { Loader2, AlertCircle, RotateCcw, CheckCircle2, History } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -299,7 +300,16 @@ export const ModuleSetupGate = ({ module, children }: ModuleSetupGateProps) => {
   const meta = MODULE_SETUP_META[module];
   const [open, setOpen] = useState(true);
 
-  if (!needsSetup) return <>{children}</>;
+  // If this module has a corresponding welcome tour, defer showing the
+  // setup dialog until the tour is finished — otherwise the two modals
+  // stack on top of each other on first visit.
+  const tourFeature = MODULE_TO_FEATURE_TOUR[module];
+  const { shouldShowTour, tourChecked } = useFeatureTour(
+    (tourFeature ?? "dashboard") as any,
+  );
+  const tourPending = !!tourFeature && (!tourChecked || shouldShowTour);
+
+  if (!needsSetup || tourPending) return <>{children}</>;
 
   return (
     <>
@@ -318,7 +328,12 @@ export const ModuleSetupGate = ({ module, children }: ModuleSetupGateProps) => {
           }
         }}
         onComplete={() => setOpen(false)}
-        onSkip={() => setOpen(false)}
+        onSkip={() => {
+          setOpen(false);
+          // Skip via footer button doesn't fire Radix onOpenChange (we're
+          // closing via controlled prop), so persist completion explicitly.
+          markComplete().catch(() => {/* non-fatal */});
+        }}
       />
     </>
   );
@@ -656,11 +671,12 @@ export const ModuleSetupDialog = ({
                 }
               }}
               onSkip={async () => {
-                // Skip does NOT mark complete when dismissible (so the gate
-                // can re-prompt on first visit). When non-dismissible (legacy
-                // gate), keep the prior behavior to avoid trapping users.
+                // Always mark complete on Skip — once the user has
+                // dismissed the questionnaire we should never re-prompt
+                // automatically. They can re-run setup from Settings.
                 try {
-                  if (!dismissible) await markComplete();
+                  await markComplete();
+                  clearModuleSetupDraft(householdId, module);
                   onSkip?.();
                 } catch (err: any) {
                   toast.error(err.message ?? "Failed");

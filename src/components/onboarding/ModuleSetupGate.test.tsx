@@ -180,8 +180,9 @@ describe("ModuleSetupDialog — scroll & footer layout", () => {
     await vi.waitFor(() => expect(onSkip).toHaveBeenCalledTimes(1));
     // Skip does NOT save preferences when dismissible.
     expect(updatePreferencesMock).not.toHaveBeenCalled();
-    // And does NOT mark complete when dismissible (so the gate can re-prompt).
-    expect(markCompleteMock).not.toHaveBeenCalled();
+    // Skip persists completion so the user is never re-prompted automatically —
+    // they can re-run setup from Settings if they change their mind.
+    await vi.waitFor(() => expect(markCompleteMock).toHaveBeenCalledTimes(1));
   });
 
   it("renders a progress indicator with role=progressbar above the scroll area", () => {

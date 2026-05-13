@@ -25,6 +25,7 @@ export const MODULE_SETUP_KEYS: Record<ProductName, ModuleSetupKey> = {
 };
 
 import type { HouseholdPreferences } from "@/types/database";
+import type { FeatureName } from "@/hooks/useFeatureTour";
 
 /**
  * Fields that the per-module setup is responsible for capturing.
@@ -65,4 +66,19 @@ export const MODULE_SETUP_META: Record<ModuleSetupKey, { title: string; descript
     title: "Task planning setup",
     description: "When are you most likely to tackle tasks?",
   },
+};
+
+/**
+ * Maps a module setup to its corresponding welcome-tour feature name.
+ * The setup gate uses this to defer showing the setup dialog until the
+ * tour for that feature has been completed/dismissed — preventing the
+ * tour modal and setup modal from stacking on top of each other.
+ * Modules without a tour (e.g. finance) are simply omitted.
+ */
+export const MODULE_TO_FEATURE_TOUR: Partial<Record<ModuleSetupKey, FeatureName>> = {
+  meals_setup: "meals",
+  grocery_setup: "grocery",
+  tasks_setup: "tasks",
+  habits_setup: "habits",
+  calendar_setup: "calendar",
 };
