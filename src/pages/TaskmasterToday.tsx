@@ -26,7 +26,8 @@ import {
   CheckCircle2,
   Folder,
   Sparkles,
-  Info
+  Info,
+  Repeat as RepeatIcon
 } from "lucide-react";
 import { format, differenceInDays } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -86,6 +87,8 @@ const TaskmasterToday = () => {
       project_id: draft.project_id,
       household_id: householdId!,
       assignee_ids: draft.assignee_ids,
+      recurring: draft.recurring,
+      recurring_pattern: draft.recurring_pattern as any,
     });
   };
 
@@ -252,10 +255,13 @@ const TaskmasterToday = () => {
                         </div>
                         
                         <h3 className={cn(
-                          "font-semibold text-base mb-1",
+                          "font-semibold text-base mb-1 flex items-center gap-1.5",
                           isDone && "line-through text-muted-foreground"
                         )}>
-                          {task.title}
+                          <span>{task.title}</span>
+                          {(task as any).recurring && (
+                            <RepeatIcon className="h-3.5 w-3.5 text-muted-foreground" />
+                          )}
                         </h3>
                         
                         {task.description && (

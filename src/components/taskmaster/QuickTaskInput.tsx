@@ -7,6 +7,7 @@ import { VoiceInputButton } from "@/components/voice/VoiceInputButton";
 import { TaskCompletionSheet } from "@/components/taskmaster/TaskCompletionSheet";
 import { CompletionDraft } from "@/lib/taskCompletion";
 import { Project, TaskStatus } from "@/types/taskmaster";
+import { toast as sonnerToast } from "sonner";
 
 interface QuickTaskInputProps {
   onCreateTask: (draft: CompletionDraft) => void;
@@ -26,6 +27,7 @@ export const QuickTaskInput = ({
   const [input, setInput] = useState("");
   const [parsedTask, setParsedTask] = useState<ParsedTask | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [listening, setListening] = useState(false);
   const { parseTask } = useParseTask();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -57,9 +59,14 @@ export const QuickTaskInput = ({
           />
           <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-1">
             <VoiceInputButton
-              onTranscript={(text) =>
-                setInput((prev) => (prev ? prev + " " + text : text))
-              }
+              onTranscript={(text) => {
+                setInput((prev) => (prev ? prev + " " + text : text));
+                if (text.trim()) {
+                  sonnerToast.success("Transcribed — check and confirm");
+                }
+              }}
+              onListeningChange={setListening}
+              maxDurationMs={5000}
               size="icon"
               variant="ghost"
               disabled={parseTask.isPending}
@@ -81,6 +88,13 @@ export const QuickTaskInput = ({
           </div>
         </div>
       </form>
+
+      {listening && (
+        <div className="flex items-center gap-2 text-xs text-muted-foreground px-1">
+          <span className="h-2 w-2 rounded-full bg-destructive animate-pulse" />
+          Listening… (up to 5s)
+        </div>
+      )}
 
       <p className="text-[11px] text-muted-foreground flex items-center gap-1 px-1">
         <Users className="h-3 w-3" />

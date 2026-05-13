@@ -37,6 +37,7 @@ const TaskmasterProjects = lazy(() => import("./pages/TaskmasterProjects"));
 const TaskmasterProjectDetail = lazy(() => import("./pages/TaskmasterProjectDetail"));
 const TaskmasterMyTasks = lazy(() => import("./pages/TaskmasterMyTasks"));
 const TaskmasterDashboard = lazy(() => import("./pages/TaskmasterDashboard"));
+const TaskmasterTemplates = lazy(() => import("./pages/TaskmasterTemplates"));
 const Meals = lazy(() => import("./pages/Meals"));
 const Grocery = lazy(() => import("./pages/Grocery"));
 const Calendar = lazy(() => import("./pages/Calendar"));
@@ -184,6 +185,11 @@ const App = () => (
                 <Route path="/taskmaster/dashboard" element={
                   <ProtectedRoute>
                     <TaskmasterDashboard />
+                  </ProtectedRoute>
+                } />
+                <Route path="/taskmaster/templates" element={
+                  <ProtectedRoute>
+                    <TaskmasterTemplates />
                   </ProtectedRoute>
                 } />
                 <Route path="/meals" element={

@@ -39,6 +39,7 @@ import {
   missingFieldLabels,
 } from "@/lib/taskCompletion";
 import { useHouseholdMembers } from "@/hooks/useHouseholdMembers";
+import { RecurrenceSelector } from "@/components/taskmaster/RecurrenceSelector";
 
 interface TaskCompletionSheetProps {
   open: boolean;
@@ -334,6 +335,14 @@ export const TaskCompletionSheet = ({
               </SelectContent>
             </Select>
           </div>
+
+          {/* Repeat */}
+          <RecurrenceSelector
+            value={draft.recurring_pattern}
+            onChange={(p) =>
+              update({ recurring: !!p, recurring_pattern: p })
+            }
+          />
 
           {/* Assignees */}
           <div className="grid gap-2">
