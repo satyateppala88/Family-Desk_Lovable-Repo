@@ -1,5 +1,13 @@
-SELECT cron.unschedule('habit-morning');
-SELECT cron.unschedule('habit-evening');
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'habit-morning') THEN
+    PERFORM cron.unschedule('habit-morning');
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'habit-evening') THEN
+    PERFORM cron.unschedule('habit-evening');
+  END IF;
+END $$;
 
 SELECT cron.schedule(
   'habit-morning',
