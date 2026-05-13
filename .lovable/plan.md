@@ -1,60 +1,53 @@
 ## Findings
 
-All three issues touch only `src/hooks/useFinance.ts`, `src/pages/FinanceBudget.tsx`, and (for #3) the Finance hub link. Mutation logic and DB queries stay untouched.
+I checked the three asks against current code and the DB. Two of the three are **already implemented exactly as specified** in earlier sessions; the third needs only a small polish.
 
-### Problem 1 — UI doesn't refresh after Finance mutations
+### 1. `logHabit` upsert `onConflict` — already correct
 
-`useFinance.ts` mutations rely heavily on optimistic cache writes but don't invalidate sibling queries that derive from the same data. Net result: the row that was mutated does appear in lists where the optimistic write landed, but derived views (monthly summary, dashboard, snapshot, annual budget, category breakdown used by the Budget page) drift stale until a manual reload.
+`src/hooks/useHabits.ts:243` already reads:
+```ts
+onConflict: "habit_id,log_date,user_id",
+```
+No change needed.
 
-Specifics:
-- `useCreateTransaction` — only invalidates `finance-monthly-summary` + `finance-dashboard` in `onSettled`. Misses `finance-snapshot`, `finance-annual-budget`, `finance-budgets` (budget progress reads transactions), and doesn't safety-net `finance-transactions` itself.
-- `useUpdateTransaction` / `useDeleteTransaction` — only invalidate `finance-monthly-summary` (no `householdId` scope) and don't touch dashboard / snapshot / annual / budgets.
-- `useUpsertBudget` — no invalidation at all on success/settled. Annual budget rollup (`finance-annual-budget`) and dashboard never refresh.
-- `useCreateSavingsGoal` / `useUpdateSavingsGoal` / `useDeleteSavingsGoal` — no invalidation; goal milestone widgets on the dashboard go stale.
+### 2. `updateScore` stale-closure fix — already correct
 
-**Fix:** add an `onSettled` (or extend the existing one) on each mutation that calls `queryClient.invalidateQueries({ queryKey: [<key>, householdId] })` for every prefix that consumes the same underlying data. We use `onSettled` (not `onSuccess`) so the cache also self-heals after an optimistic rollback.
+`src/hooks/useHabits.ts:344-356` already does the live DB count instead of the stale-closure `todaysLogs?.filter(...)`:
+```ts
+const { count: completedTodayCount } = await supabase
+  .from("habit_logs")
+  .select("id", { count: "exact", head: true })
+  .eq("user_id", userId)
+  .eq("log_date", today)
+  .eq("completed", true);
 
-Per mutation, invalidate:
+const totalToday = todaysHabits.length;
+const completedToday = completedTodayCount ?? 0;
+if (completedToday >= totalToday && totalToday > 0) {
+  dailyScore += ALL_HABITS_BONUS;
+}
+```
+No change needed.
 
-| Mutation | Keys to invalidate (prefixed with `householdId` where used) |
-|---|---|
-| `useCreateTransaction` | `finance-transactions`, `finance-monthly-summary`, `finance-snapshot`, `finance-dashboard`, `finance-annual-budget`, `finance-budgets` |
-| `useUpdateTransaction` | same as above |
-| `useDeleteTransaction` | same as above |
-| `useUpsertBudget` | `finance-budgets`, `finance-annual-budget`, `finance-dashboard` |
-| `useCreateSavingsGoal` | `finance-savings-goals`, `finance-dashboard` |
-| `useUpdateSavingsGoal` | same |
-| `useDeleteSavingsGoal` | same |
+### 3. Leaderboard / "Assigned to" "Unknown" labels
 
-`useUpdateTransaction` / `useDeleteTransaction` currently lack a `householdId` parameter — they invalidate the unscoped prefix (`["finance-transactions"]`), which already matches every household-scoped variant via React Query prefix matching, so they don't need a signature change. New invalidations will follow the same prefix-only pattern for those two hooks.
+The profile join is already in place everywhere it matters:
+- `src/hooks/useHabitLeaderboard.ts` — joins `profiles` (id, display_name, avatar_url) for all household members.
+- `src/hooks/useHouseholdMembers.ts` — same join; consumed by `TaskCompletionSheet.tsx` which renders `m.displayName` (not raw user_id) for the "Assigned to" chips.
+- `src/hooks/useHouseholdHabitStats.ts` — same join, falls back to `"Member"`.
 
-### Problem 2 — Budget progress bar shows broken state when planned = 0
+DB check confirmed there are **0 profiles with NULL/empty `display_name`**, and the `profiles` RLS policy already allows household co-members to read each other's profile rows. So the literal string `"Unknown"` should virtually never render in production — but it remains as a defensive fallback in two hooks.
 
-In `src/pages/FinanceBudget.tsx`:
-- Lines 84/88 already guard divide-by-zero numerically (`pct = 0` when `planned_amount <= 0`), but the `<Progress value={overallPct} />` (line 138) and `<Progress value={row.pct} />` (line 173) always render — they show as an empty/incorrect bar with a "0% used" label and a percentage chip.
-
-**Fix:** when the relevant `planned_amount` (or `totalPlanned`) is `<= 0` or null:
-- Hide the `<Progress>` element entirely.
-- Hide the percentage chip / "X% used" footer for that row.
-- Replace with a small muted `"No budget set"` hint so the row still has visual weight.
-
-This applies in two places in `FinanceBudget.tsx`: the overall card (line 130–141) and each `budgetRows.map(...)` row (line 157–224).
-
-### Problem 3 — AI Advisor 404
-
-Already fixed in current code: `src/pages/Finance.tsx:72` links the AI Advisor card to `/finance/chat`, and `App.tsx:213` registers `<Route path="/finance/chat" …>` to `FinanceChat`. There is **no remaining reference** to `/finance/ai-advisor` anywhere in `src/`. No code change required — I'll call this out in the change summary so the user knows it was already correct.
+**Only change needed:** harmonize the fallback string from `"Unknown"` to `"Member"` in `useHabitLeaderboard.ts` and `useHouseholdMembers.ts`, matching the friendlier convention already used in `useHouseholdHabitStats.ts`. This guarantees that even if a profile row is ever missing/unreadable, the UI says "Member" instead of "Unknown" in the leaderboard and the task "Assigned to" chips.
 
 ## Files to change
 
-1. **`src/hooks/useFinance.ts`** — add the `invalidateQueries` calls listed above, inside each mutation's `onSettled` (creating one where missing). Keep all optimistic-update logic untouched.
-2. **`src/pages/FinanceBudget.tsx`** — wrap both `<Progress>` instances + their adjacent percentage labels in a `planned > 0` conditional; render a `"No budget set"` muted hint otherwise.
+1. `src/hooks/useHabitLeaderboard.ts` — line 80: `"Unknown"` → `"Member"`.
+2. `src/hooks/useHouseholdMembers.ts` — line 42: `"Unknown"` → `"Member"`.
+
+No DB migration, no mutation logic changes, no schema changes.
 
 ## Verification
 
-- Manual against the test account on the Test environment:
-  1. Add a transaction → confirm the transaction list, the "spent" totals on Budget, the monthly summary chips on Finance hub, and FinanceTrends all reflect the new row without reload.
-  2. Save a budget for a category → confirm Annual rollup updates and the row's bar appears on Monthly without reload.
-  3. Create a savings goal → confirm it appears on Savings page without reload.
-  4. Open Budget on a household with a category budget set to 0 → confirm no progress bar renders and "No budget set" hint shows; setting it above 0 brings the bar back.
-  5. Click AI Advisor on the Finance hub → confirm `/finance/chat` opens (already wired correctly).
-- Run `bunx vitest run` to make sure no Finance-related tests regress.
+- `rg -n "Unknown" src/hooks/useHabit*.ts src/hooks/useHousehold*.ts` returns no hits after the edit.
+- Sign in as the test account (`testuser@dealcompass.test`), open Habits → Leaderboard, and Taskmaster → New task → confirm member names render as `display_name` (no "Unknown" / no raw UUIDs).
