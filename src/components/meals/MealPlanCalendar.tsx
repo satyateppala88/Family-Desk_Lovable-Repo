@@ -159,6 +159,12 @@ export const MealPlanCalendar = ({
                 <ChefHat className="w-3 h-3" />
               </Button>
             )}
+            {onAddToList && (
+              <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-primary"
+                onClick={(e) => { e.stopPropagation(); onAddToList(recipe); }} title="Add ingredients to shopping list">
+                <ShoppingCart className="w-3 h-3" />
+              </Button>
+            )}
             <Button variant="ghost" size="sm" className="h-6 w-6 p-0"
               onClick={(e) => { e.stopPropagation(); onRateClick(recipe); }}>
               <Star className={cn("w-3 h-3", recipe.rating && "fill-warning text-warning")} />
