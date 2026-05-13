@@ -12,7 +12,6 @@ import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { CheckSquare, ChefHat, Calendar, ShoppingCart, Leaf, Wallet, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { ModuleSetupQueue } from "@/components/onboarding/ModuleSetupQueue";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -77,7 +76,6 @@ export default function HouseholdProductSettings() {
   const queryClient = useQueryClient();
   const [productToDisable, setProductToDisable] = useState<ProductName | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
-  const [setupForProduct, setSetupForProduct] = useState<ProductName | null>(null);
 
   const handleEnableProduct = async (productName: ProductName) => {
     if (!householdId || !user?.id) return;
@@ -100,10 +98,8 @@ export default function HouseholdProductSettings() {
       });
 
       queryClient.invalidateQueries({ queryKey: ["enabled-products"] });
-      // Trigger the per-module first-enable setup right away. The dialog
-      // auto-skips silently if the household already has the relevant data
-      // (handled by useModuleSetup's hasRequiredData backfill).
-      setSetupForProduct(productName);
+      // Per-module setup is just-in-time: it shows up the next time the
+      // user opens this module via the ModuleSetupGate on that page.
     } catch (error: any) {
       toast({
         title: "Error",
@@ -239,13 +235,6 @@ export default function HouseholdProductSettings() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      {setupForProduct && (
-        <ModuleSetupQueue
-          products={[setupForProduct]}
-          onAllDone={() => setSetupForProduct(null)}
-        />
-      )}
     </div>
   );
 }

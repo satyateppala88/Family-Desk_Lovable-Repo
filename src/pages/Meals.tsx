@@ -13,7 +13,6 @@ import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
 import { useRecipes } from "@/hooks/useRecipes";
 import { useMealPlans } from "@/hooks/useMealPlans";
 import { useRecipeRating } from "@/hooks/useRecipeRating";
-import { useFeatureTour } from "@/hooks/useFeatureTour";
 import { Recipe } from "@/types/database";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,16 +28,6 @@ import { getWeekStartDate, getRemainingDaysOfWeek, getWeekDays, getShortDayName 
 import { addWeeks, format } from "date-fns";
 import { useRegenerateMeals } from "@/hooks/useRegenerateMeals";
 import { RecipeCard } from "@/components/meals/RecipeCard";
-import { OnboardingTour } from "@/components/onboarding/OnboardingTour";
-import type { Step } from "react-joyride";
-
-const mealsTourSteps: Step[] = [
-  { target: "body", content: "Welcome to Meal Planning! Let AI help you plan nutritious meals for the whole family.", placement: "center", disableBeacon: true },
-  { target: "[data-tour='generate-plan']", content: "Generate a complete week of meals tailored to your family's preferences and dietary needs.", placement: "bottom" },
-  { target: "[role='tablist']", content: "Switch between your weekly calendar and your full recipe collection.", placement: "bottom" },
-  { target: "[data-tour='week-navigator']", content: "Navigate between weeks to plan ahead or revisit past meals.", placement: "bottom" },
-  { target: ".user-menu", content: "You can restart this guide anytime from the menu.", placement: "bottom" },
-];
 
 const CUISINE_FILTERS = ["Indian", "Italian", "Chinese", "Thai", "Mexican", "Mediterranean"];
 const DIFFICULTY_FILTERS = ["easy", "medium", "hard"];
@@ -73,15 +62,6 @@ const Meals = () => {
   const [recipeSearch, setRecipeSearch] = useState("");
   const [recipeCuisine, setRecipeCuisine] = useState<string | null>(null);
   const [recipeDifficulty, setRecipeDifficulty] = useState<string | null>(null);
-
-  const { shouldShowTour, tourChecked, markTourComplete } = useFeatureTour("meals");
-  const [runOnboarding, setRunOnboarding] = useState(false);
-
-  useEffect(() => {
-    if (tourChecked && shouldShowTour && householdId) {
-      setTimeout(() => setRunOnboarding(true), 500);
-    }
-  }, [tourChecked, shouldShowTour, householdId]);
 
   // Reset to current week when switching to calendar tab
   useEffect(() => {
@@ -175,7 +155,7 @@ const Meals = () => {
 
   return (
     <div className="page-container">
-      <Header onStartOnboarding={() => setRunOnboarding(true)} />
+      <Header />
 
       <main className="page-content">
         {/* Header area */}
@@ -345,7 +325,6 @@ const Meals = () => {
       <RecipeRatingDialog recipe={ratingRecipe} open={!!ratingRecipe} onOpenChange={(open) => !open && setRatingRecipe(null)} onRate={handleRate} onHide={handleHide} onRemoveFromWeek={handleRemoveFromWeek} />
       <MarkAsCookedDialog open={!!cookingRecipe} onOpenChange={(open) => !open && setCookingRecipe(null)} recipeName={cookingRecipe?.title || ""} ingredients={cookingRecipe?.ingredients || []} onConfirm={handleMarkAsCooked} />
       <ConfirmDialog open={!!deleteRecipeId} onOpenChange={(open) => !open && setDeleteRecipeId(null)} title="Delete this recipe?" description="This recipe will be permanently removed from your collection." confirmLabel="Delete Recipe" variant="destructive" onConfirm={confirmDeleteRecipe} />
-      <OnboardingTour run={runOnboarding} onComplete={() => { setRunOnboarding(false); markTourComplete(); }} steps={mealsTourSteps} featureName="meals" />
     </div>
   );
 };

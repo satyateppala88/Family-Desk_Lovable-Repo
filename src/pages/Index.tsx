@@ -49,14 +49,9 @@ const moduleDefinitions: {
 const dashboardTourSteps: Step[] = [
   {
     target: "body",
-    content: "Welcome to FamilyDesk! This is your family's home base for staying organized together.",
+    content: "Welcome to FamilyDesk — your family's hub. Tap a tile below to dive in.",
     placement: "center",
     disableBeacon: true,
-  },
-  {
-    target: ".module-grid",
-    content: "Each tile opens a different part of your household toolkit. Tap any to get started.",
-    placement: "bottom",
   },
 ];
 

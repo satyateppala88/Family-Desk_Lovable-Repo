@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetFooter } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -8,8 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useHousehold } from "@/hooks/useHousehold";
 import { useHouseholdPreferences } from "@/hooks/useHouseholdPreferences";
 import { useModuleSetup } from "@/hooks/useModuleSetup";
-import { MODULE_SETUP_META, MODULE_TO_FEATURE_TOUR, type ModuleSetupKey } from "@/lib/moduleSetup";
-import { useFeatureTour } from "@/hooks/useFeatureTour";
+import { MODULE_SETUP_META, type ModuleSetupKey } from "@/lib/moduleSetup";
 import { toast } from "sonner";
 import { Loader2, AlertCircle, RotateCcw, CheckCircle2, History } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -300,16 +299,7 @@ export const ModuleSetupGate = ({ module, children }: ModuleSetupGateProps) => {
   const meta = MODULE_SETUP_META[module];
   const [open, setOpen] = useState(true);
 
-  // If this module has a corresponding welcome tour, defer showing the
-  // setup dialog until the tour is finished — otherwise the two modals
-  // stack on top of each other on first visit.
-  const tourFeature = MODULE_TO_FEATURE_TOUR[module];
-  const { shouldShowTour, tourChecked } = useFeatureTour(
-    (tourFeature ?? "dashboard") as any,
-  );
-  const tourPending = !!tourFeature && (!tourChecked || shouldShowTour);
-
-  if (!needsSetup || tourPending) return <>{children}</>;
+  if (!needsSetup) return <>{children}</>;
 
   return (
     <>
@@ -476,10 +466,11 @@ export const ModuleSetupDialog = ({
   );
 
   return (
-    <Dialog open={open} onOpenChange={(next) => { if (dismissible) onOpenChange?.(next); }}>
-      <DialogContent
+    <Sheet open={open} onOpenChange={(next) => { if (dismissible) onOpenChange?.(next); }}>
+      <SheetContent
+        side="bottom"
         className={cn(
-          "sm:max-w-md max-h-[90vh] flex flex-col",
+          "max-h-[85vh] flex flex-col rounded-t-2xl p-6",
           // Visually + functionally disable the built-in close (X) while
           // a write is in flight. The shared DialogContent always renders
           // a Radix Close button in the top-right; we can't remove it
@@ -505,10 +496,13 @@ export const ModuleSetupDialog = ({
         }}
         aria-busy={isSaving}
       >
-        <DialogHeader>
-          <DialogTitle>{meta.title}</DialogTitle>
-          <DialogDescription>{meta.description}</DialogDescription>
-        </DialogHeader>
+        <SheetHeader className="text-left space-y-1">
+          <SheetTitle className="flex items-center gap-2 text-left">
+            <meta.icon className="h-5 w-5 text-primary" aria-hidden="true" />
+            {meta.title}
+          </SheetTitle>
+          <SheetDescription className="text-left">{meta.description}</SheetDescription>
+        </SheetHeader>
         {progress.total > 0 && (
           <div className="-mt-1">
             <div
@@ -686,14 +680,14 @@ export const ModuleSetupDialog = ({
             />
           </div>
         </FormActionContext.Provider>
-        <DialogFooter className="flex-row justify-between sm:justify-between border-t border-border -mx-6 px-6 pt-3 mt-0 shrink-0">
+        <SheetFooter className="flex-row justify-between sm:justify-between border-t border-border -mx-6 px-6 pt-3 mt-0 shrink-0">
           <Button
             variant="ghost"
             onClick={() => { if (!isSaving) skipRef.current?.(); }}
             disabled={isSaving}
             aria-disabled={isSaving}
           >
-            Skip for now
+            Skip, I'll do this later
           </Button>
           <Button
             onClick={() => triggerSave()}
@@ -707,12 +701,12 @@ export const ModuleSetupDialog = ({
                 Saving...
               </>
             ) : (
-              "Save & continue"
+              "Set up now"
             )}
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
   );
 };
 
@@ -968,14 +962,14 @@ const FormShell = ({
         >
           {children}
         </fieldset>
-        <DialogFooter className="flex-row justify-between sm:justify-between">
+        <SheetFooter className="flex-row justify-between sm:justify-between">
           <Button
             variant="ghost"
             onClick={() => { if (!isSaving) onSkip(); }}
             disabled={isSaving}
             aria-disabled={isSaving}
           >
-            Skip for now
+            Skip, I'll do this later
           </Button>
           <Button
             onClick={() => { if (!isSaving) onSave(); }}
@@ -989,10 +983,10 @@ const FormShell = ({
                 Saving...
               </>
             ) : (
-              "Save & continue"
+              "Set up now"
             )}
           </Button>
-        </DialogFooter>
+        </SheetFooter>
       </>
     );
   }
