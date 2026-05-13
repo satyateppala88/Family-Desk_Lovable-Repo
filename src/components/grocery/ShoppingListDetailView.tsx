@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { ShoppingList, ShoppingListItem } from "@/hooks/useShoppingLists";
+import { ShoppingList } from "@/hooks/useShoppingLists";
 import { cn } from "@/lib/utils";
 import { groupAndSort } from "@/lib/groceryCategories";
 import { ShareOnWhatsAppButton } from "@/components/grocery/ShareOnWhatsAppButton";
