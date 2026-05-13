@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -89,12 +89,17 @@ export const SubscriptionDialog = ({ open, onOpenChange, onSave, initialData }: 
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>{initialData ? "Edit Subscription" : "Add Subscription"}</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4 pt-2">
+    <BottomSheet
+      isOpen={open}
+      onClose={() => onOpenChange(false)}
+      title={initialData ? "Edit Subscription" : "Add Subscription"}
+      footer={
+        <Button onClick={handleSave} className="w-full" disabled={submitting || !name.trim() || !amount}>
+          {submitting ? "Saving..." : initialData ? "Save Changes" : "Add Subscription"}
+        </Button>
+      }
+    >
+      <div className="space-y-4 pt-2">
           <div className="space-y-1.5">
             <Label>Name *</Label>
             <Input placeholder="e.g. Netflix, LIC Premium, AC AMC" value={name} onChange={(e) => setName(e.target.value)} />
@@ -175,13 +180,7 @@ export const SubscriptionDialog = ({ open, onOpenChange, onSave, initialData }: 
             <Switch checked={isActive} onCheckedChange={setIsActive} />
           </div>
 
-        </div>
-        <DialogFooter>
-          <Button onClick={handleSave} className="w-full" disabled={submitting || !name.trim() || !amount}>
-            {submitting ? "Saving..." : initialData ? "Save Changes" : "Add Subscription"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </BottomSheet>
   );
 };
