@@ -39,7 +39,7 @@ export const Header = (_props: HeaderProps) => {
       if (!user) return null;
       const { data } = await supabase
         .from("profiles")
-        .select("avatar_url")
+        .select("avatar_url, display_name")
         .eq("id", user.id)
         .maybeSingle();
       return data;
@@ -48,6 +48,7 @@ export const Header = (_props: HeaderProps) => {
     staleTime: 60 * 1000,
   });
   const avatarUrl = (profile as any)?.avatar_url || null;
+  const profileDisplayName = (profile as any)?.display_name || null;
 
   const isHomePage = location.pathname === "/dashboard" || location.pathname === "/";
 
@@ -101,9 +102,15 @@ export const Header = (_props: HeaderProps) => {
   };
 
   const getInitials = () => {
-    if (!user?.user_metadata?.display_name) return "U";
-    return user.user_metadata.display_name
-      .split(" ")
+    const source =
+      profileDisplayName ||
+      user?.user_metadata?.display_name ||
+      user?.email?.split("@")[0] ||
+      "";
+    if (!source) return "U";
+    return source
+      .split(/[\s._-]+/)
+      .filter(Boolean)
       .map((n: string) => n[0])
       .join("")
       .toUpperCase()
