@@ -26,6 +26,7 @@ import {
   useCustomCategories,
   useAddCustomCategory,
 } from "@/hooks/useCustomCategories";
+import { CATEGORY_GROUPS, CATEGORY_ALIASES } from "@/hooks/useFinance";
 
 interface CategorySelectProps {
   value: string;
@@ -65,6 +66,12 @@ export const CategorySelect = ({
   const [newLabel, setNewLabel] = useState("");
 
   const visibleBuiltIn = builtIn.filter((k) => !excludeBuiltIn.includes(k));
+  const visibleSet = new Set(visibleBuiltIn);
+  const groupedSections = CATEGORY_GROUPS
+    .map((g) => ({ label: g.label, keys: g.keys.filter((k) => visibleSet.has(k)) }))
+    .filter((g) => g.keys.length > 0);
+  const groupedKeys = new Set(groupedSections.flatMap((g) => g.keys));
+  const ungroupedBuiltIn = visibleBuiltIn.filter((k) => !groupedKeys.has(k));
 
   const handleCreate = async () => {
     const label = newLabel.trim();
@@ -96,16 +103,36 @@ export const CategorySelect = ({
           <SelectValue placeholder={placeholder} />
         </SelectTrigger>
         <SelectContent className="max-h-[60vh]">
-          <SelectGroup>
-            <SelectLabel className="text-[10px] uppercase tracking-wide">
-              Built-in
-            </SelectLabel>
-            {visibleBuiltIn.map((c) => (
-              <SelectItem key={c} value={c}>
-                {builtInLabels[c] || c}
-              </SelectItem>
-            ))}
-          </SelectGroup>
+          {groupedSections.map((g, gi) => (
+            <div key={g.label}>
+              {gi > 0 && <SelectSeparator />}
+              <SelectGroup>
+                <SelectLabel className="text-[10px] uppercase tracking-wide">
+                  {g.label}
+                </SelectLabel>
+                {g.keys.map((c) => (
+                  <SelectItem key={c} value={c}>
+                    {builtInLabels[c] || c}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            </div>
+          ))}
+          {ungroupedBuiltIn.length > 0 && (
+            <>
+              {groupedSections.length > 0 && <SelectSeparator />}
+              <SelectGroup>
+                <SelectLabel className="text-[10px] uppercase tracking-wide">
+                  More
+                </SelectLabel>
+                {ungroupedBuiltIn.map((c) => (
+                  <SelectItem key={c} value={c}>
+                    {builtInLabels[c] || c}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            </>
+          )}
 
           {custom.length > 0 && (
             <>
@@ -224,6 +251,8 @@ export const resolveCategoryLabel = (
   customCategories: Array<{ key: string; label: string }> = [],
 ): string => {
   if (builtInLabels[key]) return builtInLabels[key];
+  const aliased = CATEGORY_ALIASES[key];
+  if (aliased && builtInLabels[aliased]) return builtInLabels[aliased];
   const c = customCategories.find((c) => c.key === key);
   if (c) return c.label;
   return key
