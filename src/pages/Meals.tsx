@@ -133,7 +133,8 @@ const Meals = () => {
       toast({ title: "Meal plan ready! 🍽️", description: `Created ${data.meals?.length || 0} recipes for your family this week.` });
       window.location.reload();
     } catch (error: any) {
-      toast({ title: "Something went wrong", description: error.message || "We couldn't generate the meal plan. Please try again.", variant: "destructive" });
+      console.error("Generate meal plan error:", error);
+      toast({ title: "Something went wrong", description: "We couldn't generate the meal plan. Please try again.", variant: "destructive" });
     } finally {
       setGeneratingPlan(false);
     }
@@ -169,7 +170,8 @@ const Meals = () => {
       queryClient.invalidateQueries({ queryKey: ["meal-plans", householdId] });
       toast({ title: "Added to your plan", description: recipe.title });
     } catch (e: any) {
-      toast({ title: "Couldn't add", description: e.message || "Try again.", variant: "destructive" });
+      console.error("Assign recipe to slot error:", e);
+      toast({ title: "Couldn't add this meal", description: "Please try again.", variant: "destructive" });
     }
     setBrowserOpen(false);
   };
