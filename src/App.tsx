@@ -217,6 +217,7 @@ const App = () => (
                 <Route path="/finance/review" element={<ProtectedRoute><FinanceMonthlyReview /></ProtectedRoute>} />
                 <Route path="/finance/cards" element={<ProtectedRoute><FinanceCards /></ProtectedRoute>} />
                 <Route path="/finance/trends" element={<ProtectedRoute><FinanceTrends /></ProtectedRoute>} />
+                <Route path="/finance/report" element={<ProtectedRoute><FinanceReport /></ProtectedRoute>} />
                 <Route path="/terms" element={<TermsOfService />} />
                 <Route path="/privacy" element={<PrivacyPolicy />} />
                 <Route path="/install" element={<Install />} />
