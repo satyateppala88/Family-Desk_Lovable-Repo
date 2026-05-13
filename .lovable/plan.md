@@ -1,50 +1,69 @@
-## Context (what's actually in the code)
+## Goal
 
-There is already one shared setup component — `ModuleSetupGate` / `ModuleSetupDialog` (`src/components/onboarding/ModuleSetupGate.tsx`) — used by all six module pages (Meals, Calendar, Tasks/Taskmaster, Finance, Grocery, Habits). It is driven by `useModuleSetup` (`src/hooks/useModuleSetup.ts`), which today reads/writes a `completed_module_setups` JSONB on `household_preferences` (not on `profiles`).
+Ensure the Finance UI updates immediately after any save, plus address the two related items from the request.
 
-The "Welcome to X" tour on module pages comes from `useFeatureTour(<feature>)` + `OnboardingTour` (currently only wired on `Index`, but the same hook supports `meals | tasks | grocery | habits | calendar | taskmaster`). Today nothing sequences it against the setup gate.
+## Findings (current state)
 
-I'll keep all existing setup-modal UI, copy and validation untouched and only fix persistence, sequencing and the X button.
+I checked the actual code before planning:
 
-## Note on storage location
+1. **AI Advisor card already routes to `/finance/chat`** (`src/pages/Finance.tsx:74`). The route exists in `src/App.tsx:222` and renders `FinanceChat`. There is no `/finance/ai-advisor` reference anywhere in the codebase. **No change needed** — what the user saw as a 404 is no longer reproducible from code.
 
-Your spec says to add `setup_completed_modules` JSONB to `profiles`. The same shape already exists as `completed_module_setups` on `household_preferences`. Two sources of truth would diverge across household members and cause re-prompting bugs. I'll keep the household-level field as the source of truth (matches the rest of the app where setup data is household-wide) and rename nothing; if you'd rather move it onto `profiles` per-user, say so and I'll switch the migration + hook accordingly.
+2. **Budget divide‑by‑zero is already guarded** in `src/pages/FinanceBudget.tsx`:
+   - Per-row `pct` (line 88) uses `planned_amount > 0 ? … : 0`
+   - The `<Progress>` bar and percent label are conditionally rendered only when `planned_amount > 0` (lines 171–185); otherwise it shows "No budget set".
+   - The overall card (lines 138–145) does the same.
+   - `FinanceBudgetAnnual.tsx` `heatColor()` returns early when `planned === 0` before any division.
+   **No change needed.**
 
-## Plan
+3. **Cache invalidation already exists** — but in `onSettled`, not `onSuccess`. The mutations (`useCreateTransaction`, `useUpsertBudget`, `useCreateSavingsGoal`, `useUpdateSavingsGoal`, plus `useUpdateTransaction` / `useDeleteTransaction` / `useDeleteSavingsGoal`) all call `queryClient.invalidateQueries` in `onSettled`. Prefix matching means `["finance-transactions", householdId]` correctly invalidates `["finance-transactions", householdId, filters]`.
 
-### 1. Persistence — modal must never repeat once dismissed
-**File:** `src/components/onboarding/ModuleSetupGate.tsx`
+   This *should* already update the UI without a manual reload. If the user is still seeing stale data, the most likely real causes are:
+   - The optimistic-update path replaces rows in cache but later invalidation is `onSettled`, which fires *after* `onSuccess`. Dialogs may close before invalidation lands, but data should still appear. Adding a **second** invalidation in `onSuccess` makes the refresh feel instant on the page that triggered the mutation.
+   - The actual key names the user listed (`['finance-summary']`, `['budgets']`, `['savings-goals']`) **do not match** the keys used in this codebase (`finance-monthly-summary`, `finance-budgets`, `finance-savings-goals`). If we use the names as written, nothing would invalidate. Plan uses the **actual** keys.
 
-`ModuleSetupGate` already calls `markComplete()` on Save, on footer Skip, and on Sheet `onOpenChange(false)`. Verify and harden so all three paths reliably write `{ [module]: true }` into `completed_module_setups` and invalidate the `household-preferences` query before the dialog unmounts (today `markComplete` does invalidate but the gate unmounts on the next render — add an `await` in the X-close path so the write is in-flight before close, with a fallback that retries once on transient failure).
+## Changes
 
-No schema change. If you confirm you want a per-user `profiles.setup_completed_modules` instead, I'll add a migration and switch `useModuleSetup` to read/write that column.
+Only one file is touched: `src/hooks/useFinance.ts`.
 
-### 2. Sequencing — tour first, then setup
-**Files:**
-- `src/components/onboarding/ModuleSetupGate.tsx` (new prop `waitForTour?: boolean`)
-- `src/pages/Meals.tsx`, `Calendar.tsx`, `Habits.tsx`, `Grocery.tsx`, `Finance.tsx`, `TaskmasterToday.tsx`, `Tasks.tsx`
+### Add `onSuccess` invalidation (in addition to existing `onSettled`)
 
-Pattern per module page:
-1. Mount `OnboardingTour` driven by `useFeatureTour("<feature>")` (already exists for `Index`; extend to module pages that don't have it yet).
-2. Render `ModuleSetupGate` with `waitForTour` so internally it suppresses opening the Sheet until `tourChecked && !shouldShowTour` (i.e. tour is dismissed or already completed).
-3. Inside `ModuleSetupGate`, gate the `useState(true)` initializer behind that condition and only flip `open` once the tour resolves.
+For each of the four mutations the user named, add a `queryClient.invalidateQueries` call in `onSuccess` for every relevant key. Keep all existing `onMutate` / `onError` / `onSettled` logic intact.
 
-This eliminates the simultaneous stack on first load without changing tour or setup content.
+**`useCreateTransaction`** — extend the existing `onSuccess` (currently only swaps the optimistic row) to also invalidate:
+- `["finance-transactions", householdId]`
+- `["finance-monthly-summary", householdId]`
+- `["finance-snapshot", householdId]`
+- `["finance-dashboard", householdId]`
+- `["finance-annual-budget", householdId]`
+- `["finance-budgets", householdId]`
 
-### 3. X button — dismiss the flow + mark module complete
-**File:** `src/components/onboarding/ModuleSetupGate.tsx`
+**`useUpsertBudget`** — extend the existing `onSuccess` to also invalidate:
+- `["finance-budgets", householdId]`
+- `["finance-annual-budget", householdId]`
+- `["finance-dashboard", householdId]`
 
-Today the footer "Skip, I'll do this later" calls `skipRef.current` (which marks complete) — that's correct. The Sheet X button currently fires `onOpenChange(false)` → gate's handler calls `markComplete()` once. If a user reports the X "skips to next question", that's because some forms use the same icon/area for inline navigation; we'll:
-- Add an explicit `dismissAndComplete()` function in `ModuleSetupDialog` that (a) calls `markComplete()`, (b) clears the draft via `clearModuleSetupDraft`, (c) closes the Sheet, (d) fires `onSkip?.()`.
-- Wire the Sheet's `onOpenChange(false)` exclusively to `dismissAndComplete()` (remove the dual-path through the gate).
-- Audit the form bodies for any element styled like an "X" close glyph that calls a "next question" handler and re-point those to `dismissAndComplete()`.
+**`useCreateSavingsGoal`** — extend the existing `onSuccess` to also invalidate:
+- `["finance-savings-goals", householdId]`
+- `["finance-dashboard", householdId]`
 
-No business logic, validation, or mutation calls change.
+**`useUpdateSavingsGoal`** — add an `onSuccess` (currently absent) that invalidates:
+- `["finance-savings-goals"]`
+- `["finance-dashboard"]`
+
+This is a belt-and-suspenders approach: `onSuccess` runs immediately after the network call resolves (refetch starts right away), while the existing `onSettled` remains as a safety net.
+
+### Items intentionally NOT changed
+
+- Mutation/query logic, optimistic updates, query key shapes, and DB calls — untouched.
+- `BudgetDialog`, `FinanceBudget.tsx`, `FinanceBudgetAnnual.tsx` — already handle zero/null planned amounts correctly.
+- `Finance.tsx` AI Advisor card — already points at `/finance/chat`.
 
 ## Verification
 
-- Build passes (`tsc --noEmit` runs in CI).
-- Manual on test account `testuser@dealcompass.test`:
-  1. Reset `completed_module_setups` for one module → open module → tour shows alone → dismiss tour → setup sheet appears → click X → reopen module → neither tour nor setup re-appears.
-  2. Repeat with "Save & continue" and with footer "Skip, I'll do this later".
-- Confirm `household_preferences.completed_module_setups` contains the module key after each path.
+1. Build cleanly (TypeScript).
+2. As `testuser@dealcompass.test`:
+   - Add a transaction in `/finance/transactions` → row appears without reload.
+   - Save a budget in `/finance/budget` → row updates without reload.
+   - Create / update a savings goal in `/finance/savings` → list updates without reload.
+   - Click the "AI Advisor" card on the Finance hub → lands on `/finance/chat` (not a 404).
+   - On `/finance/budget`, a row with `planned_amount = 0` shows "No budget set" with no progress bar.
