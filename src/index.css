@@ -61,10 +61,19 @@
     --color-primary: var(--brand);
     --color-primary-hover: var(--brand-dark);
     --color-background: #FFFFFF;
-    --color-surface: var(--ink-surface);
-    --color-border: var(--ink-border);
+    --color-surface: #FFFFFF;
+    --color-surface-raised: #F8F7F4;
+    --color-border: #E5E3DC;
     --color-text: var(--ink);
     --color-text-muted: var(--ink-muted);
+    /* Mobile design-system semantic tokens */
+    --color-text-primary: #2C2C2A;
+    --color-text-secondary: #6B6965;
+    --color-text-disabled: #A8A5A0;
+    --color-brand: #0F6E56;
+    --color-error: #DC2626;
+    --color-warning: #D97706;
+    --color-success: #16A34A;
 
     --radius: 0.625rem;
 
@@ -228,6 +237,19 @@
     font-feature-settings: "cv11", "ss01";
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    /* Mobile-first body baseline: 15px / 1.5 */
+    font-size: 15px;
+    line-height: 1.5;
+  }
+
+  /* Type-scale floor: never shrink below 13px */
+  small, .text-caption, .text-label {
+    line-height: 1.5;
+  }
+
+  /* Safe-area inset on main content for iPhone home indicator */
+  main {
+    padding-bottom: env(safe-area-inset-bottom);
   }
 
   html {
@@ -237,6 +259,7 @@
   h1, h2, h3, h4, h5, h6 {
     letter-spacing: -0.02em;
     font-weight: 600;
+    line-height: 1.3;
   }
 
   /*
