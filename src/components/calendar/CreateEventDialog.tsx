@@ -18,6 +18,10 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { cn } from "@/lib/utils";
 import { useCreateManualEvent } from "@/hooks/useManualCalendarEvents";
 import { useToast } from "@/hooks/use-toast";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { useHousehold } from "@/hooks/useHousehold";
+import { useHouseholdMembers } from "@/hooks/useHouseholdMembers";
 
 interface CreateEventDialogProps {
   open: boolean;
@@ -28,12 +32,16 @@ interface CreateEventDialogProps {
 export const CreateEventDialog = ({ open, onOpenChange, defaultDate }: CreateEventDialogProps) => {
   const { toast } = useToast();
   const createEvent = useCreateManualEvent();
+  const { householdId } = useHousehold();
+  const { data: members = [] } = useHouseholdMembers(householdId);
 
   const [title, setTitle] = useState("");
   const [date, setDate] = useState<Date | undefined>(defaultDate ?? new Date());
   const [time, setTime] = useState("");
   const [description, setDescription] = useState("");
   const [allDay, setAllDay] = useState(false);
+  const [repeatType, setRepeatType] = useState<'none'|'daily'|'weekly'|'monthly'|'yearly'>('none');
+  const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
 
   useEffect(() => {
     if (open) {
@@ -42,8 +50,10 @@ export const CreateEventDialog = ({ open, onOpenChange, defaultDate }: CreateEve
       setTime("");
       setDescription("");
       setAllDay(false);
+      setRepeatType('none');
+      setSelectedMembers(members.map((m) => m.userId));
     }
-  }, [open, defaultDate]);
+  }, [open, defaultDate, members]);
 
   const handleSubmit = async () => {
     if (!title.trim()) {
@@ -62,6 +72,8 @@ export const CreateEventDialog = ({ open, onOpenChange, defaultDate }: CreateEve
         date,
         time: allDay ? null : (time || null),
         allDay,
+        repeatType,
+        memberIds: selectedMembers,
       });
       toast({ title: "Event added", description: "Your event has been added to the calendar." });
       onOpenChange(false);
@@ -135,7 +147,45 @@ export const CreateEventDialog = ({ open, onOpenChange, defaultDate }: CreateEve
           )}
 
           <div className="space-y-2">
-            <Label htmlFor="event-description">Description (optional)</Label>
+            <Label>Repeat</Label>
+            <Select value={repeatType} onValueChange={(v) => setRepeatType(v as any)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Does not repeat</SelectItem>
+                <SelectItem value="daily">Daily</SelectItem>
+                <SelectItem value="weekly">Weekly</SelectItem>
+                <SelectItem value="monthly">Monthly</SelectItem>
+                <SelectItem value="yearly">Yearly</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {members.length > 0 && (
+            <div className="space-y-2">
+              <Label>Who</Label>
+              <div className="rounded-md border p-3 space-y-2 max-h-40 overflow-y-auto">
+                {members.map((m) => {
+                  const checked = selectedMembers.includes(m.userId);
+                  return (
+                    <label key={m.userId} className="flex items-center gap-2 cursor-pointer text-sm">
+                      <Checkbox
+                        checked={checked}
+                        onCheckedChange={(v) => {
+                          setSelectedMembers((prev) =>
+                            v ? [...prev, m.userId] : prev.filter((x) => x !== m.userId)
+                          );
+                        }}
+                      />
+                      <span>{m.displayName}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          <div className="space-y-2">
+            <Label htmlFor="event-description">Notes (optional)</Label>
             <Textarea
               id="event-description"
               placeholder="Notes, location, who's coming…"
@@ -149,7 +199,7 @@ export const CreateEventDialog = ({ open, onOpenChange, defaultDate }: CreateEve
             {createEvent.isPending ? (
               <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Adding…</>
             ) : (
-              "Add Event"
+              "Save Event"
             )}
           </Button>
         </div>

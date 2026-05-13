@@ -14,6 +14,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import type { CalendarEvent } from "@/hooks/useCalendarEvents";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface CalendarGridProps {
   currentDate: Date;
@@ -138,7 +139,7 @@ export const CalendarGrid = ({
                   </div>
 
                   {/* Events for this day */}
-                  {dayEvents.map((event) => (
+                  {dayEvents.filter((e) => e.calendarId !== "system").map((event) => (
                     <div
                       key={event.id}
                       onClick={(e) => {
@@ -163,6 +164,18 @@ export const CalendarGrid = ({
                           <p className="text-xs text-muted-foreground mt-0.5">All day</p>
                         )}
                       </div>
+                    </div>
+                  ))}
+                  {dayEvents.filter((e) => e.calendarId === "system").map((event) => (
+                    <div
+                      key={event.id}
+                      className="ml-4 px-3 py-1.5 text-xs flex items-center gap-2 text-muted-foreground"
+                    >
+                      <span
+                        className="w-2 h-2 rounded-full"
+                        style={{ backgroundColor: event.color }}
+                      />
+                      <span>{event.title}</span>
                     </div>
                   ))}
 
@@ -213,19 +226,39 @@ export const CalendarGrid = ({
               )}
             >
               {/* Date number */}
-              <div
-                className={cn(
-                  "w-7 h-7 flex items-center justify-center rounded-full text-sm mb-1",
-                  isToday(day) && "bg-primary text-primary-foreground font-bold",
-                  !isCurrentMonth && "text-muted-foreground"
-                )}
-              >
-                {format(day, "d")}
+              <div className="flex items-center gap-1 mb-1">
+                <div
+                  className={cn(
+                    "w-7 h-7 flex items-center justify-center rounded-full text-sm",
+                    isToday(day) && "bg-primary text-primary-foreground font-bold",
+                    !isCurrentMonth && "text-muted-foreground"
+                  )}
+                >
+                  {format(day, "d")}
+                </div>
+                <TooltipProvider delayDuration={100}>
+                  <div className="flex items-center gap-0.5">
+                    {dayEvents.filter((e) => e.calendarId === "system").slice(0, 3).map((sysEv) => (
+                      <Tooltip key={sysEv.id}>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            onClick={(e) => e.stopPropagation()}
+                            className="w-2 h-2 rounded-full"
+                            style={{ backgroundColor: sysEv.color }}
+                            aria-label={sysEv.title}
+                          />
+                        </TooltipTrigger>
+                        <TooltipContent>{sysEv.title}</TooltipContent>
+                      </Tooltip>
+                    ))}
+                  </div>
+                </TooltipProvider>
               </div>
 
               {/* Events */}
               <div className="space-y-1 overflow-hidden">
-                {dayEvents.slice(0, 3).map((event) => (
+                {dayEvents.filter((e) => e.calendarId !== "system").slice(0, 3).map((event) => (
                   <div
                     key={event.id}
                     onClick={(e) => {
@@ -246,9 +279,9 @@ export const CalendarGrid = ({
                     {event.title}
                   </div>
                 ))}
-                {dayEvents.length > 3 && (
+                {dayEvents.filter((e) => e.calendarId !== "system").length > 3 && (
                   <div className="text-xs text-muted-foreground px-1">
-                    +{dayEvents.length - 3} more
+                    +{dayEvents.filter((e) => e.calendarId !== "system").length - 3} more
                   </div>
                 )}
               </div>

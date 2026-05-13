@@ -33,6 +33,84 @@ interface CalendarEvent {
   description?: string;
 }
 
+// Expand a manual event into all occurrences within [windowStart, windowEnd)
+// based on its repeat_type.
+function expandRecurrence(
+  ev: { start_at: string; end_at: string; repeat_type?: string | null },
+  windowStart: Date,
+  windowEnd: Date,
+): { start: Date; end: Date }[] {
+  const baseStart = new Date(ev.start_at);
+  const baseEnd = new Date(ev.end_at);
+  const duration = baseEnd.getTime() - baseStart.getTime();
+  const repeat = (ev.repeat_type || "none").toLowerCase();
+
+  if (repeat === "none") {
+    if (baseStart >= windowStart && baseStart < windowEnd) {
+      return [{ start: baseStart, end: baseEnd }];
+    }
+    return [];
+  }
+
+  const out: { start: Date; end: Date }[] = [];
+  // Cap iterations defensively (e.g. 5 years of daily = ~1825 entries)
+  const MAX_ITER = 2000;
+
+  if (repeat === "daily") {
+    let cur = new Date(Math.max(baseStart.getTime(), windowStart.getTime()));
+    // Align to baseStart time-of-day
+    cur.setHours(baseStart.getHours(), baseStart.getMinutes(), baseStart.getSeconds(), 0);
+    if (cur < windowStart) cur = new Date(cur.getTime() + 86400000);
+    let i = 0;
+    while (cur < windowEnd && i++ < MAX_ITER) {
+      if (cur >= baseStart) out.push({ start: new Date(cur), end: new Date(cur.getTime() + duration) });
+      cur = new Date(cur.getTime() + 86400000);
+    }
+  } else if (repeat === "weekly") {
+    let cur = new Date(baseStart);
+    while (cur < windowStart && (cur = new Date(cur.getTime() + 7 * 86400000))) {
+      if (cur.getTime() > windowEnd.getTime() + 365 * 86400000) break;
+    }
+    let i = 0;
+    while (cur < windowEnd && i++ < MAX_ITER) {
+      if (cur >= baseStart) out.push({ start: new Date(cur), end: new Date(cur.getTime() + duration) });
+      cur = new Date(cur.getTime() + 7 * 86400000);
+    }
+  } else if (repeat === "monthly") {
+    const day = baseStart.getDate();
+    let y = Math.max(baseStart.getFullYear(), windowStart.getFullYear());
+    let m = baseStart.getFullYear() === y ? baseStart.getMonth() : 0;
+    if (y === windowStart.getFullYear()) m = Math.max(m, windowStart.getMonth());
+    let i = 0;
+    while (i++ < MAX_ITER) {
+      const lastDay = new Date(y, m + 1, 0).getDate();
+      const d = Math.min(day, lastDay);
+      const occ = new Date(y, m, d, baseStart.getHours(), baseStart.getMinutes(), baseStart.getSeconds());
+      if (occ >= windowEnd) break;
+      if (occ >= baseStart && occ >= windowStart) {
+        out.push({ start: occ, end: new Date(occ.getTime() + duration) });
+      }
+      m++;
+      if (m > 11) { m = 0; y++; }
+    }
+  } else if (repeat === "yearly") {
+    const month = baseStart.getMonth();
+    const day = baseStart.getDate();
+    let y = Math.max(baseStart.getFullYear(), windowStart.getFullYear());
+    let i = 0;
+    while (i++ < MAX_ITER) {
+      const occ = new Date(y, month, day, baseStart.getHours(), baseStart.getMinutes(), baseStart.getSeconds());
+      if (occ >= windowEnd) break;
+      if (occ >= baseStart && occ >= windowStart) {
+        out.push({ start: occ, end: new Date(occ.getTime() + duration) });
+      }
+      y++;
+    }
+  }
+
+  return out;
+}
+
 // deno-lint-ignore no-explicit-any
 async function refreshAccessToken(
   connection: CalendarConnection,
@@ -210,40 +288,79 @@ serve(async (req) => {
 
     const allEvents: CalendarEvent[] = [];
 
-    // Fetch manual (household-created) events for the same range
+    const windowStart = new Date(startDate);
+    const windowEnd = new Date(endDate);
+
+    // Fetch manual (household-created) events: in-window OR any recurring
     try {
       const { data: manualEvents, error: manualErr } = await supabase
         .from("manual_calendar_events")
         .select("*")
         .eq("household_id", householdId)
-        .gte("start_at", new Date(startDate).toISOString())
-        .lt("start_at", new Date(endDate).toISOString());
+        .or(
+          `and(start_at.gte.${windowStart.toISOString()},start_at.lt.${windowEnd.toISOString()}),repeat_type.neq.none`
+        );
 
       if (manualErr) {
         console.error("Manual events fetch error:", manualErr);
       } else if (manualEvents) {
         for (const ev of manualEvents as any[]) {
-          allEvents.push({
-            id: `manual-${ev.id}`,
-            title: ev.title,
-            start: ev.start_at,
-            end: ev.end_at,
-            allDay: ev.all_day,
-            color: "#0F6E56",
-            calendarName: "Family events",
-            calendarOwner: "household",
-            calendarId: "manual",
-            location: ev.location ?? undefined,
-            description: ev.description ?? undefined,
-          });
+          const occurrences = expandRecurrence(ev, windowStart, windowEnd);
+          for (const occ of occurrences) {
+            allEvents.push({
+              id: `manual-${ev.id}-${occ.start.toISOString().slice(0,10)}`,
+              title: ev.title,
+              start: occ.start.toISOString(),
+              end: occ.end.toISOString(),
+              allDay: ev.all_day,
+              color: "#0F6E56",
+              calendarName: "Family events",
+              calendarOwner: "household",
+              calendarId: "manual",
+              location: ev.location ?? undefined,
+              description: ev.description ?? undefined,
+            });
+          }
         }
       }
     } catch (err) {
       console.error("Manual events fetch failed:", err);
     }
 
+    // Fetch system events (festivals & national holidays) for the same range
+    try {
+      const startDay = windowStart.toISOString().slice(0, 10);
+      const endDay = windowEnd.toISOString().slice(0, 10);
+      const { data: sysEvents, error: sysErr } = await supabase
+        .from("system_calendar_events")
+        .select("*")
+        .gte("event_date", startDay)
+        .lt("event_date", endDay);
+
+      if (sysErr) {
+        console.error("System events fetch error:", sysErr);
+      } else if (sysEvents) {
+        for (const s of sysEvents as any[]) {
+          allEvents.push({
+            id: `system-${s.id}`,
+            title: s.name,
+            start: `${s.event_date}T00:00:00.000Z`,
+            end: `${s.event_date}T23:59:59.000Z`,
+            allDay: true,
+            color: s.kind === "festival" ? "#F97316" : "#3B82F6",
+            calendarName: s.kind === "festival" ? "Festivals" : "National holidays",
+            calendarOwner: "system",
+            calendarId: "system",
+            description: s.kind === "festival" ? "Festival" : "National holiday",
+          });
+        }
+      }
+    } catch (err) {
+      console.error("System events fetch failed:", err);
+    }
+
     if (!connections || connections.length === 0) {
-      console.log("No Google connections; returning manual events only");
+      console.log("No Google connections; returning manual + system events only");
       allEvents.sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
       return new Response(JSON.stringify({ events: allEvents }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
