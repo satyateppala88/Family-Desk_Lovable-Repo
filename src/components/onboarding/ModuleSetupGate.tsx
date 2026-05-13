@@ -285,6 +285,14 @@ const useApplicableQuestions = (questions: readonly FormQuestion[]) => {
 interface ModuleSetupGateProps {
   module: ModuleSetupKey;
   children: ReactNode;
+  /**
+   * When `true`, the setup Sheet stays closed even though setup is needed —
+   * useful when a feature tour ("Welcome to X") is currently visible on the
+   * same page. The page flips this to `false` once the tour is dismissed,
+   * and the setup Sheet opens then. Default `false` preserves existing
+   * behaviour (open immediately on first visit).
+   */
+  waitForTour?: boolean;
 }
 
 /**
@@ -292,7 +300,7 @@ interface ModuleSetupGateProps {
  * completed, renders a non-dismissible dialog asking for that module's
  * inputs. Saves to household_preferences and marks the setup complete.
  */
-export const ModuleSetupGate = ({ module, children }: ModuleSetupGateProps) => {
+export const ModuleSetupGate = ({ module, children, waitForTour = false }: ModuleSetupGateProps) => {
   const { needsSetup, markComplete, isMarking } = useModuleSetup(module);
   const { householdId } = useHousehold();
   const { preferences, updatePreferences, isUpdating } = useHouseholdPreferences(householdId);
@@ -306,23 +314,25 @@ export const ModuleSetupGate = ({ module, children }: ModuleSetupGateProps) => {
       {children}
       <ModuleSetupDialog
         module={module}
-        open={open}
+        // Defer opening while a tour is on screen; once `waitForTour`
+        // flips to false the Sheet opens (assuming user hasn't already
+        // dismissed it via `setOpen(false)`).
+        open={open && !waitForTour}
         dismissible={true}
         onOpenChange={(next) => {
           setOpen(next);
-          // Dismissing without saving = "skip for now". Mark complete so the
-          // user is never re-prompted on this module unless they explicitly
-          // re-run setup from Settings.
-          if (!next) {
-            markComplete().catch(() => {/* non-fatal: gate just reappears next visit */});
-          }
+          // Persistence is now handled inside ModuleSetupDialog's
+          // `dismissAndComplete` (X button + outside click + Esc), so we
+          // don't re-mark here — that produced a double write that could
+          // race with the cache invalidation and leave the gate flickering
+          // back open on the next render.
         }}
         onComplete={() => setOpen(false)}
         onSkip={() => {
+          // Footer "Skip, I'll do this later" — the dialog's form already
+          // calls markComplete + clearModuleSetupDraft before invoking
+          // this; we just close.
           setOpen(false);
-          // Skip via footer button doesn't fire Radix onOpenChange (we're
-          // closing via controlled prop), so persist completion explicitly.
-          markComplete().catch(() => {/* non-fatal */});
         }}
       />
     </>
