@@ -207,15 +207,48 @@ serve(async (req) => {
     }
 
     console.log(`Found ${connections?.length || 0} visible connections for household ${householdId}`);
-    
+
+    const allEvents: CalendarEvent[] = [];
+
+    // Fetch manual (household-created) events for the same range
+    try {
+      const { data: manualEvents, error: manualErr } = await supabase
+        .from("manual_calendar_events")
+        .select("*")
+        .eq("household_id", householdId)
+        .gte("start_at", new Date(startDate).toISOString())
+        .lt("start_at", new Date(endDate).toISOString());
+
+      if (manualErr) {
+        console.error("Manual events fetch error:", manualErr);
+      } else if (manualEvents) {
+        for (const ev of manualEvents as any[]) {
+          allEvents.push({
+            id: `manual-${ev.id}`,
+            title: ev.title,
+            start: ev.start_at,
+            end: ev.end_at,
+            allDay: ev.all_day,
+            color: "#0F6E56",
+            calendarName: "Family events",
+            calendarOwner: "household",
+            calendarId: "manual",
+            location: ev.location ?? undefined,
+            description: ev.description ?? undefined,
+          });
+        }
+      }
+    } catch (err) {
+      console.error("Manual events fetch failed:", err);
+    }
+
     if (!connections || connections.length === 0) {
-      console.log("No visible connections found, returning empty events");
-      return new Response(JSON.stringify({ events: [] }), {
+      console.log("No Google connections; returning manual events only");
+      allEvents.sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
+      return new Response(JSON.stringify({ events: allEvents }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-
-    const allEvents: CalendarEvent[] = [];
 
     // Fetch events from each connected calendar
     for (const conn of connections) {
