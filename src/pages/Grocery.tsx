@@ -6,7 +6,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
-import { Plus, ListChecks, Package, Sparkles, ShoppingCart, ScanLine } from "lucide-react";
+import { Plus, ListChecks, Package, Sparkles, ShoppingCart, ScanLine, Settings } from "lucide-react";
 import { PantryItemCard } from "@/components/grocery/PantryItemCard";
 import { AddPantryItemDialog } from "@/components/grocery/AddPantryItemDialog";
 import { QuickAddChecklist } from "@/components/grocery/QuickAddChecklist";
@@ -19,6 +19,9 @@ import { CreateShoppingListDialog } from "@/components/grocery/CreateShoppingLis
 import { PantryEducationBanner } from "@/components/grocery/PantryEducationBanner";
 import { ExpiringItemsAlert } from "@/components/grocery/ExpiringItemsAlert";
 import { LowStockAlert } from "@/components/grocery/LowStockAlert";
+import { RunningLowChips } from "@/components/grocery/RunningLowChips";
+import { PantrySettingsSheet } from "@/components/grocery/PantrySettingsSheet";
+import { ShareOnWhatsAppButton } from "@/components/grocery/ShareOnWhatsAppButton";
 import { PantryCategorySection } from "@/components/grocery/PantryCategorySection";
 import { ShoppingListDetailView } from "@/components/grocery/ShoppingListDetailView";
 import { PantryAnalytics } from "@/components/grocery/PantryAnalytics";
@@ -71,6 +74,8 @@ const Grocery = () => {
   const [selectedCategoryDetail, setSelectedCategoryDetail] = useState<string | null>(null);
   const [cartItemCount, setCartItemCount] = useState(0);
   const [activeTab, setActiveTab] = useState<string>(() => searchParams.get("tab") || "pantry");
+  const [showPantrySettings, setShowPantrySettings] = useState(false);
+  const [isAddingLowStock, setIsAddingLowStock] = useState(false);
 
   // Handle inbound link from Meals: ?tab=shopping&newList=...&items=...
   useEffect(() => {
@@ -337,6 +342,71 @@ const Grocery = () => {
     return minQty > 0 && qty <= minQty;
   });
 
+  const handleAddLowStockItem = async (item: PantryItem) => {
+    if (!householdId || !user?.id) return;
+    setIsAddingLowStock(true);
+    try {
+      let activeList = shoppingLists.find((l) => l.status === "active");
+      if (!activeList) {
+        const { data, error } = await supabase
+          .from("shopping_lists")
+          .insert([
+            {
+              household_id: householdId,
+              name: `Shopping List — ${new Date().toLocaleDateString()}`,
+              created_by: user.id,
+              status: "active",
+            },
+          ])
+          .select()
+          .single();
+        if (error || !data) throw error;
+        activeList = data as any;
+      }
+
+      // Avoid duplicates: same pantry item, not yet checked
+      const existing = activeList!.items?.find(
+        (i) => i.pantry_item_id === item.id && !i.is_checked
+      );
+      if (existing) {
+        toast({ title: "Already on your list", description: item.name });
+        return;
+      }
+
+      const need = Math.max(
+        1,
+        Math.ceil((item.minimum_quantity || 1) - (item.quantity || 0))
+      );
+      const { error: insertError } = await supabase
+        .from("shopping_list_items")
+        .insert([
+          {
+            list_id: activeList!.id,
+            name: item.name,
+            quantity: need,
+            unit: item.unit,
+            category: item.category,
+            is_checked: false,
+            pantry_item_id: item.id,
+            recipe_source: null,
+          },
+        ]);
+      if (insertError) throw insertError;
+
+      queryClient.invalidateQueries({ queryKey: ["shopping-lists", householdId] });
+      setCartItemCount((c) => c + 1);
+      toast({ title: `${item.name} added to shopping list` });
+    } catch (e: any) {
+      toast({
+        title: "Couldn't add item",
+        description: e?.message || "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsAddingLowStock(false);
+    }
+  };
+
   const groupedItems = useMemo(() => {
     const groups: Record<string, PantryItem[]> = {};
     filteredItems.forEach((item) => {
@@ -510,6 +580,16 @@ const Grocery = () => {
               <span className="hidden xs:inline">Add Item</span>
               <span className="xs:hidden">Add</span>
             </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setShowPantrySettings(true)}
+              className="h-9 w-9"
+              aria-label="Grocery settings"
+              title="Grocery settings"
+            >
+              <Settings className="h-4 w-4" aria-hidden="true" />
+            </Button>
           </div>
         </div>
 
@@ -529,6 +609,13 @@ const Grocery = () => {
           </TabsList>
 
           <TabsContent value="pantry" className="space-y-6">
+            {lowStockItems.length > 0 && (
+              <RunningLowChips
+                items={lowStockItems}
+                onAddItem={handleAddLowStockItem}
+                isAdding={isAddingLowStock}
+              />
+            )}
             {isLoading ? (
               <EmptyState icon={Package} title="Loading your pantry..." />
             ) : pantryItems.length === 0 ? (
@@ -580,10 +667,22 @@ const Grocery = () => {
                   <p className="text-sm text-muted-foreground">
                     Create lists manually or generate them from your meal plan.
                   </p>
-                  <Button onClick={() => setShowCreateList(true)} className="gap-2">
-                    <ShoppingCart className="h-4 w-4" aria-hidden="true" />
-                    Create List
-                  </Button>
+                  <div className="flex gap-2">
+                    {shoppingLists.length > 0 && (
+                      <ShareOnWhatsAppButton
+                        list={
+                          shoppingLists.find((l) => l.status === "active") ||
+                          shoppingLists[0]
+                        }
+                        size="sm"
+                        label="Share"
+                      />
+                    )}
+                    <Button onClick={() => setShowCreateList(true)} className="gap-2">
+                      <ShoppingCart className="h-4 w-4" aria-hidden="true" />
+                      Create List
+                    </Button>
+                  </div>
                 </div>
 
                 {shoppingLists.length === 0 ? (
@@ -702,6 +801,8 @@ const Grocery = () => {
         variant="destructive"
         onConfirm={confirmDeleteList}
       />
+
+      <PantrySettingsSheet open={showPantrySettings} onOpenChange={setShowPantrySettings} />
     </div>
   );
 };
