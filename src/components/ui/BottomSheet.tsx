@@ -60,8 +60,6 @@ export const BottomSheet = ({
             // Desktop: centered dialog
             "lg:inset-x-auto lg:bottom-auto lg:left-1/2 lg:top-1/2 lg:-translate-x-1/2 lg:-translate-y-1/2",
             "lg:w-full lg:max-w-lg lg:max-h-[85dvh] lg:rounded-2xl lg:border",
-            "lg:data-[state=open]:slide-in-from-bottom-0 lg:data-[state=closed]:slide-out-to-bottom-0",
-            "lg:data-[state=open]:zoom-in-95 lg:data-[state=closed]:zoom-out-95",
             className
           )}
         >
