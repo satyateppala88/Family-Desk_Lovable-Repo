@@ -205,7 +205,7 @@ export const MealPlanCalendar = ({
     return (
       <div className="space-y-4">
         {/* Section 1 — Day picker strip */}
-        <div className="-mx-4 px-4 overflow-x-auto scrollbar-none">
+        <div className="-mx-4 px-4 overflow-x-auto scrollbar-hide">
           <div className="flex gap-2 min-w-min">
             {weekDays.map((day, i) => {
               const today = isToday(day);
