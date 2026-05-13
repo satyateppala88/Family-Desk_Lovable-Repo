@@ -137,6 +137,11 @@ export const usePantryItems = (householdId: string | null) => {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["pantry-items", householdId] });
       queryClient.invalidateQueries({ queryKey: ["pantry-stats", householdId] });
+      // Broad invalidation safety net — catches any pantry list view that
+      // cached under a different filter / household-less key (e.g. dashboard
+      // snapshot). The count was updating but the list stayed blank because
+      // the consuming query key didn't match the household-scoped key above.
+      queryClient.invalidateQueries({ queryKey: ["pantry-items"] });
       toast({
         title: "Items added",
         description: `${data.length} items have been added to your pantry.`,
