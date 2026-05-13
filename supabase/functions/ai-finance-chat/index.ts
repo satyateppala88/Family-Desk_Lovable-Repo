@@ -102,6 +102,15 @@ serve(async (req) => {
     const monthStart = `${currentMonth}-01`;
     const nextMonth = m === 12 ? `${y + 1}-01-01` : `${y}-${String(m + 1).padStart(2, "0")}-01`;
 
+    // Format YYYY-MM-DD → DD/MM/YYYY for AI context
+    const fmtDate = (d?: string | null) => {
+      if (!d) return "";
+      const parts = String(d).slice(0, 10).split("-");
+      if (parts.length !== 3) return String(d);
+      return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    };
+    const monthLabel = `${String(m).padStart(2, "0")}/${y}`;
+
     // Get transactions for current month
     const { data: transactions } = await supabase
       .from("finance_transactions")
@@ -141,7 +150,7 @@ serve(async (req) => {
       .map((b: any) => `${b.category}: spent ₹${categorySpend[b.category]?.toFixed(0)} vs ₹${Number(b.planned_amount).toFixed(0)} budget`);
 
     const financialContext = `
-HOUSEHOLD FINANCIAL DATA (${currentMonth}):
+HOUSEHOLD FINANCIAL DATA (${monthLabel}):
 - Monthly Income: ₹${income.toFixed(0)}
 - Monthly Expenses: ₹${expenses.toFixed(0)}
 - Net Savings: ₹${(income - expenses).toFixed(0)}
@@ -154,10 +163,10 @@ ${overBudget.length > 0 ? `\nOver-Budget Categories:\n${overBudget.map(s => `  �
 
 ${budgets?.length ? `\nMonthly Budgets:\n${budgets.map((b: any) => `  ${b.category}: ₹${Number(b.planned_amount).toFixed(0)}`).join("\n")}` : ""}
 
-${goals?.length ? `\nSavings Goals:\n${goals.map((g: any) => `  ${g.name}: ₹${Number(g.current_amount).toFixed(0)} / ₹${Number(g.target_amount).toFixed(0)} (${g.target_date ? `due ${g.target_date}` : "no deadline"})`).join("\n")}` : ""}
+${goals?.length ? `\nSavings Goals:\n${goals.map((g: any) => `  ${g.name}: ₹${Number(g.current_amount).toFixed(0)} / ₹${Number(g.target_amount).toFixed(0)} (${g.target_date ? `due ${fmtDate(g.target_date)}` : "no deadline"})`).join("\n")}` : ""}
 
 Recent Transactions (last 10):
-${txList.slice(0, 10).map((t: any) => `  ${t.transaction_date} | ${t.type} | ${t.category} | ₹${Number(t.amount).toFixed(0)} | ${t.description || "-"}`).join("\n") || "  None"}
+${txList.slice(0, 10).map((t: any) => `  ${fmtDate(t.transaction_date)} | ${t.type} | ${t.category} | ₹${Number(t.amount).toFixed(0)} | ${t.description || "-"}`).join("\n") || "  None"}
 `.trim();
 
     const systemPrompt = `You are FamilyDesk Finance Advisor, a friendly and supportive household finance assistant for Indian families.
