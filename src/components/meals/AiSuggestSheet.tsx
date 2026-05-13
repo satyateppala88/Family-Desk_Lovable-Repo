@@ -53,7 +53,10 @@ export const AiSuggestSheet = ({
   const [confirmFor, setConfirmFor] = useState<{ recipeTitle: string; ingredients: any[] } | null>(null);
 
   const fetchSuggestions = async () => {
-    if (!householdId) return;
+    if (!householdId) {
+      setError("Couldn't load your household yet. Please try again.");
+      return;
+    }
     setLoading(true);
     setError(null);
     setSuggestions([]);
@@ -64,25 +67,23 @@ export const AiSuggestSheet = ({
     const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
-      const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/suggest-meals-for-slot`;
-      const resp = await fetch(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token ?? ""}`,
-          apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-        },
-        body: JSON.stringify({ householdId, mealType, count: 3 }),
-        signal: controller.signal,
-      });
-      if (!resp.ok) {
-        const body = await resp.json().catch(() => ({}));
-        throw new Error(body.error || "Couldn't connect right now.");
+      // Use the typed Supabase client so URL + auth headers are always
+      // built correctly — the previous raw fetch using
+      // import.meta.env.VITE_SUPABASE_URL could yield a malformed URL or
+      // empty Authorization header in certain build contexts, surfacing
+      // as a confusing "Failed to fetch" toast on every meal-slot tap.
+      const { data, error: fnError } = await supabase.functions.invoke(
+        "suggest-meals-for-slot",
+        { body: { householdId, mealType, count: 3 } },
+      );
+      if (controller.signal.aborted) return;
+      if (fnError) {
+        const msg = (fnError as any)?.context?.error
+          || (fnError as any)?.message
+          || "Couldn't connect right now.";
+        throw new Error(msg);
       }
-      const json = await resp.json();
-      setSuggestions(json.suggestions || []);
+      setSuggestions((data?.suggestions as Suggestion[]) || []);
     } catch (e: any) {
       if (e.name === "AbortError") {
         setError("Couldn't connect right now. Try again?");
