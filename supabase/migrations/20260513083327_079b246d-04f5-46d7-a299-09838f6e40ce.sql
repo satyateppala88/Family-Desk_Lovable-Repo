@@ -1,0 +1,1 @@
+DROP INDEX IF EXISTS public.meal_plans_household_week_uniq;
