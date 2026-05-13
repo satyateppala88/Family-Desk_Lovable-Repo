@@ -52,7 +52,8 @@ export const AddMealSheet = ({
       reset();
       onOpenChange(false);
     } catch (e: any) {
-      toast({ title: "Couldn't add", description: e.message || "Try again.", variant: "destructive" });
+      console.error("AddMealSheet assign error:", e);
+      toast({ title: "Couldn't add this meal", description: "Please try again.", variant: "destructive" });
     } finally {
       setSaving(false);
     }
