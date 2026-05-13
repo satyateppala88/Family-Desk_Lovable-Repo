@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -116,27 +116,52 @@ export const InviteMemberDialog = ({ householdId, trigger }: InviteMemberDialogP
   });
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {trigger || (
-          <Button>
-            <UserPlus className="h-4 w-4 mr-2" />
-            Invite Member
-          </Button>
-        )}
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+    <>
+      {trigger ? (
+        <span onClick={() => setOpen(true)} className="contents">
+          {trigger}
+        </span>
+      ) : (
+        <Button onClick={() => setOpen(true)}>
+          <UserPlus className="h-4 w-4 mr-2" />
+          Invite Member
+        </Button>
+      )}
+      <BottomSheet
+        isOpen={open}
+        onClose={() => setOpen(false)}
+        title={
+          <span className="flex items-center gap-2">
             <Mail className="h-5 w-5" />
             Invite New Member
-          </DialogTitle>
-          <DialogDescription>
-            Send an invitation to add someone to your household
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-4 py-4">
+          </span>
+        }
+        description="Send an invitation to add someone to your household"
+        footer={
+          <div className="flex gap-2 justify-end">
+            <Button variant="outline" onClick={() => setOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => inviteMutation.mutate()}
+              disabled={inviteMutation.isPending || !email.trim()}
+            >
+              {inviteMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Sending...
+                </>
+              ) : (
+                <>
+                  <Mail className="h-4 w-4 mr-2" />
+                  Send Invitation
+                </>
+              )}
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="email">Email Address *</Label>
             <Input
@@ -179,29 +204,7 @@ export const InviteMemberDialog = ({ householdId, trigger }: InviteMemberDialogP
             </RadioGroup>
           </div>
         </div>
-
-        <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)}>
-            Cancel
-          </Button>
-          <Button 
-            onClick={() => inviteMutation.mutate()} 
-            disabled={inviteMutation.isPending || !email.trim()}
-          >
-            {inviteMutation.isPending ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Sending...
-              </>
-            ) : (
-              <>
-                <Mail className="h-4 w-4 mr-2" />
-                Send Invitation
-              </>
-            )}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      </BottomSheet>
+    </>
   );
 };
