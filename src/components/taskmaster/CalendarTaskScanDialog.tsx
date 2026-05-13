@@ -84,7 +84,7 @@ export const CalendarTaskScanDialog = ({ open, onOpenChange }: CalendarTaskScanD
       setAlreadyImported(data.alreadyImported || []);
       setHasScanned(true);
     } catch (err: any) {
-      toast({ title: "Scan failed", description: err.message, variant: "destructive" });
+      toast({ title: "Scan failed", description: "Please try again.", variant: "destructive" });
     } finally {
       setIsScanning(false);
     }
@@ -117,7 +117,7 @@ export const CalendarTaskScanDialog = ({ open, onOpenChange }: CalendarTaskScanD
       setSuggestions([]);
       setHasScanned(false);
     } catch (err: any) {
-      toast({ title: "Error creating tasks", description: err.message, variant: "destructive" });
+      toast({ title: "Error creating tasks", description: "Please try again.", variant: "destructive" });
     } finally {
       setIsCreating(false);
     }

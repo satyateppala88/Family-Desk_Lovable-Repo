@@ -142,7 +142,7 @@ export const VoiceInputButton = ({
     } catch (err: any) {
       toast({
         title: "Microphone unavailable",
-        description: err?.message || "Please check microphone permissions.",
+        description: "Please check microphone permissions.",
         variant: "destructive",
       });
     }

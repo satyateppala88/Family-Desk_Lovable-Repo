@@ -75,7 +75,7 @@ export const FestivalBanner = () => {
       });
       dismiss();
     } catch (err: any) {
-      toast({ title: "Couldn't add checklist", description: err?.message || "Please try again.", variant: "destructive" });
+      toast({ title: "Couldn't add checklist", description: "Please try again.", variant: "destructive" });
     } finally {
       setBusy(false);
     }

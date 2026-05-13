@@ -133,7 +133,7 @@ export const ScanBillDialog = ({ open, onOpenChange, onScanned, householdId }: S
     } catch (err: any) {
       toast({
         title: "Scan failed",
-        description: err?.message || "Please try again.",
+        description: "Please try again.",
         variant: "destructive",
       });
     } finally {

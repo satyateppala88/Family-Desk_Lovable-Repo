@@ -144,7 +144,7 @@ export const AvatarUploader = ({
     } catch (err: any) {
       toast({
         title: "Upload failed",
-        description: err?.message || "Please try again.",
+        description: "Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -217,7 +217,7 @@ export const AvatarUploader = ({
       await onChange(null);
       toast({ title: "Photo removed" });
     } catch (err: any) {
-      toast({ title: "Failed to remove", description: err?.message || "Please try again.", variant: "destructive" });
+      toast({ title: "Failed to remove", description: "Please try again.", variant: "destructive" });
     } finally {
       setBusy(false);
     }
