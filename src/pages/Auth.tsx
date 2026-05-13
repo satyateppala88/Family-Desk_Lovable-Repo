@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { Eye, EyeOff, Mail, RefreshCw } from "lucide-react";
-import lockupImg from "@/assets/familydesk-lockup.png";
+import lockupImg from "@/assets/familydesk-wordmark.png";
 
 type AuthState = "form" | "verification-pending";
 
