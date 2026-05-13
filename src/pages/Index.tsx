@@ -18,6 +18,7 @@ import { useHouseholdPreferences } from "@/hooks/useHouseholdPreferences";
 import { MODULE_SETUP_KEYS } from "@/lib/moduleSetup";
 import { OnboardingProgressIndicator } from "@/components/onboarding/OnboardingProgressIndicator";
 import { FamilyPulse } from "@/components/dashboard/FamilyPulse";
+import { FestivalBanner } from "@/components/dashboard/FestivalBanner";
 import { PermissionsTutorial } from "@/components/permissions/PermissionsTutorial";
 import { getHasSeenPermissionsTutorial } from "@/lib/launchStorage";
 import {
@@ -168,6 +169,8 @@ const Index = () => {
       )}
       <main className="page-content animate-fade-in">
         <PendingInvitationBanner />
+
+        <FestivalBanner />
 
         <PermissionsTutorial
           open={showPermissionsTutorial}
