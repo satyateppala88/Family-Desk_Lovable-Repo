@@ -922,7 +922,6 @@ const ModuleSetupForm = ({ module, preferences, householdId, onSubmit, onSkip, i
     case "finance_setup":
       return <FinanceSetupForm module={module} householdId={householdId} preferences={preferences} onSubmit={onSubmit} onSkip={onSkip} isSaving={isSaving} />;
     case "habits_setup":
-    case "tasks_setup":
       return <RoutineSetupForm module={module} householdId={householdId} preferences={preferences} onSubmit={onSubmit} onSkip={onSkip} isSaving={isSaving} />;
     case "calendar_setup":
       return <CalendarSetupForm module={module} householdId={householdId} preferences={preferences} onSubmit={onSubmit} onSkip={onSkip} isSaving={isSaving} />;
