@@ -122,7 +122,7 @@ export const TransactionDialog = ({ open, onOpenChange, onSave, initialData, use
           <div className="space-y-2">
             <Label>Amount (₹)</Label>
             <Input
-              type="number"
+              type="number" inputMode="numeric"
               placeholder="0"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}

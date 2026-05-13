@@ -67,7 +67,7 @@ export const BudgetDialog = ({ open, onOpenChange, onSave, existingCategories = 
           <div className="space-y-2">
             <Label>Monthly Budget (₹)</Label>
             <Input
-              type="number"
+              type="number" inputMode="numeric"
               placeholder="0"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}

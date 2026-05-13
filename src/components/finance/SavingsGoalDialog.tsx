@@ -54,11 +54,11 @@ export const SavingsGoalDialog = ({ open, onOpenChange, onSave }: SavingsGoalDia
           </div>
           <div className="space-y-2">
             <Label>Target Amount (₹)</Label>
-            <Input type="number" placeholder="0" value={target} onChange={(e) => setTarget(e.target.value)} min="0" />
+            <Input type="number" inputMode="numeric" placeholder="0" value={target} onChange={(e) => setTarget(e.target.value)} min="0" />
           </div>
           <div className="space-y-2">
             <Label>Saved So Far (₹)</Label>
-            <Input type="number" placeholder="0" value={current} onChange={(e) => setCurrent(e.target.value)} min="0" />
+            <Input type="number" inputMode="numeric" placeholder="0" value={current} onChange={(e) => setCurrent(e.target.value)} min="0" />
           </div>
           <div className="space-y-2">
             <Label>Target Date (optional)</Label>

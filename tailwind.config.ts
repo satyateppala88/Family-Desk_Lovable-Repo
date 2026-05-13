@@ -28,6 +28,23 @@ export default {
 				'sans-serif'
 			]
   		},
+  		// Mobile-first type scale (sp ≈ px on web).
+  		// Floor: 13px. Use these tokens via `text-display`, `text-heading`,
+  		// `text-subheading`, `text-body`, `text-caption`, `text-label`.
+  		fontSize: {
+  			display: ['24px', { lineHeight: '1.3', fontWeight: '700' }],
+  			heading: ['20px', { lineHeight: '1.35', fontWeight: '600' }],
+  			subheading: ['17px', { lineHeight: '1.4', fontWeight: '600' }],
+  			body: ['15px', { lineHeight: '1.5', fontWeight: '400' }],
+  			caption: ['13px', { lineHeight: '1.5', fontWeight: '400' }],
+  			label: ['12px', { lineHeight: '1.4', fontWeight: '500' }],
+  		},
+  		minHeight: {
+  			touch: '48px',
+  		},
+  		minWidth: {
+  			touch: '48px',
+  		},
   		colors: {
   			border: 'hsl(var(--border))',
   			input: 'hsl(var(--input))',
