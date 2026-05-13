@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -41,12 +41,17 @@ export const BudgetDialog = ({ open, onOpenChange, onSave, existingCategories = 
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-sm">
-        <DialogHeader>
-          <DialogTitle>Set Budget</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4">
+    <BottomSheet
+      isOpen={open}
+      onClose={() => onOpenChange(false)}
+      title="Set Budget"
+      footer={
+        <Button onClick={handleSave} className="w-full" disabled={submitting || !category || !amount}>
+          {submitting ? "Saving..." : "Save Budget"}
+        </Button>
+      }
+    >
+      <div className="space-y-4">
           <div className="space-y-2">
             <Label>Category</Label>
             <CategorySelect
@@ -64,23 +69,17 @@ export const BudgetDialog = ({ open, onOpenChange, onSave, existingCategories = 
               </p>
             )}
           </div>
-          <div className="space-y-2">
-            <Label>Monthly Budget (₹)</Label>
-            <Input
-              type="number" inputMode="numeric"
-              placeholder="0"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              min="0"
-            />
-          </div>
+        <div className="space-y-2">
+          <Label>Monthly Budget (₹)</Label>
+          <Input
+            type="number" inputMode="numeric"
+            placeholder="0"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            min="0"
+          />
         </div>
-        <DialogFooter>
-          <Button onClick={handleSave} className="w-full" disabled={submitting || !category || !amount}>
-            {submitting ? "Saving..." : "Save Budget"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </BottomSheet>
   );
 };

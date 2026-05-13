@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -32,16 +32,13 @@ export const CreateShoppingListDialog = ({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Create Shopping List</DialogTitle>
-          <DialogDescription>
-            Create a new shopping list manually or generate from your meal plan.
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-6 py-4">
+    <BottomSheet
+      isOpen={open}
+      onClose={() => onOpenChange(false)}
+      title="Create Shopping List"
+      description="Create a new shopping list manually or generate from your meal plan."
+    >
+      <div className="space-y-6">
           <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="list-name">List Name</Label>
@@ -69,8 +66,7 @@ export const CreateShoppingListDialog = ({
           <Button onClick={handleGenerate} variant="outline" className="w-full">
             Generate from Current Meal Plan
           </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </BottomSheet>
   );
 };

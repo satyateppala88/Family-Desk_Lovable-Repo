@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -88,13 +88,18 @@ export const TransactionDialog = ({ open, onOpenChange, onSave, initialData, use
     : [];
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>{initialData ? "Edit Transaction" : "Add Transaction"}</DialogTitle>
-          {!initialData && <DialogDescription>Record an income or expense entry.</DialogDescription>}
-        </DialogHeader>
-        <div className="space-y-4">
+    <BottomSheet
+      isOpen={open}
+      onClose={() => onOpenChange(false)}
+      title={initialData ? "Edit Transaction" : "Add Transaction"}
+      description={!initialData ? "Record an income or expense entry." : undefined}
+      footer={
+        <Button onClick={handleSave} disabled={submitting} className="w-full">
+          {submitting ? "Saving…" : `${initialData ? "Update" : "Add"} Transaction`}
+        </Button>
+      }
+    >
+      <div className="space-y-4">
           <div className="space-y-1.5">
             <div className="grid grid-cols-2 gap-3">
               <Button
@@ -207,13 +212,7 @@ export const TransactionDialog = ({ open, onOpenChange, onSave, initialData, use
             />
           </div>
 
-        </div>
-        <DialogFooter>
-          <Button onClick={handleSave} disabled={submitting} className="w-full">
-            {submitting ? "Saving…" : `${initialData ? "Update" : "Add"} Transaction`}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </BottomSheet>
   );
 };

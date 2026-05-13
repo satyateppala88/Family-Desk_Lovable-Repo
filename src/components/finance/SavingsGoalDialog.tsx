@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -42,12 +42,17 @@ export const SavingsGoalDialog = ({ open, onOpenChange, onSave }: SavingsGoalDia
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-sm">
-        <DialogHeader>
-          <DialogTitle>New Savings Goal</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4">
+    <BottomSheet
+      isOpen={open}
+      onClose={() => onOpenChange(false)}
+      title="New Savings Goal"
+      footer={
+        <Button onClick={handleSave} className="w-full" disabled={submitting || !name || !target}>
+          {submitting ? "Creating..." : "Create Goal"}
+        </Button>
+      }
+    >
+      <div className="space-y-4">
           <div className="space-y-2">
             <Label>Goal Name</Label>
             <Input placeholder="e.g., Emergency Fund" value={name} onChange={(e) => setName(e.target.value)} />
@@ -84,13 +89,7 @@ export const SavingsGoalDialog = ({ open, onOpenChange, onSave }: SavingsGoalDia
               </PopoverContent>
             </Popover>
           </div>
-        </div>
-        <DialogFooter>
-          <Button onClick={handleSave} className="w-full" disabled={submitting || !name || !target}>
-            {submitting ? "Creating..." : "Create Goal"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </BottomSheet>
   );
 };

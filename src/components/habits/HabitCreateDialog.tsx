@@ -3,14 +3,7 @@ import { Plus, Users, User, Home, Clock } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -124,18 +117,32 @@ export const HabitCreateDialog = ({
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button className="w-full gap-2">
+    <>
+      {!isControlled && (
+        <Button className="w-full gap-2" onClick={() => setOpen(true)}>
           <Plus className="h-4 w-4" />
           Create New Habit
         </Button>
-      </DialogTrigger>
-      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Create New Habit</DialogTitle>
-        </DialogHeader>
-
+      )}
+      <BottomSheet
+        isOpen={open}
+        onClose={() => setOpen(false)}
+        title="Create New Habit"
+        footer={
+          <div className="flex gap-2 justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button type="button" disabled={isLoading} onClick={form.handleSubmit(handleSubmit)}>
+              {isLoading ? "Creating..." : "Create Habit"}
+            </Button>
+          </div>
+        }
+      >
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
             {/* Habit Name */}
@@ -429,22 +436,11 @@ export const HabitCreateDialog = ({
               )}
             />
 
-            {/* Submit */}
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setOpen(false)}
-              >
-                Cancel
-              </Button>
-              <Button type="submit" disabled={isLoading}>
-                {isLoading ? "Creating..." : "Create Habit"}
-              </Button>
-            </DialogFooter>
+            {/* Hidden submit for Enter key support */}
+            <button type="submit" className="hidden" aria-hidden="true" tabIndex={-1} />
           </form>
         </Form>
-      </DialogContent>
-    </Dialog>
+      </BottomSheet>
+    </>
   );
 };
