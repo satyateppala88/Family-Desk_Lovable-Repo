@@ -1,68 +1,29 @@
 ## Goal
+Extend the AI meal generator to also produce a daily Snack, save it as `meal_type = 'snack'`, and surface it in the existing Today tab Snacks card. Existing plans without snacks must continue to work.
 
-Three Habits-module fixes:
-1. Always-visible "+ Add Habit" CTA on the **Me** tab.
-2. Joining/starting a Family Challenge auto-creates a linked habit for that user; marking the challenge "Done today" also logs the linked habit.
-3. AI Coach Insight stops showing congratulatory copy when there's nothing to congratulate.
+## Changes
 
-## Fix 1 — "+ Add Habit" CTA on the Me tab
+### 1. `supabase/functions/generate-meal-suggestions/index.ts`
+- Update the system prompt header from "breakfast, lunch, and dinner" to "breakfast, lunch, dinner, and one snack" for each day.
+- Extend the "Indian Meal Structure" section with a new bullet:
+  > Snack: One light item per day, typically eaten around 4–5pm. Examples: poha, upma, samosa, pakoda, chivda, fruit chaat, roasted makhana, or chai with biscuits. Keep it light and realistic.
+- Update the user message: `Generate ${numDays} days of meal suggestions (breakfast, lunch, dinner, snack) as a meal plan.`
+- Update the tool schema `meal_type` enum to `["breakfast", "lunch", "dinner", "snack"]`.
+- Add an instruction line: "For each day, output exactly 4 meals: breakfast, lunch, dinner, and snack."
+- No change to the persistence loop — `meal.meal_type` is already passed through to the insert (line 468), so snacks get saved with `meal_type = 'snack'` automatically.
 
-`src/pages/Habits.tsx` already controls the create dialog (`createDialogOpen`) but never renders a trigger because `HabitCreateDialog` only renders its built-in button when uncontrolled. Add an explicit, always-visible CTA in the Me tab.
+### 2. `src/components/meals/MealPlanCalendar.tsx` (small alignment)
+- The week-grid currently uses the string `"snacks"` (plural) for its snack row, while the Today tab and AI now use `"snack"` (singular). Change `MOBILE_MEAL_TYPES` and the `MealSlot mealType="snacks"` references to `"snack"` so AI-generated snacks render in the week grid too. Keep the toggle behaviour and label "Snacks" unchanged.
 
-- Add a full-width primary button **directly under the Today's Progress card** (line ~239), label `+ Add Habit`, that calls `setCreateDialogOpen(true)`. This keeps it visible whether `todaysHabits` is empty or populated and sits above the habit list / empty state.
-- No FAB (the global sparkle FAB stays untouched and the design system already prefers persistent inline CTAs).
-
-## Fix 2 — Challenge ↔ Habit sync
-
-### Schema (one migration)
-Add nullable link columns so an auto-created habit can be traced back to its challenge:
-- `habits.challenge_id uuid` (nullable, no FK to keep deletes flexible) + unique partial index on `(challenge_id, user_id) WHERE challenge_id IS NOT NULL` to prevent duplicates.
-
-No data backfill needed.
-
-### `src/hooks/useChallenges.ts`
-After a successful `startChallenge` or `joinChallenge`, also create the linked habit for the current user (idempotent):
-1. Look up `habits` where `challenge_id = challengeId AND user_id = auth.uid()` — if a row exists, skip.
-2. Otherwise insert into `habits`:
-   - `name` = challenge `name` (e.g. "Walk Together")
-   - `household_id`, `user_id`, `assignment_type = 'personal'`, `frequency_type = 'daily'`, `frequency_days = []`, `is_active = true`, `challenge_id` set.
-3. Also insert the matching `habit_assignees` row (`habit_id`, `user_id`) — `useHabits.todaysHabits` filters via assignees, so without this the habit won't appear in the user's list.
-
-In `markDone` mutation:
-- After inserting the `challenge_logs` row, look up the linked habit (`habits.challenge_id = challengeId AND user_id = auth.uid()`).
-- If found, upsert a `habit_logs` row for `today` with `completed = true` (mirroring the existing `logHabit` mutation in `useHabits.ts`). Reuse the same shape so `useHouseholdHabitStats` and `todaysHabits` recompute identically.
-- Invalidate `["habits", householdId]`, `["habit-logs-today"]`, `["household-habit-stats"]`, `["habit-leaderboard"]`, `["habit-scores"]` alongside the existing `["challenges", householdId]` invalidation.
-
-This makes the linked habit appear on the Me list, count toward Today's Progress, and update the household summary cards.
-
-We do **not** mirror in the reverse direction (habit → challenge); spec only requires challenge → habit.
-
-## Fix 3 — Sober AI Coach copy
-
-`src/pages/Habits.tsx` shows two `HabitCoachInsight` cards.
-
-### Me tab
-The Me-tab insight (line ~240) already only renders when `0 < completedCount < totalCount`, so it's safe. No change needed beyond Fix 3 below for the household tab — but the spec covers the Me-tab too. Add a single guard before the existing condition:
-- If `totalCount === 0` OR `completedCount === 0` OR household age < 3 days → render a neutral insight: `"Add your first habit to start tracking your household's daily routine."`
-- Else keep the existing positive copy when partial progress exists.
-
-### Household tab
-The Household-tab insight (line ~322) currently renders any time `memberStats.length > 0` with the "building great consistency!" copy. Replace that condition with the same three-part guard: when total habits across the household is 0, today's completions are 0, or household age < 3 days, show the neutral prompt instead.
-
-### Household age source
-Extend `useHousehold` to also return `householdCreatedAt` (already on `households.created_at`, just add it to the existing `select` and pass through). Compute `householdAgeDays = differenceInCalendarDays(today, new Date(householdCreatedAt))` in `Habits.tsx`.
-
-The dismiss (×) behaviour on `HabitCoachInsight` is unchanged — still passes the same `onDismiss` no-op currently in place; the component itself isn't touched.
-
-## Files touched
-
-- `supabase/migrations/<new>.sql` — add `habits.challenge_id` + unique partial index.
-- `src/hooks/useHousehold.ts` — surface `householdCreatedAt`.
-- `src/hooks/useChallenges.ts` — auto-create linked habit on start/join; mirror completion in `markDone`; expanded query invalidations.
-- `src/pages/Habits.tsx` — render `+ Add Habit` button under Today's Progress; guard both `HabitCoachInsight` cards with the new neutral-copy rule.
+### 3. No schema changes
+`meal_plan_items.meal_type` is a free-text column with no CHECK constraint, so `'snack'` is already accepted. No migration needed.
 
 ## Out of scope
-- Bidirectional habit→challenge sync.
-- Visual restyle of the AI Coach card or the dismiss interaction.
-- Backfill of habits for already-joined challenges (only future joins create the link).
-- Any change to the challenges tab UI itself.
+- `regenerate-meals` and `suggest-meals-for-slot` are not changed (slot-level regen for snacks already supported in `suggest-meals-for-slot`; per-slot regen UI for snacks can come later).
+- No data backfill — older plans simply won't have a snack row, and the Today tab Snacks card already falls back to "+ Add" in that case (FALLBACK requirement).
+- No changes to routing, data structure, or other meal slot behaviour.
+
+## Verification
+- Trigger "Generate Recipes" / meal plan generation → confirm `meal_plan_items` has 4 rows per day including `meal_type='snack'`.
+- Today tab Snacks card shows the AI-suggested snack with Cooked / List actions.
+- Open an older plan with no snack row → Snacks card still shows "+ Add".
