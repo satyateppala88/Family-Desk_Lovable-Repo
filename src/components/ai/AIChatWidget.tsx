@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Drawer, DrawerContent } from "@/components/ui/drawer";
 import { Send, Loader2, Sparkles, X, RotateCcw } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useSpeechSynthesis } from "@/hooks/useSpeechSynthesis";
@@ -23,7 +24,7 @@ interface Message {
 
 // ─── Contextual prompt chips based on current route ───
 const PROMPT_CHIPS: Record<string, string[]> = {
-  meals: ["Plan meals this week", "Find a vegetarian recipe", "Add meals to grocery list", "What's in my pantry?"],
+  meals: ["Plan meals this week", "Find a vegetarian recipe", "Add meals to grocery list"],
   tasks: ["Add a task", "What's due today?", "Mark tasks complete", "Show overdue tasks"],
   finance: ["Show this month's spending", "Add a transaction", "How is my budget?", "Set a savings goal"],
   default: ["Plan meals this week", "Add a task", "What's due today?", "Show spending summary"],
@@ -42,7 +43,6 @@ const PLACEHOLDERS = [
   "Plan this week's meals...",
   "Add a task for tomorrow...",
   "What did we spend last month?",
-  "What's in my pantry?",
 ];
 
 const getTimeGreeting = () => {
