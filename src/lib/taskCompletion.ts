@@ -1,5 +1,6 @@
 import { ParsedTask } from "@/hooks/useParseTask";
 import { TaskCategory, TaskStatus } from "@/types/taskmaster";
+import type { RecurrencePattern } from "@/lib/recurrence";
 
 /**
  * Tracks which fields of a parsed task were filled by the AI (suggestions
@@ -15,6 +16,8 @@ export interface CompletionDraft {
   task_status: TaskStatus;
   project_id: string | null;
   assignee_ids: string[];
+  recurring: boolean;
+  recurring_pattern: RecurrencePattern | null;
   // Tracking
   aiSuggested: {
     category: boolean;
@@ -46,6 +49,8 @@ export const buildDraftFromParsed = (
     task_status: parsed.task_status ?? defaults.defaultStatus ?? "backlog",
     project_id: null,
     assignee_ids: defaults.creatorId ? [defaults.creatorId] : [],
+    recurring: false,
+    recurring_pattern: null,
     aiSuggested: {
       category: true, // AI always returns a category
       priority: true, // AI always returns a priority
