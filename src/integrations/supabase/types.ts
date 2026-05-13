@@ -1606,6 +1606,7 @@ export type Database = {
       }
       meal_plan_items: {
         Row: {
+          cooked_at: string | null
           created_at: string
           day_of_week: number
           id: string
@@ -1616,6 +1617,7 @@ export type Database = {
           scheduled_date: string | null
         }
         Insert: {
+          cooked_at?: string | null
           created_at?: string
           day_of_week: number
           id?: string
@@ -1626,6 +1628,7 @@ export type Database = {
           scheduled_date?: string | null
         }
         Update: {
+          cooked_at?: string | null
           created_at?: string
           day_of_week?: number
           id?: string
