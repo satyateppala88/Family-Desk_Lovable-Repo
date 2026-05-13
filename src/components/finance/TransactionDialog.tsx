@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -207,10 +207,12 @@ export const TransactionDialog = ({ open, onOpenChange, onSave, initialData, use
             />
           </div>
 
+        </div>
+        <DialogFooter>
           <Button onClick={handleSave} disabled={submitting} className="w-full">
             {submitting ? "Saving…" : `${initialData ? "Update" : "Add"} Transaction`}
           </Button>
-        </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
