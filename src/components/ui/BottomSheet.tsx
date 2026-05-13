@@ -67,7 +67,7 @@ export const BottomSheet = ({
         >
           {/* Drag handle (mobile only) */}
           <div className="lg:hidden flex justify-center pt-2 pb-1 shrink-0">
-            <div className="h-1 w-9 rounded-full bg-[hsl(var(--ink-3))]" />
+            <div className="h-1 w-9 rounded-full bg-muted-foreground/30" />
           </div>
 
           {showHeader && (
