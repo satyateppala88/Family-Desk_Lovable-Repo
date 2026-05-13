@@ -962,14 +962,14 @@ const FormShell = ({
         >
           {children}
         </fieldset>
-        <DialogFooter className="flex-row justify-between sm:justify-between">
+        <SheetFooter className="flex-row justify-between sm:justify-between">
           <Button
             variant="ghost"
             onClick={() => { if (!isSaving) onSkip(); }}
             disabled={isSaving}
             aria-disabled={isSaving}
           >
-            Skip for now
+            Skip, I'll do this later
           </Button>
           <Button
             onClick={() => { if (!isSaving) onSave(); }}
@@ -983,10 +983,10 @@ const FormShell = ({
                 Saving...
               </>
             ) : (
-              "Save & continue"
+              "Set up now"
             )}
           </Button>
-        </DialogFooter>
+        </SheetFooter>
       </>
     );
   }
