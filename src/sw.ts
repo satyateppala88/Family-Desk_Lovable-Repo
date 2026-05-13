@@ -144,100 +144,41 @@ function parsePushData(event: PushEvent): PushPayload {
 }
 
 self.addEventListener("push", (event) => {
-  const payload = parsePushData(event);
-
-  const title = payload.title || "FamilyDesk";
-  // Derive default actions from the notification type when the sender hasn't
-  // supplied any. Keeps client-side push payloads small but still useful.
-  let actions = payload.actions;
-  if (!actions) {
-    const type = (payload.data || {}).type as string | undefined;
-    if (type === "task_assigned" || type === "task_due" || type === "task_overdue") {
-      actions = [
-        { action: "task_complete", title: "Mark complete" },
-        { action: "task_snooze", title: "Snooze 1h" },
-      ];
-    } else if (type === "habit_reminder") {
-      actions = [{ action: "habit_log", title: "Log it" }];
-    }
-  }
-
-  const options: NotificationOptions = {
-    body: payload.body || "",
-    icon: payload.icon || "/pwa-icon-192.png",
-    badge: payload.badge || "/pwa-icon-192.png",
-    tag: payload.tag, // collapses repeated notifications of the same kind
-    // Vibration pattern hint (Android only).
-    ...(({ vibrate: [60, 30, 60] } as any)),
-    ...(actions ? ({ actions } as any) : {}),
-    data: {
-      url: payload.url || "/",
-      ...(payload.data || {}),
-    },
+  if (!event.data) return;
+  const data = parsePushData(event) as {
+    title?: string;
+    body?: string;
+    icon?: string;
+    url?: string;
+    tag?: string;
   };
-
-  event.waitUntil(self.registration.showNotification(title, options));
+  event.waitUntil(
+    self.registration.showNotification(data.title || "FamilyDesk", {
+      body: data.body,
+      icon: data.icon || "/pwa-icon-192.png",
+      badge: "/pwa-icon-192.png",
+      data: { url: data.url || "/" },
+      tag: data.tag || "familydesk-notification",
+      ...({ vibrate: [100, 50, 100], renotify: true } as any),
+    })
+  );
 });
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-
-  const data = (event.notification.data || {}) as { url?: string };
-  const action = (event as unknown as { action?: string }).action ?? "";
-
-  // Translate notification actions into deep-link URLs that the app can
-  // intercept (see src/lib/notification-actions.ts). The page handler reads
-  // the query string on mount, performs the action, then strips it.
-  let targetPath = data.url || "/";
-  if (action === "task_complete") {
-    const taskId = (data as Record<string, unknown>).task_id as string | undefined;
-    if (taskId) targetPath = `/taskmaster?action=complete&task_id=${encodeURIComponent(taskId)}`;
-  } else if (action === "task_snooze") {
-    const taskId = (data as Record<string, unknown>).task_id as string | undefined;
-    if (taskId) targetPath = `/taskmaster?action=snooze&task_id=${encodeURIComponent(taskId)}`;
-  } else if (action === "habit_log") {
-    const habitId = (data as Record<string, unknown>).habit_id as string | undefined;
-    if (habitId) targetPath = `/habits?action=log&habit_id=${encodeURIComponent(habitId)}`;
-  }
-
+  const url = (event.notification.data as { url?: string } | undefined)?.url || "/";
   event.waitUntil(
-    (async () => {
-      const allClients = await self.clients.matchAll({
-        type: "window",
-        includeUncontrolled: true,
-      });
-
-      const targetUrl = new URL(targetPath, self.registration.scope).href;
-
-      // Prefer focusing an existing tab on the target URL.
-      for (const client of allClients) {
-        try {
-          const clientUrl = new URL(client.url);
-          const wantUrl = new URL(targetUrl);
-          if (clientUrl.origin === wantUrl.origin) {
-            await client.focus();
-            // Best-effort navigation if it's not already on the path.
-            if (clientUrl.pathname !== wantUrl.pathname) {
-              if ("navigate" in client) {
-                try {
-                  await (client as WindowClient).navigate(targetUrl);
-                } catch {
-                  /* cross-origin or navigation refused — ignore */
-                }
-              }
-            }
-            return;
+    self.clients
+      .matchAll({ type: "window", includeUncontrolled: true })
+      .then((windowClients) => {
+        for (const client of windowClients) {
+          if (client.url.includes(self.location.origin) && "focus" in client) {
+            (client as WindowClient).navigate(url).catch(() => undefined);
+            return (client as WindowClient).focus();
           }
-        } catch {
-          /* malformed URL — try next client */
         }
-      }
-
-      // No matching tab — open a new one.
-      if (self.clients.openWindow) {
-        await self.clients.openWindow(targetUrl);
-      }
-    })()
+        if (self.clients.openWindow) return self.clients.openWindow(url);
+      })
   );
 });
 
