@@ -221,7 +221,7 @@ export const BillReviewDialog = ({
                     <div className="col-span-4 sm:col-span-2">
                       <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Expiry days</Label>
                       <Input
-                        type="number"
+                        type="number" inputMode="numeric"
                         min={0}
                         value={r.expiry_days}
                         onChange={(e) => updateRow(r._id, { expiry_days: Number(e.target.value) })}

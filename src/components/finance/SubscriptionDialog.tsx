@@ -103,7 +103,7 @@ export const SubscriptionDialog = ({ open, onOpenChange, onSave, initialData }: 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>Amount (₹) *</Label>
-              <Input type="number" placeholder="0" value={amount} onChange={(e) => setAmount(e.target.value)} />
+              <Input type="number" inputMode="numeric" placeholder="0" value={amount} onChange={(e) => setAmount(e.target.value)} />
             </div>
             <div className="space-y-1.5">
               <Label>Frequency</Label>

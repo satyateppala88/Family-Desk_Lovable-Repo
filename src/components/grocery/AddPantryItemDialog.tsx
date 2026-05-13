@@ -120,7 +120,7 @@ export const AddPantryItemDialog = ({
               <Label htmlFor="quantity">Quantity</Label>
               <Input
                 id="quantity"
-                type="number"
+                type="number" inputMode="numeric"
                 step="0.1"
                 value={quantity}
                 onChange={(e) => setQuantity(e.target.value)}
@@ -176,7 +176,7 @@ export const AddPantryItemDialog = ({
             <Label htmlFor="minQty">Minimum Quantity (for alerts)</Label>
             <Input
               id="minQty"
-              type="number"
+              type="number" inputMode="numeric"
               step="0.1"
               value={minimumQuantity}
               onChange={(e) => setMinimumQuantity(e.target.value)}

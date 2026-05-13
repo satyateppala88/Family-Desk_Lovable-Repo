@@ -66,7 +66,7 @@ export const CardRecommender = ({ userCardIds }: CardRecommenderProps) => {
           <div className="space-y-1">
             <Label className="text-xs">Amount (₹)</Label>
             <Input
-              type="number"
+              type="number" inputMode="numeric"
               placeholder="0"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
