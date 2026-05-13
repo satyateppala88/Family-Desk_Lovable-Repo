@@ -93,6 +93,13 @@ export const AIChatWidget = () => {
     if (!isOpen && isSpeaking) stopSpeaking();
   }, [isOpen, isSpeaking, stopSpeaking]);
 
+  // Allow other parts of the app (e.g. dashboard quick actions) to open the widget
+  useEffect(() => {
+    const open = () => setIsOpen(true);
+    window.addEventListener("familydesk:open-ai", open);
+    return () => window.removeEventListener("familydesk:open-ai", open);
+  }, []);
+
   // Rotate placeholder
   useEffect(() => {
     const timer = setInterval(() => setPlaceholderIdx(i => (i + 1) % PLACEHOLDERS.length), 4000);
