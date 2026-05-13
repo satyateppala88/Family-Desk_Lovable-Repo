@@ -14,7 +14,6 @@ import { ChevronLeft, ChevronRight, Check } from "lucide-react";
 import { ProductSelectionStep } from "./ProductSelectionStep";
 import { ProductName } from "@/hooks/useEnabledProducts";
 import { useQueryClient } from "@tanstack/react-query";
-import { ModuleSetupQueue } from "./ModuleSetupQueue";
 
 interface BasicsData {
   display_name: string;
@@ -25,7 +24,7 @@ interface BasicsData {
   household_type: "nuclear" | "joint" | "single";
 }
 
-const TOTAL_STEPS = 2;
+const TOTAL_STEPS = 3;
 
 export const UserPreferencesOnboarding = () => {
   const { user } = useAuth();
@@ -52,7 +51,6 @@ export const UserPreferencesOnboarding = () => {
     "finance",
   ]);
   const [previouslyEnabled, setPreviouslyEnabled] = useState<ProductName[]>([]);
-  const [setupQueue, setSetupQueue] = useState<ProductName[] | null>(null);
 
   // Prefill from existing data
   useEffect(() => {
@@ -131,8 +129,13 @@ export const UserPreferencesOnboarding = () => {
       toast.error(step === 0 ? "Please enter a display name" : "Pick at least one module");
       return;
     }
-    if (step < TOTAL_STEPS - 1) setStep(step + 1);
-    else handleComplete();
+    if (step === 0) {
+      setStep(1);
+    } else if (step === 1) {
+      handleComplete();
+    } else {
+      navigate("/dashboard");
+    }
   };
 
   const handleComplete = async () => {
@@ -218,13 +221,9 @@ export const UserPreferencesOnboarding = () => {
 
       toast.success("Welcome to Family Desk!");
 
-      // Queue per-module first-enable setup for any *newly* enabled module.
-      const newlyEnabled = selectedProducts.filter((p) => !previouslyEnabled.includes(p));
-      if (newlyEnabled.length > 0) {
-        setSetupQueue(newlyEnabled);
-      } else {
-        navigate("/dashboard");
-      }
+      // Just-in-time: per-module setup now happens the first time the user
+      // opens that module — never upfront. Advance to the confirmation step.
+      setStep(2);
     } catch (err: any) {
       console.error("[Onboarding] Setup failed:", err);
       toast.error("Setup failed: " + (err?.message ?? "Unknown error"));
@@ -235,26 +234,23 @@ export const UserPreferencesOnboarding = () => {
 
   return (
     <div className="min-h-screen bg-background py-10 px-4">
-      {setupQueue && (
-        <ModuleSetupQueue
-          products={setupQueue}
-          onAllDone={() => {
-            setSetupQueue(null);
-            navigate("/dashboard");
-          }}
-        />
-      )}
       <div className="max-w-2xl mx-auto space-y-4">
         <Progress value={progress} className="h-2" />
         <Card>
           <CardHeader>
             <CardTitle>
-              {step === 0 ? "Tell us about your household" : "Choose what to enable"}
+              {step === 0
+                ? "Tell us about your household"
+                : step === 1
+                  ? "Choose what to enable"
+                  : "You're all set!"}
             </CardTitle>
             <CardDescription>
               {step === 0
                 ? "Just the basics — we'll ask the rest only when you open each module."
-                : "You can change this anytime from Settings."}
+                : step === 1
+                  ? "You can change this anytime from Settings."
+                  : "Each module will ask a couple of quick questions the first time you open it."}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -359,6 +355,17 @@ export const UserPreferencesOnboarding = () => {
                 onProductToggle={handleProductToggle}
               />
             )}
+
+            {step === 2 && (
+              <div className="flex flex-col items-center text-center py-8 space-y-4">
+                <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center">
+                  <Check className="h-8 w-8 text-primary" />
+                </div>
+                <p className="text-base text-muted-foreground max-w-md">
+                  Welcome to FamilyDesk. Your household is ready — jump in whenever you like.
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -368,19 +375,25 @@ export const UserPreferencesOnboarding = () => {
             onClick={() => {
               if (step === 0) {
                 navigate("/household-setup");
+              } else if (step === 2) {
+                // No going back from confirmation — data is already saved.
+                navigate("/dashboard");
               } else {
                 setStep((s) => Math.max(0, s - 1));
               }
             }}
-            disabled={submitting}
+            disabled={submitting || step === 2}
+            className={step === 2 ? "invisible" : undefined}
           >
             <ChevronLeft className="h-4 w-4 mr-2" /> Back
           </Button>
           <Button onClick={handleNext} disabled={submitting}>
-            {step < TOTAL_STEPS - 1 ? (
+            {step === 0 ? (
               <>Next <ChevronRight className="h-4 w-4 ml-2" /></>
+            ) : step === 1 ? (
+              submitting ? "Saving..." : <>Finish <Check className="h-4 w-4 ml-2" /></>
             ) : (
-              <>Finish <Check className="h-4 w-4 ml-2" /></>
+              <>Go to dashboard <ChevronRight className="h-4 w-4 ml-2" /></>
             )}
           </Button>
         </div>
