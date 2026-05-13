@@ -372,7 +372,7 @@ const TaskmasterToday = () => {
 
 import { ModuleSetupGate } from "@/components/onboarding/ModuleSetupGate";
 const TaskmasterTodayWithGate = () => (
-  <ModuleSetupGate module="tasks_setup">
+  <ModuleSetupGate module="habits_setup">
     <TaskmasterToday />
   </ModuleSetupGate>
 );
