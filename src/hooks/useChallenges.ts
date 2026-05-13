@@ -5,9 +5,56 @@ import { toast } from "sonner";
 import type { Challenge, ChallengeParticipant, ChallengeLog, ChallengeWithDetails } from "@/types/habits";
 import type { ChallengeTemplate } from "@/data/challengeCatalog";
 
+/** Idempotently create a personal habit linked to a challenge for the current user. */
+async function ensureChallengeHabit(args: {
+  challengeId: string;
+  householdId: string;
+  userId: string;
+  name: string;
+}) {
+  const { data: existing } = await supabase
+    .from("habits")
+    .select("id")
+    .eq("challenge_id", args.challengeId)
+    .eq("user_id", args.userId)
+    .maybeSingle();
+  if (existing?.id) return existing.id as string;
+
+  const { data: habit, error } = await supabase
+    .from("habits")
+    .insert({
+      household_id: args.householdId,
+      user_id: args.userId,
+      name: args.name,
+      assignment_type: "personal",
+      frequency_type: "daily",
+      frequency_days: [],
+      is_active: true,
+      challenge_id: args.challengeId,
+    } as any)
+    .select("id")
+    .single();
+  if (error) throw error;
+
+  await supabase
+    .from("habit_assignees")
+    .insert({ habit_id: habit.id, user_id: args.userId });
+
+  return habit.id as string;
+}
+
 export const useChallenges = (householdId: string | null) => {
   const qc = useQueryClient();
   const today = format(new Date(), "yyyy-MM-dd");
+
+  const invalidateHabitQueries = () => {
+    qc.invalidateQueries({ queryKey: ["challenges", householdId] });
+    qc.invalidateQueries({ queryKey: ["habits", householdId] });
+    qc.invalidateQueries({ queryKey: ["habit-logs-today"] });
+    qc.invalidateQueries({ queryKey: ["household-habit-stats"] });
+    qc.invalidateQueries({ queryKey: ["habit-leaderboard"] });
+    qc.invalidateQueries({ queryKey: ["habit-scores"] });
+  };
 
   const challengesQuery = useQuery({
     queryKey: ["challenges", householdId],
@@ -60,11 +107,17 @@ export const useChallenges = (householdId: string | null) => {
         .single();
       if (error) throw error;
       await supabase.from("challenge_participants").insert({ challenge_id: ch.id, user_id: user.id });
+      await ensureChallengeHabit({
+        challengeId: ch.id,
+        householdId,
+        userId: user.id,
+        name: args.template.name,
+      });
       return ch;
     },
     onSuccess: () => {
       toast.success("Challenge started! 🎉");
-      qc.invalidateQueries({ queryKey: ["challenges", householdId] });
+      invalidateHabitQueries();
     },
     onError: (e: any) => toast.error(e.message || "Could not start challenge"),
   });
@@ -72,13 +125,26 @@ export const useChallenges = (householdId: string | null) => {
   const joinChallenge = useMutation({
     mutationFn: async (challengeId: string) => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not signed in");
+      if (!user || !householdId) throw new Error("Not signed in");
       const { error } = await supabase.from("challenge_participants").insert({ challenge_id: challengeId, user_id: user.id });
       if (error && !error.message.includes("duplicate")) throw error;
+      const { data: ch } = await supabase
+        .from("household_challenges")
+        .select("name")
+        .eq("id", challengeId)
+        .maybeSingle();
+      if (ch?.name) {
+        await ensureChallengeHabit({
+          challengeId,
+          householdId,
+          userId: user.id,
+          name: ch.name,
+        });
+      }
     },
     onSuccess: () => {
       toast.success("You're in! 💪");
-      qc.invalidateQueries({ queryKey: ["challenges", householdId] });
+      invalidateHabitQueries();
     },
     onError: (e: any) => toast.error(e.message || "Could not join challenge"),
   });
@@ -93,9 +159,40 @@ export const useChallenges = (householdId: string | null) => {
         log_date: today,
       });
       if (error && !error.message.includes("duplicate")) throw error;
+      // Mirror completion onto the linked personal habit, if any.
+      const { data: linkedHabit } = await supabase
+        .from("habits")
+        .select("id")
+        .eq("challenge_id", challengeId)
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (linkedHabit?.id) {
+        const { data: existingLog } = await supabase
+          .from("habit_logs")
+          .select("id, completed")
+          .eq("habit_id", linkedHabit.id)
+          .eq("user_id", user.id)
+          .eq("log_date", today)
+          .maybeSingle();
+        if (existingLog?.id) {
+          if (!existingLog.completed) {
+            await supabase
+              .from("habit_logs")
+              .update({ completed: true, logged_at: new Date().toISOString() })
+              .eq("id", existingLog.id);
+          }
+        } else {
+          await supabase.from("habit_logs").insert({
+            habit_id: linkedHabit.id,
+            user_id: user.id,
+            log_date: today,
+            completed: true,
+          });
+        }
+      }
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["challenges", householdId] });
+      invalidateHabitQueries();
     },
     onError: (e: any) => toast.error(e.message || "Could not mark done"),
   });
