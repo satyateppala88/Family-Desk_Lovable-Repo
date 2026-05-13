@@ -35,6 +35,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 import type { PantryItem } from "@/hooks/usePantryItems";
+import { decodeIngredientsParam } from "@/lib/meals/shoppingListBridge";
 
 const Grocery = () => {
   const { user } = useAuth();
@@ -69,6 +70,58 @@ const Grocery = () => {
   
   const [selectedCategoryDetail, setSelectedCategoryDetail] = useState<string | null>(null);
   const [cartItemCount, setCartItemCount] = useState(0);
+  const [activeTab, setActiveTab] = useState<string>(() => searchParams.get("tab") || "pantry");
+
+  // Handle inbound link from Meals: ?tab=shopping&newList=...&items=...
+  useEffect(() => {
+    const tab = searchParams.get("tab");
+    if (tab) setActiveTab(tab);
+    const newList = searchParams.get("newList");
+    const items = searchParams.get("items");
+    if (!newList || !householdId || !user?.id) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data: list, error } = await supabase
+          .from("shopping_lists")
+          .insert([{ household_id: householdId, name: newList, created_by: user.id, status: "active" }])
+          .select()
+          .single();
+        if (error || !list) throw error;
+
+        const ingredients = decodeIngredientsParam(items);
+        if (ingredients.length > 0) {
+          const rows = ingredients.map((ing) => ({
+            list_id: (list as any).id,
+            name: ing.name,
+            quantity: ing.quantity ? Number(String(ing.quantity).replace(/[^0-9.]/g, "")) || null : null,
+            unit: ing.unit || null,
+            category: null,
+            is_checked: false,
+            pantry_item_id: null,
+            recipe_source: newList,
+          }));
+          await supabase.from("shopping_list_items").insert(rows);
+        }
+        if (cancelled) return;
+        queryClient.invalidateQueries({ queryKey: ["shopping-lists", householdId] });
+        toast({ title: "Shopping list created", description: newList });
+        // Clear the params so a refresh doesn't recreate
+        const next = new URLSearchParams(searchParams);
+        next.delete("newList");
+        next.delete("items");
+        next.set("tab", "shopping");
+        next.set("list", (list as any).id);
+        setSearchParams(next, { replace: true });
+        setActiveTab("shopping");
+      } catch (e: any) {
+        toast({ title: "Couldn't create list", description: e?.message || "Try again.", variant: "destructive" });
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [householdId, user?.id]);
 
   useEffect(() => {
     if (householdId && categories.length === 0 && !categoriesLoading) {
@@ -460,7 +513,7 @@ const Grocery = () => {
           </div>
         </div>
 
-        <Tabs defaultValue="pantry" className="space-y-4">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
           <TabsList>
             <TabsTrigger value="pantry" className="gap-2">
               <Package className="h-4 w-4" aria-hidden="true" />
