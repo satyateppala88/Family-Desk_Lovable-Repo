@@ -1,174 +1,94 @@
-## E-08 — Manual Events upgrade, Indian Festival Layer, Festival→Tasks
+## Scope
 
-### Current state vs. spec
-
-`manual_calendar_events` already exists and the "Add Event" button already opens `CreateEventDialog` (no Google connection required) — Change 1 is partially done. The form is missing **Repeat** and **Who** controls; events table is missing **repeat_type / member_ids / is_system_generated**. We also need a system events layer and a dashboard banner.
-
-We will reuse `manual_calendar_events` rather than introduce a new `calendar_events` table (less churn, fetch path + RLS already wired). System festivals live in a separate `system_calendar_events` table because they're shared across every household and must be read-only.
+Three additions to the Grocery module: predictive low-stock chips with one-tap add to shopping list, a daily 6 PM pantry-low push reminder, WhatsApp share for shopping lists, and emoji-grouped category sections in shopping list views.
 
 ---
 
-### Change 1 — Manual event form upgrade
+## CHANGE 1 — Running Low chips + Daily 6 PM reminder
 
-**Migration** (additive only, no data destruction):
+### Pantry "Running low" chip row
+- Replace the existing `LowStockAlert` (alert box style) with a new `RunningLowChips` component rendered at the top of the Pantry tab in `Grocery.tsx`.
+- Hidden entirely when `lowStockItems` is empty (existing detection in `usePantryItems` already compares `quantity < minimum_quantity`).
+- Horizontally scrollable row (`overflow-x-auto snap-x`) of amber/orange pill chips. Each chip:
+  - Small `ShoppingCart` icon (lucide).
+  - Item name + remaining quantity ("Toor Dal · 500g left").
+  - Tap action: add to active shopping list and toast "Toor Dal added to shopping list".
+- Colour: warm amber using existing tokens (`bg-amber-100 text-amber-900 border-amber-300` mapped via index.css if not already available — fallback to inline HSL warning tokens already in use by `ExpiringItemsAlert`).
 
-```sql
-ALTER TABLE public.manual_calendar_events
-  ADD COLUMN repeat_type text NOT NULL DEFAULT 'none',
-  ADD COLUMN member_ids uuid[] NOT NULL DEFAULT '{}',
-  ADD COLUMN is_system_generated boolean NOT NULL DEFAULT false;
+### "Add to active list" behaviour
+- New helper inside `Grocery.tsx` (or extracted into `useShoppingLists.ts` as `addPantryItemToActiveList`):
+  1. Find first list with `status === "active"`. If none, create one named "Shopping List" via existing `createShoppingList`.
+  2. If item with same `pantry_item_id` already on the active list (and not checked), skip insert and toast "Already on list".
+  3. Otherwise insert via existing `addItemToList` mutation (pre-fills name, quantity = `minimum_quantity - quantity`, unit, category, `pantry_item_id`).
 
--- Lock down system rows (defence in depth; users never insert these into this table,
--- but enforce no-edit/no-delete on any future system rows).
-CREATE POLICY "Block updates to system rows" ON public.manual_calendar_events
-  AS RESTRICTIVE FOR UPDATE TO authenticated
-  USING (is_system_generated = false) WITH CHECK (is_system_generated = false);
-CREATE POLICY "Block deletes of system rows" ON public.manual_calendar_events
-  AS RESTRICTIVE FOR DELETE TO authenticated
-  USING (is_system_generated = false);
-```
+### Daily pantry reminder toggle + 6 PM push
+- Migration: add `pantry_daily_reminder boolean not null default false` to `notification_preferences`.
+- New "Grocery settings" section. Search shows there's no dedicated grocery settings page yet; we will add a small inline settings sheet accessible from the Pantry tab header (gear icon → bottom sheet with the toggle and a one-line explainer). This avoids inventing a new route.
+- New edge function `pantry-low-reminder`:
+  - For each user with `pantry_daily_reminder = true` AND `pantry = true` (master pantry channel), find the user's household, query `pantry_items` where `quantity < minimum_quantity`, and if ≥ 1, call `dispatch_push` with title "Pantry running low" and body "{N} items running low in your pantry: {first 3 names}. Add to list →" deep-linking to `/grocery`.
+- Schedule: pg_cron job at `30 12 * * *` UTC (= 18:00 IST) using `supabase--insert` (per project convention for cron) calling the function via `net.http_post`.
 
-**`CreateEventDialog`** gains:
-- `RepeatSelect` (None / Daily / Weekly / Monthly / Yearly).
-- `Who` checklist using `useHouseholdMembers` — defaults to all members checked.
-- Description label changed to "Notes" to match spec.
+---
 
-Form submits via the existing `useCreateManualEvent` hook, now extended to forward `repeat_type` and `member_ids`. The "Add Event" entry point in `CalendarHeader` and the empty-state CTA both already open this dialog without forcing Google connect — kept as-is.
+## CHANGE 2 — WhatsApp Share for Shopping Lists
 
-**Recurrence expansion (server-side).** `supabase/functions/fetch-calendar-events/index.ts` already reads `manual_calendar_events` for the requested window. Update its manual-events block to expand `repeat_type !== 'none'` rows into occurrences inside `[startDate, endDate]`:
-- daily — every day from `start_at` until end of window
-- weekly — same day-of-week
-- monthly — same day-of-month (clamped to month length)
-- yearly — same month/day
+- New component `ShareOnWhatsAppButton.tsx` placed:
+  - In the shopping-list overview header next to "Create List" (renders only when at least one list exists; shares the currently active list, or opens a tiny picker if multiple non-archived lists).
+  - In `ShoppingListDetailView.tsx` header next to the back button (shares the open list).
+- Formatter `formatListForWhatsApp(list, householdName)`:
+  ```
+  🛒 *{list.name} — {householdName}*
 
-Each emitted occurrence reuses the parent id with a date-suffixed key (`manual-<uuid>-<yyyymmdd>`) so the grid de-duplicates correctly. `member_ids` is forwarded through the response so the day cell can show a small avatar tag (out of scope for this change — kept for future).
+  □ {item.name}{quantity ? ` — ${quantity}${unit}` : ""}
+  ...
 
-### Change 2 — Indian Festival & Holiday Layer
+  _Shared from FamilyDesk_
+  ```
+  Only includes unchecked items (checked items appended in a `~strikethrough~` block at bottom — optional polish, can be dropped for v1; default: unchecked only).
+- Share logic:
+  - Mobile (UA test for Android/iOS): `window.location.href = "whatsapp://send?text=" + encodeURIComponent(text)`.
+  - Wrap in try/catch + 800 ms fallback timer: if still on page, copy to clipboard and toast "List copied — paste it in WhatsApp".
+  - Desktop: skip the deep link entirely, copy + toast.
+- Uses `navigator.clipboard.writeText`. No backend changes.
 
-**New table** (no household_id — shared, read-only):
+---
 
-```sql
-CREATE TABLE public.system_calendar_events (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  name text NOT NULL,
-  event_date date NOT NULL,
-  kind text NOT NULL CHECK (kind IN ('festival','national_holiday')),
-  is_recurring_annual boolean NOT NULL DEFAULT false,
-  created_at timestamptz NOT NULL DEFAULT now()
-);
-CREATE INDEX idx_system_calendar_events_date ON public.system_calendar_events(event_date);
+## CHANGE 3 — Smart category grouping with emoji headers
 
-ALTER TABLE public.system_calendar_events ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Anyone signed in can read" ON public.system_calendar_events
-  FOR SELECT TO authenticated USING (true);
--- No insert/update/delete policies → blocked for users; only service role.
-```
+`ShoppingListDetailView.tsx` already groups by `item.category`. Upgrades:
 
-**Seed data** (in the migration via `INSERT … ON CONFLICT DO NOTHING`, with a unique index on `(name, event_date)`):
-- Recurring annual fixed-date entries seeded for **2026 and 2027**:
-  - National holidays (`kind='national_holiday'`): Republic Day 01-26, Ambedkar Jayanti 04-14, Independence Day 08-15, Gandhi Jayanti 10-02, Christmas 12-25.
-- Variable festivals seeded only for the year(s) provided in the spec (`kind='festival'`, `is_recurring_annual=false`):
-  - 2026: Holi 03-14, Eid ul-Fitr 03-31, Good Friday 04-03, Eid ul-Adha 06-07, Janmashtami 08-15, Dussehra 10-02, Navratri starts 10-21, Diwali 10-20.
+- New util `src/lib/groceryCategories.ts`:
+  - `CATEGORY_META: Record<string, { label: string; emoji: string; order: number }>` covering Vegetables 🥬, Fruits 🍎, Grains & Dal 🌾, Dairy 🥛, Spices 🌶, Meat & Seafood 🍗, Bakery 🍞, Beverages 🥤, Snacks 🍪, Frozen 🧊, Household 🧴, Personal Care 🧼, Other 📦.
+  - `normalizeCategory(raw: string | null): keyof typeof CATEGORY_META` — case/synonym map (e.g. "veg", "vegetable", "veggies" → Vegetables; "dal", "lentils", "grain" → Grains & Dal; null → Other).
+  - `groupAndSort(items)` returning `[{ key, label, emoji, items }]` sorted by `order`, with Other forced last.
+- `ShoppingListDetailView.tsx`: replace ad-hoc grouping with `groupAndSort`. Render each section header as `{emoji} {label}` keeping existing checked counter and card styling. No changes to add/check/delete behaviour.
+- Apply the same grouping in `ShoppingListCard.tsx` preview if it currently lists items (verify and align headers if so; otherwise leave card as a summary).
 
-**Edge function update.** Inside `fetch-calendar-events`, add a third pull alongside Google + manual:
+---
 
-```ts
-const { data: sys } = await supabase
-  .from("system_calendar_events")
-  .select("*")
-  .gte("event_date", startDay)
-  .lt("event_date", endDay);
-for (const s of sys ?? []) {
-  allEvents.push({
-    id: `system-${s.id}`,
-    title: s.name,
-    start: `${s.event_date}T00:00:00Z`,
-    end:   `${s.event_date}T23:59:59Z`,
-    allDay: true,
-    color: s.kind === 'festival' ? '#F97316' /* orange */ : '#3B82F6' /* blue */,
-    calendarName: s.kind === 'festival' ? 'Festivals' : 'National holidays',
-    calendarOwner: 'system',
-    calendarId: 'system',
-  });
-}
-```
+## Files
 
-**Calendar grid styling.** `CalendarGrid` already paints events. We will:
-- Render system events as a **small coloured dot row beneath the day number** (orange/blue depending on `calendarId === 'system'` + color), instead of the regular event chip.
-- Tapping a dot opens a tiny popover/tooltip with the festival name (no edit dialog).
-- Other clicks on system events are intercepted in `Calendar.tsx`'s `onEventClick` — if `event.calendarId === 'system'`, ignore (no `CalendarEventDialog` open).
+**New**
+- `src/components/grocery/RunningLowChips.tsx`
+- `src/components/grocery/ShareOnWhatsAppButton.tsx`
+- `src/components/grocery/PantrySettingsSheet.tsx`
+- `src/lib/groceryCategories.ts`
+- `src/lib/whatsappShare.ts` (formatter + share helper)
+- `supabase/functions/pantry-low-reminder/index.ts`
+- `supabase/migrations/<ts>_pantry_daily_reminder.sql`
 
-`CalendarLegend` gets two extra rows: orange "Festivals", blue "National holidays".
+**Edited**
+- `src/pages/Grocery.tsx` — swap `LowStockAlert` for `RunningLowChips`, add settings sheet trigger, add WhatsApp button in lists header.
+- `src/hooks/useShoppingLists.ts` — add `addPantryItemToActiveList` helper + dedupe check.
+- `src/hooks/useNotificationPreferences.ts` — extend `NotificationChannel` type with `pantry_daily_reminder`.
+- `src/components/grocery/ShoppingListDetailView.tsx` — emoji grouping + WhatsApp button.
+- `src/components/grocery/LowStockAlert.tsx` — delete (or leave unused; will delete).
 
-### Change 3 — Festival → Task suggestions
+**Cron**
+- `supabase--insert` schedules `pantry-low-reminder` daily at 12:30 UTC.
 
-**New hook** `src/hooks/useUpcomingFestival.ts`:
-- Queries `system_calendar_events` for `kind = 'festival'` AND `event_date BETWEEN today AND today+14d`, returns the soonest one.
-
-**Pre-built checklists** in `src/data/festivalChecklists.ts`:
-
-```ts
-export const FESTIVAL_CHECKLISTS: Record<string, string[]> = {
-  Diwali: [
-    "Deep clean the house",
-    "Buy diyas and candles",
-    "Order sweets and dry fruits",
-    "Book fireworks",
-    "Send Diwali wishes",
-    "Prepare rangoli materials",
-  ],
-  Holi: [
-    "Buy colours",
-    "Arrange water balloons",
-    "Plan menu for Holi party",
-  ],
-  "Eid ul-Fitr": [
-    "Plan sevai recipe",
-    "Buy new clothes",
-    "Arrange family gathering",
-  ],
-  "Eid ul-Adha": [
-    "Plan biryani menu",
-    "Arrange family gathering",
-    "Buy new clothes",
-  ],
-  // Default fallback used when a matching key is missing
-};
-```
-
-A `matchChecklist(name)` helper does a case-insensitive `includes` lookup so "Eid ul-Fitr" / "Diwali" / "Holi" map even with extra qualifiers.
-
-**Banner component** `src/components/dashboard/FestivalBanner.tsx`:
-- Pulls `useUpcomingFestival()`. If a match exists and the user has not dismissed it (localStorage key `festival-banner-dismissed-<festivalId>`), show:
-  - Copy: `"{Name} is in {N} day{s} — want to add a preparation checklist to Tasks?"`
-  - Buttons: "Add checklist" (primary), "Dismiss" (ghost).
-- "Add checklist" iterates `FESTIVAL_CHECKLISTS[match]` and inserts each as a `tasks` row via `supabase.from("tasks").insert({ household_id, created_by: user.id, title, status: 'pending', due_date: festivalDateMinus1 })`. Then dismisses the banner and toasts `"Added N tasks. Open Taskmaster ▸"`.
-
-**Mount.** Render `<FestivalBanner />` in `src/pages/Index.tsx` directly above the Family Pulse section (between `PendingInvitationBanner` and the heading), because that area already hosts other awareness banners.
-
-### Files
-
-**Migration (one):**
-- `manual_calendar_events`: add `repeat_type`, `member_ids`, `is_system_generated` + restrictive policies.
-- New `system_calendar_events` + RLS + seed for 2026/2027 (insert ... on conflict do nothing; unique on `(name,event_date)`).
-
-**New:**
-- `src/data/festivalChecklists.ts`
-- `src/hooks/useUpcomingFestival.ts`
-- `src/components/dashboard/FestivalBanner.tsx`
-
-**Edited:**
-- `src/components/calendar/CreateEventDialog.tsx` — add Repeat select + Who checklist; relabel Description→Notes.
-- `src/hooks/useManualCalendarEvents.ts` — accept and persist `repeat_type` + `member_ids`.
-- `supabase/functions/fetch-calendar-events/index.ts` — recurrence expansion + system events merge.
-- `src/components/calendar/CalendarGrid.tsx` — dot rendering for `calendarId === 'system'` events with tooltip; suppress event-click routing through to dialog.
-- `src/components/calendar/CalendarLegend.tsx` — Festivals + National holidays rows.
-- `src/pages/Calendar.tsx` — guard `onEventClick` against system events.
-- `src/pages/Index.tsx` — mount `<FestivalBanner />`.
-
-### Out of scope
-
-- Per-member event filtering UI on the calendar grid (just persisting `member_ids` for now).
-- Re-seeding future years automatically (admins re-run a small script when a new year's variable dates are known).
-- Editing system events into household-local copies.
-- WhatsApp push for upcoming festival (banner only).
+## Out of scope
+- Editing the cart-quantity prompt before adding from a chip (always uses `minimum_quantity - current` rounded).
+- Per-list WhatsApp recipient picker (handled by WhatsApp itself).
+- Reordering items inside a category (kept: unchecked-first within section).
+- Predictive consumption-rate forecasting beyond the existing `quantity < minimum_quantity` check.
