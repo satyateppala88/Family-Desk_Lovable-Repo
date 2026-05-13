@@ -39,7 +39,7 @@ export const useHouseholdMembers = (householdId: string | null) => {
         const profile = profileMap.get(m.user_id);
         return {
           userId: m.user_id,
-          displayName: profile?.display_name || "Unknown",
+          displayName: profile?.display_name || "Member",
           avatarUrl: profile?.avatar_url || null,
           role: m.role,
         };
