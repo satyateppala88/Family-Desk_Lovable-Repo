@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
+import { ToastAction } from "@/components/ui/toast";
 import { ShoppingCart, Check } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
@@ -86,13 +87,12 @@ export const AddIngredientsDialog = ({
         title: `${result.added} item${result.added === 1 ? "" : "s"} added to ${result.listName}`,
         description: result.appended ? "Appended to your active list." : "New shopping list created.",
         action: (
-          <Button
-            size="sm"
-            variant="outline"
+          <ToastAction
+            altText="View shopping list"
             onClick={() => navigate(`/grocery?tab=shopping&list=${result.listId}`)}
           >
             View list →
-          </Button>
+          </ToastAction>
         ),
       });
       onOpenChange(false);
