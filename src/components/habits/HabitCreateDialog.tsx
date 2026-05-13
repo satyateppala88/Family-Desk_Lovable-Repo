@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Plus, Users, User, Home, Clock } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -61,20 +61,32 @@ interface HabitCreateDialogProps {
   }) => void;
   isLoading?: boolean;
   householdMembers?: Array<{ userId: string; displayName: string; avatarUrl?: string | null }>;
+  defaultName?: string;
+  controlledOpen?: boolean;
+  onControlledOpenChange?: (open: boolean) => void;
 }
 
 export const HabitCreateDialog = ({
   onCreateHabit,
   isLoading,
   householdMembers = [],
+  defaultName,
+  controlledOpen,
+  onControlledOpenChange,
 }: HabitCreateDialogProps) => {
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : internalOpen;
+  const setOpen = (v: boolean) => {
+    if (isControlled) onControlledOpenChange?.(v);
+    else setInternalOpen(v);
+  };
   const [showTarget, setShowTarget] = useState(false);
 
   const form = useForm<HabitFormData>({
     resolver: zodResolver(habitSchema),
     defaultValues: {
-      name: "",
+      name: defaultName || "",
       assignmentType: "personal",
       assignedMembers: [],
       frequencyType: "daily",
@@ -84,6 +96,12 @@ export const HabitCreateDialog = ({
       reminderTime: "",
     },
   });
+
+  useEffect(() => {
+    if (open && defaultName) {
+      form.setValue("name", defaultName);
+    }
+  }, [open, defaultName, form]);
 
   const assignmentType = form.watch("assignmentType");
   const frequencyType = form.watch("frequencyType");

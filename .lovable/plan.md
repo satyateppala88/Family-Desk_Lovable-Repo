@@ -1,112 +1,139 @@
-## E-06 — Monthly Report Card
+## E-07 — Habit Challenges, Streak Freeze & Stacking Suggestions
 
-### New page: `/finance/report`
+### Change 1 — Household Habit Challenges
 
-Auto-generates a shareable monthly summary for the household. Defaults to the **previous month** (because the prompt frames this as a recap), with a month switcher to view earlier months.
+**New tab.** Habits page tabs become **Me / Household / Challenges**. A `useChallenges` hook drives the new tab.
 
-### Layout
+**Catalog.** Pre-built challenges live in a static client file `src/data/challengeCatalog.ts`:
 
-```text
-┌──────────────────────────────────────────────────┐
-│  ← Back            Monthly Report      [Share]   │
-│  {Household name} · {Month Year}                 │
-├──────────────────────────────────────────────────┤
-│  ┌────────┬────────┬────────┬────────┐           │
-│  │ Spent  │ Saved  │ Habits │ Meals  │           │
-│  │ ₹X     │ ₹X     │  X%    │ X days │           │
-│  └────────┴────────┴────────┴────────┘           │
-│                                                  │
-│  Top categories                                  │
-│  [Bar chart — top 3 categories with ₹ amounts]   │
-│                                                  │
-│  Habits                                          │
-│  "X of Y habits completed — best streak Z days"  │
-│                                                  │
-│  Meals                                           │
-│  "Cooked at home X days this month"              │
-│                                                  │
-│  Tasks                                           │
-│  "X tasks completed together"                    │
-│                                                  │
-│  ─────────────────────────────                  │
-│  {AI motivational footer line}                  │
-└──────────────────────────────────────────────────┘
+```ts
+{ id: "walk-together", emoji: "🚶", name: "Walk Together",
+  description: "Every adult walks 30 minutes daily",
+  durationDays: 7, scope: "all_adults" }
+// + the other 6 from the prompt, with 7d or 21d durations
 ```
 
-The whole card lives inside a single `ref`-bound `<section id="report-card">` styled with brand cream `#F1EFE8` background and green `#0F6E56` accents — used as the canvas for image export.
+**Schema (one migration):**
 
-### Data sources (all read-only, household-scoped)
+```text
+household_challenges
+  id, household_id, template_id text, name text, emoji text,
+  duration_days int, start_date date, end_date date,
+  status text default 'active'  -- active | completed | abandoned
+  started_by uuid, created_at
 
-| Stat | Source |
-|---|---|
-| Total spent | `useFinanceMonthlySummary(householdId, month).expenses` |
-| Total saved | `summary.income - summary.expenses` (same hook) |
-| Top 3 categories | `summary.categoryBreakdown` → sort desc, take 3, label via `resolveCategoryLabel` (alias-aware) |
-| Habits % | `habit_logs` for the month: `completed=true count / scheduled count`. Scheduled = number of (habit × eligible day) pairs in month considering `habits.frequency_type` and `frequency_days`. |
-| Best streak | `MAX(habit_streaks.longest_streak)` for habits in the household where `last_completed_date` falls within month; fall back to all-time `longest_streak` if month-specific isn't tractable. |
-| Meals cooked at home | `COUNT(DISTINCT scheduled_date)` in `meal_plan_items` joined to month's `meal_plans`, filtered by `cooked_at IS NOT NULL` (new column — see migration below). |
-| Tasks completed | `tasks` where `household_id = X AND status = 'completed' AND completed_at` (or `updated_at` if no `completed_at`) within month range. |
-| Household name | `useHousehold().householdName` |
+challenge_participants
+  id, challenge_id uuid, user_id uuid, joined_at, UNIQUE(challenge_id,user_id)
 
-A new aggregator hook `src/hooks/useMonthlyReport.ts` wraps the per-section queries and returns one normalized payload `{ household, month, spent, saved, topCategories, habits: {completed, total, percent, bestStreak}, mealsCooked, tasksCompleted }`.
+challenge_logs
+  id, challenge_id, user_id, log_date date, completed bool default true,
+  created_at, UNIQUE(challenge_id,user_id,log_date)
+```
 
-### AI motivational footer
+RLS: members of the challenge's `household_id` can SELECT all three; users INSERT their own `challenge_logs` and `challenge_participants` rows; admins can `UPDATE` `household_challenges.status` (abandon/complete). All policies via existing `is_household_member()` SECURITY DEFINER helper.
 
-New edge function `supabase/functions/monthly-report-tagline/index.ts`:
-- Auth-protected (validate JWT + household membership).
-- Input (Zod): `{ householdId, month, stats }` — accepts the already-computed numbers so AI sees real values without re-querying.
-- Calls Lovable AI Gateway, model `google/gemini-3-flash-preview`, non-streaming.
-- System prompt: warm, supportive Indian-family voice; one sentence; no emoji spam (≤1 if any); ≤140 chars.
-- Returns `{ tagline: string }`. Frontend caches via React Query keyed on `(householdId, month)` with `staleTime: 24h` so re-renders don't burn credits.
-- Fallback if call fails: a deterministic encouraging line picked from a small client-side array.
+Why a separate `challenge_logs` table instead of reusing `habit_logs`: keeps streak math, scoring, and the existing "Me" habit list untouched; challenges can run in parallel with personal habits without polluting them.
 
-### Share button
+**Components:**
 
-Top-right of the page header. Uses the standard share flow:
+- `src/components/habits/ChallengePickerSheet.tsx` — bottom sheet with the 7 templates as cards, each with a "Start (7 days)" / "Start (21 days)" button (uses `durationDays` from catalog). On confirm, inserts a `household_challenges` row and a `challenge_participants` row for the creator.
+- `src/components/habits/ChallengeCard.tsx` — used in both the Challenges tab (full size) and pinned on Me tab (compact variant via `compact` prop):
+  - Header: emoji + name + `Day X of Y`.
+  - Progress ring (existing `Progress` primitive in a circular wrapper) showing today's `participants_completed / participants_total`.
+  - Member-by-member row of avatars with a ✓ or ○ badge for today.
+  - Days remaining counter pill.
+  - "Mark today done" button (inserts `challenge_logs` for current user, today). If already done shows a check.
+  - "Invite family to join" button — calls a new edge function `notify-challenge-invite` that uses the existing `dispatch_push` infra to ping non-participants.
+- `src/hooks/useChallenges.ts` — fetches active challenges, today's logs, participants; exposes `joinChallenge`, `markDone`, `startChallenge`, `inviteMembers`.
 
-1. **Try image share first** (mobile-friendly): render the `<section id="report-card">` to a PNG with the lightweight `html-to-image` library (added via `bun add html-to-image`). Build a `File` and call `navigator.share({ files: [file], title, text })` if `navigator.canShare({ files })` is true.
-2. **Otherwise text + URL share**: `navigator.share({ title, text: textSummary, url })`.
-3. **Fallback** (desktop browsers without Web Share): `navigator.clipboard.writeText(textSummary)` + sonner toast `"Copied!"`.
+**Pinned in Me tab.** When `useChallenges().userActiveChallenges.length > 0`, render `<ChallengeCard compact />` at the very top of the Me tab habit list (above the Progress summary card), visually separated by a subtle divider and a "Family Challenges" label.
 
-`textSummary` is a plain-text version: household name, month, the 4 headline stats, top 3 categories, habits/meals/tasks lines, AI tagline, and a trailing `https://familydesk.in` URL. All on separate lines, WhatsApp-friendly.
+**Edge function** `supabase/functions/notify-challenge-invite/index.ts`:
+- JWT auth + Zod (`challengeId`).
+- Verifies caller is a household member of the challenge's household.
+- Looks up household members not in `challenge_participants`, calls existing `dispatch_push` SQL helper or directly invokes `send-push` for each.
 
-### Auto-generation on the 1st
+### Change 2 — Streak Recovery (Forgiveness)
 
-A new pg_cron job runs **at 00:30 IST on day 1 of each month**, calling a tiny edge function `prewarm-monthly-report` that, for each household with finance enabled, hits the tagline edge function for the previous month. This pre-warms the AI tagline cache so when a user opens the report it loads instantly. We do **not** persist a snapshot — the report is computed on-demand from live tables, which keeps it correct if data changes later.
+**Schema (same migration):**
 
-(Skipping a heavy "snapshot to a new table" approach: `finance_monthly_snapshots` already exists for finance numbers, but the report spans Habits/Meals/Tasks too. Live computation is simpler and the data is small.)
+- `profiles`: add `streak_freezes_remaining int default 1`, `streak_freeze_period text` (yyyy-MM, the period the count belongs to), `last_freeze_used_at timestamptz`.
+- `habit_logs`: add `is_freeze boolean default false`.
 
-### Hub + nav entry points
+**Replenishment.** Done lazily client-side: when reading the profile, if `streak_freeze_period !== current yyyy-MM`, the `useStreakFreeze` hook UPDATEs `streak_freezes_remaining=1, streak_freeze_period=<current month>`. (No cron needed — covers anyone who logs in that month; profile RLS already allows self-update.)
 
-1. **Finance hub grid** (`src/pages/Finance.tsx`): add a 9th card `Report → /finance/report` with `FileBarChart` icon, label "Monthly Report", description "Shareable recap".
-2. **Profile menu** (`src/components/layout/Header.tsx`): add a `DropdownMenuItem` "Monthly Report" that navigates to `/finance/report`. Insert it above the "How to use" item.
-3. **App router** (`src/App.tsx`): register `/finance/report → <FinanceReport />` inside the existing finance routes block.
+**"Missed yesterday" detection.** New hook `useMissedHabitsYesterday` runs after habits load:
+- Yesterday = `subDays(today, 1)`.
+- Pulls user's `habit_streaks` where `current_streak > 0` AND (`last_completed_date IS NULL OR last_completed_date < yesterday`) AND the habit was scheduled yesterday (using existing `frequency_type`/`frequency_days`).
+- If at least one match, render a `StreakRecoveryBanner` at the top of the Me tab listing the affected habit with the largest `current_streak`.
+
+**Banner component** `src/components/habits/StreakRecoveryBanner.tsx`:
+- Copy: "You missed yesterday — use your streak freeze to protect your X-day streak?" plus context line listing the habit name(s).
+- "Use Freeze" button: disabled if `streak_freezes_remaining === 0` (shows "0 freezes left this month — try again next month").
+- "Let it reset" dismisses for the day (localStorage key `streak-banner-dismissed-<userId>-<yyyy-MM-dd>`).
+
+**Use Freeze action** in `useStreakFreeze.applyFreeze(habitIds[])`:
+1. For each affected habit: insert a synthetic `habit_logs` row `{habit_id, user_id, log_date: yesterday, completed: true, is_freeze: true, notes: 'Streak freeze used'}` (UNIQUE handles re-runs).
+2. Update `habit_streaks.last_completed_date = yesterday` for each. Streak count is preserved as-is (since `current_streak` was the count *up to the prior gap*, and tomorrow's normal log will increment it).
+3. Decrement `profiles.streak_freezes_remaining`, set `last_freeze_used_at = now()`.
+4. Toast: "❄️ Streak protected".
+
+**Snowflake render.** `HabitCard` already shows streak history (or will). We surface freeze days by reading `is_freeze` from `habit_logs` and showing a ❄️ chip in any per-day strip. (If no per-day strip exists today, scope-limit to a small "❄️ used yesterday" annotation under the streak count.)
+
+**Freeze badge.** Shown next to the page heading: `❄️ {n} freeze{s} left this month` (always rendered; muted style when 0).
+
+### Change 3 — Habit Stacking Suggestions
+
+Pure client-side, no schema/edge changes.
+
+**Suggestions map** `src/data/habitStackSuggestions.ts`:
+
+```ts
+export const HABIT_STACK_SUGGESTIONS: { match: RegExp; suggestions: string[] }[] = [
+  { match: /walk|run|jog/i, suggestions: ["5 min stretching", "8 glasses water"] },
+  { match: /read/i,           suggestions: ["No screens 30 min before bed", "5 min stretching"] },
+  { match: /meditat|mindful/i,suggestions: ["Gratitude journal", "Deep breathing"] },
+  { match: /water|hydrate/i,  suggestions: ["Morning walk", "5 min stretching"] },
+  { match: /journal|gratitude/i, suggestions: ["Meditate", "Read 10 pages"] },
+  // fallback returns ["8 glasses water", "5 min stretching"]
+];
+```
+
+**Trigger.** `Habits.tsx` already calls `createHabit.mutate(data)`. We:
+1. Capture the just-created name in component state on mutate `onSuccess`.
+2. Render `<HabitStackSuggestion name={lastCreated} onPick={...} onDismiss={...} />` in a small Card directly below the create button.
+3. Suggestion picks calls `setPrefillName(suggestion)` and reopens `HabitCreateDialog` with the form pre-filled.
+4. State clears once dismissed or another habit is created. Only ever shown once per creation (a `dismissed` set of names).
+
+**Dialog change.** `HabitCreateDialog` accepts an optional `defaultName` prop and, when provided, sets that on the form (and opens automatically via a `controlledOpen` prop). All other fields keep their existing defaults — the user adjusts assignment/frequency before saving.
 
 ### Files
 
-**New**
-- `src/pages/FinanceReport.tsx` — page + share logic.
-- `src/components/finance/ReportCard.tsx` — the printable/shareable card (wrapped in the export-target `<section>`).
-- `src/components/finance/ReportShareButton.tsx` — handles canShare / clipboard fallback.
-- `src/hooks/useMonthlyReport.ts` — aggregator query.
-- `src/hooks/useReportTagline.ts` — calls the tagline edge function with caching.
-- `supabase/functions/monthly-report-tagline/index.ts` — JWT-validated edge function.
-- `supabase/functions/prewarm-monthly-report/index.ts` — cron-triggered pre-warm.
+**Migration (one):**
+- New tables `household_challenges`, `challenge_participants`, `challenge_logs` + RLS.
+- Add `streak_freezes_remaining`, `streak_freeze_period`, `last_freeze_used_at` to `profiles`.
+- Add `is_freeze boolean default false` to `habit_logs`.
 
-**Edited**
-- `src/pages/Finance.tsx` — add "Monthly Report" card to the module grid.
-- `src/components/layout/Header.tsx` — add menu item.
-- `src/App.tsx` — register the route.
+**New:**
+- `src/data/challengeCatalog.ts`
+- `src/data/habitStackSuggestions.ts`
+- `src/hooks/useChallenges.ts`
+- `src/hooks/useStreakFreeze.ts`
+- `src/hooks/useMissedHabitsYesterday.ts`
+- `src/components/habits/ChallengePickerSheet.tsx`
+- `src/components/habits/ChallengeCard.tsx`
+- `src/components/habits/StreakRecoveryBanner.tsx`
+- `src/components/habits/HabitStackSuggestion.tsx`
+- `supabase/functions/notify-challenge-invite/index.ts`
 
-**Migration (one)**
-- `meal_plan_items` — add nullable `cooked_at timestamptz`. Backfill from latest `pantry_item_usage.used_at` per `meal_plan_item_id` so historical "cooked" meals still count. Update `MarkAsCookedDialog` flow in `src/pages/Meals.tsx` to set `cooked_at = now()` alongside the existing pantry deduction.
-
-**Cron** (via supabase-insert tool, not migration, per project convention)
-- Schedule `prewarm-monthly-report` at `30 18 1 * *` UTC = `00:00 IST day 1` (close enough; precise IST is 19:00 UTC on the 30th of the prior month for 00:30 IST — final cron expression to be set when inserting).
+**Edited:**
+- `src/pages/Habits.tsx` — three-tab bar; pinned challenge on Me; streak banner; freeze badge in heading row; stacking suggestion render.
+- `src/components/habits/HabitCreateDialog.tsx` — accept `defaultName` + `controlledOpen` props.
+- `src/types/habits.ts` — add Challenge / ChallengeLog types.
 
 ### Out of scope
 
-- Persisting full report snapshots to a new table (live compute is enough; finance data already snapshotted separately).
-- WhatsApp template send for the report (the existing utility templates don't cover this; would need new approval).
-- Per-member breakdowns inside the report (the new hub-level "Member contributions" already covers monthly income split).
-- Historical PDFs / email delivery — the prompt only asks for in-app share.
+- Custom user-defined challenges (catalog only, per spec).
+- Multi-freeze plans (strictly 1/month per spec).
+- Retroactive freeze for days >1 day in the past (only "yesterday").
+- Challenge analytics dashboards (kept lightweight; just live progress).
