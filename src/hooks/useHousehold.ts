@@ -16,9 +16,8 @@ export const useHousehold = () => {
       // maybeSingle() returns null instead of throwing when no row exists.
       const { data: memberData, error: memberError } = await (supabase as any)
         .from("household_members")
-        .select("household_id, households!inner(onboarding_completed, name, avatar_url, created_at)")
+        .select("household_id, households(onboarding_completed, name, avatar_url)")
         .eq("user_id", user.id)
-        .order("created_at", { foreignTable: "households", ascending: false })
         .limit(1)
         .maybeSingle();
 
