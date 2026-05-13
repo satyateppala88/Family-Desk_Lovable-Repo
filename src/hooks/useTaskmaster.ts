@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { TaskmasterTask, TaskAssignee, TaskStatus } from "@/types/taskmaster";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { cloneTaskAsNextOccurrence, describeRecurrence, type RecurrencePattern } from "@/lib/recurrence";
+import { cloneTaskAsNextOccurrence, type RecurrencePattern } from "@/lib/recurrence";
 import { format } from "date-fns";
 
 export const useTaskmaster = (householdId: string | null) => {
