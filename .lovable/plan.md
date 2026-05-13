@@ -1,71 +1,85 @@
 ## Goal
 
-Form modals must always show action buttons pinned at the bottom, with the form body scrolling independently when content overflows the viewport. Currently, `DialogContent` uses `grid` + page-level `overflow-y-auto` and `DialogFooter` uses `sticky` with negative margins, which on tall forms (Create Task, Create Habit, Create Event) lets the footer drift mid-scroll on iOS Safari and short viewports.
+Stop the "Couldn't add" / "Error: …" toasts in Meals (and elsewhere) by:
+1. Adding the missing unique constraint that the `meal_plans` upsert requires.
+2. Replacing raw `error.message` text in mutation `onError` toasts across the app with short, friendly messages.
 
-## Approach
+## Part 1 — Database migration
 
-Introduce the prescribed flex column structure into the shared primitives, then wrap form bodies in a new `DialogBody` slot. BottomSheet-based modals (Create Habit, Create Event) already follow this structure — their footer prop renders inside a sticky `shrink-0` row, so they only need verification, not refactoring.
+Confirmed via `psql`: `meal_plans` currently has only the primary key and FK constraints. The mutation in `useMealPlans.ts` calls `.upsert(..., { onConflict: "household_id,week_start_date" })`, which Postgres rejects without a matching unique constraint, surfacing as a "Couldn't add" / generic error toast.
 
-## Changes
+Run a migration that adds:
 
-### 1. `src/components/ui/dialog.tsx` (primitive refactor)
+```sql
+ALTER TABLE public.meal_plans
+ADD CONSTRAINT meal_plans_household_week_unique
+UNIQUE (household_id, week_start_date);
+```
 
-- `DialogContent`: replace base classes
-  - From: `grid w-full max-w-lg max-h-[90dvh] overflow-y-auto ... gap-4 ... p-6`
-  - To:   `flex flex-col w-full max-w-lg max-h-[90dvh] overflow-hidden ... p-0`
-- `DialogHeader`: add `shrink-0 px-6 pt-6 pb-2`
-- New export `DialogBody`: `flex-1 min-h-0 overflow-y-auto px-6 pb-4` (consumers place form fields here)
-- `DialogFooter`: replace current sticky/negative-margin classes with `shrink-0 flex flex-col-reverse gap-2 border-t border-border bg-background px-6 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:flex-row sm:justify-end sm:gap-2`
-- Move the Radix `Close` (X) button position from `right-4 top-4` to keep working with new padding (no functional change).
+Note: if duplicate `(household_id, week_start_date)` rows already exist they will block the constraint. The migration will pre-collapse duplicates by keeping the most recently updated `meal_plans` row per `(household_id, week_start_date)` and reparenting any `meal_plan_items` from the older rows before adding the constraint, so the upsert path is finally consistent.
 
-### 2. `src/components/ui/sheet.tsx` (mirror the primitive refactor)
+## Part 2 — Friendly mutation error messages
 
-- `SheetContent`: keep `flex flex-col` but remove `overflow-y-auto` and `p-6`; set `p-0 overflow-hidden`
-- `SheetHeader`: `shrink-0 px-6 pt-6 pb-2`
-- New export `SheetBody`: `flex-1 min-h-0 overflow-y-auto px-6 pb-4`
-- `SheetFooter`: same footer treatment as `DialogFooter`
+Add a small helper `src/lib/friendlyError.ts`:
 
-### 3. Form modals — wrap content in the new `DialogBody`
+```ts
+export function friendlyMutationError(fallback = "Something went wrong. Please try again.") {
+  return fallback;
+}
+```
 
-For each, move the existing form fields (everything between `DialogHeader` and `DialogFooter`) inside `<DialogBody>`. No field/validation/submit logic changes.
+Then sweep mutation `onError` handlers and replace `description: error.message` (or `error.message || "..."`) with a short, plain-language message tailored to the action. The raw error stays in `console.error` for debugging. No business logic, no payload, no validation changes.
 
-- `src/components/taskmaster/TaskmasterTaskDialog.tsx` (Create / Edit Task)
-- `src/components/tasks/TaskDialog.tsx`
-- `src/components/tasks/TaskForm.tsx`
-- `src/components/calendar/CalendarEventDialog.tsx` (Create Event — Dialog variant)
-- `src/components/taskmaster/ProjectDialog.tsx`
-- `src/components/taskmaster/CalendarTaskScanDialog.tsx`
-- `src/components/meals/AddIngredientsDialog.tsx`
-- `src/components/meals/MarkAsCookedDialog.tsx`
-- `src/components/meals/RecipeRatingDialog.tsx`
-- `src/components/grocery/ScanBillDialog.tsx`
-- `src/components/grocery/QuickAddChecklist.tsx`
-- `src/components/grocery/AIPantryImportDialog.tsx`
-- `src/components/grocery/BillReviewDialog.tsx`
-- `src/components/finance/CategorySelect.tsx`
-- `src/components/household/FamilyMembersSection.tsx` (invite/edit dialogs)
-- `src/components/calendar/ConnectCalendarDialog.tsx`
-- `src/pages/FinanceBudgetCategories.tsx` (in-page form dialog)
-- `src/pages/HouseholdProductSettings.tsx` (form dialog)
-- All `src/components/settings/Edit*Dialog.tsx` files (preferences edit dialogs — long forms, highest risk)
+### Files to update (mutation onError handlers only — not form-level catch blocks unless they were already toasting raw DB errors)
 
-### 4. BottomSheet modals — verify only
+Meals (priority — fixes the reported flow):
+- `src/hooks/useMealPlans.ts` — 4 handlers → "Couldn't save meal plan. Please try again." / "Couldn't update this meal." / "Couldn't remove this meal." / "Couldn't delete this plan."
+- `src/pages/Meals.tsx` lines 136, 172 → "We couldn't generate the meal plan. Please try again." / "Couldn't add this meal. Please try again."
+- `src/components/meals/AddMealSheet.tsx`, `AiSuggestSheet.tsx`, `AddIngredientsDialog.tsx` — replace "Couldn't add" descriptions that pass `e.message` with a static "Please try again." string.
+- `src/hooks/useRegenerateMeals.ts` → "Couldn't refresh meals. Please try again."
 
-- `src/components/habits/HabitCreateDialog.tsx` and `src/components/calendar/CreateEventDialog.tsx` already pass action buttons via the `footer` prop, which the BottomSheet renders in a `shrink-0` row below the `flex-1 overflow-y-auto` body. No structural change needed; spot-check at 667px height.
+Grocery / Pantry:
+- `src/pages/Grocery.tsx` (4 sites) → action-specific friendly text.
+- `src/hooks/useShoppingLists.ts` (7 sites)
+- `src/hooks/usePantryItems.ts` (4 sites)
+- `src/hooks/usePantryCategories.ts` (1 site)
 
-### 5. Out of scope (intentionally untouched)
+Tasks / Taskmaster / Habits / Recipes:
+- `src/hooks/useTasks.ts` (3)
+- `src/hooks/useTaskmaster.ts` (6)
+- `src/hooks/useHabits.ts` (3)
+- `src/hooks/useRecipes.ts` (3)
 
-- `confirm-dialog.tsx`, `alert-dialog.tsx`, `command.tsx`, `PermissionPrimerDialog`, `PermissionsTutorial`, `RecipeDetailDialog`, `InstallAppButton`, `ModuleSetupGate`, `CalendarHeader`, `CalendarSidebar`, `AdminAccessRequests` — these are confirmations, command palettes, full-screen flows, or read-only detail sheets, not form-with-footer modals.
+Auth / Account / Household / Admin (mutation toasts only — keep auth-screen messages where the user *needs* to know which credential failed; replace generic catch-all toasts):
+- `src/pages/AccountSettings.tsx` (2)
+- `src/pages/HouseholdSetup.tsx` (1) — keep current fallback string, drop `error.message`.
+- `src/pages/HouseholdProductSettings.tsx` (2)
+- `src/pages/AdminAccessRequests.tsx` (2)
+- `src/pages/RequestAccess.tsx` (1)
+- `src/pages/Auth.tsx` (3) — **keep** the surfaced message because users genuinely need "Invalid login credentials" / "Email not confirmed" feedback. Out of scope.
+- `src/components/voice/VoiceInputButton.tsx` — already shows a friendly fallback; keep.
+
+For each replaced site, pattern is:
+
+```ts
+onError: (error) => {
+  console.error("<context> error:", error);
+  toast({
+    title: "<short title>",
+    description: "<friendly action-specific message>",
+    variant: "destructive",
+  });
+},
+```
 
 ## Verification
 
-1. Build passes (typecheck).
-2. Open Create Task, Create Habit, Create Event at viewport 375x667 — confirm footer pinned, body scrolls, all fields reachable.
-3. Open one settings edit dialog (longest forms) at the same viewport — confirm same behaviour.
-4. Open a confirm dialog — confirm look unchanged.
+1. Migration applies cleanly (constraint visible in `pg_constraint`).
+2. Reload Meals → click "Use this" on an AI dinner suggestion → meal saves, grid updates, no "Couldn't add" toast.
+3. Trigger a failure (e.g. temporarily revoke RLS in a test) → user sees only the friendly toast; raw error appears only in the browser console.
 
-## Technical notes
+## Out of scope
 
-- Adding `min-h-0` to the scrollable body is required so flex children can shrink below their intrinsic content height inside a bounded `max-h` parent.
-- Padding moves from `DialogContent` onto each slot (`Header` / `Body` / `Footer`) so the scrollable region's scrollbar sits flush to the modal edge instead of inside a padded box.
-- `DialogBody` is additive — dialogs that don't adopt it keep working (their content simply renders unpadded inside the flex column; only the listed form modals are migrated in this pass).
+- Auth screen specific error surfacing (intentional UX).
+- Refactoring non-mutation try/catch blocks that already display friendly text.
+- Editing the auto-generated `src/integrations/supabase/types.ts`.
