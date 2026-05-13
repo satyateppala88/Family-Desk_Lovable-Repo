@@ -457,6 +457,12 @@ export const useCreateTransaction = (householdId: string | null) => {
             list.map((t) => (t.id === ctx?.optimisticId ? inserted : t))
           );
         });
+      queryClient.invalidateQueries({ queryKey: ["finance-transactions", householdId] });
+      queryClient.invalidateQueries({ queryKey: ["finance-monthly-summary", householdId] });
+      queryClient.invalidateQueries({ queryKey: ["finance-snapshot", householdId] });
+      queryClient.invalidateQueries({ queryKey: ["finance-dashboard", householdId] });
+      queryClient.invalidateQueries({ queryKey: ["finance-annual-budget", householdId] });
+      queryClient.invalidateQueries({ queryKey: ["finance-budgets", householdId] });
     },
     onSettled: () => {
       // Light reconciliation; the cache already holds the real row so this
@@ -635,6 +641,9 @@ export const useUpsertBudget = (householdId: string | null) => {
             list.map((b) => (b.id === ctx?.optimisticId || (b.category === row.category && b.month === row.month) ? row : b))
           );
         });
+      queryClient.invalidateQueries({ queryKey: ["finance-budgets", householdId] });
+      queryClient.invalidateQueries({ queryKey: ["finance-annual-budget", householdId] });
+      queryClient.invalidateQueries({ queryKey: ["finance-dashboard", householdId] });
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["finance-budgets", householdId] });
@@ -699,6 +708,8 @@ export const useCreateSavingsGoal = (householdId: string | null) => {
             list.map((g) => (g.id === ctx?.optimisticId ? inserted : g))
           );
         });
+      queryClient.invalidateQueries({ queryKey: ["finance-savings-goals", householdId] });
+      queryClient.invalidateQueries({ queryKey: ["finance-dashboard", householdId] });
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["finance-savings-goals", householdId] });
@@ -739,6 +750,10 @@ export const useUpdateSavingsGoal = () => {
     onError: (e: Error, _vars, ctx) => {
       ctx?.snapshots?.forEach(([key, prev]) => queryClient.setQueryData(key, prev));
       toast.error(e.message);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["finance-savings-goals"] });
+      queryClient.invalidateQueries({ queryKey: ["finance-dashboard"] });
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["finance-savings-goals"] });
