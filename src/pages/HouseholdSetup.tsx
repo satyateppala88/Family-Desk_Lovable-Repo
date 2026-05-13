@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CheckCircle2 } from "lucide-react";
-import logoImg from "@/assets/logo-family-desk-primary.png";
+import logoImg from "@/assets/familydesk-lockup.png";
 
 const HouseholdSetup = () => {
   const [householdName, setHouseholdName] = useState("");
