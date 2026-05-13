@@ -5,6 +5,7 @@ import { CalendarGrid } from "@/components/calendar/CalendarGrid";
 import { CalendarHeader } from "@/components/calendar/CalendarHeader";
 import { CalendarEventDialog } from "@/components/calendar/CalendarEventDialog";
 import { ConnectCalendarDialog } from "@/components/calendar/ConnectCalendarDialog";
+import { CreateEventDialog } from "@/components/calendar/CreateEventDialog";
 import { OnboardingTour } from "@/components/onboarding/OnboardingTour";
 import { useCalendarEvents, type CalendarEvent } from "@/hooks/useCalendarEvents";
 import { useCalendarConnections } from "@/hooks/useCalendarConnections";
@@ -49,6 +50,7 @@ const Calendar = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [showConnectDialog, setShowConnectDialog] = useState(false);
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
 
   const { householdId } = useHousehold();
   const { data: events, isLoading } = useCalendarEvents(currentDate, "month");
@@ -89,6 +91,7 @@ const Calendar = () => {
             currentDate={currentDate}
             onDateChange={setCurrentDate}
             onConnectCalendar={() => setShowConnectDialog(true)}
+            onAddEvent={() => setShowCreateDialog(true)}
           />
         </div>
 
@@ -104,7 +107,7 @@ const Calendar = () => {
                 title="No events this week"
                 description="Your calendar is wide open — a perfect chance to plan something fun or just enjoy the quiet."
                 encouragement="Add a family event, sync your Google Calendar, or simply take it easy."
-                action={{ label: "Add Event", onClick: () => setShowConnectDialog(true) }}
+                action={{ label: "Add Event", onClick: () => setShowCreateDialog(true) }}
               />
             </div>
           ) : (
@@ -129,6 +132,12 @@ const Calendar = () => {
       <ConnectCalendarDialog
         open={showConnectDialog}
         onOpenChange={setShowConnectDialog}
+      />
+
+      <CreateEventDialog
+        open={showCreateDialog}
+        onOpenChange={setShowCreateDialog}
+        defaultDate={currentDate}
       />
 
       <OnboardingTour

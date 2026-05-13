@@ -19,12 +19,14 @@ interface CalendarHeaderProps {
   currentDate: Date;
   onDateChange: (date: Date) => void;
   onConnectCalendar: () => void;
+  onAddEvent: () => void;
 }
 
 export const CalendarHeader = ({
   currentDate,
   onDateChange,
   onConnectCalendar,
+  onAddEvent,
 }: CalendarHeaderProps) => {
   const { connections, updateConnection, disconnectCalendar } = useCalendarConnections();
   const [togglingId, setTogglingId] = useState<string | null>(null);
@@ -70,10 +72,15 @@ export const CalendarHeader = ({
           </div>
         </div>
 
-        <Button size="sm" variant="outline" onClick={onConnectCalendar} data-tour="connect-calendar" className="shrink-0">
-          <Plus className="h-3.5 w-3.5 sm:mr-1" />
-          <span className="hidden sm:inline">Connect</span>
-        </Button>
+        <div className="flex items-center gap-1.5 shrink-0">
+          <Button size="sm" onClick={onAddEvent} className="shrink-0">
+            <Plus className="h-3.5 w-3.5 sm:mr-1" />
+            <span className="hidden sm:inline">Add Event</span>
+          </Button>
+          <Button size="sm" variant="outline" onClick={onConnectCalendar} data-tour="connect-calendar" className="shrink-0">
+            <span>Connect</span>
+          </Button>
+        </div>
       </div>
 
       {/* Connected Calendars */}

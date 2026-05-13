@@ -363,7 +363,17 @@ export const UserPreferencesOnboarding = () => {
         </Card>
 
         <div className="flex justify-between">
-          <Button variant="outline" onClick={() => setStep((s) => Math.max(0, s - 1))} disabled={step === 0 || submitting}>
+          <Button
+            variant="outline"
+            onClick={() => {
+              if (step === 0) {
+                navigate("/household-setup");
+              } else {
+                setStep((s) => Math.max(0, s - 1));
+              }
+            }}
+            disabled={submitting}
+          >
             <ChevronLeft className="h-4 w-4 mr-2" /> Back
           </Button>
           <Button onClick={handleNext} disabled={submitting}>

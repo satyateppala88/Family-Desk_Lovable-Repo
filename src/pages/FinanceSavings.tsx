@@ -93,7 +93,7 @@ const FinanceSavings = () => {
                               : daysLeft === 0
                               ? "Due today"
                               : "Overdue"}
-                            {" · "}{format(new Date(goal.target_date), "MMM d, yyyy")}
+                            {" · "}{format(new Date(goal.target_date), "dd/MM/yyyy")}
                           </p>
                         )}
                       </div>

@@ -136,7 +136,7 @@ export const SubscriptionDialog = ({ open, onOpenChange, onSave, initialData }: 
                 <PopoverTrigger asChild>
                   <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !nextDueDate && "text-muted-foreground")}>
                     <CalendarIcon className="mr-2 h-4 w-4" />
-                    {nextDueDate ? format(nextDueDate, "MMM d, yyyy") : "Pick date"}
+                    {nextDueDate ? format(nextDueDate, "dd/MM/yyyy") : "Pick date"}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
@@ -150,7 +150,7 @@ export const SubscriptionDialog = ({ open, onOpenChange, onSave, initialData }: 
                 <PopoverTrigger asChild>
                   <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !endDate && "text-muted-foreground")}>
                     <CalendarIcon className="mr-2 h-4 w-4" />
-                    {endDate ? format(endDate, "MMM d, yyyy") : "No end"}
+                    {endDate ? format(endDate, "dd/MM/yyyy") : "No end"}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
