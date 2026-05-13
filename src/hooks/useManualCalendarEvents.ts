@@ -10,6 +10,8 @@ interface CreateManualEventInput {
   date: Date;
   time?: string | null; // "HH:mm" or null
   allDay: boolean;
+  repeatType?: 'none' | 'daily' | 'weekly' | 'monthly' | 'yearly';
+  memberIds?: string[];
 }
 
 export const useCreateManualEvent = () => {
@@ -49,6 +51,8 @@ export const useCreateManualEvent = () => {
           start_at: startAt,
           end_at: endAt,
           all_day: input.allDay,
+          repeat_type: input.repeatType ?? 'none',
+          member_ids: input.memberIds ?? [],
         })
         .select()
         .single();
