@@ -47,7 +47,7 @@ export const CREDIT_CARD_CATALOG: CreditCard[] = [
     benefits: [
       { category: "all", type: "reward_points", value: 4, description: "4 reward points per ₹150 spent" },
       { category: "dining_out", type: "reward_points", value: 8, description: "8× points on dining" },
-      { category: "transport", type: "reward_points", value: 8, description: "8× points on travel" },
+      { category: "auto_cab_metro", type: "reward_points", value: 8, description: "8× points on travel" },
     ],
     milestones: [
       { threshold: 100000, reward: "4 complimentary lounge visits" },
@@ -82,7 +82,7 @@ export const CREDIT_CARD_CATALOG: CreditCard[] = [
     benefits: [
       { category: "all", type: "reward_points", value: 5, description: "5 reward points per ₹150 spent" },
       { category: "dining_out", type: "reward_points", value: 10, description: "10× points on dining" },
-      { category: "transport", type: "reward_points", value: 10, description: "10× points on travel" },
+      { category: "auto_cab_metro", type: "reward_points", value: 10, description: "10× points on travel" },
     ],
     milestones: [
       { threshold: 1000000, reward: "Annual fee waiver + 25,000 bonus points" },
@@ -137,7 +137,7 @@ export const CREDIT_CARD_CATALOG: CreditCard[] = [
     benefits: [
       { category: "all", type: "cashback", value: 1, description: "1% cashback on all spends" },
       { category: "entertainment", type: "cashback", value: 5, description: "5% on Amazon purchases (Prime)" },
-      { category: "utilities", type: "cashback", value: 2, description: "2% on bill payments" },
+      { category: "electricity", type: "cashback", value: 2, description: "2% on bill payments" },
     ],
     milestones: [],
     perks: ["No annual fee (lifetime free)", "Welcome gift ₹500 Amazon Pay balance"],
@@ -152,7 +152,7 @@ export const CREDIT_CARD_CATALOG: CreditCard[] = [
     benefits: [
       { category: "all", type: "reward_points", value: 2, description: "2 points per ₹100 spent" },
       { category: "dining_out", type: "reward_points", value: 4, description: "4× on dining" },
-      { category: "transport", type: "reward_points", value: 4, description: "4× on travel" },
+      { category: "auto_cab_metro", type: "reward_points", value: 4, description: "4× on travel" },
     ],
     milestones: [
       { threshold: 300000, reward: "Annual fee reversal" },
@@ -184,9 +184,9 @@ export const CREDIT_CARD_CATALOG: CreditCard[] = [
     color: "#5c2d91",
     benefits: [
       { category: "all", type: "cashback", value: 1, description: "1% cashback on all spends" },
-      { category: "utilities", type: "cashback", value: 5, description: "5% on bill payments via Google Pay" },
+      { category: "electricity", type: "cashback", value: 5, description: "5% on bill payments via Google Pay" },
       { category: "dining_out", type: "cashback", value: 4, description: "4% on Swiggy, Zomato" },
-      { category: "transport", type: "cashback", value: 4, description: "4% on Ola, Uber" },
+      { category: "auto_cab_metro", type: "cashback", value: 4, description: "4% on Ola, Uber" },
     ],
     milestones: [
       { threshold: 200000, reward: "Annual fee reversal" },
@@ -220,7 +220,7 @@ export const CREDIT_CARD_CATALOG: CreditCard[] = [
     benefits: [
       { category: "all", type: "reward_points", value: 1, description: "1 point per ₹50 spent" },
       { category: "dining_out", type: "reward_points", value: 5, description: "5× on Swiggy & select dining" },
-      { category: "transport", type: "reward_points", value: 5, description: "5× on Uber" },
+      { category: "auto_cab_metro", type: "reward_points", value: 5, description: "5× on Uber" },
     ],
     milestones: [
       { threshold: 150000, reward: "18K bonus Membership Reward points" },
@@ -253,7 +253,7 @@ export const CREDIT_CARD_CATALOG: CreditCard[] = [
     benefits: [
       { category: "all", type: "reward_points", value: 5, description: "5 reward points per ₹150 spent" },
       { category: "dining_out", type: "reward_points", value: 10, description: "10× points on weekend dining" },
-      { category: "transport", type: "reward_points", value: 10, description: "10× on SmartBuy travel" },
+      { category: "auto_cab_metro", type: "reward_points", value: 10, description: "10× on SmartBuy travel" },
     ],
     milestones: [
       { threshold: 80000, reward: "₹500 BookMyShow voucher" },
@@ -286,7 +286,7 @@ export const CREDIT_CARD_CATALOG: CreditCard[] = [
     benefits: [
       { category: "all", type: "reward_points", value: 2, description: "2 Marriott points per ₹150" },
       { category: "dining_out", type: "reward_points", value: 4, description: "4× on dining" },
-      { category: "transport", type: "reward_points", value: 8, description: "8× on Marriott bookings" },
+      { category: "auto_cab_metro", type: "reward_points", value: 8, description: "8× on Marriott bookings" },
     ],
     milestones: [
       { threshold: 600000, reward: "1 free hotel night (cat 1-4)" },
@@ -337,7 +337,7 @@ export const CREDIT_CARD_CATALOG: CreditCard[] = [
     benefits: [
       { category: "all", type: "reward_points", value: 2, description: "2 points per ₹100 spent" },
       { category: "dining_out", type: "reward_points", value: 10, description: "10× on dining, groceries, movies" },
-      { category: "utilities", type: "reward_points", value: 10, description: "10× on standing instructions for utility bills" },
+      { category: "electricity", type: "reward_points", value: 10, description: "10× on standing instructions for utility bills" },
     ],
     milestones: [
       { threshold: 50000, reward: "₹3,000 Pizza Hut voucher (quarterly)" },
@@ -370,7 +370,7 @@ export const CREDIT_CARD_CATALOG: CreditCard[] = [
     color: "#0f4c3a",
     benefits: [
       { category: "all", type: "reward_points", value: 6, description: "6 points per ₹200 spent" },
-      { category: "transport", type: "reward_points", value: 12, description: "12× on flights & hotels via portal" },
+      { category: "auto_cab_metro", type: "reward_points", value: 12, description: "12× on flights & hotels via portal" },
     ],
     milestones: [
       { threshold: 4000000, reward: "Annual fee waiver" },
@@ -386,7 +386,7 @@ export const CREDIT_CARD_CATALOG: CreditCard[] = [
     color: "#eb2026",
     benefits: [
       { category: "all", type: "reward_points", value: 6, description: "6% myCash on all spends" },
-      { category: "transport", type: "reward_points", value: 6, description: "6% myCash on MakeMyTrip travel" },
+      { category: "auto_cab_metro", type: "reward_points", value: 6, description: "6% myCash on MakeMyTrip travel" },
     ],
     milestones: [],
     perks: ["Welcome MMT vouchers worth ₹3,000+", "8 domestic + 4 intl lounge visits/yr", "MMT Black status"],
@@ -401,7 +401,7 @@ export const CREDIT_CARD_CATALOG: CreditCard[] = [
     color: "#16213e",
     benefits: [
       { category: "all", type: "reward_points", value: 12, description: "12 EDGE points per ₹200" },
-      { category: "transport", type: "reward_points", value: 35, description: "35× on Travel Edge portal" },
+      { category: "auto_cab_metro", type: "reward_points", value: 35, description: "35× on Travel Edge portal" },
     ],
     milestones: [
       { threshold: 150000, reward: "25,000 EDGE bonus points (monthly)" },
@@ -417,7 +417,7 @@ export const CREDIT_CARD_CATALOG: CreditCard[] = [
     color: "#1f4e79",
     benefits: [
       { category: "all", type: "reward_points", value: 2, description: "2 EDGE Miles per ₹100" },
-      { category: "transport", type: "reward_points", value: 5, description: "5× on direct travel bookings" },
+      { category: "auto_cab_metro", type: "reward_points", value: 5, description: "5× on direct travel bookings" },
     ],
     milestones: [
       { threshold: 300000, reward: "2,500 bonus EDGE Miles" },
@@ -434,7 +434,7 @@ export const CREDIT_CARD_CATALOG: CreditCard[] = [
     color: "#5d2e8c",
     benefits: [
       { category: "all", type: "reward_points", value: 4, description: "4 CV Points per ₹200" },
-      { category: "transport", type: "reward_points", value: 4, description: "Vistara flight bookings" },
+      { category: "auto_cab_metro", type: "reward_points", value: 4, description: "Vistara flight bookings" },
     ],
     milestones: [
       { threshold: 750000, reward: "1 Premium Economy ticket" },
@@ -496,7 +496,7 @@ export const CREDIT_CARD_CATALOG: CreditCard[] = [
     color: "#1a1a1a",
     benefits: [
       { category: "all", type: "reward_points", value: 4, description: "4 White Pass points per ₹200" },
-      { category: "transport", type: "reward_points", value: 10, description: "10× on travel" },
+      { category: "auto_cab_metro", type: "reward_points", value: 10, description: "10× on travel" },
     ],
     milestones: [
       { threshold: 1500000, reward: "₹15,000 worth Tata CLiQ vouchers" },
@@ -513,7 +513,7 @@ export const CREDIT_CARD_CATALOG: CreditCard[] = [
     color: "#003366",
     benefits: [
       { category: "all", type: "reward_points", value: 12, description: "12 reward points per ₹200" },
-      { category: "transport", type: "reward_points", value: 24, description: "24× on travel & dining" },
+      { category: "auto_cab_metro", type: "reward_points", value: 24, description: "24× on travel & dining" },
     ],
     milestones: [
       { threshold: 1500000, reward: "Annual fee reversal" },
@@ -530,7 +530,7 @@ export const CREDIT_CARD_CATALOG: CreditCard[] = [
     color: "#0072ce",
     benefits: [
       { category: "all", type: "reward_points", value: 5, description: "5 points per ₹150 (3.33% rewards)" },
-      { category: "transport", type: "cashback", value: 5, description: "5% cashback on duty-free spends" },
+      { category: "auto_cab_metro", type: "cashback", value: 5, description: "5% cashback on duty-free spends" },
     ],
     milestones: [],
     perks: ["4 intl + unlimited domestic lounge visits", "Golf privileges", "1% fuel surcharge waiver"],
@@ -575,7 +575,7 @@ export const CREDIT_CARD_CATALOG: CreditCard[] = [
     color: "#1f3a5f",
     benefits: [
       { category: "all", type: "reward_points", value: 1, description: "1 MR point per ₹50 spent" },
-      { category: "transport", type: "reward_points", value: 3, description: "3× on travel via portal" },
+      { category: "auto_cab_metro", type: "reward_points", value: 3, description: "3× on travel via portal" },
     ],
     milestones: [
       { threshold: 190000, reward: "₹7,700 Travel Vouchers" },
@@ -592,7 +592,7 @@ export const CREDIT_CARD_CATALOG: CreditCard[] = [
     color: "#c0c0c0",
     benefits: [
       { category: "all", type: "reward_points", value: 1, description: "1 MR point per ₹40 spent" },
-      { category: "transport", type: "reward_points", value: 5, description: "5× on travel via Amex Travel" },
+      { category: "auto_cab_metro", type: "reward_points", value: 5, description: "5× on travel via Amex Travel" },
     ],
     milestones: [],
     perks: ["Unlimited lounge access (Priority Pass + Centurion)", "Taj Epicure", "Marriott Gold", "Hilton Gold", "Dedicated concierge"],
