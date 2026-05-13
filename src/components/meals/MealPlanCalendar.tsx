@@ -217,8 +217,8 @@ export const MealPlanCalendar = ({
                   className={cn(
                     "shrink-0 w-[52px] h-[52px] rounded-full flex flex-col items-center justify-center transition-colors",
                     today && "bg-primary text-primary-foreground",
-                    !today && selected && "bg-[hsl(var(--ink-1))] text-white",
-                    !today && !selected && "bg-transparent text-[hsl(var(--ink-2))] hover:bg-accent"
+                    !today && selected && "bg-[#2C2C2A] text-white",
+                    !today && !selected && "bg-transparent text-[#6B6965] hover:bg-accent"
                   )}
                   aria-pressed={selected}
                   aria-label={format(day, "EEEE, MMM d")}
