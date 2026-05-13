@@ -21,7 +21,7 @@ export const useDashboardSnapshot = (householdId: string | null) => {
   const { data: dashStats } = useDashboardStats(householdId);
   const { tasks } = useTaskmaster(householdId);
   const { todaysHabits } = useHabits(householdId);
-  const { data: shoppingLists } = useShoppingLists(householdId);
+  const { shoppingLists } = useShoppingLists(householdId);
   const { data: monthly } = useFinanceMonthlySummary(householdId);
   const { data: budgets } = useFinanceBudgets(householdId);
   const { data: todayEvents } = useTodayEvents();
@@ -49,7 +49,7 @@ export const useDashboardSnapshot = (householdId: string | null) => {
     const dinnerItem =
       dashStats?.todayMeals?.find((m: any) => (m.meal_type || "").toLowerCase() === "dinner") ||
       dashStats?.todayMeals?.[0];
-    const dinnerName = dinnerItem?.recipes?.name || dinnerItem?.recipe_name;
+    const dinnerName = dinnerItem?.recipes?.title;
     const dinnerLabel = dinnerName ? `${dinnerName} planned` : "Not planned yet";
 
     // Finance: this month
@@ -72,9 +72,9 @@ export const useDashboardSnapshot = (householdId: string | null) => {
 
     // Shopping
     const activeList =
-      (shoppingLists || []).find((l: any) => !l.is_completed) || (shoppingLists || [])[0];
+      (shoppingLists || []).find((l: any) => l.status === "active") || (shoppingLists || [])[0];
     const openItemCount =
-      activeList?.items?.filter((i: any) => !i.is_checked && !i.checked).length ?? 0;
+      activeList?.items?.filter((i: any) => !i.is_checked).length ?? 0;
     const shoppingLabel =
       openItemCount > 0 ? `${openItemCount} items in list` : "List is empty";
 
