@@ -1822,6 +1822,7 @@ export type Database = {
           invites: boolean
           meals: boolean
           pantry: boolean
+          pantry_daily_reminder: boolean
           tasks: boolean
           updated_at: string
           user_id: string
@@ -1836,6 +1837,7 @@ export type Database = {
           invites?: boolean
           meals?: boolean
           pantry?: boolean
+          pantry_daily_reminder?: boolean
           tasks?: boolean
           updated_at?: string
           user_id: string
@@ -1850,6 +1852,7 @@ export type Database = {
           invites?: boolean
           meals?: boolean
           pantry?: boolean
+          pantry_daily_reminder?: boolean
           tasks?: boolean
           updated_at?: string
           user_id?: string
