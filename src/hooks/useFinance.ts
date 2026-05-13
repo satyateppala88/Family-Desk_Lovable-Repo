@@ -354,8 +354,12 @@ export const useCreateTransaction = (householdId: string | null) => {
     onSettled: () => {
       // Light reconciliation; the cache already holds the real row so this
       // is just a safety net for edge cases (filters that excluded it, etc.).
+      queryClient.invalidateQueries({ queryKey: ["finance-transactions", householdId] });
       queryClient.invalidateQueries({ queryKey: ["finance-monthly-summary", householdId] });
+      queryClient.invalidateQueries({ queryKey: ["finance-snapshot", householdId] });
       queryClient.invalidateQueries({ queryKey: ["finance-dashboard", householdId] });
+      queryClient.invalidateQueries({ queryKey: ["finance-annual-budget", householdId] });
+      queryClient.invalidateQueries({ queryKey: ["finance-budgets", householdId] });
     },
   });
 };
@@ -394,7 +398,12 @@ export const useUpdateTransaction = () => {
       toast.error(e.message);
     },
     onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["finance-transactions"] });
       queryClient.invalidateQueries({ queryKey: ["finance-monthly-summary"] });
+      queryClient.invalidateQueries({ queryKey: ["finance-snapshot"] });
+      queryClient.invalidateQueries({ queryKey: ["finance-dashboard"] });
+      queryClient.invalidateQueries({ queryKey: ["finance-annual-budget"] });
+      queryClient.invalidateQueries({ queryKey: ["finance-budgets"] });
     },
   });
 };
@@ -446,7 +455,12 @@ export const useDeleteTransaction = () => {
       toast.error(e.message);
     },
     onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["finance-transactions"] });
       queryClient.invalidateQueries({ queryKey: ["finance-monthly-summary"] });
+      queryClient.invalidateQueries({ queryKey: ["finance-snapshot"] });
+      queryClient.invalidateQueries({ queryKey: ["finance-dashboard"] });
+      queryClient.invalidateQueries({ queryKey: ["finance-annual-budget"] });
+      queryClient.invalidateQueries({ queryKey: ["finance-budgets"] });
     },
   });
 };
@@ -515,6 +529,11 @@ export const useUpsertBudget = (householdId: string | null) => {
           );
         });
     },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["finance-budgets", householdId] });
+      queryClient.invalidateQueries({ queryKey: ["finance-annual-budget", householdId] });
+      queryClient.invalidateQueries({ queryKey: ["finance-dashboard", householdId] });
+    },
   });
 };
 
@@ -574,6 +593,10 @@ export const useCreateSavingsGoal = (householdId: string | null) => {
           );
         });
     },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["finance-savings-goals", householdId] });
+      queryClient.invalidateQueries({ queryKey: ["finance-dashboard", householdId] });
+    },
   });
 };
 
@@ -610,6 +633,10 @@ export const useUpdateSavingsGoal = () => {
       ctx?.snapshots?.forEach(([key, prev]) => queryClient.setQueryData(key, prev));
       toast.error(e.message);
     },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["finance-savings-goals"] });
+      queryClient.invalidateQueries({ queryKey: ["finance-dashboard"] });
+    },
   });
 };
 
@@ -637,6 +664,10 @@ export const useDeleteSavingsGoal = () => {
     onError: (e: Error, _id, ctx) => {
       ctx?.snapshots?.forEach(([key, prev]) => queryClient.setQueryData(key, prev));
       toast.error(e.message);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["finance-savings-goals"] });
+      queryClient.invalidateQueries({ queryKey: ["finance-dashboard"] });
     },
   });
 };

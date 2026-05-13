@@ -135,8 +135,14 @@ const FinanceBudget = () => {
                 {formatINR(totalActual)} / {formatINR(totalPlanned)}
               </span>
             </div>
-            <Progress value={overallPct} className="h-2" />
-            <p className="text-[11px] text-muted-foreground text-right">{Math.round(overallPct)}% used</p>
+            {totalPlanned > 0 ? (
+              <>
+                <Progress value={overallPct} className="h-2" />
+                <p className="text-[11px] text-muted-foreground text-right">{Math.round(overallPct)}% used</p>
+              </>
+            ) : (
+              <p className="text-[11px] text-muted-foreground text-right">No budget set</p>
+            )}
           </CardContent>
         </Card>
 
@@ -162,15 +168,21 @@ const FinanceBudget = () => {
                       {resolveCategoryLabel(row.category, CATEGORY_LABELS, customCats)}
                     </span>
                     <div className="text-right">
-                      <span className={cn(
-                        "text-xs font-medium",
-                        row.over ? "text-destructive" : row.pct > 75 ? "text-warning" : "text-muted-foreground"
-                      )}>
-                        {row.over ? "Over!" : `${Math.round(row.pct)}%`}
-                      </span>
+                      {Number(row.planned_amount) > 0 ? (
+                        <span className={cn(
+                          "text-xs font-medium",
+                          row.over ? "text-destructive" : row.pct > 75 ? "text-warning" : "text-muted-foreground"
+                        )}>
+                          {row.over ? "Over!" : `${Math.round(row.pct)}%`}
+                        </span>
+                      ) : (
+                        <span className="text-xs font-medium text-muted-foreground">No budget set</span>
+                      )}
                     </div>
                   </div>
-                  <Progress value={row.pct} className="h-1.5" />
+                  {Number(row.planned_amount) > 0 && (
+                    <Progress value={row.pct} className="h-1.5" />
+                  )}
                   <div className="flex justify-between items-center text-[11px] text-muted-foreground">
                     <span>{formatINR(row.actual)} spent</span>
                     {editingId === row.id ? (
