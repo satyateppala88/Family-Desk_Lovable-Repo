@@ -1,75 +1,66 @@
-## E-03 — "What's for dinner tonight?" — Meals redesign
+## Connect Meals → Grocery: missing-ingredients flow + cooked deduction
 
-Restructure `/meals` so the daily flow leads, the weekly grid becomes secondary, and an AI suggestion flow drives same-day decisions.
+### Change 1 — "🛒 Add ingredients to list" with pantry-aware filtering
 
-### New page structure (`src/pages/Meals.tsx`)
+Replace the current "Add ingredients to shopping list" action (which dumps every ingredient via URL params and reloads `/grocery`) with an in-place modal that filters by what's actually missing from the pantry.
 
-```
-[ Header / page heading + Export ]
+**New component: `src/components/meals/AddIngredientsDialog.tsx`**
+- Props: `open`, `onOpenChange`, `recipe` (or `{ title, ingredients }`), `householdId`, `userId`.
+- On open: fetches `pantry_items` for the household and computes a "missing" set.
+  - Match strategy: case-insensitive, trimmed name match. If pantry item has `quantity > 0`, treat as in-stock; otherwise treat as missing. (Quantity-aware logic mirrors `handleMarkAsCooked` style.)
+- Renders title `Missing ingredients for {Meal Name}`.
+- Checklist of missing items, **all pre-checked**. In-stock items are listed in a muted "Already in your pantry" section (collapsed, not selectable).
+- Primary button: `Add selected to shopping list`.
+- On confirm:
+  - If an `active` shopping list exists for the household, append items to it; otherwise create one named `{Meal Name} — {dd MMM}`.
+  - Insert `shopping_list_items` rows (`name`, `quantity`, `unit`, `recipe_source: meal_title`, `is_checked: false`).
+  - Invalidate `["shopping-lists", householdId]`.
+  - Toast: `"{N} items added to {List Name}"` with an action button `View list →` that navigates to `/grocery?tab=shopping&list={listId}`.
 
-[ TonightDinnerCard ]              ← prominent, full-width
-[ TodayMealsRow ]                  ← horizontal scroll: B / L / D / Snacks
-[ "Plan the week" toggle ]         ← collapsed by default
-   └─ existing Calendar tab content (WeekNavigator + MealPlanCalendar)
-[ All Recipes tab ]                ← unchanged
-```
+**New helper: `src/lib/meals/groceryHelpers.ts`**
+- `findMissingIngredients(ingredients, pantryItems)` → returns `{ missing: Ingredient[]; inStock: Ingredient[] }`.
+- `addIngredientsToShoppingList({ householdId, userId, recipeTitle, items })` → upsert/insert logic shared by the dialog.
 
-The existing two-tab structure is reframed: **Today** (new default) and **All Recipes** (unchanged). The week grid moves inside the Today view as a collapsible section so we don't lose the planner.
+**Wiring (new entry points):**
+1. `TonightDinnerCard` — replace the existing direct-navigation `Add ingredients to shopping list` button so it opens `AddIngredientsDialog` instead.
+2. `TodayMealsRow` — when a slot is filled, add a small "🛒" icon button (or expose via long-press / overflow on the slot card). Tapping opens `AddIngredientsDialog` for that slot's recipe.
+3. `MealPlanCalendar` — add a `ShoppingCart` icon next to the existing `ChefHat` action row (line ~152), wired to open the same dialog.
+4. `RecipeDetailDialog` — add an `🛒 Add ingredients to list` button alongside existing actions for parity (same recipe path).
 
-### New components (`src/components/meals/`)
+**Cleanup:**
+- Remove `navigateToShoppingListWithIngredients` use from `TonightDinnerCard`. Keep `shoppingListBridge.ts` alive only for the AI suggest "Yes, add them" flow (it still needs to land on `/grocery` after suggesting), but replace its semantics: instead of URL-encoding items, route to `/grocery?tab=shopping` and have the AI sheet open `AddIngredientsDialog` *before* navigating — simpler: change the AI suggest "Yes" branch to also open `AddIngredientsDialog` for the just-assigned recipe and skip the URL-param dance entirely. Then delete `decodeIngredientsParam` from `Grocery.tsx` and `shoppingListBridge.ts`.
 
-1. **`TonightDinnerCard.tsx`** — full-width card.
-   - Empty state: sparkle icon, "What's for dinner tonight?", subtext, primary "Suggest dinner" button (opens `AiSuggestSheet` pre-set to dinner).
-   - Filled state: meal title, image placeholder (use recipe.image_url if present, else neutral surface tile), "Change" button (opens `AddMealSheet`), "Add ingredients to shopping list" button (calls shared `addRecipeToShoppingList` helper).
+### Change 2 — "✓ Cooked" on meal slots with pantry deduction
 
-2. **`TodayMealsRow.tsx`** — horizontal scroll row of 4 compact slot cards (Breakfast, Lunch, Dinner, Snacks).
-   - Filled slot: meal name + tap → opens `RecipeDetailDialog`.
-   - Empty slot: "+ Add" → opens `AddMealSheet` for that slot.
+The dialog (`MarkAsCookedDialog`) and dedup logic already exist in `Meals.tsx#handleMarkAsCooked`, and the calendar already shows a `ChefHat` button. Three gaps to close:
 
-3. **`AddMealSheet.tsx`** — bottom Sheet, 3 rows: AI Suggest, Browse Recipes, Enter manually.
-   - AI Suggest → opens `AiSuggestSheet` for the slot.
-   - Browse Recipes → opens existing `RecipeBrowserSheet`.
-   - Enter manually → small inline form (title only) that creates a quick recipe + meal_plan_item.
+1. **Surface the action on Today's row + Tonight's dinner card.** Add a `✓ Cooked` button to:
+   - `TonightDinnerCard` (filled state) — between `Change` and `Add ingredients to list`.
+   - `TodayMealsRow` slot cards (filled state) — small footer row with `🛒` and `✓` icon buttons.
+   Both call back into `Meals.tsx` via a new prop `onMarkAsCooked(recipe)` that opens the existing `MarkAsCookedDialog`.
 
-4. **`AiSuggestSheet.tsx`** — bottom Sheet, drives the AI suggest flow.
-   - Loading: "Checking your pantry and preferences..." skeleton card.
-   - Loaded: 3 suggestion cards (name, prep time, key ingredients, "Use this").
-   - Error/timeout: "Couldn't connect right now. Try again?" + Retry. 30s timeout via `AbortController` + `setTimeout`. **No infinite spinner.**
-   - On "Use this": assign to slot, then show inline confirmation "Added! Want to add missing ingredients to your shopping list?" with Yes/No. Yes → navigate to `/grocery?tab=shopping&newList=<encoded meal name> ingredients&items=<csv of ingredients>`.
+2. **Improve `handleMarkAsCooked` deduction**:
+   - Current logic uses `parseFloat(ingredient.quantity)` directly. Make it more resilient:
+     - Strip non-numeric chars (e.g. `"2 medium"` → `2`).
+     - If quantity is missing/NaN, fall back to default-per-unit (`1` for count items, `100` for `g`/`ml`).
+     - Skip pantry items with quantity already at 0.
+   - Collect a list of `{ name, qty, unit }` actually deducted and pass it back.
+   - Surface to user via toast: `Pantry updated. You used: onions (2), tomatoes (3), dal (100g)` — list up to 5 items, then `+N more`.
+   - **Invalidate** `["pantry-items", householdId]` and `["pantry-stats", householdId]` via `queryClient` (currently relies on realtime only).
 
-5. **`WeekPlanSection.tsx`** — wraps the existing `WeekNavigator` + `MealPlanCalendar` + "Generate Meal Plan" button inside a collapsible (`<Collapsible>` from shadcn). Trigger labeled "Plan the week" with chevron, collapsed by default.
+3. **Optional: mark slot as cooked.** No `cooked_at` column on `meal_plan_items`. Cleanest path: add `cooked_at timestamptz` via migration, set it on confirm, and dim the slot in the calendar / show a small `✓` badge. **I'll flag this as a small migration before applying** — if you'd rather skip the schema bump, we can render the cooked state purely from the toast/transient UI, but it won't persist across reloads.
 
-### Shared helpers
+### Files touched
 
-- **`src/lib/meals/addRecipeToShoppingList.ts`** — given a recipe + householdId, navigate to `/grocery?tab=shopping&newList=...&items=...`. Centralises the encoding so `TonightDinnerCard` and `AiSuggestSheet` share it.
-
-- **`/grocery` page** — read the new query params on mount. If `newList` + `items` present, create a shopping list with that name and pre-populate items, then clear the params. (Small, additive change in `src/pages/Grocery.tsx`.)
-
-### AI suggest backend
-
-Reuse `generate-meal-suggestions` edge function but call it with a new mode `singleSlot`:
-- Body: `{ householdId, userId, mode: "singleSlot", mealType, count: 3 }`
-- Returns: `{ suggestions: [{ title, prep_time_minutes, ingredients: [...], ...recipeFields }] }` — does **not** persist; the client persists only the chosen one via existing recipe + meal_plan_item insert paths.
-- Update the function to branch on `mode`. Keep existing weekly flow untouched.
-
-### Slot assignment
-
-Today the page only toasts on assign (`handleAssignRecipe`). Add a real assignment helper (`assignRecipeToSlot`) that inserts/updates a `meal_plan_item` for the current week + day index + meal_type, creating the `meal_plan` row if missing. Used by `TonightDinnerCard`, `TodayMealsRow`, `AddMealSheet`, and `AiSuggestSheet`.
-
-### Things kept as-is
-
-- `Generate Meal Plan` button — moved inside the collapsible week section.
-- `All Recipes` tab — unchanged.
-- `MealPlanDownload` (Export) button — unchanged, still in header.
-- `RecipeDetailDialog`, `RecipeRatingDialog`, `MarkAsCookedDialog`, `RecipeBrowserSheet` — reused.
-- Routing, auth, RLS, schema — unchanged.
+- New: `src/components/meals/AddIngredientsDialog.tsx`, `src/lib/meals/groceryHelpers.ts`.
+- Edited: `src/components/meals/TonightDinnerCard.tsx`, `src/components/meals/TodayMealsRow.tsx`, `src/components/meals/MealPlanCalendar.tsx`, `src/components/meals/RecipeDetailDialog.tsx`, `src/components/meals/AiSuggestSheet.tsx`, `src/pages/Meals.tsx`, `src/pages/Grocery.tsx`, `src/lib/meals/shoppingListBridge.ts` (slimmed or deleted).
+- Possibly: a small migration adding `meal_plan_items.cooked_at` (only if you want persistent "cooked" state).
 
 ### Out of scope
 
-- No DB migrations. `meal_plan_items` already supports the slots.
-- No changes to grocery/shopping data model — only a query-param entry point.
-- No redesign of week grid internals.
+- No edge function changes — all matching/insert is client-side via existing tables.
+- No changes to recipe/meal generation, calendar grid layout, or the AI suggest 3-card flow itself.
 
 ### Open question
 
-For "Snacks" slot: `meal_plan_items.meal_type` currently supports `breakfast | lunch | dinner` in the regenerate hook signature. I'll confirm by reading the schema during implementation; if `snack` isn't an allowed value, I'll either (a) extend the enum via migration, or (b) make the Snacks card a "coming soon" tile. Will flag before adding a migration.
+Do you want `meal_plan_items.cooked_at` persisted (small migration) so a meal stays visibly "cooked" after reload, or is the toast + pantry update enough?

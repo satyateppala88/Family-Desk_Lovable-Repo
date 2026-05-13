@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Clock, Star, Youtube, Trash2, Plus, Flame, RefreshCw, ChefHat, ChevronLeft, ChevronRight } from "lucide-react";
+import { Clock, Star, Youtube, Trash2, Plus, Flame, RefreshCw, ChefHat, ChevronLeft, ChevronRight, ShoppingCart } from "lucide-react";
 import { MealPlan } from "@/hooks/useMealPlans";
 import { getWeekDays, getShortDayName } from "@/lib/weekUtils";
 import { format, isToday, isBefore, startOfDay } from "date-fns";
@@ -19,6 +19,7 @@ interface MealPlanCalendarProps {
   onRegenerateMeal?: (dayIndex: number, mealType: string) => void;
   onRegenerateDay?: (dayIndex: number) => void;
   onMarkAsCooked?: (recipe: any) => void;
+  onAddToList?: (recipe: any) => void;
 }
 
 const BASE_MEAL_TYPES = ["breakfast", "lunch", "dinner"];
@@ -33,6 +34,7 @@ export const MealPlanCalendar = ({
   onRegenerateMeal,
   onRegenerateDay,
   onMarkAsCooked,
+  onAddToList,
 }: MealPlanCalendarProps) => {
   const weekDays = getWeekDays(weekStart);
   const isMobile = useIsMobile();
@@ -155,6 +157,12 @@ export const MealPlanCalendar = ({
               <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-green-600"
                 onClick={(e) => { e.stopPropagation(); onMarkAsCooked(recipe); }} title="Mark as cooked">
                 <ChefHat className="w-3 h-3" />
+              </Button>
+            )}
+            {onAddToList && (
+              <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-primary"
+                onClick={(e) => { e.stopPropagation(); onAddToList(recipe); }} title="Add ingredients to shopping list">
+                <ShoppingCart className="w-3 h-3" />
               </Button>
             )}
             <Button variant="ghost" size="sm" className="h-6 w-6 p-0"

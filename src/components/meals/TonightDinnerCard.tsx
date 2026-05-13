@@ -1,18 +1,16 @@
-import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Sparkles, UtensilsCrossed, ShoppingCart } from "lucide-react";
-import { navigateToShoppingListWithIngredients } from "@/lib/meals/shoppingListBridge";
+import { Sparkles, UtensilsCrossed, ShoppingCart, ChefHat } from "lucide-react";
 import type { Recipe } from "@/types/database";
 
 interface TonightDinnerCardProps {
   recipe: Recipe | null;
   onSuggest: () => void;
   onChange: () => void;
+  onAddToList?: (recipe: Recipe) => void;
+  onMarkAsCooked?: (recipe: Recipe) => void;
 }
 
-export const TonightDinnerCard = ({ recipe, onSuggest, onChange }: TonightDinnerCardProps) => {
-  const navigate = useNavigate();
-
+export const TonightDinnerCard = ({ recipe, onSuggest, onChange, onAddToList, onMarkAsCooked }: TonightDinnerCardProps) => {
   if (!recipe) {
     return (
       <div className="rounded-2xl border bg-gradient-to-br from-primary/10 via-background to-background p-5 sm:p-6">
@@ -53,22 +51,22 @@ export const TonightDinnerCard = ({ recipe, onSuggest, onChange }: TonightDinner
           )}
         </div>
       </div>
-      <div className="flex flex-col sm:flex-row gap-2 px-4 sm:px-5 pb-4 sm:pb-5">
-        <Button variant="outline" size="sm" onClick={onChange} className="flex-1">
+      <div className="flex flex-wrap gap-2 px-4 sm:px-5 pb-4 sm:pb-5">
+        <Button variant="outline" size="sm" onClick={onChange} className="flex-1 min-w-[100px]">
           Change
         </Button>
-        <Button
-          size="sm"
-          onClick={() => navigateToShoppingListWithIngredients(
-            navigate,
-            `${recipe.title} ingredients`,
-            (recipe.ingredients as any[]) || [],
-          )}
-          className="flex-1"
-        >
-          <ShoppingCart className="w-3.5 h-3.5 mr-1.5" />
-          Add ingredients to shopping list
-        </Button>
+        {onMarkAsCooked && (
+          <Button variant="outline" size="sm" onClick={() => onMarkAsCooked(recipe)} className="flex-1 min-w-[100px]">
+            <ChefHat className="w-3.5 h-3.5 mr-1.5" />
+            Cooked
+          </Button>
+        )}
+        {onAddToList && (
+          <Button size="sm" onClick={() => onAddToList(recipe)} className="flex-1 min-w-[140px]">
+            <ShoppingCart className="w-3.5 h-3.5 mr-1.5" />
+            Add ingredients to list
+          </Button>
+        )}
       </div>
     </div>
   );
