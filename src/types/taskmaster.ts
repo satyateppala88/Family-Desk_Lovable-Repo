@@ -34,6 +34,8 @@ export interface TaskmasterTask {
   created_at: string;
   updated_at: string;
   source_calendar_event_id?: string | null; // Track tasks imported from calendar
+  recurring?: boolean | null;
+  recurring_pattern?: unknown;
   // Joined data
   project?: Project | null;
   assignees?: TaskAssignee[];
