@@ -21,7 +21,7 @@ export const TonightDinnerCard = ({ recipe, onSuggest, onChange, onAddToList, on
           <div className="flex-1 min-w-0">
             <h2 className="text-lg sm:text-xl font-semibold leading-tight">What's for dinner tonight?</h2>
             <p className="text-sm text-muted-foreground mt-1">
-              AI will suggest something based on your pantry and preferences.
+              Tap 'Suggest dinner' and our AI will recommend something based on your pantry and your family's preferences — in seconds.
             </p>
             <Button onClick={onSuggest} className="mt-4">
               <Sparkles className="w-4 h-4 mr-1.5" />
