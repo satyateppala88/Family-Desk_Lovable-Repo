@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import type { RecurrenceSpec } from "@/types/recurrence";
 
 export interface FinanceSubscription {
   id: string;
@@ -20,9 +21,12 @@ export interface FinanceSubscription {
   created_by: string;
   created_at: string;
   updated_at: string;
+  recurrence?: RecurrenceSpec | null;
 }
 
-export type SubscriptionInput = Omit<FinanceSubscription, "id" | "household_id" | "created_by" | "created_at" | "updated_at">;
+export type SubscriptionInput = Omit<FinanceSubscription, "id" | "household_id" | "created_by" | "created_at" | "updated_at"> & {
+  recurrence?: RecurrenceSpec | null;
+};
 
 export const SUBSCRIPTION_CATEGORIES = [
   "streaming",
