@@ -24,7 +24,7 @@ export interface FinanceSubscription {
   recurrence?: RecurrenceSpec | null;
 }
 
-export type SubscriptionInput = Omit<FinanceSubscription, "id" | "household_id" | "created_by" | "created_at" | "updated_at"> & {
+export type SubscriptionInput = Omit<FinanceSubscription, "id" | "household_id" | "created_by" | "created_at" | "updated_at" | "recurrence"> & {
   recurrence?: RecurrenceSpec | null;
 };
 
@@ -81,7 +81,7 @@ export const useSubscriptions = (householdId: string | null) => {
         .eq("household_id", householdId)
         .order("next_due_date", { ascending: true, nullsFirst: false });
       if (error) throw error;
-      return data as FinanceSubscription[];
+      return data as unknown as FinanceSubscription[];
     },
     enabled: !!householdId,
   });
@@ -93,13 +93,15 @@ export const useCreateSubscription = (householdId: string | null) => {
   return useMutation({
     mutationFn: async (input: SubscriptionInput) => {
       if (!householdId || !user) throw new Error("Missing context");
+      const { recurrence, ...rest } = input;
       const { data, error } = await supabase.from("finance_subscriptions").insert({
-        ...input,
+        ...rest,
+        recurrence: (recurrence ?? null) as any,
         household_id: householdId,
         created_by: user.id,
       }).select().single();
       if (error) throw error;
-      return data as FinanceSubscription;
+      return data as unknown as FinanceSubscription;
     },
     onMutate: async (input) => {
       await qc.cancelQueries({ queryKey: ["finance-subscriptions", householdId] });
@@ -142,10 +144,10 @@ export const useUpdateSubscription = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (input: Partial<FinanceSubscription> & { id: string }) => {
-      const { id, ...rest } = input;
+      const { id, recurrence, ...rest } = input;
       const { error } = await supabase
         .from("finance_subscriptions")
-        .update({ ...rest, updated_at: new Date().toISOString() })
+        .update({ ...rest, ...(recurrence !== undefined ? { recurrence: recurrence as any } : {}), updated_at: new Date().toISOString() })
         .eq("id", id);
       if (error) throw error;
     },
