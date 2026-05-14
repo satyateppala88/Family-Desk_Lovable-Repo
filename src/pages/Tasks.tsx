@@ -191,6 +191,12 @@ const Tasks = () => {
         householdId={householdId || ""}
       />
 
+      <AIActionSheet
+        isOpen={aiOpen}
+        onClose={() => setAiOpen(false)}
+        initialPrompt="Prioritise my current task list by urgency and due date and suggest what I should focus on today."
+      />
+
       <ConfirmDialog
         open={!!deleteConfirm}
         onOpenChange={(open) => !open && setDeleteConfirm(null)}
