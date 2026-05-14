@@ -1,31 +1,37 @@
-## TaskCompletionSheet — three confirm-form fixes
+## Three invitation-flow fixes
 
-All edits in `src/components/taskmaster/TaskCompletionSheet.tsx`. No changes to `lib/taskCompletion.ts` (state model is correct; the component just isn't exercising it everywhere).
+### Fix 1 — "Invite Member" button on /settings does nothing
+`InviteMemberDialog` wraps the trigger in `<span onClick={() => setOpen(true)} className="contents">`. On the Settings page this click sometimes never opens the sheet (most likely the `display:contents` span is being skipped for click handling on certain mobile WebViews / inside the Card layout, or another ancestor is intercepting). Either way the wrapper pattern is fragile.
 
-### Bug 1 — "AI suggested — tap to confirm" chip is inert
-`AiSuggestedBadge` is rendered as a non-interactive `<Badge>`, so taps do nothing.
+- Edit `src/components/household/InviteMemberDialog.tsx`: replace the `<span ...>{trigger}</span>` wrapper with `React.cloneElement(trigger, { onClick: () => setOpen(true) })`. Falls back to the existing default `<Button>` when no trigger is supplied. This guarantees the click handler lives on the actual trigger element.
+- No call-site change needed; Settings, Members and Invitations pages keep passing a `<Button>` trigger.
 
-- Convert `AiSuggestedBadge` to render a `<button type="button">` wrapping the badge when not yet confirmed; on click it invokes a passed-in `onConfirm` callback. When `confirmed`, render a non-interactive green badge as today.
-- Pass `onConfirm={() => confirmField("category")}` and `onConfirm={() => confirmField("priority")}` (and `"status"`, `"due"`) at the three call sites that already use the badge.
-- Result: tapping the amber chip flips that field to `userConfirmed.<key> = true`, badge swaps to green "✓ Confirmed", and the bottom validation list updates. Once Category + Priority + Status + Due are confirmed and the title is non-empty, "Create task" enables (logic already in `isDraftReady`).
+### Fix 2 — Household name shows blank in the invitation banner
+RLS on `households` only lets a user `SELECT` rows where they're already a member. The banner does `households:household_id (name)` for invitations addressed to the user before they're a member, so the join silently returns `null` and the banner shows `""`.
 
-### Bug 2 — Status "Pick one" badge stays after selection
-`onValueChange` already calls `confirmField("status")`, but Radix Select does **not** fire `onValueChange` when the user picks the currently-selected value. With `defaultStatus="today"` the dropdown opens already on "Today", so re-tapping "Today" never confirms.
+- **Migration:** add `household_name text` column to `public.household_invitations`. Backfill from `households.name`. Add a trigger that auto-populates `household_name` on insert/update when a row references a household, so the column stays in sync without depending on the client.
+- **Client `InviteMemberDialog.tsx`:** include `household_name: householdName` in the `insert` payload (use the value already fetched from `households` a few lines below), as a belt-and-braces alongside the trigger.
+- **`PendingInvitationBanner.tsx`:** select `household_name` from `household_invitations` directly (drop reliance on the joined `households.name`); render `You've been invited to join "{invitation.household_name || 'a household'}"`. Also use `invitation.household_name` in the welcome / response edge-function payloads in place of `invitation.households?.name`.
+- No edge-function code change required for this bug — invitations are inserted client-side; `send-household-invitation` only sends the email and already receives `householdName` in the body.
 
-- Add `onOpenChange={(open) => { if (!open) confirmField("status"); }}` on the Status `<Select>`. Closing the dropdown after any interaction (whether or not the value changed) counts as confirmation, which matches the user's mental model and clears the orange "Pick one" badge immediately.
-- Apply the same `onOpenChange` confirmation to the Category and Priority selects so that "tapped the dropdown and chose the existing value" also counts as confirmation (parity with the chip path).
+### Fix 3 — Accept invitation doesn't switch active household
+The accept mutation already inserts into `household_members` and updates the invitation, but `useHousehold` picks the first member row with no deterministic ordering, so after `window.location.reload()` the user often lands back in their original household. There is no "active household" column on `profiles`, so the practical fix is to make ordering deterministic (newest membership wins) and add stronger client refresh.
 
-### Bug 3 — Priority dropdown cycles instead of opening
-On narrow widths the Priority column is half a `grid-cols-2`. The "AI suggested — tap to confirm" badge is long and sits in a `flex items-center justify-between` row directly above a small `SelectTrigger`; on small viewports the badge wraps and visually/interactively overlaps the trigger area, so taps land on the badge or get consumed in unexpected ways. Combined with `SelectContent` defaulting to `z-50` (same as the parent Sheet), the dropdown can also fail to surface above the sheet content.
+- **`src/hooks/useHousehold.ts`:** add `.order("joined_at", { ascending: false })` to the `household_members` query before `.limit(1).maybeSingle()`. This makes the just-accepted household the active one.
+- **`PendingInvitationBanner.tsx` accept mutation:**
+  - Keep the existing `household_members` insert and `household_invitations` update (also rename `status` from `"approved"` to `"accepted"` to match the spec wording — both values currently round-trip but `"accepted"` is the documented one; verified other code paths use plain `.eq("status", "pending")` filters and don't look at the accepted/approved string).
+  - On success, before the reload, call `queryClient.invalidateQueries()` with no key (broad invalidate of every household-scoped query), then `navigate("/dashboard")` and `window.location.reload()` so the new household context fully loads. Keep the existing `["my-pending-invitations"]` and `["household"]` invalidations as a safety net for the brief moment before reload.
+- No schema change needed for "active household" — ordering by `joined_at DESC` plus the broad invalidate gives the user the new household immediately, matching the requested behavior. (If a future requirement is "let user explicitly switch between households", that needs a separate `profiles.active_household_id` design — out of scope here.)
 
-- Restructure each field header so the chip wraps below the label instead of overlapping the trigger:
-  - Replace `flex items-center justify-between` with `flex flex-wrap items-center justify-between gap-2 min-w-0` and add `shrink-0` to the chip button. This guarantees the chip never sits on top of the `SelectTrigger`.
-- Add `className="z-[60]"` to all four `SelectContent` instances in this sheet (Status, Category, Priority, Project) so the popover always renders above the bottom Sheet (matches the same fix used in `AddPantryItemDialog`).
-- The chip is now a real `<button>` (Bug 1), so its hit-target is unambiguous and won't accidentally proxy clicks into the trigger.
+### Migration summary
+Single migration that:
+1. `ALTER TABLE public.household_invitations ADD COLUMN IF NOT EXISTS household_name text;`
+2. Backfill: `UPDATE public.household_invitations hi SET household_name = h.name FROM public.households h WHERE hi.household_id = h.id AND hi.household_name IS NULL;`
+3. Trigger function `set_household_invitation_name()` (SECURITY DEFINER, `search_path = public`) that on `BEFORE INSERT OR UPDATE OF household_id` fills `NEW.household_name` from `households.name` if NULL or stale.
+4. `CREATE TRIGGER trg_set_household_invitation_name BEFORE INSERT OR UPDATE ON public.household_invitations FOR EACH ROW EXECUTE FUNCTION public.set_household_invitation_name();`
 
 ### Verification
-1. Open Today → AI-create a task → sheet opens with amber chips on Category/Priority and "Pick one" on Status.
-2. Tap Category chip → turns green ✓. Tap Priority chip → turns green ✓.
-3. Open Status dropdown, pick "Today" (or re-pick the default) → "Pick one" disappears, validation row no longer lists Status.
-4. Open Priority dropdown on a narrow viewport → it opens normally and shows P1–P4; selecting any value updates the trigger label without cycling.
-5. With title present and all four fields confirmed, "Create task" becomes enabled.
+1. /settings → tap "Invite Member" → bottom sheet opens (FIX 1).
+2. Send an invitation to a second test account → log in as that account → banner reads `You've been invited to join "<actual household name>"` (FIX 2).
+3. Tap Accept → toast appears, page reloads, dashboard now shows the new household's data; `useHousehold` returns the new `householdId` and name (FIX 3).
+4. Backfilled existing pending invitations also display the correct name.
