@@ -3069,6 +3069,7 @@ export type Database = {
         }[]
       }
       update_completed_tour: { Args: { _key: string }; Returns: undefined }
+      vault_upsert_push_key: { Args: { _key: string }; Returns: undefined }
     }
     Enums: {
       app_role: "household_admin" | "member" | "platform_admin"
