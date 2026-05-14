@@ -160,9 +160,6 @@ export const CalendarGrid = ({
                             {event.end && ` - ${format(parseISO(event.end), "h:mm a")}`}
                           </p>
                         )}
-                        {event.allDay && (
-                          <p className="text-xs text-muted-foreground mt-0.5">All day</p>
-                        )}
                       </div>
                     </div>
                   ))}
