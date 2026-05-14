@@ -1,16 +1,14 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.95.0";
 
 /**
- * One-shot helper: writes the project base URL and service-role key into
- * `public.push_dispatch_config` so DB triggers can invoke `send-push` via
- * `pg_net`. Idempotent — call any time after deployment or after rotating
- * the service-role key.
+ * One-shot helper: writes the project base URL into
+ * `public.push_dispatch_config` and stores the service-role key in the
+ * encrypted Vault under the name `push_service_role_key` so DB triggers
+ * can invoke `send-push` via `pg_net`. Idempotent — call any time after
+ * deployment or after rotating the service-role key.
  *
- * Auth: none required. The function only ever writes values it already has
- * via its own Deno env; it cannot be used to disclose secrets (the row is
- * not readable from the public API — RLS denies all non-service-role reads).
- * The worst an anonymous caller can do is overwrite the row with the same
- * values, which is a no-op.
+ * Auth: none required. The function only ever writes values it already
+ * has via its own Deno env; it cannot be used to disclose secrets.
  */
 
 const corsHeaders = {
@@ -30,20 +28,32 @@ Deno.serve(async (req) => {
 
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE);
 
-  const { error } = await admin
+  // 1. Upsert the base URL row (no longer stores the key).
+  const { error: cfgError } = await admin
     .from("push_dispatch_config")
     .upsert(
       {
         id: true,
         base_url: SUPABASE_URL,
-        service_role_key: SERVICE_ROLE,
         updated_at: new Date().toISOString(),
       },
       { onConflict: "id" }
     );
 
-  if (error) {
-    return new Response(JSON.stringify({ error: error.message }), {
+  if (cfgError) {
+    return new Response(JSON.stringify({ error: cfgError.message }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  // 2. Store / rotate the service-role key in Vault.
+  const { error: vaultError } = await admin.rpc("vault_upsert_push_key" as any, {
+    _key: SERVICE_ROLE,
+  });
+
+  if (vaultError) {
+    return new Response(JSON.stringify({ error: vaultError.message }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
