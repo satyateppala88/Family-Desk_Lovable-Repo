@@ -1,19 +1,15 @@
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle2, Circle, ArrowRight, ListChecks } from "lucide-react";
-import { supabase } from "@/lib/supabase";
-import { useAuth } from "@/contexts/AuthContext";
 import { useHousehold } from "@/hooks/useHousehold";
 import { useEnabledProducts, type ProductName } from "@/hooks/useEnabledProducts";
 import { useHouseholdPreferences } from "@/hooks/useHouseholdPreferences";
 import {
   MODULE_SETUP_KEYS,
-  MODULE_SETUP_FIELDS,
-  MODULE_SETUP_META,
+  isModuleSetupComplete,
   type ModuleSetupKey,
 } from "@/lib/moduleSetup";
 import { ModuleSetupDialog } from "@/components/onboarding/ModuleSetupGate";
@@ -30,26 +26,10 @@ const MODULE_LABELS: Record<ProductName, string> = {
 const ORDER: ProductName[] = ["meals", "grocery", "finance", "habits", "calendar", "tasks"];
 
 export const SetupProgressCard = () => {
-  const { user } = useAuth();
   const { householdId } = useHousehold();
   const { data: enabledProducts } = useEnabledProducts(householdId);
   const { preferences } = useHouseholdPreferences(householdId);
   const [activeSetup, setActiveSetup] = useState<ModuleSetupKey | null>(null);
-
-  const { data: completedTours } = useQuery({
-    queryKey: ["module-setup", user?.id],
-    queryFn: async () => {
-      if (!user?.id) return {} as Record<string, boolean>;
-      const { data } = await supabase
-        .from("profiles")
-        .select("completed_tours")
-        .eq("id", user.id)
-        .single();
-      return ((data?.completed_tours as Record<string, boolean>) ?? {});
-    },
-    enabled: !!user?.id,
-    staleTime: 60 * 1000,
-  });
 
   const items = useMemo(() => {
     if (!enabledProducts || !preferences) return [];
@@ -57,17 +37,11 @@ export const SetupProgressCard = () => {
       .map((p) => {
         const key = MODULE_SETUP_KEYS[p];
         if (!key) return null; // products without their own setup (e.g. tasks)
-        const fields = MODULE_SETUP_FIELDS[key];
-      const hasData = fields.every((f) => {
-        const v = (preferences as unknown as Record<string, unknown>)[f as string];
-        return v !== null && v !== undefined && v !== "";
-      });
-      const tourComplete = !!completedTours?.[key];
-      const complete = hasData || tourComplete;
+      const complete = isModuleSetupComplete(preferences, key);
       return { product: p, key, label: MODULE_LABELS[p], complete };
       })
       .filter((x): x is { product: ProductName; key: ModuleSetupKey; label: string; complete: boolean } => x !== null);
-  }, [enabledProducts, preferences, completedTours]);
+  }, [enabledProducts, preferences]);
 
   if (items.length === 0) return null;
 
