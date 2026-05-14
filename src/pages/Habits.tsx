@@ -86,7 +86,9 @@ const Habits = () => {
     ? differenceInCalendarDays(new Date(), new Date(householdCreatedAt))
     : 0;
   const householdTooNew = householdAgeDays < 3;
-  const neutralCoachCopy = "Add your first habit to start tracking your household's daily routine.";
+  const emptyCoachCopy = "Add your first habit to start tracking your household's daily routine.";
+  const startTodayCopy = "Tap a habit below to log your first check-in for today.";
+  const newHouseholdCopy = "Your household is just getting started — take a moment to set up the routines that matter.";
   const householdCompletedToday = householdStats?.completedToday ?? 0;
   const householdTotalHabits = householdStats?.totalHabits ?? 0;
 
@@ -259,8 +261,12 @@ const Habits = () => {
               Add Habit
             </Button>
 
-            {totalCount === 0 || completedCount === 0 || householdTooNew ? (
-              <HabitCoachInsight content={neutralCoachCopy} onDismiss={() => {}} />
+            {totalCount === 0 ? (
+              <HabitCoachInsight content={emptyCoachCopy} onDismiss={() => {}} />
+            ) : householdTooNew ? (
+              <HabitCoachInsight content={newHouseholdCopy} onDismiss={() => {}} />
+            ) : completedCount === 0 ? (
+              <HabitCoachInsight content={startTodayCopy} onDismiss={() => {}} />
             ) : completedCount < totalCount ? (
               <HabitCoachInsight
                 content="You're making progress! Keep the momentum going — every check-off counts."
