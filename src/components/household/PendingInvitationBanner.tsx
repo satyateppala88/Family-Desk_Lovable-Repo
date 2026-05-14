@@ -20,10 +20,7 @@ export const PendingInvitationBanner = () => {
 
       const { data, error } = await supabase
         .from("household_invitations")
-        .select(`
-          *,
-          households:household_id (name)
-        `)
+        .select("*")
         .eq("invitee_email", normalizedEmail)
         .eq("status", "pending")
         .eq("invitation_type", "admin_invite");
@@ -54,7 +51,7 @@ export const PendingInvitationBanner = () => {
       const { error: invError } = await supabase
         .from("household_invitations")
         .update({
-          status: "approved",
+          status: "accepted",
           invitee_user_id: user!.id,
           reviewed_at: new Date().toISOString(),
         })
@@ -78,7 +75,7 @@ export const PendingInvitationBanner = () => {
               body: JSON.stringify({
                 invitationId: invitation.id,
                 householdId: invitation.household_id,
-                householdName: invitation.households?.name || "your household",
+                householdName: invitation.household_name || "your household",
                 role: invitation.requested_role,
                 origin: window.location.origin,
               }),
@@ -116,7 +113,7 @@ export const PendingInvitationBanner = () => {
                 body: JSON.stringify({
                   memberName,
                   action: "accepted",
-                  householdName: invitation.households?.name || "the household",
+                  householdName: invitation.household_name || "the household",
                   invitedByUserId: invitation.invited_by,
                 }),
               }
@@ -128,11 +125,10 @@ export const PendingInvitationBanner = () => {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["my-pending-invitations"] });
-      queryClient.invalidateQueries({ queryKey: ["household"] });
+      queryClient.invalidateQueries();
       toast.success("You've joined the household!");
-      // Reload to update household context
-      window.location.reload();
+      // Hard reload onto the dashboard so the new household context fully loads
+      window.location.replace("/dashboard");
     },
     onError: (error: any) => {
       toast.error("Failed to accept: " + error.message);
@@ -179,7 +175,7 @@ export const PendingInvitationBanner = () => {
                 body: JSON.stringify({
                   memberName,
                   action: "declined",
-                  householdName: invitation.households?.name || "the household",
+                  householdName: invitation.household_name || "the household",
                   invitedByUserId: invitation.invited_by,
                 }),
               }
@@ -214,7 +210,7 @@ export const PendingInvitationBanner = () => {
               </div>
               <div>
                 <h3 className="font-semibold text-base sm:text-lg">
-                  You've been invited to join "{invitation.households?.name}"
+                  You've been invited to join "{invitation.household_name || "a household"}"
                 </h3>
                 <div className="flex items-center gap-2 mt-1">
                   <Badge variant="secondary">
