@@ -11,7 +11,8 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { PageLoading } from "@/components/ui/page-loading";
 import { QuickActionButton } from "@/components/ui/quick-action-button";
 import { ModuleNudgeBanner } from "@/components/discovery/ModuleNudgeBanner";
-import { Plus, Filter, CheckSquare } from "lucide-react";
+import { Plus, Filter, CheckSquare, Sparkles } from "lucide-react";
+import { AIActionSheet } from "@/components/ai/AIActionSheet";
 import { toast } from "sonner";
 import {
   Select,
@@ -28,6 +29,7 @@ const Tasks = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [priorityFilter, setPriorityFilter] = useState<string>("all");
+  const [aiOpen, setAiOpen] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
   const handleCreateTask = () => {
@@ -105,10 +107,22 @@ const Tasks = () => {
               {activeCount > 0 ? `${activeCount} things to do` : "You're all caught up!"}
             </p>
           </div>
-          <Button onClick={handleCreateTask} size="sm" data-tour="add-task-button" className="hidden sm:flex">
-            <Plus className="w-4 h-4 mr-1" />
-            Add Task
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setAiOpen(true)}
+              className="gap-1.5"
+            >
+              <Sparkles className="w-4 h-4" />
+              <span className="hidden sm:inline">Prioritise my list</span>
+              <span className="sm:hidden">Prioritise</span>
+            </Button>
+            <Button onClick={handleCreateTask} size="sm" data-tour="add-task-button" className="hidden sm:flex">
+              <Plus className="w-4 h-4 mr-1" />
+              Add Task
+            </Button>
+          </div>
         </div>
 
         <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2.5 mb-4" data-tour="task-filters">
@@ -175,6 +189,12 @@ const Tasks = () => {
         onOpenChange={setDialogOpen}
         onSave={handleSaveTask}
         householdId={householdId || ""}
+      />
+
+      <AIActionSheet
+        isOpen={aiOpen}
+        onClose={() => setAiOpen(false)}
+        initialPrompt="Prioritise my current task list by urgency and due date and suggest what I should focus on today."
       />
 
       <ConfirmDialog

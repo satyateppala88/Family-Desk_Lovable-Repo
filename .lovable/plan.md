@@ -1,57 +1,61 @@
 ## Goal
-Add three feature-discovery surfaces in one pass: refreshed empty-state copy across modules, a one-time per-module nudge banner, and a rotating "Did you know?" tip card on the dashboard.
 
-## 1. Empty-state copy updates (text only)
+Replace the always-visible AI sparkle FAB with **contextual** AI actions inside Tasks, Finance, and Grocery, each opening a shared lightweight bottom sheet that talks to the existing `ai-chat` edge function.
 
-Update only the `title` / `description` props on existing `EmptyState` instances. No icon, illustration, action, or layout changes.
+## Part 1 — Remove the global AI FAB
 
-| File | Location | New title | New description |
-|---|---|---|---|
-| `src/pages/Tasks.tsx` (~L140) | unfiltered branch | `Nothing on the list yet` (already matches) | `Add your first task and assign it to anyone in the household. FamilyDesk AI can prioritise your list and remind you before things are due.` |
-| `src/components/meals/TonightDinnerCard.tsx` (~L22) | empty dinner card | `What's for dinner tonight?` (already matches) | replace `<p>` body with `Tap 'Suggest dinner' and our AI will recommend something based on your pantry and your family's preferences — in seconds.` |
-| `src/pages/Meals.tsx` (~L411) | All Recipes empty | `Your recipe collection is empty` (already matches) | `Tap 'Generate Recipes' to get personalised Indian meal ideas for your household. Every suggestion is tailored to your dietary preferences.` |
-| `src/pages/Grocery.tsx` (~L622) | pantry empty | `Your pantry is a blank slate` | `Add staples your household always keeps at home. When stock runs low, FamilyDesk will flag it and add items to your shopping list automatically.` |
-| `src/pages/Habits.tsx` (~L269) | Me tab empty | `No habits yet` (already matches) | `A small daily action, done consistently, changes everything. Add your first habit and track streaks across your whole household.` |
-| `src/pages/FinanceTransactions.tsx` (~L157) | unfiltered branch only | `No expenses logged yet` | `Add your first transaction and FamilyDesk will start building your household's spending picture — by category, by member, by month.` |
-| `src/pages/Calendar.tsx` (~L58) | no events | `Your family calendar is clear` | `Add events manually or connect Google Calendar. FamilyDesk will remind you before festivals, birthdays, and anything else that matters to your household.` |
+In `src/components/ai/AIChatWidget.tsx`:
+- Remove the floating trigger button + tooltip (the `<TooltipProvider>` block rendering the sparkle FAB).
+- Keep the `familydesk:open-ai` window event listener and the Drawer/Sheet so any existing callers (dashboard quick action) still work.
+- All chat/streaming logic is preserved unchanged.
 
-Filtered/secondary empty states (e.g. "No matching tasks", "No active challenges") are left untouched.
+No changes to `App.tsx` mount — widget stays mounted but renders nothing unless opened via the event.
 
-## 2. First-use module nudge banner
+## Part 2 — New shared component: `AIActionSheet`
 
-New shared component `src/components/discovery/ModuleNudgeBanner.tsx`:
-- Props: `moduleKey: "tasks" | "meals" | "grocery" | "habits" | "finance" | "calendar"`, `text: string`.
-- Style: `bg-[#E8F5F1]` background, 3px left border `#0F6E56`, rounded, p-3, single-line text (truncate), small `X` (lucide) dismiss button top-right. Mounted with margin-bottom so it sits above the page content.
-- Persistence: per-user via `localStorage` key `fd_module_nudge_dismissed:<userId>:<moduleKey>`. The user message references `setup_completed_modules` on `profiles`, but no such column exists today and the requirement explicitly says "Do not change … data fetching or authentication logic" — localStorage keeps the change UI-only and per-device, matching the "never show again once dismissed" contract. Calling that out so the user can confirm; if they want server-side persistence, it's a follow-up migration + hook.
-- Once dismissed (or already in localStorage), render nothing.
+New file `src/components/ai/AIActionSheet.tsx`. Built on the existing `BottomSheet` primitive.
 
-Mount one instance directly below the page header in each module page:
-- `src/pages/Tasks.tsx` — `Assign tasks to family members — everyone sees what's theirs, instantly.`
-- `src/pages/Meals.tsx` — `Tell us your dietary preferences once and the AI plans meals around them every day.`
-- `src/pages/Grocery.tsx` — `Add pantry staples now — FamilyDesk tracks what's running low so you never forget at the store.`
-- `src/pages/Habits.tsx` — `Build habits together. Family streaks are harder to break than solo ones.`
-- `src/pages/FinanceTransactions.tsx` (Finance landing for transactions; the Finance hub also gets one — see note) — `Log your first expense in 10 seconds. By month-end, you'll have a full household spending report.`
-- `src/pages/Calendar.tsx` — `Add a shared event and every household member gets it on their view automatically.`
+Props:
+```ts
+{ isOpen, onClose, initialPrompt: string }
+```
 
-Note: the Finance "module" is a hub with multiple sub-pages. The nudge will be mounted on the Finance hub page (`src/pages/Finance.tsx`) so it shows on first entry to the module, not buried inside Transactions. Will confirm exact file when implementing.
+Behavior:
+- On open, auto-fires `initialPrompt` to `${VITE_SUPABASE_URL}/functions/v1/ai-chat` using the same streaming pattern as `AIChatWidget` (JWT from `supabase.auth.getSession()`, body `{ messages, householdId, userId }`).
+- Maintains its own local `messages[]` (independent of the global chat session).
+- Header: ✨ icon + "FamilyDesk AI" title, close × (provided by `BottomSheet`).
+- Drag handle is already rendered by `BottomSheet`.
+- Body: scrollable, max-height 60vh, shows assistant messages with markdown-friendly `whitespace-pre-wrap`.
+- Loading: 3 pulsing dots (reuse the bouncing-dot pattern already in `AIChatWidget`).
+- Footer: "Ask a follow-up…" `Input` + send button — sends into the same local thread (same `householdId`/`userId` context).
 
-## 3. Dashboard "Did you know?" tip card
+Does **not** open the global chat panel.
 
-New component `src/components/dashboard/DidYouKnowCard.tsx`:
-- 15-tip array (frozen, exactly the order given).
-- On mount: read `fd_tip_index` from localStorage (default 0), increment for next session and write back: `next = (current + 1) % 15`. Show `tips[current]`.
-- Session-only dismiss tracked via `useState` (no persistence) — disappears for the rest of the page lifecycle, returns next page-load with the next tip.
-- Style: white card, full width, subtle 3px green left border `#0F6E56`, sparkle icon (`Sparkles` from lucide) on the left, tip text (single line, truncate on small screens, wraps on larger), `X` dismiss on the right. Themed with existing `Card` primitive plus inline border-left style.
+## Part 3 — Wire entry points
 
-Mount in `src/pages/Index.tsx` between `<TodaySnapshot />` and `<QuickActionsRow />` (i.e. between the Today's Snapshot row and the Module grid as requested — `QuickActionsRow` sits between snapshot and grid; the tip card goes above QuickActions so it's directly under the snapshot and clearly above the module grid).
+### Tasks (`src/pages/Tasks.tsx`)
+Add an outlined `Button` with `Sparkles` icon + label "Prioritise my list" right-aligned in the page header actions row. Click → open `AIActionSheet` with prompt:
+> "Prioritise my current task list by urgency and due date and suggest what I should focus on today."
 
-## Out of scope
-- No DB migrations, no changes to RLS, no changes to data fetching or auth.
-- No icon/illustration/CTA changes for empty states.
-- Filtered empty states and secondary empty states unchanged.
-- No analytics events.
+### Finance (`src/pages/Finance.tsx`)
+Same pattern in the Finance hub header. Label "Analyse this month". Prompt:
+> "Analyse my household's spending for this month. Highlight the top 3 categories, any unusual spikes, and one actionable suggestion to reduce spend."
 
-## Verification
-- Visit each module first time → banner visible; dismiss → reload → still gone.
-- Tasks/Habits/Meals/Grocery/Finance/Calendar empty pages → updated copy renders.
-- Dashboard → tip card appears under snapshot; reloading cycles tips 1→2→…→15→1; dismiss hides until next reload.
+### Grocery (`src/pages/Grocery.tsx`)
+Inside the Pantry tab, **below the pantry list** (after the category sections / `LowStockAlert` block, before `FloatingCartButton`), render a full-width outlined `Button` with sparkle icon: "What am I running low on?". Prompt:
+> "Based on my current pantry inventory, what staples are running low and what should I add to my shopping list this week?"
+
+## Out of scope (explicit)
+
+- Meals "Suggest dinner" — untouched.
+- Habits AI Coach — untouched.
+- Edge function, prompts, auth, household scoping — untouched.
+- Dashboard quick action that dispatches `familydesk:open-ai` — still works (global widget remains mounted, just FAB-less).
+
+## Files touched
+
+- `src/components/ai/AIChatWidget.tsx` — remove FAB JSX only.
+- `src/components/ai/AIActionSheet.tsx` — **new**, shared bottom sheet.
+- `src/pages/Tasks.tsx` — header button + sheet state.
+- `src/pages/Finance.tsx` — header button + sheet state.
+- `src/pages/Grocery.tsx` — pantry-tab full-width button + sheet state.

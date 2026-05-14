@@ -13,6 +13,9 @@ import { useSelectedMonth } from "@/hooks/useSelectedMonth";
 import { MonthSwitcher } from "@/components/finance/MonthSwitcher";
 import { MemberContributions } from "@/components/finance/MemberContributions";
 import { ModuleNudgeBanner } from "@/components/discovery/ModuleNudgeBanner";
+import { useState } from "react";
+import { AIActionSheet } from "@/components/ai/AIActionSheet";
+import { Button } from "@/components/ui/button";
 import {
   ArrowLeftRight,
   Target,
@@ -28,6 +31,7 @@ import {
   ArrowUp,
   ArrowDown,
   FileBarChart,
+  Sparkles,
 } from "lucide-react";
 
 const Finance = () => {
@@ -40,6 +44,7 @@ const Finance = () => {
   const { data: subscriptions } = useSubscriptions(householdId);
   const { data: savingsGoals } = useFinanceSavingsGoals(householdId);
   const { data: userCards } = useUserCards(householdId);
+  const [aiOpen, setAiOpen] = useState(false);
 
   // Compute contextual hints
   const dueSoonCount = subscriptions?.filter((s) => {
@@ -102,11 +107,23 @@ const Finance = () => {
           moduleKey="finance"
           text="Log your first expense in 10 seconds. By month-end, you'll have a full household spending report."
         />
-        <div>
-          <h1 className="page-heading">Finance</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            {monthLabel}{!isCurrent && " · viewing past month"}
-          </p>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h1 className="page-heading">Finance</h1>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              {monthLabel}{!isCurrent && " · viewing past month"}
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setAiOpen(true)}
+            className="gap-1.5 shrink-0"
+          >
+            <Sparkles className="w-4 h-4" />
+            <span className="hidden sm:inline">Analyse this month</span>
+            <span className="sm:hidden">Analyse</span>
+          </Button>
         </div>
 
         <MonthSwitcher />
@@ -180,6 +197,11 @@ const Finance = () => {
           })}
         </div>
       </main>
+      <AIActionSheet
+        isOpen={aiOpen}
+        onClose={() => setAiOpen(false)}
+        initialPrompt="Analyse my household's spending for this month. Highlight the top 3 categories, any unusual spikes, and one actionable suggestion to reduce spend."
+      />
     </div>
   );
 };

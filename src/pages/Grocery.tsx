@@ -40,6 +40,7 @@ import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 import type { PantryItem } from "@/hooks/usePantryItems";
 import { decodeIngredientsParam } from "@/lib/meals/shoppingListBridge";
+import { AIActionSheet } from "@/components/ai/AIActionSheet";
 
 const Grocery = () => {
   const { user } = useAuth();
@@ -77,6 +78,7 @@ const Grocery = () => {
   const [activeTab, setActiveTab] = useState<string>(() => searchParams.get("tab") || "pantry");
   const [showPantrySettings, setShowPantrySettings] = useState(false);
   const [isAddingLowStock, setIsAddingLowStock] = useState(false);
+  const [aiOpen, setAiOpen] = useState(false);
 
   // Handle inbound link from Meals: ?tab=shopping&newList=...&items=...
   useEffect(() => {
@@ -650,7 +652,18 @@ const Grocery = () => {
                 />
               </div>
             )}
-            
+
+            {pantryItems.length > 0 && !selectedCategoryDetail && (
+              <Button
+                variant="outline"
+                onClick={() => setAiOpen(true)}
+                className="w-full gap-2"
+              >
+                <Sparkles className="w-4 h-4" />
+                What am I running low on?
+              </Button>
+            )}
+
             <FloatingCartButton
               itemCount={cartItemCount}
               onClick={handleViewCart}
@@ -808,6 +821,12 @@ const Grocery = () => {
       />
 
       <PantrySettingsSheet open={showPantrySettings} onOpenChange={setShowPantrySettings} />
+
+      <AIActionSheet
+        isOpen={aiOpen}
+        onClose={() => setAiOpen(false)}
+        initialPrompt="Based on my current pantry inventory, what staples are running low and what should I add to my shopping list this week?"
+      />
     </div>
   );
 };
