@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Header } from "@/components/layout/Header";
 
 import { Card, CardContent } from "@/components/ui/card";
@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { EmptyState } from "@/components/ui/empty-state";
 import { QuickActionButton } from "@/components/ui/quick-action-button";
-import { Check, Pencil, Plus, Tag, Target, X } from "lucide-react";
+import { Check, ChevronDown, ChevronUp, Pencil, Plus, Tag, Target, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -19,8 +19,10 @@ import {
   useFinanceRealtime,
   useUpsertBudget,
   useCarryForwardBudgets,
+  useFinanceTransactions,
   CATEGORY_LABELS,
 } from "@/hooks/useFinance";
+import { useHouseholdMembers } from "@/hooks/useHouseholdMembers";
 import { formatINR } from "@/lib/formatINR";
 import { BudgetDialog } from "@/components/finance/BudgetDialog";
 import { useCustomCategories } from "@/hooks/useCustomCategories";
@@ -38,6 +40,14 @@ const FinanceBudget = () => {
   const { month: currentMonth, label: monthLabel } = useSelectedMonth();
   const { data: budgets, isLoading } = useFinanceBudgets(householdId, currentMonth);
   const { data: summary } = useFinanceMonthlySummary(householdId, currentMonth);
+  const { data: members } = useHouseholdMembers(householdId);
+  const hasMultipleMembers = (members?.length ?? 0) >= 2;
+  const [selectedPaidBy, setSelectedPaidBy] = useState<string>("household");
+  // All expense transactions for the month (used for member breakdown + top spender + member-filtered totals)
+  const { data: monthExpenses } = useFinanceTransactions(
+    householdId,
+    { month: currentMonth, type: "expense" },
+  );
   const upsertBudget = useUpsertBudget(householdId);
   const carryForward = useCarryForwardBudgets(householdId);
   const queryClient = useQueryClient();
@@ -45,6 +55,7 @@ const FinanceBudget = () => {
   const [showAdd, setShowAdd] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editAmount, setEditAmount] = useState<string>("");
+  const [expandedBreakdown, setExpandedBreakdown] = useState<Record<string, boolean>>({});
   const triedCarryRef = useRef<Set<string>>(new Set());
 
   // Auto carry-forward: if this month has no budgets, clone the most recent
@@ -79,16 +90,68 @@ const FinanceBudget = () => {
       });
   }, [householdId, currentMonth, budgets, isLoading, carryForward, queryClient]);
 
+  const memberById = useMemo(
+    () => new Map((members || []).map((m) => [m.userId, m])),
+    [members],
+  );
+  const firstName = (n: string) => (n || "Member").split(/\s+/)[0];
+
+  // Effective payer for a transaction: paid_by, falling back to created_by for legacy data.
+  const effectivePayer = (t: { paid_by: string | null; created_by: string }) =>
+    t.paid_by || t.created_by;
+
+  // Aggregate expenses by category (all members) and by (category, payer).
+  const { categoryTotal, categoryByMember, memberTotal, memberTxnCount } = useMemo(() => {
+    const catTotal: Record<string, number> = {};
+    const catByMember: Record<string, Record<string, number>> = {};
+    const memTotal: Record<string, number> = {};
+    const memCount: Record<string, number> = {};
+    for (const t of monthExpenses || []) {
+      const amt = Number(t.amount) || 0;
+      const payer = effectivePayer(t);
+      catTotal[t.category] = (catTotal[t.category] || 0) + amt;
+      if (!catByMember[t.category]) catByMember[t.category] = {};
+      catByMember[t.category][payer] = (catByMember[t.category][payer] || 0) + amt;
+      memTotal[payer] = (memTotal[payer] || 0) + amt;
+      memCount[payer] = (memCount[payer] || 0) + 1;
+    }
+    return { categoryTotal: catTotal, categoryByMember: catByMember, memberTotal: memTotal, memberTxnCount: memCount };
+  }, [monthExpenses]);
+
+  const isMemberView = selectedPaidBy !== "household";
+  const memberCategorySpend = (cat: string): number => {
+    if (!isMemberView) return summary?.categoryBreakdown?.[cat] || 0;
+    return categoryByMember[cat]?.[selectedPaidBy] || 0;
+  };
+
   const totalPlanned = (budgets || []).reduce((s, b) => s + Number(b.planned_amount), 0);
-  const totalActual = summary?.expenses || 0;
+  const totalActual = isMemberView
+    ? memberTotal[selectedPaidBy] || 0
+    : (summary?.expenses || 0);
   const overallPct = totalPlanned > 0 ? Math.min(100, (totalActual / totalPlanned) * 100) : 0;
 
   const budgetRows = (budgets || []).map((b) => {
-    const actual = summary?.categoryBreakdown?.[b.category] || 0;
+    const actual = memberCategorySpend(b.category);
     const pct = Number(b.planned_amount) > 0 ? Math.min(100, (actual / Number(b.planned_amount)) * 100) : 0;
     const over = actual > Number(b.planned_amount);
     return { ...b, actual, pct, over };
   }).sort((a, b) => b.pct - a.pct);
+
+  const selectedMember = isMemberView ? memberById.get(selectedPaidBy) : null;
+  const selectedFirstName = selectedMember ? firstName(selectedMember.displayName) : "";
+
+  // Top spender: 2+ members, top has 3+ txns, 2+ distinct payers.
+  const topSpender = useMemo(() => {
+    if (!hasMultipleMembers) return null;
+    const entries = Object.entries(memberTotal);
+    if (entries.length < 2) return null;
+    entries.sort((a, b) => b[1] - a[1]);
+    const [topId, topAmt] = entries[0];
+    if ((memberTxnCount[topId] || 0) < 3) return null;
+    const m = memberById.get(topId);
+    if (!m) return null;
+    return { name: firstName(m.displayName), amount: topAmt };
+  }, [hasMultipleMembers, memberTotal, memberTxnCount, memberById]);
 
   const startEdit = (id: string, current: number) => {
     setEditingId(id);
@@ -126,6 +189,29 @@ const FinanceBudget = () => {
 
         <MonthSwitcher allowFuture />
 
+        {hasMultipleMembers && (
+          <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-hide">
+            {[{ id: "household", name: "Household" }, ...((members || []).map(m => ({ id: m.userId, name: firstName(m.displayName) })))].map((p) => {
+              const active = selectedPaidBy === p.id;
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => setSelectedPaidBy(p.id)}
+                  className={cn(
+                    "shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition border",
+                    active
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-transparent text-muted-foreground border-border hover:text-foreground"
+                  )}
+                >
+                  {p.name}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
         {/* Overall progress */}
         <Card>
           <CardContent className="p-4 space-y-2">
@@ -145,6 +231,12 @@ const FinanceBudget = () => {
             )}
           </CardContent>
         </Card>
+
+        {!isMemberView && topSpender && (
+          <p className="text-xs text-muted-foreground px-1">
+            Highest spender this month: <span className="font-medium text-foreground">{topSpender.name}</span> — {formatINR(topSpender.amount)} across all categories
+          </p>
+        )}
 
         {/* Category budgets */}
         {isLoading ? (
@@ -180,6 +272,11 @@ const FinanceBudget = () => {
                       )}
                     </div>
                   </div>
+                  {isMemberView && selectedFirstName && (
+                    <p className="text-[11px] text-muted-foreground">
+                      {selectedFirstName}'s spend · Household limit: {formatINR(Number(row.planned_amount))}
+                    </p>
+                  )}
                   {Number(row.planned_amount) > 0 && (
                     <Progress value={row.pct} className="h-1.5" />
                   )}
@@ -232,6 +329,47 @@ const FinanceBudget = () => {
                       </button>
                     )}
                   </div>
+                  {!isMemberView && hasMultipleMembers && (categoryTotal[row.category] || 0) > 0 && (() => {
+                    const expanded = !!expandedBreakdown[row.id];
+                    const total = categoryTotal[row.category] || 0;
+                    const memberRows = Object.entries(categoryByMember[row.category] || {})
+                      .filter(([, amt]) => amt > 0)
+                      .map(([uid, amt]) => {
+                        const m = memberById.get(uid);
+                        return { uid, name: m ? firstName(m.displayName) : "Member", amount: amt, pct: total > 0 ? (amt / total) * 100 : 0 };
+                      })
+                      .sort((a, b) => b.amount - a.amount);
+                    if (memberRows.length === 0) return null;
+                    return (
+                      <div className="pt-1 border-t border-border/50">
+                        <button
+                          type="button"
+                          onClick={() => setExpandedBreakdown((s) => ({ ...s, [row.id]: !s[row.id] }))}
+                          className="text-[11px] text-muted-foreground hover:text-foreground inline-flex items-center gap-1"
+                        >
+                          {expanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                          {expanded ? "Hide member breakdown" : "See by member"}
+                        </button>
+                        {expanded && (
+                          <ul className="mt-2 space-y-1.5">
+                            {memberRows.map((mr) => (
+                              <li key={mr.uid} className="flex items-center gap-2">
+                                <span className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-muted text-[10px] font-semibold shrink-0">
+                                  {mr.name.slice(0, 2).toUpperCase()}
+                                </span>
+                                <span className="text-[11px] flex-1 min-w-0 truncate">{mr.name}</span>
+                                <span className="text-[11px] font-medium tabular-nums">{formatINR(mr.amount)}</span>
+                                <div className="w-20 h-1.5 rounded-full bg-muted overflow-hidden">
+                                  <div className="h-full bg-primary" style={{ width: `${mr.pct}%` }} />
+                                </div>
+                                <span className="text-[10px] text-muted-foreground tabular-nums w-8 text-right">{Math.round(mr.pct)}%</span>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </CardContent>
               </Card>
             ))}
