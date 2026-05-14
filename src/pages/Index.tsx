@@ -85,7 +85,7 @@ const Index = () => {
       ? Math.round((moduleSetupDone / moduleSetupTotal) * 100)
       : 0;
   const allModuleSetupsDone =
-    moduleSetupTotal > 0 && moduleSetupDone === moduleSetupTotal;
+    moduleSetupTotal === 0 || moduleSetupDone === moduleSetupTotal;
   const showSetupBanner = !preferencesLoading && !onboardingCompleted && !allModuleSetupsDone;
 
   const queryClient = useQueryClient();
