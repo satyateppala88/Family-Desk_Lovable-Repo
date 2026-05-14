@@ -2301,19 +2301,16 @@ export type Database = {
         Row: {
           base_url: string
           id: boolean
-          service_role_key: string
           updated_at: string
         }
         Insert: {
           base_url: string
           id?: boolean
-          service_role_key: string
           updated_at?: string
         }
         Update: {
           base_url?: string
           id?: boolean
-          service_role_key?: string
           updated_at?: string
         }
         Relationships: []
