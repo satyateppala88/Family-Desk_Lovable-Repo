@@ -1,61 +1,67 @@
-## Goal
+# Floating Brand-Green Bottom Nav Redesign
 
-Replace the always-visible AI sparkle FAB with **contextual** AI actions inside Tasks, Finance, and Grocery, each opening a shared lightweight bottom sheet that talks to the existing `ai-chat` edge function.
+Replace the current bordered white bottom nav with a floating green capsule, restore Finance to the primary nav (5 tabs), and move Habits into the More sheet.
 
-## Part 1 — Remove the global AI FAB
+## Scope
 
-In `src/components/ai/AIChatWidget.tsx`:
-- Remove the floating trigger button + tooltip (the `<TooltipProvider>` block rendering the sparkle FAB).
-- Keep the `familydesk:open-ai` window event listener and the Drawer/Sheet so any existing callers (dashboard quick action) still work.
-- All chat/streaming logic is preserved unchanged.
+Single component rewrite (`BottomNav.tsx`) + small updates to `MoreSheet.tsx` and the global content padding in `ProtectedRoute.tsx`. No routing, no AI logic, no other module changes.
 
-No changes to `App.tsx` mount — widget stays mounted but renders nothing unless opened via the event.
+## 1. `src/components/layout/BottomNav.tsx` — full rewrite
 
-## Part 2 — New shared component: `AIActionSheet`
+New tab order (left → right):
 
-New file `src/components/ai/AIActionSheet.tsx`. Built on the existing `BottomSheet` primitive.
+| # | Label  | Route             | Icon (lucide)            | Size |
+|---|--------|-------------------|--------------------------|------|
+| 1 | Home   | `/dashboard`       | `Home`                   | 20px |
+| 2 | Tasks  | `/taskmaster/today`| `CheckSquare`            | 20px |
+| 3 | Ask AI | `/ai`              | `Sparkles`               | 24px |
+| 4 | Finance| `/finance`         | `Wallet`                 | 20px |
+| 5 | More   | (opens sheet)      | `MoreHorizontal`         | 20px |
 
-Props:
-```ts
-{ isOpen, onClose, initialPrompt: string }
-```
+Visuals (matching uploaded option C):
 
-Behavior:
-- On open, auto-fires `initialPrompt` to `${VITE_SUPABASE_URL}/functions/v1/ai-chat` using the same streaming pattern as `AIChatWidget` (JWT from `supabase.auth.getSession()`, body `{ messages, householdId, userId }`).
-- Maintains its own local `messages[]` (independent of the global chat session).
-- Header: ✨ icon + "FamilyDesk AI" title, close × (provided by `BottomSheet`).
-- Drag handle is already rendered by `BottomSheet`.
-- Body: scrollable, max-height 60vh, shows assistant messages with markdown-friendly `whitespace-pre-wrap`.
-- Loading: 3 pulsing dots (reuse the bouncing-dot pattern already in `AIChatWidget`).
-- Footer: "Ask a follow-up…" `Input` + send button — sends into the same local thread (same `householdId`/`userId` context).
+- Container: `fixed bottom-4 left-4 right-4 z-40 lg:hidden`, `max-w-[600px] mx-auto`
+- Bar: `bg-[#0F6E56] rounded-[20px] h-[60px] flex items-center px-1`
+- Shadow: `boxShadow: '0 4px 20px rgba(15,110,86,0.30)'`
+- Safe-area: wrapper adds `marginBottom: env(safe-area-inset-bottom)`
+- No border, no top divider, no backdrop blur, solid green only
 
-Does **not** open the global chat panel.
+Each tab button:
 
-## Part 3 — Wire entry points
+- `flex-1 flex flex-col items-center justify-center gap-[3px] min-h-[44px] rounded-[16px] py-2`
+- Press: `active:scale-[0.92] transition-transform duration-150 ease-out`
+- Inactive icon + label color: `text-white/45`
+- Active icon + label color: `text-white`
+- Label: `text-[10px] font-medium tracking-[0.01em]`
+- Active state via `NavLink` `isActive`; for More, active when path matches `MORE_MATCH`
+- No pill, underline, or background highlight on active
 
-### Tasks (`src/pages/Tasks.tsx`)
-Add an outlined `Button` with `Sparkles` icon + label "Prioritise my list" right-aligned in the page header actions row. Click → open `AIActionSheet` with prompt:
-> "Prioritise my current task list by urgency and due date and suggest what I should focus on today."
+`MORE_MATCH` becomes `["/meals", "/grocery", "/habits", "/calendar"]` (Finance removed, Habits added).
 
-### Finance (`src/pages/Finance.tsx`)
-Same pattern in the Finance hub header. Label "Analyse this month". Prompt:
-> "Analyse my household's spending for this month. Highlight the top 3 categories, any unusual spikes, and one actionable suggestion to reduce spend."
+Keep existing `HIDDEN_PREFIXES` behaviour.
 
-### Grocery (`src/pages/Grocery.tsx`)
-Inside the Pantry tab, **below the pantry list** (after the category sections / `LowStockAlert` block, before `FloatingCartButton`), render a full-width outlined `Button` with sparkle icon: "What am I running low on?". Prompt:
-> "Based on my current pantry inventory, what staples are running low and what should I add to my shopping list this week?"
+## 2. `src/components/layout/MoreSheet.tsx`
 
-## Out of scope (explicit)
+Replace `ROWS` with, in order:
 
-- Meals "Suggest dinner" — untouched.
-- Habits AI Coach — untouched.
-- Edge function, prompts, auth, household scoping — untouched.
-- Dashboard quick action that dispatches `familydesk:open-ai` — still works (global widget remains mounted, just FAB-less).
+1. Meals → `/meals` (`UtensilsCrossed`)
+2. Grocery → `/grocery` (`ShoppingCart`)
+3. Habits → `/habits` (`Leaf`)
+4. Calendar → `/calendar` (`Calendar`)
 
-## Files touched
+Row markup unchanged (icon left, label, chevron right). Remove `Wallet`/Finance import.
 
-- `src/components/ai/AIChatWidget.tsx` — remove FAB JSX only.
-- `src/components/ai/AIActionSheet.tsx` — **new**, shared bottom sheet.
-- `src/pages/Tasks.tsx` — header button + sheet state.
-- `src/pages/Finance.tsx` — header button + sheet state.
-- `src/pages/Grocery.tsx` — pantry-tab full-width button + sheet state.
+Note: the spec says "name + live subtitle" but no subtitle source is defined and the current sheet has no subtitle field. Keeping existing single-line row layout to avoid inventing data; flag this if you want real live subtitles wired up later.
+
+## 3. `src/components/layout/ProtectedRoute.tsx`
+
+Change wrapper padding so floating nav never overlaps content:
+
+- `pb-16 lg:pb-0` → `pb-24 lg:pb-0` (96px on mobile, 0 on desktop where nav is hidden)
+
+## Out of scope
+
+- `/ai` page, `AIActionSheet`, contextual AI buttons (untouched)
+- All routes, AI backend, edge functions, prompts
+- Desktop layout (nav already `lg:hidden`)
+- Tabler icon swap — sticking with existing `lucide-react` set already used everywhere; visual sizing/colors match the spec exactly. Switching icon libraries would add a dependency and touch unrelated files.
