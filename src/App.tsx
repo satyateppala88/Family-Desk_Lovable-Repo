@@ -68,6 +68,7 @@ const AdminPermissionAnalytics = lazy(() => import("./pages/AdminPermissionAnaly
 const HowToUse = lazy(() => import("./pages/HowToUse"));
 const WhatsNew = lazy(() => import("./pages/WhatsNew"));
 const Welcome = lazy(() => import("./pages/Welcome"));
+const AskAi = lazy(() => import("./pages/AskAi"));
 
 const queryClient = createPersistedQueryClient();
 
@@ -213,6 +214,7 @@ const App = () => (
                   </ProtectedRoute>
                 } />
                 <Route path="/finance" element={<ProtectedRoute><Finance /></ProtectedRoute>} />
+                <Route path="/ai" element={<ProtectedRoute><AskAi /></ProtectedRoute>} />
                 <Route path="/finance/transactions" element={<ProtectedRoute><FinanceTransactions /></ProtectedRoute>} />
                 <Route path="/finance/subscriptions" element={<ProtectedRoute><FinanceSubscriptions /></ProtectedRoute>} />
                 <Route path="/finance/budget" element={<ProtectedRoute><FinanceBudget /></ProtectedRoute>} />

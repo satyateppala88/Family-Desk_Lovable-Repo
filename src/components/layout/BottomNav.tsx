@@ -3,7 +3,7 @@ import { NavLink, useLocation } from "react-router-dom";
 import {
   Home,
   CheckSquare,
-  Wallet,
+  Sparkles,
   Leaf,
   MoreHorizontal,
 } from "lucide-react";
@@ -11,13 +11,13 @@ import { cn } from "@/lib/utils";
 import { MoreSheet } from "@/components/layout/MoreSheet";
 
 const PRIMARY = [
-  { to: "/dashboard", label: "Home", icon: Home, match: ["/dashboard"] },
-  { to: "/taskmaster/today", label: "Tasks", icon: CheckSquare, match: ["/taskmaster", "/tasks"] },
-  { to: "/finance", label: "Finance", icon: Wallet, match: ["/finance"] },
-  { to: "/habits", label: "Habits", icon: Leaf, match: ["/habits"] },
+  { to: "/dashboard", label: "Home", icon: Home, match: ["/dashboard"], primary: false },
+  { to: "/taskmaster/today", label: "Tasks", icon: CheckSquare, match: ["/taskmaster", "/tasks"], primary: false },
+  { to: "/ai", label: "Ask AI", icon: Sparkles, match: ["/ai"], primary: true },
+  { to: "/habits", label: "Habits", icon: Leaf, match: ["/habits"], primary: false },
 ];
 
-const MORE_MATCH = ["/meals", "/grocery", "/calendar"];
+const MORE_MATCH = ["/finance", "/meals", "/grocery", "/calendar"];
 
 const HIDDEN_PREFIXES = [
   "/auth",
@@ -68,7 +68,12 @@ export const BottomNav = () => {
                   {active && (
                     <span className="absolute top-0 h-[3px] w-8 bg-primary rounded-b-full" />
                   )}
-                  <Icon className={cn("h-5 w-5", active && "stroke-[2.5]")} />
+                  <Icon
+                    className={cn(
+                      item.primary ? "h-6 w-6" : "h-5 w-5",
+                      active && "stroke-[2.5]",
+                    )}
+                  />
                   <span>{item.label}</span>
                 </NavLink>
               </li>
