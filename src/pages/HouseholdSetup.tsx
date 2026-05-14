@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CheckCircle2, Mail, RefreshCw } from "lucide-react";
-import lockupImg from "@/assets/familydesk-wordmark.png";
+import { FamilyDeskLogo } from "@/components/brand/FamilyDeskLogo";
 
 const HouseholdSetup = () => {
   const [householdName, setHouseholdName] = useState("");
@@ -291,16 +291,10 @@ const HouseholdSetup = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-secondary/5 p-4">
-      <Card className="w-full max-w-md">
+      <Card className="w-full max-w-md bg-white">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-3">
-            <div className="overflow-hidden w-[260px] flex justify-center">
-              <img
-                src={lockupImg}
-                alt="FamilyDesk — Household OS"
-                className="h-16 sm:h-20 w-auto object-contain"
-              />
-            </div>
+            <FamilyDeskLogo size="lg" />
           </div>
         <CardTitle className="text-2xl">Set Up Your Household</CardTitle>
         <CardDescription>
