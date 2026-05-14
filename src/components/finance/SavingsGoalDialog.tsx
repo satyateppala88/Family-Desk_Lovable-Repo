@@ -1,54 +1,94 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon } from "lucide-react";
-import { format, parse } from "date-fns";
-import { cn } from "@/lib/utils";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import type { FinanceSavingsGoal } from "@/hooks/useFinance";
 
 interface SavingsGoalDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSave: (data: { name: string; target_amount: number; current_amount: number; target_date: string | null }) => void;
+  goal?: FinanceSavingsGoal | null;
+  autoFocusDate?: boolean;
 }
 
-export const SavingsGoalDialog = ({ open, onOpenChange, onSave }: SavingsGoalDialogProps) => {
+const MONTHS = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+];
+
+export const SavingsGoalDialog = ({ open, onOpenChange, onSave, goal, autoFocusDate }: SavingsGoalDialogProps) => {
+  const isEdit = !!goal;
   const [name, setName] = useState("");
   const [target, setTarget] = useState("");
   const [current, setCurrent] = useState("0");
-  const [targetDate, setTargetDate] = useState("");
-
+  const [targetMonth, setTargetMonth] = useState<string>(""); // "0".."11"
+  const [targetYear, setTargetYear] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
+  const monthTriggerRef = useRef<HTMLButtonElement | null>(null);
+
+  // Prefill on open / when goal changes
+  useEffect(() => {
+    if (!open) return;
+    if (goal) {
+      setName(goal.name || "");
+      setTarget(String(goal.target_amount ?? ""));
+      setCurrent(String(goal.current_amount ?? 0));
+      if (goal.target_date) {
+        const d = new Date(goal.target_date);
+        setTargetMonth(String(d.getMonth()));
+        setTargetYear(String(d.getFullYear()));
+      } else {
+        setTargetMonth("");
+        setTargetYear("");
+      }
+    } else {
+      setName("");
+      setTarget("");
+      setCurrent("0");
+      setTargetMonth("");
+      setTargetYear("");
+    }
+  }, [open, goal]);
+
+  useEffect(() => {
+    if (open && autoFocusDate) {
+      // Defer to allow BottomSheet to render
+      const t = setTimeout(() => monthTriggerRef.current?.focus(), 200);
+      return () => clearTimeout(t);
+    }
+  }, [open, autoFocusDate]);
 
   const handleSave = () => {
     if (submitting) return;
     if (!name || !target || Number(target) <= 0) return;
     setSubmitting(true);
+    const target_date = targetMonth !== "" && targetYear !== ""
+      ? `${targetYear}-${String(Number(targetMonth) + 1).padStart(2, "0")}-01`
+      : null;
     onSave({
       name,
       target_amount: Number(target),
       current_amount: Number(current) || 0,
-      target_date: targetDate || null,
+      target_date,
     });
     onOpenChange(false);
-    setName("");
-    setTarget("");
-    setCurrent("0");
-    setTargetDate("");
     setTimeout(() => setSubmitting(false), 600);
   };
+
+  const currentYear = new Date().getFullYear();
+  const yearOptions = Array.from({ length: 21 }, (_, i) => currentYear + i);
 
   return (
     <BottomSheet
       isOpen={open}
       onClose={() => onOpenChange(false)}
-      title="New Savings Goal"
+      title={isEdit ? "Edit Savings Goal" : "New Savings Goal"}
       footer={
         <Button onClick={handleSave} className="w-full" disabled={submitting || !name || !target}>
-          {submitting ? "Creating..." : "Create Goal"}
+          {submitting ? "Saving..." : isEdit ? "Save Changes" : "Create Goal"}
         </Button>
       }
     >
@@ -66,28 +106,29 @@ export const SavingsGoalDialog = ({ open, onOpenChange, onSave }: SavingsGoalDia
             <Input type="number" inputMode="numeric" placeholder="0" value={current} onChange={(e) => setCurrent(e.target.value)} min="0" />
           </div>
           <div className="space-y-2">
-            <Label>Target Date (optional)</Label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className={cn("w-full justify-start text-left font-normal", !targetDate && "text-muted-foreground")}
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {targetDate ? format(parse(targetDate, "yyyy-MM-dd", new Date()), "dd/MM/yyyy") : "Pick a date"}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={targetDate ? parse(targetDate, "yyyy-MM-dd", new Date()) : undefined}
-                  onSelect={(d) => setTargetDate(d ? format(d, "yyyy-MM-dd") : "")}
-                  initialFocus
-                  className={cn("p-3 pointer-events-auto")}
-                />
-              </PopoverContent>
-            </Popover>
+            <Label>Target date (optional)</Label>
+            <div className="grid grid-cols-2 gap-2">
+              <Select value={targetMonth} onValueChange={setTargetMonth}>
+                <SelectTrigger ref={monthTriggerRef}>
+                  <SelectValue placeholder="Month" />
+                </SelectTrigger>
+                <SelectContent>
+                  {MONTHS.map((m, i) => (
+                    <SelectItem key={m} value={String(i)}>{m}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={targetYear} onValueChange={setTargetYear}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Year" />
+                </SelectTrigger>
+                <SelectContent>
+                  {yearOptions.map((y) => (
+                    <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
       </div>
     </BottomSheet>
