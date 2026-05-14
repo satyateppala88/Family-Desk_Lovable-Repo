@@ -105,6 +105,11 @@ export const SubscriptionDialog = ({ open, onOpenChange, onSave, initialData }: 
             <Input placeholder="e.g. Netflix, LIC Premium, AC AMC" value={name} onChange={(e) => setName(e.target.value)} />
           </div>
 
+          <div className="flex items-center justify-between">
+            <Label>Active</Label>
+            <Switch checked={isActive} onCheckedChange={setIsActive} />
+          </div>
+
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>Amount (₹) *</Label>
@@ -173,11 +178,6 @@ export const SubscriptionDialog = ({ open, onOpenChange, onSave, initialData }: 
           <div className="space-y-1.5">
             <Label>Notes</Label>
             <Textarea placeholder="Optional notes..." value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} />
-          </div>
-
-          <div className="flex items-center justify-between">
-            <Label>Active</Label>
-            <Switch checked={isActive} onCheckedChange={setIsActive} />
           </div>
 
       </div>
