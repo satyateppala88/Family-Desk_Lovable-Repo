@@ -166,6 +166,8 @@ export interface HouseholdPreferences {
   finance_setup_complete?: boolean | null;
   grocery_setup_complete?: boolean | null;
   meals_setup_complete?: boolean | null;
+  habits_setup_complete?: boolean | null;
+  calendar_setup_complete?: boolean | null;
   created_at: string;
   updated_at: string;
 }
