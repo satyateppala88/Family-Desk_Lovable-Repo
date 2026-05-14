@@ -382,6 +382,7 @@ export const useFinanceMonthlySummary = (householdId: string | null, month?: str
       const transactions = (data as Array<Pick<FinanceTransaction, "amount" | "type" | "category">>) || [];
       const income = transactions.filter((t) => t.type === "income").reduce((s, t) => s + Number(t.amount), 0);
       const expenses = transactions.filter((t) => t.type === "expense").reduce((s, t) => s + Number(t.amount), 0);
+      const saved = transactions.filter((t) => t.type === "savings").reduce((s, t) => s + Number(t.amount), 0);
 
       // Category breakdown for expenses
       const categoryBreakdown: Record<string, number> = {};
@@ -394,6 +395,7 @@ export const useFinanceMonthlySummary = (householdId: string | null, month?: str
       return {
         income,
         expenses,
+        saved,
         savings: income - expenses,
         cashLeft: income - expenses,
         categoryBreakdown,
