@@ -11,6 +11,7 @@ import { useCalendarConnections } from "@/hooks/useCalendarConnections";
 import { useHousehold } from "@/hooks/useHousehold";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
+import { ModuleNudgeBanner } from "@/components/discovery/ModuleNudgeBanner";
 import { CalendarDays, Plus } from "lucide-react";
 
 const Calendar = () => {
@@ -40,6 +41,10 @@ const Calendar = () => {
       
       <main className="flex-1 flex flex-col pb-20">
         <div data-tour="calendar-nav" style={{ maxWidth: 'var(--content-max-width)', width: '100%', margin: '0 auto', paddingLeft: 'var(--page-padding-x)', paddingRight: 'var(--page-padding-x)' }}>
+          <ModuleNudgeBanner
+            moduleKey="calendar"
+            text="Add a shared event and every household member gets it on their view automatically."
+          />
           <CalendarHeader
             currentDate={currentDate}
             onDateChange={setCurrentDate}
@@ -57,8 +62,8 @@ const Calendar = () => {
             <div style={{ maxWidth: 'var(--content-max-width)', width: '100%', margin: '0 auto', paddingLeft: 'var(--page-padding-x)', paddingRight: 'var(--page-padding-x)' }}>
               <EmptyState
                 icon={CalendarDays}
-                title="No events this week"
-                description="Your calendar is wide open — a perfect chance to plan something fun or just enjoy the quiet."
+                title="Your family calendar is clear"
+                description="Add events manually or connect Google Calendar. FamilyDesk will remind you before festivals, birthdays, and anything else that matters to your household."
                 encouragement="Add a family event, sync your Google Calendar, or simply take it easy."
                 action={{ label: "Add Event", onClick: () => setShowCreateDialog(true) }}
               />
