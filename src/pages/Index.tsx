@@ -15,7 +15,7 @@ import { PageLoadingGrid } from "@/components/ui/page-loading";
 import { Household } from "@/types/database";
 import { useEnabledProducts, isProductEnabled, ProductName } from "@/hooks/useEnabledProducts";
 import { useHouseholdPreferences } from "@/hooks/useHouseholdPreferences";
-import { MODULE_SETUP_KEYS } from "@/lib/moduleSetup";
+import { MODULE_SETUP_KEYS, isModuleSetupComplete } from "@/lib/moduleSetup";
 import { OnboardingProgressIndicator } from "@/components/onboarding/OnboardingProgressIndicator";
 import { FestivalBanner } from "@/components/dashboard/FestivalBanner";
 import { TodaySnapshot } from "@/components/dashboard/TodaySnapshot";
@@ -72,14 +72,13 @@ const Index = () => {
   const { data: dashStats } = useDashboardStats(householdId);
   const { moduleSubtitles } = useDashboardSnapshot(householdId);
   const { preferences } = useHouseholdPreferences(householdId);
-  const completedModuleSetups =
-    ((preferences as any)?.completed_module_setups as Record<string, boolean> | undefined) ?? {};
   // Banner progress is driven by which enabled modules have been set up,
   // so the percentage and the hide-when-complete logic agree.
-  const moduleSetupTotal = (enabledProducts ?? []).length;
+  const moduleSetupProducts = (enabledProducts ?? []).filter((p) => !!MODULE_SETUP_KEYS[p as ProductName]);
+  const moduleSetupTotal = moduleSetupProducts.length;
   const moduleSetupDone = (enabledProducts ?? []).reduce((n, p) => {
     const key = MODULE_SETUP_KEYS[p as ProductName];
-    return key && completedModuleSetups[key] ? n + 1 : n;
+    return key && isModuleSetupComplete(preferences, key) ? n + 1 : n;
   }, 0);
   const moduleSetupPct =
     moduleSetupTotal > 0
