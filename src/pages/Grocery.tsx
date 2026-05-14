@@ -652,7 +652,18 @@ const Grocery = () => {
                 />
               </div>
             )}
-            
+
+            {pantryItems.length > 0 && !selectedCategoryDetail && (
+              <Button
+                variant="outline"
+                onClick={() => setAiOpen(true)}
+                className="w-full gap-2"
+              >
+                <Sparkles className="w-4 h-4" />
+                What am I running low on?
+              </Button>
+            )}
+
             <FloatingCartButton
               itemCount={cartItemCount}
               onClick={handleViewCart}
