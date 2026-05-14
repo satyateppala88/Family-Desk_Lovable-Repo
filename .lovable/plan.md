@@ -1,48 +1,57 @@
 ## Goal
-Fix two visual bugs in the "Top spending categories" bar chart on the Monthly Report page (`/finance/report`) without changing data sources, ranking logic, or any other report section.
+At tablet breakpoint (≥768px) make the calendar use the available space, fix non-tappable "+X more" pills, and add a Day Detail panel/sheet. Mobile (<768px) layout stays untouched.
 
-## Current State
-The chart is rendered inside `ReportCard.tsx` using Recharts (`BarChart layout="vertical"`). It suffers from:
-1. The highest-value bar overflows the card boundary because widths are not normalised to the max value.
-2. The rupee amount label is positioned inside/on top of the bar via Recharts' `label` prop, causing clipping at the card edge.
+## Context
+- `useIsMobile()` returns true below 768px. The CalendarGrid agenda view is only used on mobile, so the "desktop" branch is what tablets render today — this is where the styling tweaks need to land.
+- F-17 already wired `onSelectDate` for both render paths, so Bug 3 is mostly verification + ensuring it also opens the new detail panel.
+- BottomNav is currently a floating pill until `lg` (1024px). Need to swap to a flush full-width bar at `md` (768–1023px), keep pill on mobile.
 
 ## Changes
 
-### 1. Replace Recharts bar chart with a custom flex-based row layout
-In `src/components/finance/ReportCard.tsx`, remove the Recharts import and the `<BarChart>` block inside the "Top spending categories" section. Replace it with a manual 3-column flex row for each category.
+### 1. New component: `src/components/calendar/DayDetailSheet.tsx`
+A responsive Sheet (shadcn) that shows ALL events for a selected date.
+- `<768px`: `side="bottom"` (rounded-t-2xl, ~75vh max-height, scrollable list).
+- `≥768px`: `side="right"`, width 320px, full height, slides over the grid (not modal — backdrop transparent, dismiss on outside click and X).
+- Header: `[EEEE], [d MMM]` (e.g., "Monday, 27 April") + `N event(s)` count + close X button.
+- Body: events sorted by start time ascending with all-day events first.
+  - Each row: 3px left color strip, full title (no truncation), time line `h:mm a – h:mm a` or "All day", and member chip (derive from `event.calendarOwner` if present).
+  - System events render as muted dot rows (consistent with grid).
+- Empty state: "Nothing scheduled".
+- Props: `open`, `onOpenChange`, `date: Date`, `events: CalendarEvent[]`, `onEventClick(ev)`.
 
-**Per-row layout:**
-```text
-[Category name  110px right-aligned] [Bar track flex-grow overflow-hidden] [Amount 90px left-aligned]
-```
+### 2. `src/components/calendar/CalendarGrid.tsx`
+Add new prop `onOpenDay: (date: Date) => void`. Apply tablet styling at `md:` breakpoint inside the existing desktop grid branch (which is what tablets render).
 
-**Row specs:**
-- Height: `min-h-[48px]`
-- Category name: right-aligned, `text-[13px]`, `#6B6965`, `text-right`, max 2 lines with ellipsis
-- Bar track container: `flex-1`, `overflow-hidden`, background `#E8E4D9`, height `10px`, `rounded-full`
-- Bar fill: width calculated as `(amount / maxAmount) * 100` + `%`, height `10px`, `rounded-full`
-  - Rank 1: `#0F6E56`
-  - Rank 2: `#4A9B7F`
-  - Rank 3: `#8FBFB0`
-- Amount label: left-aligned in its 90px column, `text-[13px]`, `#2C2C2A`, `font-bold`
+Per spec on the desktop grid:
+- Cell: `min-h-[72px] md:min-h-[100px]`, `p-1 md:p-1` (4px); change `onClick` to call `onOpenDay(day)` (which internally also sets selectedDate).
+- Day number: position top-right with `md:text-[15px]` and `md:p-1.5`. Keep selected/today highlight (already wired).
+- Event chips: `md:h-[22px] md:text-[11px] md:px-2`, no truncate clamp (use `truncate` only as final fallback). Keep slice(0, 3).
+- "+N more" element: convert from `<div>` to `<button type="button">` with `onClick={(e) => { e.stopPropagation(); onOpenDay(day); }}`. Style as small underline link, tappable target ≥32px.
+- Week-day header row: `md:text-[13px] md:pb-1`.
+- Mobile agenda branch: unchanged.
 
-**Amount formatting logic:**
-- Default: `toLocaleString('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 })` → e.g. `₹1,29,000`
-- On viewports < 360px wide (use Tailwind `xs:` or a `useIsMobile`-style check): if amount ≥ 100000, show `₹[X.X]L` (e.g. `₹1.3L`); otherwise show the full formatted value.
+### 3. `src/pages/Calendar.tsx`
+- Add state `dayDetailOpen` (default false).
+- Define `openDayDetail(date)` that calls `setSelectedDate(date)` and `setDayDetailOpen(true)`. Pass it to `CalendarGrid` as `onOpenDay`.
+- Render `<DayDetailSheet open={dayDetailOpen} onOpenChange={setDayDetailOpen} date={selectedDate} events={selectedDateEvents} onEventClick={...} />`.
+- Keep the inline events-list section (from F-17) — it remains the default mobile/tablet snapshot under the grid; the sheet is the "see all" view.
 
-### 2. Normalise bar widths
-```ts
-const maxValue = Math.max(...report.topCategories.map(c => c.amount));
-// Then for each category:
-const widthPercent = maxValue > 0 ? (category.amount / maxValue) * 100 : 0;
-```
-Apply `style={{ width: `${widthPercent}%` }}` to the inner bar div. The highest bar will always cap at 100% of the track.
+### 4. `src/components/layout/BottomNav.tsx`
+Rework the wrapper so:
+- `<md` (mobile): existing floating pill — keep classes as-is.
+- `≥md` and `<lg` (tablet): flush full-width bar
+  - `fixed bottom-0 left-0 right-0`, no margin, no rounded corners
+  - Height 60px, background `#0F6E56`, items centred
+  - Icons + labels visible (use existing labels)
+- `≥lg`: hidden (unchanged).
 
-### 3. Clean up
-Remove the `recharts` import from `ReportCard.tsx` since this is the only chart usage in that file. The `recharts` library can remain in `package.json` if used elsewhere.
+Implement by rendering two `<nav>` siblings under the same `<>` fragment with mutually exclusive Tailwind visibility classes (`md:hidden` for the pill, `hidden md:flex lg:hidden` for the flush bar) so the two layouts don't fight CSS. Both reuse the same `PRIMARY` array and More handler.
+
+### 5. Verification
+- `bunx tsc --noEmit`.
+- Browser test at 390 (mobile) and 820 (tablet) viewports: confirm date tap highlights + opens panel; "+X more" opens panel with full list; chips render at proper size on tablet; bottom nav switches form factor.
 
 ## Out of Scope
-- Data source (`useMonthlyReport` hook)
-- Category ranking/sorting logic
-- Other report sections (stats, habits, meals, tasks, tagline, share button)
-- Page-level layout in `FinanceReport.tsx`
+- Event creation flow, Connect Google Calendar dialog, data fetching hooks.
+- Mobile agenda layout in CalendarGrid.
+- Desktop (≥1024px) — currently no bottom nav by design; not changing.

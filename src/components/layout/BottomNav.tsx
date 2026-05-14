@@ -47,9 +47,10 @@ export const BottomNav = () => {
 
   return (
     <>
+      {/* Mobile: floating pill */}
       <nav
         aria-label="Primary"
-        className="lg:hidden fixed bottom-4 left-4 right-4 z-40"
+        className="md:hidden fixed bottom-4 left-4 right-4 z-40"
         style={{ marginBottom: "env(safe-area-inset-bottom)" }}
       >
         <ul
@@ -92,6 +93,54 @@ export const BottomNav = () => {
             >
               <MoreHorizontal className="h-5 w-5" />
               <span className="text-[10px] font-medium tracking-[0.01em] leading-none">
+                More
+              </span>
+            </button>
+          </li>
+        </ul>
+      </nav>
+
+      {/* Tablet: flush full-width bar */}
+      <nav
+        aria-label="Primary"
+        className="hidden md:flex lg:hidden fixed bottom-0 left-0 right-0 z-40 h-[60px]"
+        style={{
+          backgroundColor: "#0F6E56",
+          paddingBottom: "env(safe-area-inset-bottom)",
+        }}
+      >
+        <ul className="flex w-full items-stretch justify-around">
+          {PRIMARY.map((item) => {
+            const Icon = item.icon;
+            const active = matches(location.pathname, item.match);
+            return (
+              <li key={item.to} className="flex-1">
+                <NavLink
+                  to={item.to}
+                  className={cn(
+                    "h-full min-h-touch flex flex-col items-center justify-center gap-1 py-2",
+                    active ? "text-white" : "text-white/55"
+                  )}
+                >
+                  <Icon className="h-5 w-5" />
+                  <span className="text-[11px] font-medium tracking-[0.01em] leading-none">
+                    {item.label}
+                  </span>
+                </NavLink>
+              </li>
+            );
+          })}
+          <li className="flex-1">
+            <button
+              type="button"
+              onClick={() => setMoreOpen(true)}
+              className={cn(
+                "w-full h-full min-h-touch flex flex-col items-center justify-center gap-1 py-2",
+                moreActive ? "text-white" : "text-white/55"
+              )}
+            >
+              <MoreHorizontal className="h-5 w-5" />
+              <span className="text-[11px] font-medium tracking-[0.01em] leading-none">
                 More
               </span>
             </button>
