@@ -15,7 +15,7 @@ import { PageLoadingGrid } from "@/components/ui/page-loading";
 import { Household } from "@/types/database";
 import { useEnabledProducts, isProductEnabled, ProductName } from "@/hooks/useEnabledProducts";
 import { useHouseholdPreferences } from "@/hooks/useHouseholdPreferences";
-import { MODULE_SETUP_KEYS } from "@/lib/moduleSetup";
+import { MODULE_SETUP_KEYS, isModuleSetupComplete } from "@/lib/moduleSetup";
 import { OnboardingProgressIndicator } from "@/components/onboarding/OnboardingProgressIndicator";
 import { FestivalBanner } from "@/components/dashboard/FestivalBanner";
 import { TodaySnapshot } from "@/components/dashboard/TodaySnapshot";
@@ -71,23 +71,22 @@ const Index = () => {
   const { data: progressData } = useOnboardingProgress(householdId);
   const { data: dashStats } = useDashboardStats(householdId);
   const { moduleSubtitles } = useDashboardSnapshot(householdId);
-  const { preferences } = useHouseholdPreferences(householdId);
-  const completedModuleSetups =
-    ((preferences as any)?.completed_module_setups as Record<string, boolean> | undefined) ?? {};
+  const { preferences, isLoading: preferencesLoading } = useHouseholdPreferences(householdId);
   // Banner progress is driven by which enabled modules have been set up,
   // so the percentage and the hide-when-complete logic agree.
-  const moduleSetupTotal = (enabledProducts ?? []).length;
-  const moduleSetupDone = (enabledProducts ?? []).reduce((n, p) => {
+  const moduleSetupProducts = (enabledProducts ?? []).filter((p) => !!MODULE_SETUP_KEYS[p as ProductName]);
+  const moduleSetupTotal = moduleSetupProducts.length;
+  const moduleSetupDone = moduleSetupProducts.reduce((n, p) => {
     const key = MODULE_SETUP_KEYS[p as ProductName];
-    return key && completedModuleSetups[key] ? n + 1 : n;
+    return key && isModuleSetupComplete(preferences, key) ? n + 1 : n;
   }, 0);
   const moduleSetupPct =
     moduleSetupTotal > 0
       ? Math.round((moduleSetupDone / moduleSetupTotal) * 100)
       : 0;
   const allModuleSetupsDone =
-    moduleSetupTotal > 0 && moduleSetupDone === moduleSetupTotal;
-  const showSetupBanner = !onboardingCompleted && !allModuleSetupsDone;
+    moduleSetupTotal === 0 || moduleSetupDone === moduleSetupTotal;
+  const showSetupBanner = !preferencesLoading && !onboardingCompleted && !allModuleSetupsDone;
 
   const queryClient = useQueryClient();
   const { data: completedTours, isLoading: toursLoading } = useQuery({
@@ -106,7 +105,7 @@ const Index = () => {
     staleTime: 5 * 60 * 1000,
   });
   const toursChecked = !!user?.id && !toursLoading && completedTours !== undefined;
-  const welcomeAlreadyDone = !!completedTours && (completedTours as any).dashboard_welcome === true;
+  const welcomeAlreadyDone = !!completedTours && Boolean((completedTours as any).dashboard_welcome);
   const shouldShowWelcome = toursChecked && !welcomeAlreadyDone;
   const [runOnboarding, setRunOnboarding] = useState(false);
   const { ensurePermission, primerProps } = usePermissionPrimer();

@@ -55,6 +55,33 @@ export const MODULE_SETUP_COLUMN: Record<ModuleSetupKey, keyof HouseholdPreferen
   calendar_setup: "calendar_setup_complete",
 };
 
+export const hasModuleSetupData = (
+  preferences: HouseholdPreferences | null | undefined,
+  key: ModuleSetupKey,
+) => {
+  if (!preferences) return false;
+  return MODULE_SETUP_FIELDS[key].some((field) => {
+    const value = (preferences as unknown as Record<string, unknown>)[field as string];
+    if (value === null || value === undefined || value === "") return false;
+    if (Array.isArray(value) && value.length === 0) return false;
+    return true;
+  });
+};
+
+export const isModuleSetupComplete = (
+  preferences: HouseholdPreferences | null | undefined,
+  key: ModuleSetupKey,
+) => {
+  if (!preferences) return false;
+  const typedColumn = MODULE_SETUP_COLUMN[key];
+  const typedComplete = typedColumn
+    ? (preferences as unknown as Record<string, unknown>)[typedColumn as string] === true
+    : false;
+  const legacyComplete =
+    ((preferences.completed_module_setups as Record<string, boolean> | null | undefined) ?? {})[key] === true;
+  return typedComplete || legacyComplete || hasModuleSetupData(preferences, key);
+};
+
 export const MODULE_SETUP_META: Record<ModuleSetupKey, { title: string; moduleName: string; description: string; icon: LucideIcon }> = {
   meals_setup: {
     title: "Quick setup for Meals",

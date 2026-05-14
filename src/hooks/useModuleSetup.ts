@@ -4,8 +4,9 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useHousehold } from "@/hooks/useHousehold";
 import { useHouseholdPreferences } from "@/hooks/useHouseholdPreferences";
 import {
-  MODULE_SETUP_FIELDS,
   MODULE_SETUP_COLUMN,
+  hasModuleSetupData,
+  isModuleSetupComplete,
   type ModuleSetupKey,
 } from "@/lib/moduleSetup";
 
@@ -53,14 +54,7 @@ export const useModuleSetup = (key: ModuleSetupKey) => {
   // Backfill: if the user already has the data this module would ask for,
   // silently mark the setup complete so we don't re-prompt.
   const hasRequiredData = useMemo(() => {
-    if (!preferences) return false;
-    const fields = MODULE_SETUP_FIELDS[key];
-    return fields.some((f) => {
-      const v = (preferences as unknown as Record<string, unknown>)[f as string];
-      if (v === null || v === undefined || v === "") return false;
-      if (Array.isArray(v) && v.length === 0) return false;
-      return true;
-    });
+    return hasModuleSetupData(preferences, key);
   }, [preferences, key]);
 
   useEffect(() => {
@@ -78,7 +72,7 @@ export const useModuleSetup = (key: ModuleSetupKey) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoading, completed, hasRequiredData, key, householdId, typedColumnComplete]);
 
-  const isComplete = typedColumnComplete || !!completed?.[key] || hasRequiredData;
+  const isComplete = isModuleSetupComplete(preferences, key);
   const needsSetup = !isLoading && !!user?.id && !!householdId && !isComplete;
 
   return {
