@@ -20,6 +20,7 @@ import { OnboardingProgressIndicator } from "@/components/onboarding/OnboardingP
 import { FestivalBanner } from "@/components/dashboard/FestivalBanner";
 import { TodaySnapshot } from "@/components/dashboard/TodaySnapshot";
 import { QuickActionsRow } from "@/components/dashboard/QuickActionsRow";
+import { DidYouKnowCard } from "@/components/dashboard/DidYouKnowCard";
 import { useDashboardSnapshot } from "@/hooks/useDashboardSnapshot";
 import { format } from "date-fns";
 import { PermissionsTutorial } from "@/components/permissions/PermissionsTutorial";
@@ -210,6 +211,9 @@ const Index = () => {
 
         {/* Today's snapshot — live status cards */}
         {householdId && <TodaySnapshot householdId={householdId} />}
+
+        {/* Rotating discovery tip */}
+        <DidYouKnowCard />
 
         {/* Quick actions */}
         {householdId && <QuickActionsRow householdId={householdId} />}
