@@ -127,6 +127,7 @@ export const useCreateSubscription = (householdId: string | null) => {
           if (!Array.isArray(list)) return;
           qc.setQueryData(key, list.map((s) => (s.id === ctx?.optimisticId ? row : s)));
         });
+      qc.invalidateQueries({ queryKey: ["finance-subscriptions", householdId] });
     },
   });
 };
@@ -159,6 +160,9 @@ export const useUpdateSubscription = () => {
       ctx?.snapshots?.forEach(([key, prev]: any) => qc.setQueryData(key, prev));
       toast.error("Failed to update");
     },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["finance-subscriptions"] });
+    },
   });
 };
 
@@ -183,6 +187,9 @@ export const useDeleteSubscription = () => {
     onError: (_e, _v, ctx: any) => {
       ctx?.snapshots?.forEach(([key, prev]: any) => qc.setQueryData(key, prev));
       toast.error("Failed to delete");
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["finance-subscriptions"] });
     },
   });
 };

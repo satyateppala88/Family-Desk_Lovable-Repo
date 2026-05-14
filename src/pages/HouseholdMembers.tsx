@@ -93,7 +93,7 @@ const HouseholdMembers = () => {
         ["household-member-emails", householdId],
       ],
     },
-  ]);
+  ], householdId);
 
   const { data: household } = useQuery({
     queryKey: ["household-info", householdId],

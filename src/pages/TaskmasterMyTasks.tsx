@@ -43,7 +43,7 @@ const TaskmasterMyTasks = () => {
       queryKeys: [["taskmaster-tasks", householdId]],
       enabled: !!householdId,
     },
-  ]);
+  ], householdId);
 
   // Filter tasks assigned to current user
   const myTasks = useMemo(() => {

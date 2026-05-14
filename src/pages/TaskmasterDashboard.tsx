@@ -51,7 +51,7 @@ const TaskmasterDashboard = () => {
       queryKeys: [["projects", householdId]],
       enabled: !!householdId,
     },
-  ]);
+  ], householdId);
 
   const stats = useMemo(() => {
     if (!tasks) return null;

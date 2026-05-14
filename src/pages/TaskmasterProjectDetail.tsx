@@ -55,7 +55,7 @@ const TaskmasterProjectDetail = () => {
       queryKeys: [["projects", householdId]],
       enabled: !!householdId,
     },
-  ]);
+  ], householdId);
 
   const [selectedTask, setSelectedTask] = useState<TaskmasterTask | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);

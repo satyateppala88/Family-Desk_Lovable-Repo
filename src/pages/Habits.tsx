@@ -42,7 +42,7 @@ const Habits = () => {
     { table: "household_challenges", filter: householdId ? `household_id=eq.${householdId}` : undefined, enabled: !!householdId, queryKeys: [["challenges", householdId]] },
     { table: "challenge_logs", enabled: !!householdId, queryKeys: [["challenges", householdId]] },
     { table: "challenge_participants", enabled: !!householdId, queryKeys: [["challenges", householdId]] },
-  ]);
+  ], householdId);
 
   const { habits: allUserHabits, todaysHabits, isLoading: habitsLoading, createHabit, logHabit } = useHabits(householdId);
   const { data: householdStats, isLoading: statsLoading } = useHouseholdHabitStats(householdId);
