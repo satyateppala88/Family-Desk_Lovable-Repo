@@ -44,7 +44,7 @@ export interface ChangelogEntry {
 
 // ----- Current versions ---------------------------------------------------
 
-export const APP_VERSION = "1.3";
+export const APP_VERSION = "2.0";
 export const PRIVACY_VERSION = "1.1";
 export const TERMS_VERSION = "1.0";
 
@@ -81,6 +81,27 @@ export function formatVersionDate(iso: string): string {
 // ----- Changelogs ---------------------------------------------------------
 
 export const APP_CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "2.0",
+    date: "2026-05-14",
+    type: "major",
+    title: "Family Desk 2.0 — a calmer, smarter home",
+    changes: [
+      "New 3-screen onboarding replaces the previous 7-screen tour — get started faster with a clearer story.",
+      "Permissions now ask at the right moment instead of all at once: microphone when you first use voice, camera and photos when you change your avatar, and notifications when you land on the dashboard.",
+      "Fresh visual identity with Poppins typography, FamilyDesk green, warm surfaces, and a new logo lockup.",
+      "Home dashboard adds a Family Pulse weekly snapshot and a Grocery quick-action tile.",
+      "Taskmaster gets 5-page sub-navigation, 5 ready-made household templates, recurring tasks with a ↺ marker, and a manual calendar scan.",
+      "Calendar now supports multiple Google accounts, shows an agenda-first view on mobile, shared festivals with prep-task banners, and manual events with repeat rules.",
+      "Meal planner uses pantry-aware AI suggestions, offers a 3-day mobile / 7-day desktop layout, and exports straight to a grocery PDF.",
+      "Grocery module introduces AI Pantry import, quick-add checklists, auto-deduction from pantry stock, category-first navigation, and an Insights dashboard.",
+      "Habits adds 7-day and 21-day challenges, a monthly Streak Freeze, and habit-stacking suggestions after you create a habit.",
+      "Finance Hub launches with an AI assistant, Monthly Review, subscriptions tracker with monthly averages, and a Credit Card Optimizer.",
+      "WhatsApp reminders via approved Meta templates and custom-branded email verification from familydesk.in.",
+      "Household admin-invite model, per-module settings, and platform admin tools.",
+      "PWA install button now recovers properly after uninstall and reinstall on Android.",
+    ],
+  },
   {
     version: "1.3",
     date: "2026-04-28",
