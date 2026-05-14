@@ -18,16 +18,20 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 
 interface CalendarGridProps {
   currentDate: Date;
+  selectedDate: Date;
   events: CalendarEvent[];
   onEventClick: (event: CalendarEvent) => void;
   onDateClick: (date: Date) => void;
+  onSelectDate: (date: Date) => void;
 }
 
 export const CalendarGrid = ({
   currentDate,
+  selectedDate,
   events,
   onEventClick,
   onDateClick,
+  onSelectDate,
 }: CalendarGridProps) => {
   const isMobile = useIsMobile();
   
@@ -84,13 +88,13 @@ export const CalendarGrid = ({
             return (
               <div
                 key={index}
-                onClick={() => onDateClick(day)}
+                onClick={() => onSelectDate(day)}
                 className={cn(
                   "aspect-square flex items-center justify-center rounded-full text-xs cursor-pointer transition-colors min-h-[32px]",
-                  isToday(day) && "bg-primary text-primary-foreground font-bold",
-                  !isToday(day) && hasEvents && "bg-accent font-medium",
+                  (isToday(day) || isSameDay(day, selectedDate)) && "bg-primary text-primary-foreground font-bold",
+                  !isToday(day) && !isSameDay(day, selectedDate) && hasEvents && "bg-accent font-medium",
                   !isCurrentMonth && "text-muted-foreground opacity-50",
-                  !isToday(day) && !hasEvents && "hover:bg-muted"
+                  !isToday(day) && !isSameDay(day, selectedDate) && !hasEvents && "hover:bg-muted"
                 )}
               >
                 {format(day, "d")}
@@ -215,7 +219,7 @@ export const CalendarGrid = ({
           return (
             <div
               key={index}
-              onClick={() => onDateClick(day)}
+              onClick={() => onSelectDate(day)}
               className={cn(
                 "min-h-[100px] border-b border-r p-1.5 cursor-pointer hover:bg-muted/50 transition-colors",
                 !isCurrentMonth && "bg-muted/30",
@@ -227,7 +231,7 @@ export const CalendarGrid = ({
                 <div
                   className={cn(
                     "w-7 h-7 flex items-center justify-center rounded-full text-sm",
-                    isToday(day) && "bg-primary text-primary-foreground font-bold",
+                    (isToday(day) || isSameDay(day, selectedDate)) && "bg-primary text-primary-foreground font-bold",
                     !isCurrentMonth && "text-muted-foreground"
                   )}
                 >

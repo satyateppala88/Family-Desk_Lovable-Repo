@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
+import { format, isSameDay, parseISO } from "date-fns";
 import { Header } from "@/components/layout/Header";
 import { CalendarGrid } from "@/components/calendar/CalendarGrid";
 import { CalendarHeader } from "@/components/calendar/CalendarHeader";
@@ -17,6 +18,7 @@ import { CalendarDays, Plus } from "lucide-react";
 const Calendar = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [showConnectDialog, setShowConnectDialog] = useState(false);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -73,13 +75,78 @@ const Calendar = () => {
             <div data-tour="calendar-grid" style={{ maxWidth: 'var(--content-max-width)', width: '100%', margin: '0 auto', paddingLeft: 'var(--page-padding-x)', paddingRight: 'var(--page-padding-x)' }}>
               <CalendarGrid
                 currentDate={currentDate}
+                selectedDate={selectedDate}
                 events={events || []}
                 onEventClick={(ev) => {
                   if (ev.calendarId === "system") return;
                   setSelectedEvent(ev);
                 }}
                 onDateClick={setCurrentDate}
+                onSelectDate={setSelectedDate}
               />
+            </div>
+          )}
+
+          {/* Selected date events list */}
+          {!!householdId && !isLoading && (
+            <div style={{ maxWidth: 'var(--content-max-width)', width: '100%', margin: '0 auto', paddingLeft: 'var(--page-padding-x)', paddingRight: 'var(--page-padding-x)' }} className="mt-4 pb-8">
+              {(() => {
+                const selectedDateEvents = (events || []).filter((ev) =>
+                  isSameDay(parseISO(ev.start), selectedDate)
+                );
+                const isTodaySelected = isSameDay(selectedDate, new Date());
+                const dayLabel = format(selectedDate, "EEE");
+                const dateLabel = format(selectedDate, "d MMMM yyyy");
+
+                return (
+                  <div className="space-y-3">
+                    <div className="flex items-baseline gap-2">
+                      <div>
+                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{dayLabel}</p>
+                        <p className="text-sm font-semibold">{dateLabel}</p>
+                      </div>
+                      <span className="text-xs text-muted-foreground ml-auto">
+                        {selectedDateEvents.length} event{selectedDateEvents.length !== 1 ? "s" : ""}
+                      </span>
+                    </div>
+
+                    {selectedDateEvents.length === 0 ? (
+                      <p className="text-sm text-muted-foreground py-2">
+                        {isTodaySelected
+                          ? "No events today — tap + to add one"
+                          : `No events on ${format(selectedDate, "EEEE, d MMMM")}`}
+                      </p>
+                    ) : (
+                      <div className="space-y-2">
+                        {selectedDateEvents.map((event) => (
+                          <div
+                            key={event.id}
+                            onClick={() => {
+                              if (event.calendarId === "system") return;
+                              setSelectedEvent(event);
+                            }}
+                            className="p-3 rounded-lg cursor-pointer hover:opacity-80 transition-opacity min-h-[48px] flex items-center"
+                            style={{
+                              backgroundColor: event.color + "15",
+                              borderLeft: `4px solid ${event.color}`,
+                            }}
+                          >
+                            <div className="flex-1">
+                              <p className="font-medium text-sm">{event.title}</p>
+                              {!event.allDay && (
+                                <p className="text-xs text-muted-foreground mt-0.5">
+                                  {format(parseISO(event.start), "h:mm a")}
+                                  {event.end && ` - ${format(parseISO(event.end), "h:mm a")}`}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
           )}
         </div>
