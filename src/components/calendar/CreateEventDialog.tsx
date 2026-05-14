@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { CalendarIcon, Loader2 } from "lucide-react";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Button } from "@/components/ui/button";
@@ -10,24 +10,28 @@ import { Switch } from "@/components/ui/switch";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-import { useCreateManualEvent } from "@/hooks/useManualCalendarEvents";
+import { useCreateManualEvent, useUpdateManualEvent } from "@/hooks/useManualCalendarEvents";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useHousehold } from "@/hooks/useHousehold";
 import { useHouseholdMembers } from "@/hooks/useHouseholdMembers";
+import type { CalendarEvent } from "@/hooks/useCalendarEvents";
 
 interface CreateEventDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   defaultDate?: Date;
+  eventToEdit?: CalendarEvent | null;
 }
 
-export const CreateEventDialog = ({ open, onOpenChange, defaultDate }: CreateEventDialogProps) => {
+export const CreateEventDialog = ({ open, onOpenChange, defaultDate, eventToEdit }: CreateEventDialogProps) => {
   const { toast } = useToast();
   const createEvent = useCreateManualEvent();
+  const updateEvent = useUpdateManualEvent();
   const { householdId } = useHousehold();
   const { data: members = [] } = useHouseholdMembers(householdId);
+  const isEdit = !!eventToEdit?.manualEventId;
 
   const [title, setTitle] = useState("");
   const [date, setDate] = useState<Date | undefined>(defaultDate ?? new Date());
@@ -38,7 +42,17 @@ export const CreateEventDialog = ({ open, onOpenChange, defaultDate }: CreateEve
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
 
   useEffect(() => {
-    if (open) {
+    if (!open) return;
+    if (eventToEdit) {
+      const start = parseISO(eventToEdit.start);
+      setTitle(eventToEdit.title || "");
+      setDate(start);
+      setTime(eventToEdit.allDay ? "" : format(start, "HH:mm"));
+      setDescription(eventToEdit.description || "");
+      setAllDay(eventToEdit.allDay);
+      setRepeatType('none');
+      setSelectedMembers(members.map((m) => m.userId));
+    } else {
       setTitle("");
       setDate(defaultDate ?? new Date());
       setTime("");
@@ -47,7 +61,7 @@ export const CreateEventDialog = ({ open, onOpenChange, defaultDate }: CreateEve
       setRepeatType('none');
       setSelectedMembers(members.map((m) => m.userId));
     }
-  }, [open, defaultDate, members]);
+  }, [open, defaultDate, members, eventToEdit]);
 
   const handleSubmit = async () => {
     if (!title.trim()) {
@@ -60,7 +74,7 @@ export const CreateEventDialog = ({ open, onOpenChange, defaultDate }: CreateEve
     }
 
     try {
-      await createEvent.mutateAsync({
+      const payload = {
         title: title.trim(),
         description: description.trim() || null,
         date,
@@ -68,26 +82,34 @@ export const CreateEventDialog = ({ open, onOpenChange, defaultDate }: CreateEve
         allDay,
         repeatType,
         memberIds: selectedMembers,
-      });
-      toast({ title: "Event added", description: "Your event has been added to the calendar." });
+      };
+      if (isEdit && eventToEdit?.manualEventId) {
+        await updateEvent.mutateAsync({ id: eventToEdit.manualEventId, ...payload });
+        toast({ title: "Event updated", description: "Your changes have been saved." });
+      } else {
+        await createEvent.mutateAsync(payload);
+        toast({ title: "Event added", description: "Your event has been added to the calendar." });
+      }
       onOpenChange(false);
     } catch (err: any) {
-      toast({ title: "Couldn't add event", description: "Please try again.", variant: "destructive" });
+      toast({ title: isEdit ? "Couldn't update event" : "Couldn't add event", description: "Please try again.", variant: "destructive" });
     }
   };
+
+  const pending = createEvent.isPending || updateEvent.isPending;
 
   return (
     <BottomSheet
       isOpen={open}
       onClose={() => onOpenChange(false)}
-      title="Create Event"
-      description="Add a manual event to your family calendar."
+      title={isEdit ? "Edit Event" : "Create Event"}
+      description={isEdit ? "Update this event on your family calendar." : "Add a manual event to your family calendar."}
       footer={
-        <Button onClick={handleSubmit} disabled={createEvent.isPending} className="w-full">
-          {createEvent.isPending ? (
-            <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Adding…</>
+        <Button onClick={handleSubmit} disabled={pending} className="w-full">
+          {pending ? (
+            <><Loader2 className="h-4 w-4 mr-2 animate-spin" />{isEdit ? "Saving…" : "Adding…"}</>
           ) : (
-            "Save Event"
+            isEdit ? "Update Event" : "Save Event"
           )}
         </Button>
       }
