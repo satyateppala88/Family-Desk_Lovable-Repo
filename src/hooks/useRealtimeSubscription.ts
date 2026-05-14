@@ -9,22 +9,23 @@ type SubscriptionConfig = {
   enabled?: boolean;
 };
 
-export function useRealtimeSubscription(configs: SubscriptionConfig[]) {
+export function useRealtimeSubscription(
+  configs: SubscriptionConfig[],
+  householdId?: string,
+) {
   const queryClient = useQueryClient();
+  const active = configs.filter(c => c.enabled !== false);
+  const sortedTables = active.map(c => c.table).sort();
+  // Deterministic per-household channel name — prevents zombie channels
+  // and duplicate topics when the same hook mounts on multiple pages.
+  const channelName = `realtime-${householdId ?? "shared"}-${sortedTables.join("-")}`;
   const signature = JSON.stringify(
     configs.map(c => ({ table: c.table, filter: c.filter ?? null,
                         enabled: c.enabled ?? true }))
   );
 
   useEffect(() => {
-    const active = configs.filter(c => c.enabled !== false);
     if (active.length === 0) return;
-
-    // Deterministic hash — replaces Math.random() zombie channels
-    const hash = Array.from(signature).reduce(
-      (acc, char) => (Math.imul(31, acc) + char.charCodeAt(0)) | 0, 0
-    );
-    const channelName = `realtime-${Math.abs(hash).toString(36)}`;
 
     let channel = supabase.channel(channelName);
     active.forEach(cfg => {
@@ -38,5 +39,5 @@ export function useRealtimeSubscription(configs: SubscriptionConfig[]) {
     channel.subscribe();
     return () => { supabase.removeChannel(channel); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [signature, queryClient]);
+  }, [householdId, channelName, signature, queryClient]);
 }

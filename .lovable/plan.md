@@ -1,51 +1,39 @@
-## Meals — fix two AI buttons that appear unresponsive
+## Realtime channels + mutation invalidation fallback
 
 ### What I found
 
-Both buttons are wired in code, but each has a silent-failure path that matches the user's report:
+- `src/hooks/useRealtimeSubscription.ts` already cleans up via `supabase.removeChannel(channel)` and uses a deterministic hash-based name (not `Math.random`), but the name doesn't match the spec format and isn't keyed on the household. Two pages mounting the same configs can still produce the same channel topic in the same Supabase client, and the spec wants `realtime-${householdId}-${tables.sort().join('-')}`.
+- The household-wide subscription in `src/components/realtime/HouseholdRealtimeProvider.tsx` already follows the pattern (one channel per household, deterministic name `household-${householdId}`, cleanup, correct deps). No changes needed there.
+- Most mutation hooks already call `queryClient.invalidateQueries` in `onSuccess`. **Two have zero invalidations**: `src/hooks/useUserCards.ts` and `src/hooks/useSubscriptions.ts`. A few others have 1 fewer invalidate than mutations (`useNotificationPreferences`, `useHouseholdPreferences`, `useRegenerateMeals`, `useMealPlans`, `useTasks`, `useProjects`, `useRecipes`, `usePantryCategories`, `useCustomCards`) — most of these are mutations that intentionally don't need cache writes (e.g. logging, side-effects), but I'll spot-check.
 
-1. **"Suggest dinner"** (`TonightDinnerCard` → `Meals.tsx:319`) calls `openAiSheet("dinner")` which only sets `aiSheet.open = true`. The actual `<AiSuggestSheet>` is rendered behind `{householdId && (…)}` at `Meals.tsx:490`. If `householdId` is null at click time (still resolving, or user not yet in a household), the sheet element is never mounted, no spinner shows, and no toast fires — looks like the button does nothing. There is also no in-button loading affordance while the sheet's first fetch is in flight.
-2. **"Generate Meal Plan"** (`Meals.tsx:349`) calls `handleGeneratePlan("full")` which guards with `if (!householdId || !user) return;` — same silent-return failure mode. The existing timeout is 30 s (spec says 15 s) and the toast title/copy don't match the spec ("Couldn't generate recipes" → spec wants "Couldn't generate right now — try again").
+### Changes
 
-The per-slot AI flow works because users open it through `AddMealSheet`, which is gated on the same `householdId` check, so by the time it's reachable `householdId` is always non-null.
+#### 1. `src/hooks/useRealtimeSubscription.ts`
 
-### What to change
+- Add an optional `householdId` parameter so the hook can build the spec channel name. Signature becomes `useRealtimeSubscription(configs, householdId?)`. Existing call sites that don't pass it fall back to `"shared"`.
+- Compute `channelName = realtime-${householdId ?? "shared"}-${activeTables.sort().join("-")}`.
+- Keep cleanup via `supabase.removeChannel(channel)`.
+- Effect deps: `[householdId, channelName, queryClient]` (channelName is the new stable signature; the per-config queryKeys are captured by closure but won't change identity meaningfully because we already key by table list).
+- Update the 11 call sites to pass `householdId` where it's available locally (every caller already has it from `useHousehold`).
 
-#### A. `src/pages/Meals.tsx` — wrap the "Suggest dinner" handler
+#### 2. Add fallback `invalidateQueries` to the two hooks that lack it
 
-- Replace `onSuggest={() => openAiSheet("dinner")}` with a new `handleSuggestDinner` callback:
-  - If `!householdId`, show a toast `{ title: "Hang on a sec", description: "Loading your household — try again in a moment." }` and return.
-  - Else `openAiSheet("dinner")`.
-- Add a new state `suggestingDinner: boolean`. Set it `true` immediately, then flip back to `false` when `aiSheet.open` becomes `true` (the sheet renders its own skeleton). This drives a spinner on the button — the easiest way is to pass an `isLoading` prop into `TonightDinnerCard` and reflect it on the button.
-- Wrap in try/catch (the work itself can't really throw, but per spec — surface any error via a toast).
+- **`src/hooks/useUserCards.ts`** — for each of `addUserCard`, `updateUserCard`, `deleteUserCard`, add `onSuccess: () => queryClient.invalidateQueries({ queryKey: ["user-cards", householdId] })` (use whatever query key the file's read query already uses; verify before editing).
+- **`src/hooks/useSubscriptions.ts`** — for each of its 4 mutations, add `onSuccess: () => queryClient.invalidateQueries({ queryKey: ["finance-subscriptions", householdId] })` (verify the existing query key in the file).
 
-#### B. `src/components/meals/TonightDinnerCard.tsx` — accept `isLoading`
+#### 3. Spot-check one-short hooks
 
-- Add optional `isLoading?: boolean` prop.
-- When true: disable the "Suggest dinner" button, replace the leading `Sparkles` icon with a spinning `Loader2`, keep label "Suggest dinner".
-- No other UI change.
+For each of `useNotificationPreferences`, `useHouseholdPreferences`, `useRegenerateMeals`, `useMealPlans`, `useTasks`, `useProjects`, `useRecipes`, `usePantryCategories`, `useCustomCards`: read the file, identify any mutation whose `onSuccess` lacks `invalidateQueries`, and add one targeted invalidate against that hook's primary query key. Skip mutations that are pure side-effects (auth, RPCs that return nothing cached). I'll only edit the ones with a real gap.
 
-#### C. `src/pages/Meals.tsx` — tighten `handleGeneratePlan`
+### Out of scope per spec
 
-- Change the timeout from 30000 to **15000 ms** for the "full" path used by the "Generate Meal Plan" button. Keep the 30 s timeout for the recipes-tab path if you want, but the spec is for this button — I'll just lower it for both since the same handler is shared and a 15 s cap is acceptable.
-- Replace the catch-block toast with `{ title: "Couldn't generate right now — try again", variant: "destructive" }` (drop the generic "Couldn't generate recipes" title).
-- Add an explicit guard at the top: if `!householdId || !user`, toast `{ title: "Hang on a sec", description: "Loading your household — try again in a moment." }` and return.
-- Ensure `setGeneratingPlan(false)` always runs in `finally` (it already does — just confirming the spec's "never leave the button in a permanent loading state" is satisfied).
-- Update the button label/spinner: when `generatingPlan` is true, show `Loader2` spinning + "Generating..." (today it shows `Sparkles` + "Creating your plan..."). Use `Loader2` from `lucide-react`.
-
-#### D. Error handling
-
-- Both handlers already use `try/catch`. The change is the **toast copy** (per spec) and the addition of the explicit-guard toast for missing household/user, so users always see feedback.
-
-### Out of scope
-
-- The actual `AiSuggestSheet` component (already shows skeleton/error/retry — works correctly).
-- The `suggest-meals-for-slot` and `generate-meal-suggestions` edge functions (working — proven by the per-slot flow).
-- The "What's for dinner tonight?" button inside `MealPlanCalendar.tsx` weekly view — that one's already wired via `onAiSuggest` and is not the button the user is reporting.
+- No table or RLS changes.
+- No changes to `HouseholdRealtimeProvider` (already conformant).
+- No new realtime subscriptions; only the hook contract and missing fallbacks.
 
 ### Verification
 
-1. Click "Suggest dinner" before household has loaded → see "Hang on a sec" toast (no silent click).
-2. Click "Suggest dinner" after household loads → button briefly spins, AI sheet slides up with 3 suggestions. On error inside the sheet, the existing inline error + Retry already covers it.
-3. Click "Generate Meal Plan" with no household yet → see "Hang on a sec" toast.
-4. Click "Generate Meal Plan" normally → button shows spinner + "Generating...". On success, toast + plan refresh. On failure or > 15 s, toast "Couldn't generate right now — try again" and button re-enables.
+1. Open two tabs as the same user → mutate in tab A → tab B's UI updates without reload.
+2. Mount any page that uses `useRealtimeSubscription` → channel topic in dev console reads `realtime-<householdId>-<tables>`.
+3. Add a card via `useUserCards.addUserCard` → list updates instantly without reload.
+4. Add a subscription via `useSubscriptions` → finance subscriptions list updates instantly.
