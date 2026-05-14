@@ -964,7 +964,9 @@ export type Database = {
           id: string
           is_recurring: boolean
           notes: string | null
+          paid_by: string | null
           recurring_pattern: Json | null
+          savings_goal_id: string | null
           tagged_member: string | null
           transaction_date: string
           type: string
@@ -981,7 +983,9 @@ export type Database = {
           id?: string
           is_recurring?: boolean
           notes?: string | null
+          paid_by?: string | null
           recurring_pattern?: Json | null
+          savings_goal_id?: string | null
           tagged_member?: string | null
           transaction_date?: string
           type?: string
@@ -998,7 +1002,9 @@ export type Database = {
           id?: string
           is_recurring?: boolean
           notes?: string | null
+          paid_by?: string | null
           recurring_pattern?: Json | null
+          savings_goal_id?: string | null
           tagged_member?: string | null
           transaction_date?: string
           type?: string
@@ -1017,6 +1023,13 @@ export type Database = {
             columns: ["household_id"]
             isOneToOne: false
             referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_transactions_savings_goal_id_fkey"
+            columns: ["savings_goal_id"]
+            isOneToOne: false
+            referencedRelation: "finance_savings_goals"
             referencedColumns: ["id"]
           },
         ]
