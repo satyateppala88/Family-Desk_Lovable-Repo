@@ -308,104 +308,29 @@ export const HabitCreateDialog = ({
               />
             )}
 
-            {/* Frequency Type */}
-            <FormField
-              control={form.control}
-              name="frequencyType"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>How often? *</FormLabel>
-                  <FormControl>
-                    <RadioGroup
-                      onValueChange={field.onChange}
-                      value={field.value}
-                      className="grid grid-cols-3 gap-2"
-                    >
-                      <div>
-                        <RadioGroupItem
-                          value="daily"
-                          id="daily"
-                          className="peer sr-only"
-                        />
-                        <Label
-                          htmlFor="daily"
-                          className="flex flex-col items-center justify-center rounded-md border-2 border-muted bg-popover p-3 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer"
-                        >
-                          <span className="text-sm font-medium">Daily</span>
-                        </Label>
-                      </div>
-                      <div>
-                        <RadioGroupItem
-                          value="weekly"
-                          id="weekly"
-                          className="peer sr-only"
-                        />
-                        <Label
-                          htmlFor="weekly"
-                          className="flex flex-col items-center justify-center rounded-md border-2 border-muted bg-popover p-3 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer"
-                        >
-                          <span className="text-sm font-medium">Weekly</span>
-                        </Label>
-                      </div>
-                      <div>
-                        <RadioGroupItem
-                          value="specific_days"
-                          id="specific_days"
-                          className="peer sr-only"
-                        />
-                        <Label
-                          htmlFor="specific_days"
-                          className="flex flex-col items-center justify-center rounded-md border-2 border-muted bg-popover p-3 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer"
-                        >
-                          <span className="text-sm font-medium">Specific</span>
-                        </Label>
-                      </div>
-                    </RadioGroup>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            {/* Day Selection (for specific_days) */}
-            {frequencyType === "specific_days" && (
-              <FormField
-                control={form.control}
-                name="frequencyDays"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Select Days</FormLabel>
-                    <div className="flex gap-1 flex-wrap">
-                      {DAYS_OF_WEEK.map((day) => {
-                        const isSelected = field.value?.includes(day.value);
-                        return (
-                          <Button
-                            key={day.value}
-                            type="button"
-                            variant={isSelected ? "default" : "outline"}
-                            size="sm"
-                            className="w-10 h-10 p-0"
-                            onClick={() => {
-                              const current = field.value || [];
-                              if (isSelected) {
-                                field.onChange(
-                                  current.filter((d) => d !== day.value)
-                                );
-                              } else {
-                                field.onChange([...current, day.value]);
-                              }
-                            }}
-                          >
-                            {day.label}
-                          </Button>
-                        );
-                      })}
-                    </div>
-                    <FormMessage />
-                  </FormItem>
-                )}
+            {/* Frequency via shared RecurrencePicker */}
+            <div className="space-y-1.5">
+              <RecurrencePicker
+                value={recurrence}
+                onChange={(next) =>
+                  setRecurrence(
+                    next ?? {
+                      frequency: "daily",
+                      interval: 1,
+                      days: [...RECURRENCE_DAYS],
+                      end: { type: "never" },
+                    },
+                  )
+                }
+                baseDate={new Date()}
+                context="habit"
               />
-            )}
+              {recurrence && (
+                <p className="text-[12px] text-muted-foreground">
+                  {formatRecurrenceSummary(recurrence)}
+                </p>
+              )}
+            </div>
 
             {/* Target Value Toggle */}
             <div className="space-y-3">
