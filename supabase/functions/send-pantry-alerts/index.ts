@@ -115,7 +115,7 @@ const handler = async (req: Request): Promise<Response> => {
               const emailResponse = await sendViaQueue(supabaseUrl, supabaseServiceKey, {
       to: userData.user.email,
       subject: `🥫 ${items.length} item${items.length > 1 ? "s" : ""} expiring soon!`,
-      html: getEmailWrapper(emailContent,
+      html: getEmailWrapper(emailContent),
       templateName: "send-pantry-alerts",
     });
 

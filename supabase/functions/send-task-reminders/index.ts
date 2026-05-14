@@ -117,7 +117,7 @@ const handler = async (req: Request): Promise<Response> => {
         const emailResponse = await sendViaQueue(supabaseUrl, supabaseServiceKey, {
       to: userData.user.email,
       subject: `Reminder: ${userTasks.length} task${userTasks.length > 1 ? "s" : ""} due tomorrow`,
-      html: getEmailWrapper(emailContent,
+      html: getEmailWrapper(emailContent),
       templateName: "send-task-reminders",
     });
 

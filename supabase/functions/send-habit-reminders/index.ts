@@ -158,7 +158,7 @@ const handler = async (req: Request): Promise<Response> => {
           await sendViaQueue(supabaseUrl, supabaseServiceKey, {
       to: userData.user.email,
       subject: `⚠️ Your ${highestStreak.streak}-day streak is at risk!`,
-      html: getEmailWrapper(warningContent,
+      html: getEmailWrapper(warningContent),
       templateName: "send-habit-reminders",
     });
         } else {
@@ -171,7 +171,7 @@ const handler = async (req: Request): Promise<Response> => {
           await sendViaQueue(supabaseUrl, supabaseServiceKey, {
       to: userData.user.email,
       subject: "🌟 Don't forget your habits today!",
-      html: getEmailWrapper(emailContent,
+      html: getEmailWrapper(emailContent),
       templateName: "send-habit-reminders",
     });
         }

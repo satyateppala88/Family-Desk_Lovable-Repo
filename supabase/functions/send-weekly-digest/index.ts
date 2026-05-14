@@ -123,7 +123,7 @@ const handler = async (req: Request): Promise<Response> => {
         const emailResponse = await sendViaQueue(supabaseUrl, supabaseServiceKey, {
       to: userData.user.email,
       subject: "Your Weekly Family Desk Summary 📊",
-      html: getEmailWrapper(emailContent,
+      html: getEmailWrapper(emailContent),
       templateName: "send-weekly-digest",
     });
 

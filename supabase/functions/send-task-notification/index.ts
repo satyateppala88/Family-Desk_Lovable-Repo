@@ -113,7 +113,7 @@ const handler = async (req: Request): Promise<Response> => {
     const emailResponse = await sendViaQueue(supabaseUrl, supabaseServiceKey, {
       to: assigneeEmail,
       subject: `New Task Assigned: ${taskTitle}`,
-      html: getEmailWrapper(emailContent,
+      html: getEmailWrapper(emailContent),
       templateName: "send-task-notification",
     });
 

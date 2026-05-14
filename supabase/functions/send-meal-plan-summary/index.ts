@@ -141,7 +141,7 @@ const handler = async (req: Request): Promise<Response> => {
         const emailResponse = await sendViaQueue(supabaseUrl, supabaseServiceKey, {
       to: userData.user.email,
       subject: `🍽️ Your Meal Plan for the Week of ${weekStart}`,
-      html: getEmailWrapper(emailContent,
+      html: getEmailWrapper(emailContent),
       templateName: "send-meal-plan-summary",
     });
 
