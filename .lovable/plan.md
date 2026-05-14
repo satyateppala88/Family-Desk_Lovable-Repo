@@ -1,28 +1,76 @@
-## Calendar event edit/delete + all-day default
+## Four small fixes
 
-### Fix 1 — Add Edit & Delete on the event detail popup
-Manual events come back from `fetch-calendar-events` with `calendarId: "manual"` and a synthetic id like `manual-<uuid>-YYYY-MM-DD`. We need the underlying DB row id to mutate, plus mutations and UI.
+### FIX 1 — Hide "Log your first expense" tip when transactions exist
+**File:** `src/pages/Finance.tsx`
 
-1. **Edge function `supabase/functions/fetch-calendar-events/index.ts`** — when emitting manual events (around line 310), also include `manualEventId: ev.id`.
-2. **`src/hooks/useCalendarEvents.ts`** — extend `CalendarEvent` with optional `manualEventId?: string`.
-3. **`src/hooks/useManualCalendarEvents.ts`** — add `useUpdateManualEvent` and `useDeleteManualEvent`. Both reuse the same start/end derivation as create, write to/delete from `manual_calendar_events`, and on success invalidate `["calendar-events"]` and `["today-events"]`.
-4. **`src/components/calendar/CreateEventDialog.tsx`** — accept optional `eventToEdit?: CalendarEvent`. When provided:
-   - Title becomes "Edit Event", footer button becomes "Update Event".
-   - On open, pre-fill `title`, `description`, `date` from `event.start`, `time` from `event.start` (HH:mm) when `!allDay`, and `allDay` from `event.allDay`. (Repeat / member fields aren't edited in this iteration; preserve existing values by sending only fields the form changes.)
-   - Submit calls `useUpdateManualEvent` with `manualEventId` instead of `useCreateManualEvent`.
-5. **`src/components/calendar/CalendarEventDialog.tsx`** — when `event.calendarId === "manual"`, render two icon buttons (pencil = `Pencil` lucide icon, trash = `Trash2`) in the header next to the existing close (`X`).
-   - Pencil → close detail dialog and open `CreateEventDialog` in edit mode.
-   - Trash → open the existing `ConfirmDialog` ("Delete this event?", confirm label "Delete"), then call delete mutation; on success close popup and toast "Event deleted".
-6. **`src/pages/Calendar.tsx`** — manage `editingEvent` state, render `CreateEventDialog` with `eventToEdit` when set, and pass an `onEdit` / `onDelete` from `CalendarEventDialog`.
+Wrap the `<ModuleNudgeBanner moduleKey="finance" …>` (lines 106–109) in a conditional that only renders when `summary?.transactionCount` is `0`. While `summary` is still loading (`isLoading`), don't render the tip either — avoids a flash for households that already have transactions.
 
-### Fix 2 — All-day by default when no time entered
-1. **`src/hooks/useManualCalendarEvents.ts` (create + update)** — when `!input.time`, force `all_day: true` (in addition to existing midnight-to-midnight start/end). This persists the truth: an event saved without a time is an all-day event.
-2. **`src/components/calendar/CalendarGrid.tsx`** — mobile list view currently shows an "All day" caption for `event.allDay`. Drop the caption so all-day events show just the title (matching spec); time-prefixed events keep their `h:mm a` line. Desktop view already shows just the title for all-day events — no change.
-3. The detail popup already conditionally hides the time row for `allDay`, so no change there beyond adding the action buttons.
+```tsx
+{!isLoading && (summary?.transactionCount ?? 0) === 0 && (
+  <ModuleNudgeBanner moduleKey="finance" text="Log your first expense …" />
+)}
+```
 
-### Verification
-- Create event without picking a time → grid shows just the title (no "12:00 AM"); detail popup shows date only.
-- Click an existing manual event → detail popup shows Edit + Delete icons.
-- Edit → form opens pre-filled, button reads "Update Event"; saving updates the row and grid refreshes.
-- Delete → confirm dialog appears; confirming removes the event from the grid immediately and toasts success.
-- Google/system events: detail popup remains read-only (Edit/Delete only appear for `calendarId === "manual"`).
+### FIX 2 — Stop ghost "Preferences updated!" toast on `/taskmaster/tasks`
+**Root cause:** `useModuleSetup` (in `src/hooks/useModuleSetup.ts`) auto-fires `markComplete → updatePreferences({ [typedColumn]: true })` on mount when `hasRequiredData` is true. The hook comment says "Silent backfill — never surface a toast", but `useHouseholdPreferences.updatePreferences` always fires `toast.success("Preferences updated!")` in `onSuccess`. So every visit to a page wrapped by `ModuleSetupGate` (Tasks, Today, etc.) emits the toast on first load until the boolean column is set.
+
+**Fix in `src/hooks/useHouseholdPreferences.ts`:**
+- Change the mutation to accept an optional `silent` flag. Easiest: switch the `mutationFn` input from `Partial<HouseholdPreferences>` to `{ updates: Partial<HouseholdPreferences>; silent?: boolean }`, and skip the `toast.success(...)` in `onSuccess` when `silent` is true. Update the public `updatePreferences` wrapper to keep its current signature (toast on by default), and add an internal call site that passes `silent: true`.
+- Simpler alternative (preferred — fewer call-site changes): give the returned function an optional second arg: `updatePreferences(updates, { silent?: boolean })`. Internally call `mutateAsync({ updates, silent })`. All existing callers keep working unchanged.
+
+**Fix in `src/hooks/useModuleSetup.ts`:**
+- In `markComplete.mutationFn`, pass `{ silent: true }` to `updatePreferences(...)` for both branches (the boolean-column write and the jsonb write). This is the only place that does background backfills.
+
+No other call sites need changes — Settings, ModuleSetupGate finalize, etc. legitimately want the toast.
+
+### FIX 3 — Submit buttons placed mid-form in Subscription / Event modals
+**Files:** `src/components/finance/SubscriptionDialog.tsx`, `src/components/calendar/CreateEventDialog.tsx`
+
+Both dialogs already pass the submit button via `BottomSheet`'s `footer` prop, which renders a `sticky bottom-0` bar at the bottom of the sheet, so the button structurally sits below all fields. The user-reported behavior most likely comes from one of two things:
+
+1. On mobile, the on-screen keyboard pushes content but the sheet footer scrolls with the content area, causing the button to appear over a field rather than at the visual bottom.
+2. The form is taller than `max-h-[90dvh]`, so the user scrolls and sees fields below where the sticky bar is anchored.
+
+Plan:
+- Confirm button is the last DOM node in the form container (already is) — no reorder needed.
+- Ensure the scrollable content area in `BottomSheet` has bottom padding so the last field isn't covered by the sticky footer. In `src/components/ui/BottomSheet.tsx`, change the scroll wrapper `px-4 py-4` to `px-4 pt-4 pb-6` (or add `pb-24` only when `footer` is present) so the final field clears the sticky button on small screens.
+- In `SubscriptionDialog`, move the `Active` switch (currently after Notes) to immediately under `Name` so the "create" affordance is closer to the primary identifying field, and Notes/Tags remain the last "secondary" inputs before the sticky Save button. (Reorder only — no logic change.)
+- In `CreateEventDialog`, the children order already ends with `Notes`. Leave field order as-is; the padding fix above is enough.
+
+If after the padding fix the user still reports the button appearing mid-form, we'll need a screenshot to confirm what they're seeing, since the code path produces a sticky-bottom button.
+
+### FIX 4 — Habits "AI Coach Insight: Add your first habit" shows with existing habits
+**File:** `src/pages/Habits.tsx` (around lines 89, 262)
+
+Current condition renders `neutralCoachCopy` (the "Add your first habit…" text) whenever `totalCount === 0 || completedCount === 0 || householdTooNew`. So a household with habits but none completed yet today still sees the "Add your first habit" copy.
+
+Fix:
+- Only show the "Add your first habit…" copy when `totalCount === 0`.
+- When `totalCount > 0` and `completedCount === 0` (and not too new), show a different contextual line, e.g. `"Tap a habit below to log your first check-in for today."`.
+- Keep the existing "You're making progress!" branch for partial completion.
+- Keep the `householdTooNew` neutral copy but switch its text to a welcoming line that doesn't claim there are no habits, e.g. `"Your household is just getting started — take a moment to set up the routines that matter."`.
+
+Concrete change:
+```tsx
+const emptyCoachCopy = "Add your first habit to start tracking your household's daily routine.";
+const startTodayCopy = "Tap a habit below to log your first check-in for today.";
+const newHouseholdCopy = "Your household is just getting started — take a moment to set up the routines that matter.";
+
+{totalCount === 0 ? (
+  <HabitCoachInsight content={emptyCoachCopy} onDismiss={() => {}} />
+) : householdTooNew ? (
+  <HabitCoachInsight content={newHouseholdCopy} onDismiss={() => {}} />
+) : completedCount === 0 ? (
+  <HabitCoachInsight content={startTodayCopy} onDismiss={() => {}} />
+) : completedCount < totalCount ? (
+  <HabitCoachInsight content="You're making progress! Keep the momentum going — every check-off counts." onDismiss={() => {}} />
+) : null}
+```
+
+### Files touched
+- `src/pages/Finance.tsx`
+- `src/hooks/useHouseholdPreferences.ts`
+- `src/hooks/useModuleSetup.ts`
+- `src/components/ui/BottomSheet.tsx`
+- `src/components/finance/SubscriptionDialog.tsx` (field reorder only)
+- `src/pages/Habits.tsx`
