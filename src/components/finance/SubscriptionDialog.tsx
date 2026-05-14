@@ -8,6 +8,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { DatePicker } from "@/components/ui/date-picker";
 import { format } from "date-fns";
+import { RecurrencePicker } from "@/components/shared/RecurrencePicker";
+import { formatRecurrenceSummary } from "@/utils/recurrenceUtils";
+import type { RecurrenceSpec } from "@/types/recurrence";
 import {
   FinanceSubscription,
   SubscriptionInput,
@@ -35,6 +38,7 @@ export const SubscriptionDialog = ({ open, onOpenChange, onSave, initialData }: 
   const [isActive, setIsActive] = useState(true);
   const [notes, setNotes] = useState("");
   const [tags, setTags] = useState("");
+  const [recurrence, setRecurrence] = useState<RecurrenceSpec | null>(null);
 
   useEffect(() => {
     if (initialData) {
@@ -48,6 +52,7 @@ export const SubscriptionDialog = ({ open, onOpenChange, onSave, initialData }: 
       setIsActive(initialData.is_active);
       setNotes(initialData.notes || "");
       setTags(initialData.tags?.join(", ") || "");
+      setRecurrence(initialData.recurrence ?? null);
     } else {
       setName("");
       setAmount("");
@@ -59,6 +64,7 @@ export const SubscriptionDialog = ({ open, onOpenChange, onSave, initialData }: 
       setIsActive(true);
       setNotes("");
       setTags("");
+      setRecurrence(null);
     }
   }, [initialData, open]);
 
@@ -68,18 +74,25 @@ export const SubscriptionDialog = ({ open, onOpenChange, onSave, initialData }: 
     if (submitting) return;
     if (!name.trim() || !amount) return;
     setSubmitting(true);
+    const derivedFreq = recurrence
+      ? (recurrence.frequency === "yearly" ? "yearly" : "monthly")
+      : (frequency as SubscriptionInput["frequency"]);
+    const derivedEnd = recurrence?.end.type === "on_date" && recurrence.end.date
+      ? recurrence.end.date
+      : (endDate ? format(endDate, "yyyy-MM-dd") : null);
     onSave({
       name: name.trim(),
       amount: Number(amount),
       currency: "INR",
-      frequency: frequency as SubscriptionInput["frequency"],
+      frequency: derivedFreq,
       category,
       next_due_date: nextDueDate ? format(nextDueDate, "yyyy-MM-dd") : null,
       start_date: format(startDate, "yyyy-MM-dd"),
-      end_date: endDate ? format(endDate, "yyyy-MM-dd") : null,
+      end_date: derivedEnd,
       is_active: isActive,
       notes: notes.trim() || null,
       tags: tags.split(",").map((t) => t.trim()).filter(Boolean),
+      recurrence,
     });
     onOpenChange(false);
     setTimeout(() => setSubmitting(false), 600);
@@ -114,7 +127,7 @@ export const SubscriptionDialog = ({ open, onOpenChange, onSave, initialData }: 
             </div>
             <div className="space-y-1.5">
               <Label>Frequency</Label>
-              <Select value={frequency} onValueChange={setFrequency}>
+              <Select value={frequency} onValueChange={setFrequency} disabled={!!recurrence}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {Object.entries(FREQUENCY_LABELS).map(([k, v]) => (
@@ -145,6 +158,18 @@ export const SubscriptionDialog = ({ open, onOpenChange, onSave, initialData }: 
               <Label>End Date</Label>
               <DatePicker value={endDate} onChange={setEndDate} placeholder="No end" />
             </div>
+          </div>
+
+          <div className="space-y-1.5 pt-1 border-t border-[#E8E4D9]">
+            <RecurrencePicker
+              value={recurrence}
+              onChange={setRecurrence}
+              baseDate={nextDueDate ?? startDate}
+              context="subscription"
+            />
+            {recurrence && (
+              <p className="text-[12px] text-[#6B6965]">{formatRecurrenceSummary(recurrence)}</p>
+            )}
           </div>
 
           <div className="space-y-1.5">

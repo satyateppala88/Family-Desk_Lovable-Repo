@@ -18,6 +18,13 @@ import {
   FormMessage 
 } from "@/components/ui/form";
 import { HabitAssignmentType, HabitFrequencyType } from "@/types/habits";
+import { RecurrencePicker } from "@/components/shared/RecurrencePicker";
+import { formatRecurrenceSummary } from "@/utils/recurrenceUtils";
+import {
+  type RecurrenceSpec,
+  RECURRENCE_DAYS,
+  dayToDateIndex,
+} from "@/types/recurrence";
 
 const DAYS_OF_WEEK = [
   { value: 0, label: "Sun" },
@@ -52,6 +59,7 @@ interface HabitCreateDialogProps {
     target_value?: number;
     target_unit?: string;
     reminder_time?: string;
+    recurrence?: RecurrenceSpec | null;
   }) => void;
   isLoading?: boolean;
   householdMembers?: Array<{ userId: string; displayName: string; avatarUrl?: string | null }>;
@@ -76,6 +84,12 @@ export const HabitCreateDialog = ({
     else setInternalOpen(v);
   };
   const [showTarget, setShowTarget] = useState(false);
+  const [recurrence, setRecurrence] = useState<RecurrenceSpec | null>({
+    frequency: "daily",
+    interval: 1,
+    days: [...RECURRENCE_DAYS],
+    end: { type: "never" },
+  });
 
   const form = useForm<HabitFormData>({
     resolver: zodResolver(habitSchema),
@@ -101,18 +115,44 @@ export const HabitCreateDialog = ({
   const frequencyType = form.watch("frequencyType");
 
   const handleSubmit = (data: HabitFormData) => {
+    // Derive legacy frequency_type/frequency_days from the recurrence spec.
+    let legacyType: HabitFrequencyType = "daily";
+    let legacyDays: number[] = [];
+    if (recurrence) {
+      if (recurrence.frequency === "daily") {
+        const days = recurrence.days ?? [];
+        if (days.length === 7 || days.length === 0) {
+          legacyType = "daily";
+        } else {
+          legacyType = "specific_days";
+          legacyDays = days.map(dayToDateIndex);
+        }
+      } else if (recurrence.frequency === "weekly") {
+        legacyType = "specific_days";
+        legacyDays = (recurrence.days ?? []).map(dayToDateIndex);
+      } else {
+        legacyType = "weekly";
+      }
+    }
     onCreateHabit({
       name: data.name,
       assignment_type: data.assignmentType as HabitAssignmentType,
       assigned_members: data.assignmentType === "multiple" ? data.assignedMembers : undefined,
-      frequency_type: data.frequencyType as HabitFrequencyType,
-      frequency_days: data.frequencyType === "specific_days" ? data.frequencyDays || [] : [],
+      frequency_type: legacyType,
+      frequency_days: legacyDays,
       target_value: showTarget ? data.targetValue : undefined,
       target_unit: showTarget ? data.targetUnit : undefined,
       reminder_time: data.reminderTime || undefined,
+      recurrence,
     });
     form.reset();
     setShowTarget(false);
+    setRecurrence({
+      frequency: "daily",
+      interval: 1,
+      days: [...RECURRENCE_DAYS],
+      end: { type: "never" },
+    });
     setOpen(false);
   };
 
@@ -268,104 +308,29 @@ export const HabitCreateDialog = ({
               />
             )}
 
-            {/* Frequency Type */}
-            <FormField
-              control={form.control}
-              name="frequencyType"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>How often? *</FormLabel>
-                  <FormControl>
-                    <RadioGroup
-                      onValueChange={field.onChange}
-                      value={field.value}
-                      className="grid grid-cols-3 gap-2"
-                    >
-                      <div>
-                        <RadioGroupItem
-                          value="daily"
-                          id="daily"
-                          className="peer sr-only"
-                        />
-                        <Label
-                          htmlFor="daily"
-                          className="flex flex-col items-center justify-center rounded-md border-2 border-muted bg-popover p-3 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer"
-                        >
-                          <span className="text-sm font-medium">Daily</span>
-                        </Label>
-                      </div>
-                      <div>
-                        <RadioGroupItem
-                          value="weekly"
-                          id="weekly"
-                          className="peer sr-only"
-                        />
-                        <Label
-                          htmlFor="weekly"
-                          className="flex flex-col items-center justify-center rounded-md border-2 border-muted bg-popover p-3 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer"
-                        >
-                          <span className="text-sm font-medium">Weekly</span>
-                        </Label>
-                      </div>
-                      <div>
-                        <RadioGroupItem
-                          value="specific_days"
-                          id="specific_days"
-                          className="peer sr-only"
-                        />
-                        <Label
-                          htmlFor="specific_days"
-                          className="flex flex-col items-center justify-center rounded-md border-2 border-muted bg-popover p-3 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer"
-                        >
-                          <span className="text-sm font-medium">Specific</span>
-                        </Label>
-                      </div>
-                    </RadioGroup>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            {/* Day Selection (for specific_days) */}
-            {frequencyType === "specific_days" && (
-              <FormField
-                control={form.control}
-                name="frequencyDays"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Select Days</FormLabel>
-                    <div className="flex gap-1 flex-wrap">
-                      {DAYS_OF_WEEK.map((day) => {
-                        const isSelected = field.value?.includes(day.value);
-                        return (
-                          <Button
-                            key={day.value}
-                            type="button"
-                            variant={isSelected ? "default" : "outline"}
-                            size="sm"
-                            className="w-10 h-10 p-0"
-                            onClick={() => {
-                              const current = field.value || [];
-                              if (isSelected) {
-                                field.onChange(
-                                  current.filter((d) => d !== day.value)
-                                );
-                              } else {
-                                field.onChange([...current, day.value]);
-                              }
-                            }}
-                          >
-                            {day.label}
-                          </Button>
-                        );
-                      })}
-                    </div>
-                    <FormMessage />
-                  </FormItem>
-                )}
+            {/* Frequency via shared RecurrencePicker */}
+            <div className="space-y-1.5">
+              <RecurrencePicker
+                value={recurrence}
+                onChange={(next) =>
+                  setRecurrence(
+                    next ?? {
+                      frequency: "daily",
+                      interval: 1,
+                      days: [...RECURRENCE_DAYS],
+                      end: { type: "never" },
+                    },
+                  )
+                }
+                baseDate={new Date()}
+                context="habit"
               />
-            )}
+              {recurrence && (
+                <p className="text-[12px] text-muted-foreground">
+                  {formatRecurrenceSummary(recurrence)}
+                </p>
+              )}
+            </div>
 
             {/* Target Value Toggle */}
             <div className="space-y-3">

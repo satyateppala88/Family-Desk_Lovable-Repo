@@ -6,6 +6,8 @@ import { cn } from "@/lib/utils";
 import { HabitWithStreak } from "@/types/habits";
 import { useState } from "react";
 import { SwipeFillRow } from "@/components/ui/SwipeRow";
+import { formatRecurrenceSummary } from "@/utils/recurrenceUtils";
+import type { RecurrenceSpec } from "@/types/recurrence";
 
 interface HabitCardProps {
   habit: HabitWithStreak;
@@ -124,6 +126,11 @@ export const HabitCard = ({ habit, onToggle, onUpdateValue }: HabitCardProps) =>
             )}
             {habit.reminder_time && !hasTarget && (
               <span>{habit.reminder_time.slice(0, 5)}</span>
+            )}
+            {(habit as any).recurrence && (
+              <span className="truncate">
+                {formatRecurrenceSummary((habit as any).recurrence as RecurrenceSpec)}
+              </span>
             )}
           </div>
 

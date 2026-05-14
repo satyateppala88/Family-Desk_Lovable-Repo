@@ -28,6 +28,7 @@ import { formatINR } from "@/lib/formatINR";
 import { format, isPast, isToday, addDays } from "date-fns";
 import { cn } from "@/lib/utils";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { formatRecurrenceSummary } from "@/utils/recurrenceUtils";
 
 const FinanceSubscriptions = () => {
   const { householdId } = useHousehold();
@@ -158,7 +159,11 @@ const FinanceSubscriptions = () => {
                       <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground flex-wrap">
                         <span>{resolveCategoryLabel(sub.category, SUBSCRIPTION_CATEGORY_LABELS, customCats)}</span>
                         <span>·</span>
-                        <span>{FREQUENCY_LABELS[sub.frequency] || sub.frequency}</span>
+                        <span>
+                          {sub.recurrence
+                            ? formatRecurrenceSummary(sub.recurrence)
+                            : (FREQUENCY_LABELS[sub.frequency] || sub.frequency)}
+                        </span>
                         {sub.next_due_date && (
                           <>
                             <span>·</span>

@@ -4,6 +4,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { Habit, HabitLog, HabitStreak, HabitWithStreak, HabitAssignmentType, HabitFrequencyType } from "@/types/habits";
 import { format, subDays } from "date-fns";
+import type { RecurrenceSpec } from "@/types/recurrence";
 
 // Scoring constants
 const POINTS_PER_COMPLETION = 10;
@@ -24,6 +25,7 @@ interface CreateHabitData {
   target_value?: number;
   target_unit?: string;
   reminder_time?: string;
+  recurrence?: RecurrenceSpec | null;
 }
 
 export const useHabits = (householdId: string | null, userId?: string) => {
@@ -173,6 +175,7 @@ export const useHabits = (householdId: string | null, userId?: string) => {
           target_value: habitData.target_value,
           target_unit: habitData.target_unit,
           assignment_type: habitData.assignment_type || "personal",
+          recurrence: (habitData.recurrence ?? null) as any,
         })
         .select()
         .single();
