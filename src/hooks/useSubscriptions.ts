@@ -113,12 +113,13 @@ export const useCreateSubscription = (householdId: string | null) => {
           snapshots.push([key, prev]);
           if (Array.isArray(prev)) qc.setQueryData(key, [optimistic, ...prev]);
         });
-      toast.success("Subscription added");
       return { snapshots, optimisticId: optimistic.id };
     },
-    onError: (_e, _v, ctx: any) => {
+    onError: (error, _v, ctx: any) => {
       ctx?.snapshots?.forEach(([key, prev]: any) => qc.setQueryData(key, prev));
-      toast.error("Failed to add subscription");
+      toast.error("Could not add subscription", {
+        description: (error as Error)?.message,
+      });
     },
     onSuccess: (row, _v, ctx: any) => {
       if (!row) return;
@@ -128,6 +129,7 @@ export const useCreateSubscription = (householdId: string | null) => {
           qc.setQueryData(key, list.map((s) => (s.id === ctx?.optimisticId ? row : s)));
         });
       qc.invalidateQueries({ queryKey: ["finance-subscriptions", householdId] });
+      toast.success("Subscription added");
     },
   });
 };

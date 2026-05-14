@@ -1,28 +1,39 @@
-## Three small routing/label fixes
+## Three small mutation/UX fixes
 
-### Fix 1 — `/settings/account` 404
-In `src/App.tsx`, add a redirect route just before/after the `/account-settings` route:
-```tsx
-<Route path="/settings/account" element={<Navigate to="/account-settings" replace />} />
-```
-(`Navigate` is already imported and used by the existing `/taskmaster` redirect.)
+### Fix 1 — Custom categories error/success toasts
+**File:** `src/hooks/useCustomCategories.ts`
 
-### Fix 2 — `/tasks/all` 404
-Same file, add:
-```tsx
-<Route path="/tasks/all" element={<Navigate to="/taskmaster/tasks" replace />} />
-```
+`useAddCustomCategory` already handles `onSuccess` (invalidates `["finance-custom-categories", householdId]` + success toast) and `onError` (with reserved/duplicate branches). The only spec gap is that the generic `onError` fallback uses `e.message` already — no change needed there. **Already compliant; no edit required.**
 
-### Fix 3 — Header label "Taskmaster" → "Tasks"
-Only one user-facing rendering of "Taskmaster" exists outside the SubNav/route names: `src/components/layout/Header.tsx:133`:
-```ts
-if (path.startsWith("/taskmaster")) return "Taskmaster";
-```
-Change to `return "Tasks";`. This drives the header title shown on every `/taskmaster/*` page.
+(Note: the spec's example key `['custom-categories', householdId]` is a typo in the request — the established key in this hook and in its realtime subscription is `["finance-custom-categories", householdId]`. Keeping it consistent is correct.)
 
-Other `Taskmaster` references (component names, `useTaskmaster` hook, `TaskmasterSubNav`, the JSON-LD breadcrumb in `TaskmasterProjects.tsx`, the comment in `Header.tsx:59`, the long-form term in `TermsOfService.tsx`) are not the page title/breadcrumb the user is reporting and aren't shown as the breadcrumb header — they stay. The SubNav tab labels (`Today`, `All Tasks`, `My Tasks`, `Projects`, `Templates`, `Dashboard`) are already correct and untouched.
+### Fix 2 — Subscriptions: surface real error message
+**File:** `src/hooks/useSubscriptions.ts` → `useCreateSubscription`
+
+Two issues to address:
+1. The success toast currently fires inside `onMutate` (optimistic), so the user sees "Subscription added" even when the insert later fails. Move the success toast to `onSuccess`.
+2. `onError` currently shows a generic "Failed to add subscription". Change to surface the real reason:
+   ```ts
+   onError: (error, _v, ctx) => {
+     ctx?.snapshots?.forEach(([key, prev]) => qc.setQueryData(key, prev));
+     toast.error("Could not add subscription", { description: (error as Error)?.message });
+   }
+   ```
+3. Keep the existing optimistic update + `qc.invalidateQueries({ queryKey: ["finance-subscriptions", householdId] })` in `onSuccess` so the list refreshes without reload.
+
+No changes to `useUpdate`/`useDelete` (out of scope of the user's spec).
+
+### Fix 3 — Pantry "Category" Select doesn't open
+**File:** `src/components/grocery/AddPantryItemDialog.tsx`
+
+The dialog is a Radix-Dialog-based `BottomSheet` whose `Overlay` and `Content` are both `z-50`. The shadcn `SelectContent` is also `z-50`, so the Select popover ends up at the same stacking level as the sheet content and can be intercepted by the overlay on some viewports. `BottomSheet` does not expose a `modal` prop, so the safest, narrowly-scoped fix is to force the Select dropdown above the sheet:
+
+- On the Category `<SelectContent>`, add `className="z-[60]"`.
+- Apply the same fix to the Unit `<SelectContent>` in the same dialog for consistency (it's the same pattern and likely also affected on small viewports).
+
+No changes to `BottomSheet`, `ui/select`, or any other Sheet/Select usage elsewhere — keeps blast radius minimal.
 
 ### Verification
-1. Visit `/settings/account` → lands on `/account-settings`.
-2. Click "View all tasks" on `/taskmaster/today` (or visit `/tasks/all`) → lands on `/taskmaster/tasks`.
-3. Header on every `/taskmaster/*` page reads "Tasks" instead of "Taskmaster"; SubNav pills unchanged.
+1. Add a subscription with a forced failure (e.g., temporarily break input) → red toast shows the actual error message, optimistic row rolls back.
+2. Add a valid subscription → green "Subscription added" toast fires only after success; list updates immediately without reload.
+3. Open Grocery → Add Pantry Item → tap Category → dropdown opens and items are selectable. Same for Unit.
