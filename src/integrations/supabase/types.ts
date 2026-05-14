@@ -902,6 +902,8 @@ export type Database = {
           name: string
           next_due_date: string | null
           notes: string | null
+          recurrence: Json | null
+          recurrence_end: Json | null
           start_date: string
           tags: string[] | null
           updated_at: string
@@ -920,6 +922,8 @@ export type Database = {
           name: string
           next_due_date?: string | null
           notes?: string | null
+          recurrence?: Json | null
+          recurrence_end?: Json | null
           start_date?: string
           tags?: string[] | null
           updated_at?: string
@@ -938,6 +942,8 @@ export type Database = {
           name?: string
           next_due_date?: string | null
           notes?: string | null
+          recurrence?: Json | null
+          recurrence_end?: Json | null
           start_date?: string
           tags?: string[] | null
           updated_at?: string
@@ -1321,6 +1327,8 @@ export type Database = {
           id: string
           is_active: boolean
           name: string
+          recurrence: Json | null
+          recurrence_end: Json | null
           reminder_time: string | null
           target_unit: string | null
           target_value: number | null
@@ -1340,6 +1348,8 @@ export type Database = {
           id?: string
           is_active?: boolean
           name: string
+          recurrence?: Json | null
+          recurrence_end?: Json | null
           reminder_time?: string | null
           target_unit?: string | null
           target_value?: number | null
@@ -1359,6 +1369,8 @@ export type Database = {
           id?: string
           is_active?: boolean
           name?: string
+          recurrence?: Json | null
+          recurrence_end?: Json | null
           reminder_time?: string | null
           target_unit?: string | null
           target_value?: number | null
@@ -1793,6 +1805,7 @@ export type Database = {
           is_system_generated: boolean
           location: string | null
           member_ids: string[]
+          recurrence: Json | null
           repeat_type: string
           start_at: string
           title: string
@@ -1809,6 +1822,7 @@ export type Database = {
           is_system_generated?: boolean
           location?: string | null
           member_ids?: string[]
+          recurrence?: Json | null
           repeat_type?: string
           start_at: string
           title: string
@@ -1825,6 +1839,7 @@ export type Database = {
           is_system_generated?: boolean
           location?: string | null
           member_ids?: string[]
+          recurrence?: Json | null
           repeat_type?: string
           start_at?: string
           title?: string
@@ -2731,6 +2746,7 @@ export type Database = {
           priority: string
           priority_level: number | null
           project_id: string | null
+          recurrence: Json | null
           recurring: boolean | null
           recurring_pattern: Json | null
           source_calendar_event_id: string | null
@@ -2754,6 +2770,7 @@ export type Database = {
           priority?: string
           priority_level?: number | null
           project_id?: string | null
+          recurrence?: Json | null
           recurring?: boolean | null
           recurring_pattern?: Json | null
           source_calendar_event_id?: string | null
@@ -2777,6 +2794,7 @@ export type Database = {
           priority?: string
           priority_level?: number | null
           project_id?: string | null
+          recurrence?: Json | null
           recurring?: boolean | null
           recurring_pattern?: Json | null
           source_calendar_event_id?: string | null
