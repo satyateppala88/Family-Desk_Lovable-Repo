@@ -44,7 +44,7 @@ export interface ChangelogEntry {
 
 // ----- Current versions ---------------------------------------------------
 
-export const APP_VERSION = "2.0";
+export const APP_VERSION = "2.1";
 export const PRIVACY_VERSION = "1.1";
 export const TERMS_VERSION = "1.0";
 
@@ -81,6 +81,19 @@ export function formatVersionDate(iso: string): string {
 // ----- Changelogs ---------------------------------------------------------
 
 export const APP_CHANGELOG: ChangelogEntry[] = [
+  {
+    version: "2.1",
+    date: "2026-05-14",
+    type: "minor",
+    title: "Smarter recurrence and a calmer setup",
+    changes: [
+      "One unified Recurrence picker now powers Calendar events, Tasks, Habits and Subscriptions — pick daily, weekly, monthly, yearly or a custom rule, with an end date or a number of occurrences.",
+      "Recurring items show a friendly summary like \"Every 2 weeks on Mon, Wed · Until 30 Jun\" wherever they appear.",
+      "Saving Calendar preferences now works reliably — fixed a permissions issue that was blocking visibility and reminder settings from saving.",
+      "Module setup screens for Home, Calendar, Habits and Finance no longer reappear after you've completed them.",
+      "Small polish on date pickers across Calendar, Tasks, Finance and Grocery for a more consistent feel.",
+    ],
+  },
   {
     version: "2.0",
     date: "2026-05-14",
