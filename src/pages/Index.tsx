@@ -71,12 +71,12 @@ const Index = () => {
   const { data: progressData } = useOnboardingProgress(householdId);
   const { data: dashStats } = useDashboardStats(householdId);
   const { moduleSubtitles } = useDashboardSnapshot(householdId);
-  const { preferences } = useHouseholdPreferences(householdId);
+  const { preferences, isLoading: preferencesLoading } = useHouseholdPreferences(householdId);
   // Banner progress is driven by which enabled modules have been set up,
   // so the percentage and the hide-when-complete logic agree.
   const moduleSetupProducts = (enabledProducts ?? []).filter((p) => !!MODULE_SETUP_KEYS[p as ProductName]);
   const moduleSetupTotal = moduleSetupProducts.length;
-  const moduleSetupDone = (enabledProducts ?? []).reduce((n, p) => {
+  const moduleSetupDone = moduleSetupProducts.reduce((n, p) => {
     const key = MODULE_SETUP_KEYS[p as ProductName];
     return key && isModuleSetupComplete(preferences, key) ? n + 1 : n;
   }, 0);
@@ -86,7 +86,7 @@ const Index = () => {
       : 0;
   const allModuleSetupsDone =
     moduleSetupTotal > 0 && moduleSetupDone === moduleSetupTotal;
-  const showSetupBanner = !onboardingCompleted && !allModuleSetupsDone;
+  const showSetupBanner = !preferencesLoading && !onboardingCompleted && !allModuleSetupsDone;
 
   const queryClient = useQueryClient();
   const { data: completedTours, isLoading: toursLoading } = useQuery({
@@ -105,7 +105,7 @@ const Index = () => {
     staleTime: 5 * 60 * 1000,
   });
   const toursChecked = !!user?.id && !toursLoading && completedTours !== undefined;
-  const welcomeAlreadyDone = !!completedTours && (completedTours as any).dashboard_welcome === true;
+  const welcomeAlreadyDone = !!completedTours && Boolean((completedTours as any).dashboard_welcome);
   const shouldShowWelcome = toursChecked && !welcomeAlreadyDone;
   const [runOnboarding, setRunOnboarding] = useState(false);
   const { ensurePermission, primerProps } = usePermissionPrimer();
