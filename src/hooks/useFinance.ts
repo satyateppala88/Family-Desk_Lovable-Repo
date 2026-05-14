@@ -419,6 +419,7 @@ export const useCreateTransaction = (householdId: string | null) => {
         .insert({
           household_id: householdId!,
           created_by: user!.id,
+          paid_by: data.paid_by || user!.id,
           amount: data.amount!,
           type: data.type || "expense",
           category: data.category || "other",
@@ -428,6 +429,7 @@ export const useCreateTransaction = (householdId: string | null) => {
           is_recurring: data.is_recurring || false,
           tagged_member: data.tagged_member || null,
           notes: data.notes || null,
+          savings_goal_id: data.savings_goal_id || null,
         })
         .select()
         .single();
@@ -441,7 +443,7 @@ export const useCreateTransaction = (householdId: string | null) => {
         household_id: householdId!,
         account_id: data.account_id || null,
         amount: Number(data.amount) || 0,
-        type: (data.type as "income" | "expense") || "expense",
+        type: (data.type as "income" | "expense" | "savings") || "expense",
         category: data.category || "other",
         description: data.description ?? null,
         transaction_date: data.transaction_date || format(new Date(), "yyyy-MM-dd"),
@@ -450,6 +452,8 @@ export const useCreateTransaction = (householdId: string | null) => {
         tagged_member: data.tagged_member ?? null,
         notes: data.notes ?? null,
         created_by: user?.id || "",
+        paid_by: data.paid_by ?? user?.id ?? null,
+        savings_goal_id: data.savings_goal_id ?? null,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
