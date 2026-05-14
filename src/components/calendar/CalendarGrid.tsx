@@ -219,7 +219,7 @@ export const CalendarGrid = ({
           return (
             <div
               key={index}
-              onClick={() => onDateClick(day)}
+              onClick={() => onSelectDate(day)}
               className={cn(
                 "min-h-[100px] border-b border-r p-1.5 cursor-pointer hover:bg-muted/50 transition-colors",
                 !isCurrentMonth && "bg-muted/30",
@@ -231,7 +231,7 @@ export const CalendarGrid = ({
                 <div
                   className={cn(
                     "w-7 h-7 flex items-center justify-center rounded-full text-sm",
-                    isToday(day) && "bg-primary text-primary-foreground font-bold",
+                    (isToday(day) || isSameDay(day, selectedDate)) && "bg-primary text-primary-foreground font-bold",
                     !isCurrentMonth && "text-muted-foreground"
                   )}
                 >
