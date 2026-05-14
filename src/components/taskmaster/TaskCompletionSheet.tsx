@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { format } from "date-fns";
-import { CalendarIcon, Sparkles, Users, AlertCircle, Check } from "lucide-react";
+import { Sparkles, Users, AlertCircle, Check } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -23,12 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
+import { DatePicker } from "@/components/ui/date-picker";
 import { cn } from "@/lib/utils";
 import { ParsedTask } from "@/hooks/useParseTask";
 import { TaskCategory, TaskStatus, Project } from "@/types/taskmaster";
@@ -291,41 +286,22 @@ export const TaskCompletionSheet = ({
               ) : null}
             </div>
             <div className="flex items-center gap-2">
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={!draft.has_due_date}
-                    className={cn(
-                      "flex-1 justify-start text-left font-normal",
-                      !draft.userConfirmed.due && "border-amber-400/60",
-                      !draft.due_date && "text-muted-foreground"
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {draft.due_date
-                      ? format(new Date(draft.due_date), "PPP")
-                      : draft.has_due_date
-                      ? "Pick a date"
-                      : "No due date"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={draft.due_date ? new Date(draft.due_date) : undefined}
-                    onSelect={(d) => {
-                      if (!d) return;
-                      const iso = d.toISOString().split("T")[0];
-                      update({ due_date: iso, has_due_date: true });
-                      confirmField("due");
-                    }}
-                    initialFocus
-                    className={cn("p-3 pointer-events-auto")}
-                  />
-                </PopoverContent>
-              </Popover>
+              <DatePicker
+                value={draft.due_date ? new Date(draft.due_date) : undefined}
+                onChange={(d) => {
+                  if (!d) return;
+                  const iso = d.toISOString().split("T")[0];
+                  update({ due_date: iso, has_due_date: true });
+                  confirmField("due");
+                }}
+                format="PPP"
+                placeholder={draft.has_due_date ? "Pick a date" : "No due date"}
+                buttonDisabled={!draft.has_due_date}
+                className={cn(
+                  "flex-1",
+                  !draft.userConfirmed.due && "border-amber-400/60",
+                )}
+              />
               <div className="flex items-center gap-2">
                 <Switch
                   id="tc-has-due"

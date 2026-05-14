@@ -6,11 +6,9 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Sparkles, CreditCard, CalendarIcon, PiggyBank } from "lucide-react";
+import { Sparkles, CreditCard, PiggyBank } from "lucide-react";
 import { format, parse } from "date-fns";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { cn } from "@/lib/utils";
+import { DatePicker } from "@/components/ui/date-picker";
 import {
   FINANCE_CATEGORIES,
   CATEGORY_LABELS,
@@ -293,27 +291,10 @@ export const TransactionDialog = ({ open, onOpenChange, onSave, initialData, use
 
           <div className="space-y-2">
             <Label>Date</Label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className={cn("w-full justify-start text-left font-normal", !date && "text-muted-foreground")}
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {date ? format(parse(date, "yyyy-MM-dd", new Date()), "dd/MM/yyyy") : "Pick a date"}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={date ? parse(date, "yyyy-MM-dd", new Date()) : undefined}
-                  onSelect={(d) => d && setDate(format(d, "yyyy-MM-dd"))}
-                  initialFocus
-                  className={cn("p-3 pointer-events-auto")}
-                />
-              </PopoverContent>
-            </Popover>
+            <DatePicker
+              value={date ? parse(date, "yyyy-MM-dd", new Date()) : undefined}
+              onChange={(d) => d && setDate(format(d, "yyyy-MM-dd"))}
+            />
           </div>
 
           <div className="space-y-2">

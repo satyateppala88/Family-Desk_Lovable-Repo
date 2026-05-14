@@ -5,11 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon } from "lucide-react";
+import { DatePicker } from "@/components/ui/date-picker";
 import { format } from "date-fns";
-import { cn } from "@/lib/utils";
 import type { PantryItem } from "@/hooks/usePantryItems";
 import type { PantryCategory } from "@/hooks/usePantryCategories";
 
@@ -155,28 +152,7 @@ export const AddPantryItemDialog = ({
 
           <div className="space-y-2">
             <Label>Expiry Date (Optional)</Label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className={cn(
-                    "w-full justify-start text-left font-normal",
-                    !expiryDate && "text-muted-foreground"
-                  )}
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {expiryDate ? format(expiryDate, "PPP") : "Pick a date"}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={expiryDate}
-                  onSelect={setExpiryDate}
-                  initialFocus
-                />
-              </PopoverContent>
-            </Popover>
+            <DatePicker value={expiryDate} onChange={setExpiryDate} format="PPP" />
           </div>
 
           <div className="space-y-2">

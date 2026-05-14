@@ -1,57 +1,55 @@
 ## Goal
-At tablet breakpoint (≥768px) make the calendar use the available space, fix non-tappable "+X more" pills, and add a Day Detail panel/sheet. Mobile (<768px) layout stays untouched.
+Single tap on a date selects it and immediately closes the popover, across every form. Fix this once at the component level instead of patching each form.
 
-## Context
-- `useIsMobile()` returns true below 768px. The CalendarGrid agenda view is only used on mobile, so the "desktop" branch is what tablets render today — this is where the styling tweaks need to land.
-- F-17 already wired `onSelectDate` for both render paths, so Bug 3 is mostly verification + ensuring it also opens the new detail panel.
-- BottomNav is currently a floating pill until `lg` (1024px). Need to swap to a flush full-width bar at `md` (768–1023px), keep pill on mobile.
+## Findings
+There is no existing shared date-picker wrapper. Five forms each compose `Popover + PopoverTrigger(Button) + Calendar` inline, and none of them call `setOpen(false)` after `onSelect`, so the popover stays open after a tap. Two other `Calendar` usages are not popovers and are out of scope:
+- `CalendarSidebar.tsx` — inline mini-month for navigating the calendar page (no popover)
+- `PantryAnalytics.tsx` — inline date-range filter (no popover)
+- `TaskCompletionSheet.tsx` — already wires `setOpen(false)` manually, will be migrated for consistency
 
-## Changes
+## Plan
 
-### 1. New component: `src/components/calendar/DayDetailSheet.tsx`
-A responsive Sheet (shadcn) that shows ALL events for a selected date.
-- `<768px`: `side="bottom"` (rounded-t-2xl, ~75vh max-height, scrollable list).
-- `≥768px`: `side="right"`, width 320px, full height, slides over the grid (not modal — backdrop transparent, dismiss on outside click and X).
-- Header: `[EEEE], [d MMM]` (e.g., "Monday, 27 April") + `N event(s)` count + close X button.
-- Body: events sorted by start time ascending with all-day events first.
-  - Each row: 3px left color strip, full title (no truncation), time line `h:mm a – h:mm a` or "All day", and member chip (derive from `event.calendarOwner` if present).
-  - System events render as muted dot rows (consistent with grid).
-- Empty state: "Nothing scheduled".
-- Props: `open`, `onOpenChange`, `date: Date`, `events: CalendarEvent[]`, `onEventClick(ev)`.
+### 1. Create shared component `src/components/ui/date-picker.tsx`
 
-### 2. `src/components/calendar/CalendarGrid.tsx`
-Add new prop `onOpenDay: (date: Date) => void`. Apply tablet styling at `md:` breakpoint inside the existing desktop grid branch (which is what tablets render).
+A single `<DatePicker />` wrapping shadcn `Popover` + `Calendar` with auto-close behaviour:
 
-Per spec on the desktop grid:
-- Cell: `min-h-[72px] md:min-h-[100px]`, `p-1 md:p-1` (4px); change `onClick` to call `onOpenDay(day)` (which internally also sets selectedDate).
-- Day number: position top-right with `md:text-[15px]` and `md:p-1.5`. Keep selected/today highlight (already wired).
-- Event chips: `md:h-[22px] md:text-[11px] md:px-2`, no truncate clamp (use `truncate` only as final fallback). Keep slice(0, 3).
-- "+N more" element: convert from `<div>` to `<button type="button">` with `onClick={(e) => { e.stopPropagation(); onOpenDay(day); }}`. Style as small underline link, tappable target ≥32px.
-- Week-day header row: `md:text-[13px] md:pb-1`.
-- Mobile agenda branch: unchanged.
+```tsx
+interface DatePickerProps {
+  value?: Date;
+  onChange: (date: Date | undefined) => void;
+  placeholder?: string;          // default "Pick a date"
+  format?: string;               // default "dd/MM/yyyy"
+  disabled?: (date: Date) => boolean;
+  className?: string;            // applied to trigger Button
+  align?: "start" | "center" | "end"; // default "start"
+  id?: string;
+}
+```
 
-### 3. `src/pages/Calendar.tsx`
-- Add state `dayDetailOpen` (default false).
-- Define `openDayDetail(date)` that calls `setSelectedDate(date)` and `setDayDetailOpen(true)`. Pass it to `CalendarGrid` as `onOpenDay`.
-- Render `<DayDetailSheet open={dayDetailOpen} onOpenChange={setDayDetailOpen} date={selectedDate} events={selectedDateEvents} onEventClick={...} />`.
-- Keep the inline events-list section (from F-17) — it remains the default mobile/tablet snapshot under the grid; the sheet is the "see all" view.
+Internals:
+- Local `const [open, setOpen] = useState(false)` wired to `Popover open / onOpenChange`.
+- Trigger: outline `Button` with `CalendarIcon` + formatted date or placeholder, full width, left-aligned.
+- `Calendar mode="single" selected={value} onSelect={(d) => { onChange(d); if (d) setOpen(false); }}` with `className="p-3 pointer-events-auto"` and `initialFocus`.
+- Forwards `disabled` to `Calendar`.
+- Format display via `date-fns/format`.
 
-### 4. `src/components/layout/BottomNav.tsx`
-Rework the wrapper so:
-- `<md` (mobile): existing floating pill — keep classes as-is.
-- `≥md` and `<lg` (tablet): flush full-width bar
-  - `fixed bottom-0 left-0 right-0`, no margin, no rounded corners
-  - Height 60px, background `#0F6E56`, items centred
-  - Icons + labels visible (use existing labels)
-- `≥lg`: hidden (unchanged).
+### 2. Refactor inline popover pickers to use `<DatePicker />`
 
-Implement by rendering two `<nav>` siblings under the same `<>` fragment with mutually exclusive Tailwind visibility classes (`md:hidden` for the pill, `hidden md:flex lg:hidden` for the flush bar) so the two layouts don't fight CSS. Both reuse the same `PRIMARY` array and More handler.
+Replace the inline Popover/Calendar block in each of these files with a single `<DatePicker value={...} onChange={...} />` (preserving any `disabled` predicate, placeholder, and the parent's existing string conversion where needed):
 
-### 5. Verification
-- `bunx tsc --noEmit`.
-- Browser test at 390 (mobile) and 820 (tablet) viewports: confirm date tap highlights + opens panel; "+X more" opens panel with full list; chips render at proper size on tablet; bottom nav switches form factor.
+- `src/components/calendar/CreateEventDialog.tsx` — event date
+- `src/components/finance/TransactionDialog.tsx` — transaction date (parent stores `yyyy-MM-dd` string; convert in `onChange`)
+- `src/components/finance/SubscriptionDialog.tsx` — `nextDueDate` and `endDate` (two instances)
+- `src/components/grocery/AddPantryItemDialog.tsx` — `expiryDate`
+- `src/components/taskmaster/TaskCompletionSheet.tsx` — reschedule date (drop the local `open` state and manual `setOpen(false)`)
 
-## Out of Scope
-- Event creation flow, Connect Google Calendar dialog, data fetching hooks.
-- Mobile agenda layout in CalendarGrid.
-- Desktop (≥1024px) — currently no bottom nav by design; not changing.
+Remove the now-unused `Popover`, `PopoverContent`, `PopoverTrigger`, `Calendar`, and `CalendarIcon` imports from each file.
+
+### 3. Out of scope
+- `CalendarSidebar.tsx` and `PantryAnalytics.tsx` keep their inline `<Calendar>` (not popover-based).
+- No changes to validation, form submission, layout, or other field behaviour.
+- No mobile/tablet/desktop conditionals — the shared component works everywhere.
+
+### 4. Verification
+- `bunx tsc --noEmit`
+- Spot-check one form in the preview: tap a date → popover closes, field shows `DD/MM/YYYY`.
