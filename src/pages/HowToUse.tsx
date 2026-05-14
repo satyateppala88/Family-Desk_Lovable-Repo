@@ -32,9 +32,32 @@ export default function HowToUse() {
   const activeSection = HOW_TO_USE_SECTIONS.find((s) => s.id === openSection);
   const ActiveIcon = activeSection?.icon ?? ListTree;
 
+  const howToSchema = {
+    "@context": "https://schema.org",
+    "@type": "HowTo",
+    name: "How to use FamilyDesk",
+    description:
+      "Step-by-step guide to setting up your household and using FamilyDesk's tasks, meals, grocery, calendar, habits and finance modules.",
+    step: HOW_TO_USE_SECTIONS.map((section, idx) => ({
+      "@type": "HowToSection",
+      position: idx + 1,
+      name: section.title,
+      description: section.description,
+      itemListElement: section.steps.map((s, i) => ({
+        "@type": "HowToStep",
+        position: i + 1,
+        text: s.text,
+      })),
+    })),
+  };
+
   return (
     <>
       <Header />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(howToSchema) }}
+      />
 
       {/* Mobile-only sticky jump-to bar */}
       <div className="md:hidden sticky top-14 z-30 bg-background/90 backdrop-blur-xl border-b border-border/60">
