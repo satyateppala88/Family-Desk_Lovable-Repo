@@ -145,6 +145,11 @@ const App = () => (
                     <AccountSettings />
                   </ProtectedRoute>
                 } />
+                <Route path="/settings/account" element={
+                  <ProtectedRoute>
+                    <Navigate to="/account-settings" replace />
+                  </ProtectedRoute>
+                } />
                 <Route path="/dashboard" element={
                   <ProtectedRoute>
                     <Index />
@@ -153,6 +158,11 @@ const App = () => (
                 <Route path="/tasks" element={
                   <ProtectedRoute>
                     <TaskmasterToday />
+                  </ProtectedRoute>
+                } />
+                <Route path="/tasks/all" element={
+                  <ProtectedRoute>
+                    <Navigate to="/taskmaster/tasks" replace />
                   </ProtectedRoute>
                 } />
                 <Route path="/taskmaster" element={

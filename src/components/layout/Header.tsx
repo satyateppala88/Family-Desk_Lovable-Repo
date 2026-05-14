@@ -130,7 +130,7 @@ export const Header = (_props: HeaderProps) => {
     if (path.startsWith("/account-settings")) return "Account";
     if (path.startsWith("/members")) return "Members";
     if (path.startsWith("/invitations")) return "Invitations";
-    if (path.startsWith("/taskmaster")) return "Taskmaster";
+    if (path.startsWith("/taskmaster")) return "Tasks";
     return null;
   };
 
