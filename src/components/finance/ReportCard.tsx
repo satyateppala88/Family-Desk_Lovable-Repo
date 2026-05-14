@@ -1,6 +1,5 @@
 import { forwardRef } from "react";
 import { formatINR } from "@/lib/formatINR";
-import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Cell } from "recharts";
 import type { MonthlyReportData } from "@/hooks/useMonthlyReport";
 
 interface ReportCardProps {
@@ -12,9 +11,27 @@ const BRAND_GREEN = "#0F6E56";
 const BRAND_CREAM = "#F1EFE8";
 const INK = "#2C2C2A";
 const MUTED = "#888780";
+const CAT_NAME = "#6B6965";
+const TRACK_BG = "#E8E4D9";
+const BAR_COLORS = ["#0F6E56", "#4A9B7F", "#8FBFB0"];
+
+const formatAmount = (amount: number): string =>
+  amount.toLocaleString("en-IN", {
+    style: "currency",
+    currency: "INR",
+    maximumFractionDigits: 0,
+  });
+
+const formatAmountCompact = (amount: number): string => {
+  if (amount >= 100000) {
+    const lakhs = amount / 100000;
+    return `₹${lakhs.toFixed(1)}L`;
+  }
+  return formatAmount(amount);
+};
 
 export const ReportCard = forwardRef<HTMLDivElement, ReportCardProps>(({ report, tagline }, ref) => {
-  const chartData = report.topCategories.map((c) => ({ name: c.label, value: c.amount }));
+  const maxValue = Math.max(...report.topCategories.map((c) => c.amount), 0);
 
   return (
     <section
@@ -47,21 +64,43 @@ export const ReportCard = forwardRef<HTMLDivElement, ReportCardProps>(({ report,
       {/* Top categories */}
       <div>
         <h3 className="text-sm font-semibold mb-2" style={{ color: INK }}>Top spending categories</h3>
-        {chartData.length === 0 ? (
+        {report.topCategories.length === 0 ? (
           <p className="text-sm" style={{ color: MUTED }}>No expenses recorded this month.</p>
         ) : (
-          <div style={{ height: 160 }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData} layout="vertical" margin={{ top: 4, right: 12, left: 0, bottom: 4 }}>
-                <XAxis type="number" hide />
-                <YAxis type="category" dataKey="name" width={110} tick={{ fontSize: 12, fill: INK }} axisLine={false} tickLine={false} />
-                <Bar dataKey="value" radius={[0, 6, 6, 0]} label={{ position: "right", formatter: (v: any) => formatINR(Number(v)), fill: INK, fontSize: 11 }}>
-                  {chartData.map((_, i) => (
-                    <Cell key={i} fill={BRAND_GREEN} fillOpacity={1 - i * 0.2} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+          <div className="space-y-2">
+            {report.topCategories.map((cat, i) => {
+              const widthPercent = maxValue > 0 ? (cat.amount / maxValue) * 100 : 0;
+              return (
+                <div key={cat.key} className="flex items-center gap-2 min-h-[48px]">
+                  <div
+                    className="text-right text-[13px] leading-tight line-clamp-2 shrink-0"
+                    style={{ width: 110, color: CAT_NAME }}
+                  >
+                    {cat.label}
+                  </div>
+                  <div
+                    className="flex-1 overflow-hidden rounded-full"
+                    style={{ backgroundColor: TRACK_BG, height: 10 }}
+                  >
+                    <div
+                      className="rounded-full transition-all"
+                      style={{
+                        width: `${widthPercent}%`,
+                        height: 10,
+                        backgroundColor: BAR_COLORS[i] || BAR_COLORS[BAR_COLORS.length - 1],
+                      }}
+                    />
+                  </div>
+                  <div
+                    className="text-left text-[13px] font-bold shrink-0 truncate"
+                    style={{ width: 90, color: INK }}
+                  >
+                    <span className="hidden min-[360px]:inline">{formatAmount(cat.amount)}</span>
+                    <span className="inline min-[360px]:hidden">{formatAmountCompact(cat.amount)}</span>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
