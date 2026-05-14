@@ -5,35 +5,87 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { format, parseISO } from "date-fns";
-import { MapPin, Clock, Calendar as CalendarIcon, User } from "lucide-react";
+import { MapPin, Clock, Calendar as CalendarIcon, User, Pencil, Trash2 } from "lucide-react";
 import type { CalendarEvent } from "@/hooks/useCalendarEvents";
+import { Button } from "@/components/ui/button";
+import { useState } from "react";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { useDeleteManualEvent } from "@/hooks/useManualCalendarEvents";
+import { useToast } from "@/hooks/use-toast";
 
 interface CalendarEventDialogProps {
   event: CalendarEvent | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onEdit?: (event: CalendarEvent) => void;
 }
 
 export const CalendarEventDialog = ({
   event,
   open,
   onOpenChange,
+  onEdit,
 }: CalendarEventDialogProps) => {
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const deleteEvent = useDeleteManualEvent();
+  const { toast } = useToast();
+
   if (!event) return null;
 
   const startDate = parseISO(event.start);
   const endDate = parseISO(event.end);
+  const isManual = event.calendarId === "manual" && !!event.manualEventId;
+
+  const handleDelete = async () => {
+    if (!event.manualEventId) return;
+    try {
+      await deleteEvent.mutateAsync(event.manualEventId);
+      toast({ title: "Event deleted" });
+      setConfirmOpen(false);
+      onOpenChange(false);
+    } catch (err) {
+      toast({ title: "Couldn't delete event", description: "Please try again.", variant: "destructive" });
+    }
+  };
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <div className="flex items-start gap-3">
+          <div className="flex items-start gap-3 pr-8">
             <div
               className="w-4 h-4 rounded-full mt-1 flex-shrink-0"
               style={{ backgroundColor: event.color }}
             />
-            <DialogTitle className="text-left">{event.title}</DialogTitle>
+            <DialogTitle className="text-left flex-1">{event.title}</DialogTitle>
+            {isManual && (
+              <div className="flex items-center gap-1 -mt-1">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  aria-label="Edit event"
+                  onClick={() => {
+                    onEdit?.(event);
+                    onOpenChange(false);
+                  }}
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-destructive hover:text-destructive"
+                  aria-label="Delete event"
+                  onClick={() => setConfirmOpen(true)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
           </div>
         </DialogHeader>
 
@@ -82,5 +134,15 @@ export const CalendarEventDialog = ({
         </div>
       </DialogContent>
     </Dialog>
+    <ConfirmDialog
+      open={confirmOpen}
+      onOpenChange={setConfirmOpen}
+      title="Delete this event?"
+      description="This will remove the event from your family calendar. This action cannot be undone."
+      confirmLabel="Delete"
+      variant="destructive"
+      onConfirm={handleDelete}
+    />
+    </>
   );
 };
