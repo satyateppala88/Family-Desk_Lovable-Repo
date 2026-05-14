@@ -626,8 +626,8 @@ const Grocery = () => {
             ) : pantryItems.length === 0 ? (
               <EmptyState
                 icon={Package}
-                title="Your pantry is empty"
-                description="Add items to track what you have at home and know what to buy."
+                title="Your pantry is a blank slate"
+                description="Add staples your household always keeps at home. When stock runs low, FamilyDesk will flag it and add items to your shopping list automatically."
                 encouragement="Try AI Import to add everything at once!"
                 action={{ label: "Add Item", onClick: () => setShowAddDialog(true) }}
                 secondaryAction={{ label: "Quick Add Staples", onClick: () => setShowQuickAdd(true) }}
