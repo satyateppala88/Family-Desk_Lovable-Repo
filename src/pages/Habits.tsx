@@ -349,8 +349,12 @@ const Habits = () => {
                   )}
                 </div>
 
-                {householdTotalHabits === 0 || householdCompletedToday === 0 || householdTooNew ? (
-                  <HabitCoachInsight content={neutralCoachCopy} onDismiss={() => {}} />
+                {householdTotalHabits === 0 ? (
+                  <HabitCoachInsight content={emptyCoachCopy} onDismiss={() => {}} />
+                ) : householdTooNew ? (
+                  <HabitCoachInsight content={newHouseholdCopy} onDismiss={() => {}} />
+                ) : householdCompletedToday === 0 ? (
+                  <HabitCoachInsight content={startTodayCopy} onDismiss={() => {}} />
                 ) : (
                   <HabitCoachInsight
                     content="Your household is building great consistency! Consider adding a shared family habit like an evening walk or gratitude moment."
