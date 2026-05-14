@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { DatePicker } from "@/components/ui/date-picker";
+import { format } from "date-fns";
 import type { PantryItem } from "@/hooks/usePantryItems";
 import type { PantryCategory } from "@/hooks/usePantryCategories";
 
