@@ -25,7 +25,7 @@ import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ModuleNudgeBanner } from "@/components/discovery/ModuleNudgeBanner";
 import { PageLoading } from "@/components/ui/page-loading";
-import { Sparkles, Calendar, LayoutGrid, UtensilsCrossed, Search, ChevronDown, ChevronRight } from "lucide-react";
+import { Sparkles, Calendar, LayoutGrid, UtensilsCrossed, Search, ChevronDown, ChevronRight, Loader2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
@@ -60,6 +60,7 @@ const Meals = () => {
   const [cookingRecipe, setCookingRecipe] = useState<Recipe | null>(null);
   const [shoppingForRecipe, setShoppingForRecipe] = useState<Recipe | null>(null);
   const [generatingPlan, setGeneratingPlan] = useState(false);
+  const [suggestingDinner, setSuggestingDinner] = useState(false);
   const [view, setView] = useState<"today" | "recipes">("today");
   const [weekOpen, setWeekOpen] = useState(false);
   const [deleteRecipeId, setDeleteRecipeId] = useState<string | null>(null);
@@ -127,7 +128,13 @@ const Meals = () => {
     daysToGenerate: "full" | "remaining",
     source: "plan" | "recipes" = "plan",
   ) => {
-    if (!householdId || !user) return;
+    if (!householdId || !user) {
+      toast({
+        title: "Hang on a sec",
+        description: "Loading your household — try again in a moment.",
+      });
+      return;
+    }
     const numDays = daysToGenerate === "full" ? 7 : getRemainingDaysOfWeek("sunday");
     setGeneratingPlan(true);
     try {
@@ -135,7 +142,7 @@ const Meals = () => {
         body: { householdId, userId: user.id, numDays, weekStartDate: format(currentWeekStart, "yyyy-MM-dd"), generateFrom: daysToGenerate === "remaining" ? "today" : "start" },
       });
       const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error("timeout")), 30000),
+        setTimeout(() => reject(new Error("timeout")), 15000),
       );
       const { data, error } = (await Promise.race([invokePromise, timeoutPromise])) as Awaited<typeof invokePromise>;
       if (error) throw error;
@@ -151,8 +158,8 @@ const Meals = () => {
     } catch (error: any) {
       console.error("Generate meal plan error:", error);
       toast({
-        title: "Couldn't generate recipes",
-        description: "Please try again.",
+        title: "Couldn't generate right now — try again",
+        description: error?.message,
         variant: "destructive",
       });
     } finally {
@@ -198,6 +205,30 @@ const Meals = () => {
 
   const openAddSheet = (mealType: SlotMealType) => setAddSheet({ open: true, mealType });
   const openAiSheet = (mealType: SlotMealType) => setAiSheet({ open: true, mealType });
+
+  const handleSuggestDinner = () => {
+    try {
+      if (!householdId) {
+        toast({
+          title: "Hang on a sec",
+          description: "Loading your household — try again in a moment.",
+        });
+        return;
+      }
+      setSuggestingDinner(true);
+      openAiSheet("dinner");
+      // Sheet renders its own skeleton; release button shortly after open.
+      setTimeout(() => setSuggestingDinner(false), 600);
+    } catch (e: any) {
+      console.error("Suggest dinner error:", e);
+      setSuggestingDinner(false);
+      toast({
+        title: "Couldn't open suggestions",
+        description: e?.message || "Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
   const openBrowseForToday = (mealType: SlotMealType) => {
     if (recipes.length === 0) {
       toast({ title: "No recipes yet", description: "Try AI Suggest or generate a meal plan first." });
@@ -316,7 +347,8 @@ const Meals = () => {
             {householdId && (
               <TonightDinnerCard
                 recipe={todaysDinner}
-                onSuggest={() => openAiSheet("dinner")}
+                onSuggest={handleSuggestDinner}
+                isLoading={suggestingDinner}
                 onChange={() => openAddSheet("dinner")}
                 onAddToList={(r) => setShoppingForRecipe(r)}
                 onMarkAsCooked={(r) => setCookingRecipe(r)}
@@ -352,8 +384,12 @@ const Meals = () => {
                     className="w-full sm:w-auto"
                     size="sm"
                   >
-                    <Sparkles className="w-4 h-4 mr-1.5" aria-hidden="true" />
-                    {generatingPlan ? "Creating your plan..." : "Generate Meal Plan"}
+                    {generatingPlan ? (
+                      <Loader2 className="w-4 h-4 mr-1.5 animate-spin" aria-hidden="true" />
+                    ) : (
+                      <Sparkles className="w-4 h-4 mr-1.5" aria-hidden="true" />
+                    )}
+                    {generatingPlan ? "Generating..." : "Generate Meal Plan"}
                   </Button>
                   <p className="text-[11px] text-muted-foreground mt-1.5">
                     I'll plan meals based on your saved recipes and preferences

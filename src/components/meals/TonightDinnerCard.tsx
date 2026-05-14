@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Sparkles, UtensilsCrossed, ShoppingCart, ChefHat } from "lucide-react";
+import { Sparkles, UtensilsCrossed, ShoppingCart, ChefHat, Loader2 } from "lucide-react";
 import type { Recipe } from "@/types/database";
 
 interface TonightDinnerCardProps {
@@ -8,9 +8,10 @@ interface TonightDinnerCardProps {
   onChange: () => void;
   onAddToList?: (recipe: Recipe) => void;
   onMarkAsCooked?: (recipe: Recipe) => void;
+  isLoading?: boolean;
 }
 
-export const TonightDinnerCard = ({ recipe, onSuggest, onChange, onAddToList, onMarkAsCooked }: TonightDinnerCardProps) => {
+export const TonightDinnerCard = ({ recipe, onSuggest, onChange, onAddToList, onMarkAsCooked, isLoading }: TonightDinnerCardProps) => {
   if (!recipe) {
     return (
       <div className="rounded-2xl border bg-gradient-to-br from-primary/10 via-background to-background p-5 sm:p-6">
@@ -23,8 +24,12 @@ export const TonightDinnerCard = ({ recipe, onSuggest, onChange, onAddToList, on
             <p className="text-sm text-muted-foreground mt-1">
               Tap 'Suggest dinner' and our AI will recommend something based on your pantry and your family's preferences — in seconds.
             </p>
-            <Button onClick={onSuggest} className="mt-4">
-              <Sparkles className="w-4 h-4 mr-1.5" />
+            <Button onClick={onSuggest} disabled={isLoading} className="mt-4">
+              {isLoading ? (
+                <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
+              ) : (
+                <Sparkles className="w-4 h-4 mr-1.5" />
+              )}
               Suggest dinner
             </Button>
           </div>
