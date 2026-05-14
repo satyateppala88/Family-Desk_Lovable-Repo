@@ -25,7 +25,7 @@ export interface FinanceTransaction {
   household_id: string;
   account_id: string | null;
   amount: number;
-  type: "income" | "expense";
+  type: "income" | "expense" | "savings";
   category: string;
   description: string | null;
   transaction_date: string;
@@ -34,6 +34,8 @@ export interface FinanceTransaction {
   tagged_member: string | null;
   notes: string | null;
   created_by: string;
+  paid_by: string | null;
+  savings_goal_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -218,6 +220,25 @@ export const CATEGORY_ALIASES: Record<string, string> = {
   savings: "sip_investment",
   investment: "investment_returns",
   subscriptions: "other",
+};
+
+/** Sub-categories shown when transaction type = "savings". */
+export const SAVINGS_CATEGORIES = [
+  "sip",
+  "mutual_fund",
+  "fixed_deposit",
+  "stocks",
+  "bank_deposit",
+  "other",
+] as const;
+
+export const SAVINGS_CATEGORY_LABELS: Record<string, string> = {
+  sip: "SIP",
+  mutual_fund: "Mutual Fund",
+  fixed_deposit: "Fixed Deposit",
+  stocks: "Stocks",
+  bank_deposit: "Bank Deposit",
+  other: "Other",
 };
 
 // ─── Hooks ───────────────────────────────────────────────────
