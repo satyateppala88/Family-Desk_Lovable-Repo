@@ -10,7 +10,6 @@ import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Drawer, DrawerContent } from "@/components/ui/drawer";
 import { Send, Loader2, Sparkles, X, RotateCcw } from "lucide-react";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useSpeechSynthesis } from "@/hooks/useSpeechSynthesis";
@@ -382,26 +381,6 @@ export const AIChatWidget = () => {
 
   return (
     <>
-      {/* Trigger button — hidden while the chat panel is open so it doesn't
-          overlap the mic/send icons inside the input row. */}
-      {!isOpen && (
-        <TooltipProvider delayDuration={200}>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                size="lg"
-                aria-label="Ask FamilyDesk AI"
-                className="ai-chat-fab fixed bottom-24 right-6 h-14 w-14 rounded-full shadow-lg z-[60] bg-gradient-to-br from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 transition-[bottom] duration-200"
-                onClick={() => setIsOpen(true)}
-              >
-                <Sparkles className="h-6 w-6" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="left">Ask FamilyDesk AI</TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-      )}
-
       {/* Mobile: bottom drawer ~65% */}
       {isMobile ? (
         <Drawer open={isOpen} onOpenChange={setIsOpen}>
