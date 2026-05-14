@@ -25,7 +25,7 @@ export interface FinanceTransaction {
   household_id: string;
   account_id: string | null;
   amount: number;
-  type: "income" | "expense";
+  type: "income" | "expense" | "savings";
   category: string;
   description: string | null;
   transaction_date: string;
@@ -34,6 +34,8 @@ export interface FinanceTransaction {
   tagged_member: string | null;
   notes: string | null;
   created_by: string;
+  paid_by: string | null;
+  savings_goal_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -220,6 +222,25 @@ export const CATEGORY_ALIASES: Record<string, string> = {
   subscriptions: "other",
 };
 
+/** Sub-categories shown when transaction type = "savings". */
+export const SAVINGS_CATEGORIES = [
+  "sip",
+  "mutual_fund",
+  "fixed_deposit",
+  "stocks",
+  "bank_deposit",
+  "other",
+] as const;
+
+export const SAVINGS_CATEGORY_LABELS: Record<string, string> = {
+  sip: "SIP",
+  mutual_fund: "Mutual Fund",
+  fixed_deposit: "Fixed Deposit",
+  stocks: "Stocks",
+  bank_deposit: "Bank Deposit",
+  other: "Other",
+};
+
 // ─── Hooks ───────────────────────────────────────────────────
 
 export const useFinanceAccounts = (householdId: string | null) => {
@@ -242,7 +263,7 @@ export const useFinanceAccounts = (householdId: string | null) => {
 
 export const useFinanceTransactions = (
   householdId: string | null,
-  filters?: { month?: string; category?: string; type?: string; search?: string }
+  filters?: { month?: string; category?: string; type?: string; search?: string; paidBy?: string }
 ) => {
   return useQuery({
     queryKey: ["finance-transactions", householdId, filters],
@@ -268,6 +289,9 @@ export const useFinanceTransactions = (
       }
       if (filters?.type && filters.type !== "all") {
         query = query.eq("type", filters.type);
+      }
+      if (filters?.paidBy && filters.paidBy !== "all") {
+        query = query.eq("paid_by", filters.paidBy);
       }
       if (filters?.search) {
         query = query.ilike("description", `%${filters.search}%`);
@@ -361,6 +385,7 @@ export const useFinanceMonthlySummary = (householdId: string | null, month?: str
       const transactions = (data as Array<Pick<FinanceTransaction, "amount" | "type" | "category">>) || [];
       const income = transactions.filter((t) => t.type === "income").reduce((s, t) => s + Number(t.amount), 0);
       const expenses = transactions.filter((t) => t.type === "expense").reduce((s, t) => s + Number(t.amount), 0);
+      const saved = transactions.filter((t) => t.type === "savings").reduce((s, t) => s + Number(t.amount), 0);
 
       // Category breakdown for expenses
       const categoryBreakdown: Record<string, number> = {};
@@ -373,6 +398,7 @@ export const useFinanceMonthlySummary = (householdId: string | null, month?: str
       return {
         income,
         expenses,
+        saved,
         savings: income - expenses,
         cashLeft: income - expenses,
         categoryBreakdown,
@@ -398,6 +424,7 @@ export const useCreateTransaction = (householdId: string | null) => {
         .insert({
           household_id: householdId!,
           created_by: user!.id,
+          paid_by: data.paid_by || user!.id,
           amount: data.amount!,
           type: data.type || "expense",
           category: data.category || "other",
@@ -407,6 +434,7 @@ export const useCreateTransaction = (householdId: string | null) => {
           is_recurring: data.is_recurring || false,
           tagged_member: data.tagged_member || null,
           notes: data.notes || null,
+          savings_goal_id: data.savings_goal_id || null,
         })
         .select()
         .single();
@@ -420,7 +448,7 @@ export const useCreateTransaction = (householdId: string | null) => {
         household_id: householdId!,
         account_id: data.account_id || null,
         amount: Number(data.amount) || 0,
-        type: (data.type as "income" | "expense") || "expense",
+        type: (data.type as "income" | "expense" | "savings") || "expense",
         category: data.category || "other",
         description: data.description ?? null,
         transaction_date: data.transaction_date || format(new Date(), "yyyy-MM-dd"),
@@ -429,6 +457,8 @@ export const useCreateTransaction = (householdId: string | null) => {
         tagged_member: data.tagged_member ?? null,
         notes: data.notes ?? null,
         created_by: user?.id || "",
+        paid_by: data.paid_by ?? user?.id ?? null,
+        savings_goal_id: data.savings_goal_id ?? null,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };

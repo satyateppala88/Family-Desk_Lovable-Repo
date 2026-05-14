@@ -1,76 +1,95 @@
-## Four small fixes
+# Finance F-12 / F-13 / F-14 — Implementation Plan
 
-### FIX 1 — Hide "Log your first expense" tip when transactions exist
-**File:** `src/pages/Finance.tsx`
+## Important deviations from the brief (please confirm)
 
-Wrap the `<ModuleNudgeBanner moduleKey="finance" …>` (lines 106–109) in a conditional that only renders when `summary?.transactionCount` is `0`. While `summary` is still loading (`isLoading`), don't render the tip either — avoids a flash for households that already have transactions.
+A few details in the prompts don't match the actual codebase. I'll proceed with the corrections below unless you tell me otherwise:
 
-```tsx
-{!isLoading && (summary?.transactionCount ?? 0) === 0 && (
-  <ModuleNudgeBanner moduleKey="finance" text="Log your first expense …" />
-)}
-```
+1. **Transaction type values are `income` | `expense`** in code (not `credit` | `debit`). I'll add `savings` as a third value, but UI labels will keep the existing **Debit / Credit** wording (just add a **Savings** toggle).
+2. **Savings goals table is `finance_savings_goals`** (not `savings_goals`). FK will reference that table.
+3. **`type` is a plain text column**, not an enum, so the `ALTER TYPE` block is a no-op — I'll drop it.
+4. **`finance_savings_goals` has no `category` column**, so the "fallback: match by goal category" rule for unlinked savings can't work. I'll match unlinked savings transactions strictly by `savings_goal_id`. Alternative: I can add a `category` column to goals if you want the fallback — say the word.
 
-### FIX 2 — Stop ghost "Preferences updated!" toast on `/taskmaster/tasks`
-**Root cause:** `useModuleSetup` (in `src/hooks/useModuleSetup.ts`) auto-fires `markComplete → updatePreferences({ [typedColumn]: true })` on mount when `hasRequiredData` is true. The hook comment says "Silent backfill — never surface a toast", but `useHouseholdPreferences.updatePreferences` always fires `toast.success("Preferences updated!")` in `onSuccess`. So every visit to a page wrapped by `ModuleSetupGate` (Tasks, Today, etc.) emits the toast on first load until the boolean column is set.
+---
 
-**Fix in `src/hooks/useHouseholdPreferences.ts`:**
-- Change the mutation to accept an optional `silent` flag. Easiest: switch the `mutationFn` input from `Partial<HouseholdPreferences>` to `{ updates: Partial<HouseholdPreferences>; silent?: boolean }`, and skip the `toast.success(...)` in `onSuccess` when `silent` is true. Update the public `updatePreferences` wrapper to keep its current signature (toast on by default), and add an internal call site that passes `silent: true`.
-- Simpler alternative (preferred — fewer call-site changes): give the returned function an optional second arg: `updatePreferences(updates, { silent?: boolean })`. Internally call `mutateAsync({ updates, silent })`. All existing callers keep working unchanged.
+## F-12 — `paid_by` on transactions
 
-**Fix in `src/hooks/useModuleSetup.ts`:**
-- In `markComplete.mutationFn`, pass `{ silent: true }` to `updatePreferences(...)` for both branches (the boolean-column write and the jsonb write). This is the only place that does background backfills.
+### DB migration
+- Add `paid_by uuid` to `finance_transactions` (nullable, FK to `auth.users(id)` ON DELETE SET NULL).
+- Backfill `paid_by = created_by` where null.
+- Add index on `(household_id, paid_by)`.
 
-No other call sites need changes — Settings, ModuleSetupGate finalize, etc. legitimately want the toast.
+### Form (`TransactionDialog.tsx`)
+- Add a **Paid by** select below Category, above Description (Notes lives at the very bottom).
+- Options come from `useHouseholdMembers(householdId)` — show avatar initials + display name.
+- Default = current `auth.uid()`.
+- Required. Save as `paid_by`.
 
-### FIX 3 — Submit buttons placed mid-form in Subscription / Event modals
-**Files:** `src/components/finance/SubscriptionDialog.tsx`, `src/components/calendar/CreateEventDialog.tsx`
+### Type & hook updates (`useFinance.ts`)
+- Add `paid_by: string` to `FinanceTransaction`.
+- Pass through `paid_by` in `useCreateTransaction` / `useUpdateTransaction`.
 
-Both dialogs already pass the submit button via `BottomSheet`'s `footer` prop, which renders a `sticky bottom-0` bar at the bottom of the sheet, so the button structurally sits below all fields. The user-reported behavior most likely comes from one of two things:
+### Transactions list (`FinanceTransactions.tsx`)
+- Add **Paid by** filter (All members + each member) using same member list.
+- On each row, render a small initials chip when `paid_by !== currentUserId`.
+- Add a tab strip at top: **All transactions** | **By Member** (only render the second tab if `members.length >= 2`).
+- **By Member** tab: one card per member showing this month's totals — Income (sum of `income` where `paid_by = m`), Spent (sum of `expense`), Saved (sum of `savings`). Click card → switches back to list view with that member preselected in the filter.
 
-1. On mobile, the on-screen keyboard pushes content but the sheet footer scrolls with the content area, causing the button to appear over a field rather than at the visual bottom.
-2. The form is taller than `max-h-[90dvh]`, so the user scrolls and sees fields below where the sticky bar is anchored.
+---
 
-Plan:
-- Confirm button is the last DOM node in the form container (already is) — no reorder needed.
-- Ensure the scrollable content area in `BottomSheet` has bottom padding so the last field isn't covered by the sticky footer. In `src/components/ui/BottomSheet.tsx`, change the scroll wrapper `px-4 py-4` to `px-4 pt-4 pb-6` (or add `pb-24` only when `footer` is present) so the final field clears the sticky button on small screens.
-- In `SubscriptionDialog`, move the `Active` switch (currently after Notes) to immediately under `Name` so the "create" affordance is closer to the primary identifying field, and Notes/Tags remain the last "secondary" inputs before the sticky Save button. (Reorder only — no logic change.)
-- In `CreateEventDialog`, the children order already ends with `Notes`. Leave field order as-is; the padding fix above is enough.
+## F-13 — Savings transaction type + goal linkage
 
-If after the padding fix the user still reports the button appearing mid-form, we'll need a screenshot to confirm what they're seeing, since the code path produces a sticky-bottom button.
+### DB migration
+- Add `savings_goal_id uuid` to `finance_transactions` (nullable, FK to `finance_savings_goals(id)` ON DELETE SET NULL).
+- No enum change needed (`type` is text).
 
-### FIX 4 — Habits "AI Coach Insight: Add your first habit" shows with existing habits
-**File:** `src/pages/Habits.tsx` (around lines 89, 262)
+### Form (`TransactionDialog.tsx`)
+- Replace 2-up toggle with 3-up: **Debit / Credit / Savings**.
+- When **Savings** is selected:
+  - Amount label → "Amount Saved".
+  - Category select swaps its option list to: SIP, Mutual Fund, Fixed Deposit, Stocks, Bank Deposit, Other.
+  - Show **Link to Goal** select fed by `useFinanceSavingsGoals(householdId)` filtered to `status = 'active'`. Each option shows `name — ₹current of ₹target`. Optional. Empty state: "No goals yet — create one in Savings" linking to `/finance/savings`.
+- Save `savings_goal_id` (nullable). When type switches away from savings, reset `savings_goal_id` to null.
 
-Current condition renders `neutralCoachCopy` (the "Add your first habit…" text) whenever `totalCount === 0 || completedCount === 0 || householdTooNew`. So a household with habits but none completed yet today still sees the "Add your first habit" copy.
+### Constants & types
+- Add `SAVINGS_CATEGORIES` constant + labels in `useFinance.ts`.
+- Update `FinanceTransaction.type` to `"income" | "expense" | "savings"`.
+- Update `useFinanceSummary` so `savings`-typed transactions are excluded from `expenses` and reported as a new `savedThisMonth` total.
 
-Fix:
-- Only show the "Add your first habit…" copy when `totalCount === 0`.
-- When `totalCount > 0` and `completedCount === 0` (and not too new), show a different contextual line, e.g. `"Tap a habit below to log your first check-in for today."`.
-- Keep the existing "You're making progress!" branch for partial completion.
-- Keep the `householdTooNew` neutral copy but switch its text to a welcoming line that doesn't claim there are no habits, e.g. `"Your household is just getting started — take a moment to set up the routines that matter."`.
+### `FinanceSavings.tsx` updates
+- For each goal card, compute **actual contributions** = sum of `finance_transactions` where `savings_goal_id = goal.id`. Show `₹X saved | ₹Y goal | Z% complete` and drive the progress bar from this value (still allow manual `current_amount` for legacy goals — display the larger of the two).
+- Add an expandable **Contributions** section listing the latest 5 linked transactions (Date · Description · Category · Amount · Paid by). "View all" expands to full list.
+- Add a **Savings Timeline** section below the goals list:
+  - Period toggle: Week / Month / Quarter / Year (last 6 / 6 / 4 / 3 buckets).
+  - Recharts grouped bars: Target (`#E8E4D9`) vs Actual (`#0F6E56`).
+  - Target = sum of (goal target − current) prorated across remaining periods until `target_date`; Actual = sum of `savings` transactions in the bucket.
+  - ✓ badge above any bar where actual ≥ target.
 
-Concrete change:
-```tsx
-const emptyCoachCopy = "Add your first habit to start tracking your household's daily routine.";
-const startTodayCopy = "Tap a habit below to log your first check-in for today.";
-const newHouseholdCopy = "Your household is just getting started — take a moment to set up the routines that matter.";
+### New hook
+- `useSavingsContributions(householdId, { goalId?, period? })` to power the goal cards and timeline chart.
 
-{totalCount === 0 ? (
-  <HabitCoachInsight content={emptyCoachCopy} onDismiss={() => {}} />
-) : householdTooNew ? (
-  <HabitCoachInsight content={newHouseholdCopy} onDismiss={() => {}} />
-) : completedCount === 0 ? (
-  <HabitCoachInsight content={startTodayCopy} onDismiss={() => {}} />
-) : completedCount < totalCount ? (
-  <HabitCoachInsight content="You're making progress! Keep the momentum going — every check-off counts." onDismiss={() => {}} />
-) : null}
-```
+---
 
-### Files touched
-- `src/pages/Finance.tsx`
-- `src/hooks/useHouseholdPreferences.ts`
-- `src/hooks/useModuleSetup.ts`
-- `src/components/ui/BottomSheet.tsx`
-- `src/components/finance/SubscriptionDialog.tsx` (field reorder only)
-- `src/pages/Habits.tsx`
+## F-14 — Finance hub member summary
+
+### `MemberContributions.tsx`
+- Extend `useMemberContributions` to return `{ income, spent, saved }` per member for the selected month (currently returns `{ total }` from income only).
+- Render each member row as: avatar + name on top, then `Income ₹X · Spent ₹Y · Saved ₹Z`. Show `—` when a value is 0.
+- Keep the "single-member households: hide entirely" guard.
+- Section title stays roughly the same; can rename to "Member summary this month".
+
+---
+
+## Files to touch
+
+- `supabase/migrations/<new>.sql` — F-12 + F-13 schema
+- `src/hooks/useFinance.ts` — types, summary, mutations, savings categories
+- `src/hooks/useMemberContributions.ts` — return income/spent/saved
+- `src/hooks/useHouseholdMembers.ts` — reuse as-is
+- `src/hooks/useSavingsContributions.ts` — new
+- `src/components/finance/TransactionDialog.tsx` — paid_by, 3-way toggle, goal link
+- `src/components/finance/MemberContributions.tsx` — new layout
+- `src/pages/FinanceTransactions.tsx` — paid_by filter + chip + tabs + by-member cards
+- `src/pages/FinanceSavings.tsx` — actuals, contributions list, timeline chart
+- `src/pages/Finance.tsx` — picks up updated `MemberContributions` automatically (no layout change)
+
+No edge-function changes. RLS on new columns is covered by existing household-scoped policies on `finance_transactions`.

@@ -32,14 +32,23 @@ import { formatINR } from "@/lib/formatINR";
 import { TransactionDialog } from "@/components/finance/TransactionDialog";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
+import { useHouseholdMembers } from "@/hooks/useHouseholdMembers";
+import { useMemberContributions } from "@/hooks/useMemberContributions";
+import { useAuth } from "@/contexts/AuthContext";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const FinanceTransactions = () => {
   const { householdId } = useHousehold();
   useFinanceRealtime(householdId);
+  const { user } = useAuth();
+  const { data: members } = useHouseholdMembers(householdId);
   const { categories: customCats } = useCustomCategories("transaction");
   const [search, setSearch] = useState("");
   const [catFilter, setCatFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
+  const [paidByFilter, setPaidByFilter] = useState("all");
+  const [activeTab, setActiveTab] = useState<"list" | "members">("list");
   const [allTime, setAllTime] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
   const [editTx, setEditTx] = useState<FinanceTransaction | null>(null);
@@ -52,8 +61,16 @@ const FinanceTransactions = () => {
     month: allTime ? undefined : month,
     category: catFilter,
     type: typeFilter,
+    paidBy: paidByFilter,
     search: search || undefined,
   });
+  const { data: memberTotals } = useMemberContributions(householdId, month);
+  const showMembersTab = (members?.length ?? 0) >= 2;
+
+  const memberById = new Map((members || []).map((m) => [m.userId, m]));
+  const initialsOf = (name: string) =>
+    name.split(/\s+/).filter(Boolean).slice(0, 2).map((s) => s[0]?.toUpperCase()).join("") || "M";
+
   const { data: userCards } = useUserCards(householdId);
   const userCardIds = userCards?.map((c) => c.card_catalog_id) || [];
   const createTx = useCreateTransaction(householdId);
@@ -98,6 +115,66 @@ const FinanceTransactions = () => {
           </Button>
         </div>
 
+        {showMembersTab && (
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "list" | "members")}>
+            <TabsList className="grid grid-cols-2 w-full sm:w-auto">
+              <TabsTrigger value="list">All transactions</TabsTrigger>
+              <TabsTrigger value="members">By Member</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        )}
+
+        {activeTab === "members" && showMembersTab ? (
+          <div className="space-y-3">
+            <p className="text-[11px] text-muted-foreground">Totals for {monthLabel}</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {(members || []).map((m) => {
+                const t = memberTotals?.[m.userId] ?? { income: 0, spent: 0, saved: 0 };
+                return (
+                  <Card
+                    key={m.userId}
+                    className="cursor-pointer hover:shadow-md transition"
+                    onClick={() => {
+                      setPaidByFilter(m.userId);
+                      setActiveTab("list");
+                    }}
+                  >
+                    <CardContent className="p-4 space-y-3">
+                      <div className="flex items-center gap-2">
+                        <Avatar className="h-8 w-8">
+                          {m.avatarUrl && <AvatarImage src={m.avatarUrl} alt="" />}
+                          <AvatarFallback className="text-[10px]">{initialsOf(m.displayName)}</AvatarFallback>
+                        </Avatar>
+                        <span className="text-sm font-semibold truncate">{m.displayName}</span>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2 text-center">
+                        <div>
+                          <p className="text-[10px] text-muted-foreground">Income</p>
+                          <p className="text-sm font-semibold tabular-nums text-[hsl(var(--success))]">
+                            {t.income > 0 ? formatINR(t.income) : "—"}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-muted-foreground">Spent</p>
+                          <p className="text-sm font-semibold tabular-nums">
+                            {t.spent > 0 ? formatINR(t.spent) : "—"}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-muted-foreground">Saved</p>
+                          <p className="text-sm font-semibold tabular-nums text-primary">
+                            {t.saved > 0 ? formatINR(t.saved) : "—"}
+                          </p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          </div>
+        ) : (
+        <>
         <div className="flex items-center gap-2">
           <div className={allTime ? "flex-1 opacity-50 pointer-events-none" : "flex-1"}>
             <MonthSwitcher />
@@ -126,7 +203,7 @@ const FinanceTransactions = () => {
               className="pl-9"
             />
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Select value={catFilter} onValueChange={setCatFilter}>
               <SelectTrigger className="w-full sm:w-36"><SelectValue placeholder="Category" /></SelectTrigger>
               <SelectContent>
@@ -145,8 +222,20 @@ const FinanceTransactions = () => {
                 <SelectItem value="all">All</SelectItem>
                 <SelectItem value="income">Credit</SelectItem>
                 <SelectItem value="expense">Debit</SelectItem>
+                <SelectItem value="savings">Savings</SelectItem>
               </SelectContent>
             </Select>
+            {showMembersTab && (
+              <Select value={paidByFilter} onValueChange={setPaidByFilter}>
+                <SelectTrigger className="w-full sm:w-40"><SelectValue placeholder="Paid by" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Members</SelectItem>
+                  {(members || []).map((m) => (
+                    <SelectItem key={m.userId} value={m.userId}>{m.displayName}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </div>
         </div>
 
@@ -213,9 +302,13 @@ const FinanceTransactions = () => {
                   />
                   <div className={cn(
                     "w-8 h-8 rounded-lg flex items-center justify-center text-xs font-semibold shrink-0",
-                    tx.type === "income" ? "bg-[hsl(var(--success))]/10 text-[hsl(var(--success))]" : "bg-muted text-muted-foreground"
+                    tx.type === "income"
+                      ? "bg-[hsl(var(--success))]/10 text-[hsl(var(--success))]"
+                      : tx.type === "savings"
+                      ? "bg-primary/10 text-primary"
+                      : "bg-muted text-muted-foreground"
                   )}>
-                    {tx.type === "income" ? "+" : "−"}
+                    {tx.type === "income" ? "+" : tx.type === "savings" ? "→" : "−"}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{tx.description || resolveCategoryLabel(tx.category, CATEGORY_LABELS, customCats)}</p>
@@ -224,10 +317,28 @@ const FinanceTransactions = () => {
                       <span>·</span>
                       <span>{resolveCategoryLabel(tx.category, CATEGORY_LABELS, customCats)}</span>
                       {tx.is_recurring && <Badge variant="outline" className="text-[9px] px-1 py-0">Recurring</Badge>}
+                      {tx.paid_by && tx.paid_by !== user?.id && memberById.get(tx.paid_by) && (
+                        <span className="inline-flex items-center gap-1">
+                          <span>·</span>
+                          <Avatar className="h-4 w-4">
+                            {memberById.get(tx.paid_by)?.avatarUrl && (
+                              <AvatarImage src={memberById.get(tx.paid_by)!.avatarUrl!} alt="" />
+                            )}
+                            <AvatarFallback className="text-[8px]">
+                              {initialsOf(memberById.get(tx.paid_by)!.displayName)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span>{memberById.get(tx.paid_by)!.displayName.split(" ")[0]}</span>
+                        </span>
+                      )}
                     </div>
                   </div>
-                  <span className={cn("text-sm font-semibold tabular-nums shrink-0", tx.type === "income" ? "text-[hsl(var(--success))]" : "")}>
-                    {tx.type === "income" ? "+" : "−"}{formatINR(Number(tx.amount))}
+                  <span className={cn(
+                    "text-sm font-semibold tabular-nums shrink-0",
+                    tx.type === "income" && "text-[hsl(var(--success))]",
+                    tx.type === "savings" && "text-primary"
+                  )}>
+                    {tx.type === "income" ? "+" : tx.type === "savings" ? "→" : "−"}{formatINR(Number(tx.amount))}
                   </span>
                   <div className="flex gap-0.5 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity shrink-0">
                     <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditTx(tx)} style={{ minHeight: "28px" }}>
@@ -254,6 +365,8 @@ const FinanceTransactions = () => {
             <Plus className="w-4 h-4 mr-2" />
             Add another transaction
           </Button>
+        )}
+        </>
         )}
       </main>
 
