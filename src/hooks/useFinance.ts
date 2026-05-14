@@ -263,7 +263,7 @@ export const useFinanceAccounts = (householdId: string | null) => {
 
 export const useFinanceTransactions = (
   householdId: string | null,
-  filters?: { month?: string; category?: string; type?: string; search?: string }
+  filters?: { month?: string; category?: string; type?: string; search?: string; paidBy?: string }
 ) => {
   return useQuery({
     queryKey: ["finance-transactions", householdId, filters],
@@ -289,6 +289,9 @@ export const useFinanceTransactions = (
       }
       if (filters?.type && filters.type !== "all") {
         query = query.eq("type", filters.type);
+      }
+      if (filters?.paidBy && filters.paidBy !== "all") {
+        query = query.eq("paid_by", filters.paidBy);
       }
       if (filters?.search) {
         query = query.ilike("description", `%${filters.search}%`);
