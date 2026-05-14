@@ -92,7 +92,12 @@ export const BottomSheet = ({
           )}
 
           {/* Scrollable content */}
-          <div className="flex-1 overflow-y-auto overscroll-contain px-4 py-4">
+          <div
+            className={cn(
+              "flex-1 overflow-y-auto overscroll-contain px-4 pt-4",
+              footer ? "pb-6" : "pb-4",
+            )}
+          >
             {!showHeader && title && (
               <DialogPrimitive.Title className="sr-only">{title}</DialogPrimitive.Title>
             )}
