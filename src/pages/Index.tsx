@@ -24,8 +24,9 @@ import { DidYouKnowCard } from "@/components/dashboard/DidYouKnowCard";
 import { InstallAppButton } from "@/components/install/InstallAppButton";
 import { useDashboardSnapshot } from "@/hooks/useDashboardSnapshot";
 import { format } from "date-fns";
-import { PermissionsTutorial } from "@/components/permissions/PermissionsTutorial";
-import { getHasSeenPermissionsTutorial } from "@/lib/launchStorage";
+import { usePermissionPrimer } from "@/hooks/usePermissionPrimer";
+import { PermissionPrimerDialog } from "@/components/permissions/PermissionPrimerDialog";
+import { hasAskedPermission, isPermissionRemindActive } from "@/lib/launchStorage";
 import {
   CheckSquare,
   UtensilsCrossed,
@@ -90,7 +91,7 @@ const Index = () => {
 
   const { shouldShowTour, tourChecked, markTourComplete } = useFeatureTour("dashboard");
   const [runOnboarding, setRunOnboarding] = useState(false);
-  const [showPermissionsTutorial, setShowPermissionsTutorial] = useState(false);
+  const { ensurePermission, primerProps } = usePermissionPrimer();
 
   useEffect(() => {
     if (tourChecked && shouldShowTour && householdId) {
@@ -98,14 +99,17 @@ const Index = () => {
     }
   }, [tourChecked, shouldShowTour, householdId]);
 
-  // Show the one-time permissions tutorial after the dashboard tour has
-  // had a chance to run (or been skipped). Only appears once per device.
+  // Contextual notifications primer: 2 seconds after dashboard mounts,
+  // for users who haven't been asked yet (and aren't in a 7-day remind window).
   useEffect(() => {
     if (!householdId || !tourChecked) return;
-    if (getHasSeenPermissionsTutorial()) return;
-    const t = setTimeout(() => setShowPermissionsTutorial(true), shouldShowTour ? 1800 : 600);
+    if (hasAskedPermission("notifications")) return;
+    if (isPermissionRemindActive("notifications")) return;
+    const t = setTimeout(() => {
+      void ensurePermission("notifications", "dashboard-first-load");
+    }, 2000);
     return () => clearTimeout(t);
-  }, [householdId, tourChecked, shouldShowTour]);
+  }, [householdId, tourChecked, ensurePermission]);
 
   useEffect(() => {
     if (!isLoading && !householdId && user) {
@@ -171,10 +175,7 @@ const Index = () => {
 
         <FestivalBanner />
 
-        <PermissionsTutorial
-          open={showPermissionsTutorial}
-          onClose={() => setShowPermissionsTutorial(false)}
-        />
+        <PermissionPrimerDialog {...primerProps} />
 
         {showSetupBanner && (
           <Card className="mb-4 border-primary/15">
