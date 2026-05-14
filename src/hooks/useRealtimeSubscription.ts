@@ -11,7 +11,7 @@ type SubscriptionConfig = {
 
 export function useRealtimeSubscription(
   configs: SubscriptionConfig[],
-  householdId?: string,
+  householdId?: string | null,
 ) {
   const queryClient = useQueryClient();
   const active = configs.filter(c => c.enabled !== false);
