@@ -81,7 +81,7 @@ export const TaskmasterTaskDialog = ({
     const legacyPattern: RecurrencePattern | null = recurrence
       ? ({ type: recurrence.frequency } as RecurrencePattern)
       : null;
-    const taskData: Partial<TaskmasterTask> & { assignee_ids?: string[] } = {
+    const taskData: Partial<TaskmasterTask> & { assignee_ids?: string[]; recurrence?: any } = {
       title,
       description: description || null,
       project_id: projectId || null,
