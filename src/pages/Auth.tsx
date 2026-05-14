@@ -192,19 +192,29 @@ const Auth = () => {
         return;
       }
 
-      // Check if email is verified
-      if (data.user && !data.user.email_confirmed_at) {
-        // User exists but email not verified - show verification pending
-        setPendingUserId(data.user.id);
-        setDisplayName(data.user.user_metadata?.display_name || "");
-        setAuthState("verification-pending");
-        
-        toast({
-          title: "Email Not Verified",
-          description: "Please verify your email address to continue.",
-          variant: "destructive",
-        });
-        return;
+      // Check if email is verified via our custom token flow.
+      // Source of truth is profiles.email_verified_at (auth.users.email_confirmed_at
+      // is auto-set on signup since we send our own branded verification email).
+      if (data.user) {
+        const { data: profileRow } = await supabase
+          .from("profiles")
+          .select("email_verified_at, display_name")
+          .eq("id", data.user.id)
+          .maybeSingle();
+
+        if (!profileRow?.email_verified_at) {
+          setPendingUserId(data.user.id);
+          setDisplayName(profileRow?.display_name || data.user.user_metadata?.display_name || "");
+          setAuthState("verification-pending");
+          await supabase.auth.signOut();
+
+          toast({
+            title: "Email Not Verified",
+            description: "Please verify your email address to continue.",
+            variant: "destructive",
+          });
+          return;
+        }
       }
 
       // Check if user has a household
