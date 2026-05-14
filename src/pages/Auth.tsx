@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { Eye, EyeOff, Mail, RefreshCw } from "lucide-react";
 import { FamilyDeskLogo } from "@/components/brand/FamilyDeskLogo";
+import { isProductionHost } from "@/lib/env";
 
 type AuthState = "form" | "verification-pending";
 
