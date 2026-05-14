@@ -1,6 +1,11 @@
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
+import { processExpiredPermissionReminds } from "@/lib/launchStorage";
+
+// Clear any expired "Remind me in 7 days" permission timers so the
+// contextual sheet can show again on the next relevant trigger.
+try { processExpiredPermissionReminds(); } catch { /* ignore */ }
 
 // ---------------------------------------------------------------------------
 // PWA / Service Worker safety net
