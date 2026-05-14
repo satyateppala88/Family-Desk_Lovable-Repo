@@ -20,6 +20,7 @@ const Calendar = () => {
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [showConnectDialog, setShowConnectDialog] = useState(false);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
 
   const { householdId } = useHousehold();
   const { data: events, isLoading } = useCalendarEvents(currentDate, "month");
@@ -88,6 +89,10 @@ const Calendar = () => {
         event={selectedEvent}
         open={!!selectedEvent}
         onOpenChange={(open) => !open && setSelectedEvent(null)}
+        onEdit={(ev) => {
+          setSelectedEvent(null);
+          setEditingEvent(ev);
+        }}
       />
 
       <ConnectCalendarDialog
@@ -96,9 +101,17 @@ const Calendar = () => {
       />
 
       <CreateEventDialog
-        open={showCreateDialog}
-        onOpenChange={setShowCreateDialog}
+        open={showCreateDialog || !!editingEvent}
+        onOpenChange={(open) => {
+          if (!open) {
+            setShowCreateDialog(false);
+            setEditingEvent(null);
+          } else {
+            setShowCreateDialog(true);
+          }
+        }}
         defaultDate={currentDate}
+        eventToEdit={editingEvent}
       />
     </div>
   );
