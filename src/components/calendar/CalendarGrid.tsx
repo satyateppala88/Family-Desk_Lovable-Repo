@@ -88,13 +88,13 @@ export const CalendarGrid = ({
             return (
               <div
                 key={index}
-                onClick={() => onDateClick(day)}
+                onClick={() => onSelectDate(day)}
                 className={cn(
                   "aspect-square flex items-center justify-center rounded-full text-xs cursor-pointer transition-colors min-h-[32px]",
-                  isToday(day) && "bg-primary text-primary-foreground font-bold",
-                  !isToday(day) && hasEvents && "bg-accent font-medium",
+                  (isToday(day) || isSameDay(day, selectedDate)) && "bg-primary text-primary-foreground font-bold",
+                  !isToday(day) && !isSameDay(day, selectedDate) && hasEvents && "bg-accent font-medium",
                   !isCurrentMonth && "text-muted-foreground opacity-50",
-                  !isToday(day) && !hasEvents && "hover:bg-muted"
+                  !isToday(day) && !isSameDay(day, selectedDate) && !hasEvents && "hover:bg-muted"
                 )}
               >
                 {format(day, "d")}
