@@ -347,7 +347,8 @@ const Meals = () => {
             {householdId && (
               <TonightDinnerCard
                 recipe={todaysDinner}
-                onSuggest={() => openAiSheet("dinner")}
+                onSuggest={handleSuggestDinner}
+                isLoading={suggestingDinner}
                 onChange={() => openAddSheet("dinner")}
                 onAddToList={(r) => setShoppingForRecipe(r)}
                 onMarkAsCooked={(r) => setCookingRecipe(r)}
@@ -383,8 +384,12 @@ const Meals = () => {
                     className="w-full sm:w-auto"
                     size="sm"
                   >
-                    <Sparkles className="w-4 h-4 mr-1.5" aria-hidden="true" />
-                    {generatingPlan ? "Creating your plan..." : "Generate Meal Plan"}
+                    {generatingPlan ? (
+                      <Loader2 className="w-4 h-4 mr-1.5 animate-spin" aria-hidden="true" />
+                    ) : (
+                      <Sparkles className="w-4 h-4 mr-1.5" aria-hidden="true" />
+                    )}
+                    {generatingPlan ? "Generating..." : "Generate Meal Plan"}
                   </Button>
                   <p className="text-[11px] text-muted-foreground mt-1.5">
                     I'll plan meals based on your saved recipes and preferences
