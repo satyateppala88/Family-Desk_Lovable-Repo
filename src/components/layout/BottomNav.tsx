@@ -4,7 +4,7 @@ import {
   Home,
   CheckSquare,
   Sparkles,
-  Leaf,
+  Wallet,
   MoreHorizontal,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -14,10 +14,10 @@ const PRIMARY = [
   { to: "/dashboard", label: "Home", icon: Home, match: ["/dashboard"], primary: false },
   { to: "/taskmaster/today", label: "Tasks", icon: CheckSquare, match: ["/taskmaster", "/tasks"], primary: false },
   { to: "/ai", label: "Ask AI", icon: Sparkles, match: ["/ai"], primary: true },
-  { to: "/habits", label: "Habits", icon: Leaf, match: ["/habits"], primary: false },
+  { to: "/finance", label: "Finance", icon: Wallet, match: ["/finance"], primary: false },
 ];
 
-const MORE_MATCH = ["/finance", "/meals", "/grocery", "/calendar"];
+const MORE_MATCH = ["/meals", "/grocery", "/habits", "/calendar"];
 
 const HIDDEN_PREFIXES = [
   "/auth",
@@ -49,10 +49,16 @@ export const BottomNav = () => {
     <>
       <nav
         aria-label="Primary"
-        className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-background border-t border-border"
-        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+        className="lg:hidden fixed bottom-4 left-4 right-4 z-40"
+        style={{ marginBottom: "env(safe-area-inset-bottom)" }}
       >
-        <ul className="mx-auto flex items-stretch justify-around max-w-[600px] h-16">
+        <ul
+          className="mx-auto flex items-stretch justify-around max-w-[600px] h-[60px] rounded-[20px] px-1"
+          style={{
+            backgroundColor: "#0F6E56",
+            boxShadow: "0 4px 20px rgba(15,110,86,0.30)",
+          }}
+        >
           {PRIMARY.map((item) => {
             const Icon = item.icon;
             const active = matches(location.pathname, item.match);
@@ -61,20 +67,16 @@ export const BottomNav = () => {
                 <NavLink
                   to={item.to}
                   className={cn(
-                    "relative h-full flex flex-col items-center justify-center gap-0.5 text-[11px] font-medium transition-colors",
-                    active ? "text-primary" : "text-muted-foreground hover:text-foreground"
+                    "relative h-full min-h-touch flex flex-col items-center justify-center gap-[3px] rounded-[16px] py-2 transition-transform duration-150 ease-out active:scale-[0.92]",
+                    active ? "text-white" : "text-white/45"
                   )}
                 >
-                  {active && (
-                    <span className="absolute top-0 h-[3px] w-8 bg-primary rounded-b-full" />
-                  )}
                   <Icon
-                    className={cn(
-                      item.primary ? "h-6 w-6" : "h-5 w-5",
-                      active && "stroke-[2.5]",
-                    )}
+                    className={cn(item.primary ? "h-6 w-6" : "h-5 w-5")}
                   />
-                  <span>{item.label}</span>
+                  <span className="text-[10px] font-medium tracking-[0.01em] leading-none">
+                    {item.label}
+                  </span>
                 </NavLink>
               </li>
             );
@@ -84,15 +86,14 @@ export const BottomNav = () => {
               type="button"
               onClick={() => setMoreOpen(true)}
               className={cn(
-                "relative w-full h-full flex flex-col items-center justify-center gap-0.5 text-[11px] font-medium transition-colors",
-                moreActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
+                "relative w-full h-full min-h-touch flex flex-col items-center justify-center gap-[3px] rounded-[16px] py-2 transition-transform duration-150 ease-out active:scale-[0.92]",
+                moreActive ? "text-white" : "text-white/45"
               )}
             >
-              {moreActive && (
-                <span className="absolute top-0 h-[3px] w-8 bg-primary rounded-b-full" />
-              )}
-              <MoreHorizontal className={cn("h-5 w-5", moreActive && "stroke-[2.5]")} />
-              <span>More</span>
+              <MoreHorizontal className="h-5 w-5" />
+              <span className="text-[10px] font-medium tracking-[0.01em] leading-none">
+                More
+              </span>
             </button>
           </li>
         </ul>
