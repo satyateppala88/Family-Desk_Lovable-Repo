@@ -18,6 +18,7 @@ import { CalendarDays, Plus } from "lucide-react";
 const Calendar = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [showConnectDialog, setShowConnectDialog] = useState(false);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
