@@ -1625,11 +1625,14 @@ export type Database = {
           family_size_children: number | null
           family_size_seniors: number | null
           festival_importance: string | null
+          finance_setup_complete: boolean
           food_allergies: string[] | null
+          grocery_setup_complete: boolean
           household_concerns: string[] | null
           household_id: string
           household_type: string | null
           id: string
+          meals_setup_complete: boolean
           monthly_grocery_budget: string | null
           organic_preference: string | null
           pantry_size: string | null
@@ -1656,11 +1659,14 @@ export type Database = {
           family_size_children?: number | null
           family_size_seniors?: number | null
           festival_importance?: string | null
+          finance_setup_complete?: boolean
           food_allergies?: string[] | null
+          grocery_setup_complete?: boolean
           household_concerns?: string[] | null
           household_id: string
           household_type?: string | null
           id?: string
+          meals_setup_complete?: boolean
           monthly_grocery_budget?: string | null
           organic_preference?: string | null
           pantry_size?: string | null
@@ -1687,11 +1693,14 @@ export type Database = {
           family_size_children?: number | null
           family_size_seniors?: number | null
           festival_importance?: string | null
+          finance_setup_complete?: boolean
           food_allergies?: string[] | null
+          grocery_setup_complete?: boolean
           household_concerns?: string[] | null
           household_id?: string
           household_type?: string | null
           id?: string
+          meals_setup_complete?: boolean
           monthly_grocery_budget?: string | null
           organic_preference?: string | null
           pantry_size?: string | null
