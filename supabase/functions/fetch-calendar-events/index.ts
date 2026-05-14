@@ -21,6 +21,7 @@ interface CalendarConnection {
 
 interface CalendarEvent {
   id: string;
+  manualEventId?: string;
   title: string;
   start: string;
   end: string;
