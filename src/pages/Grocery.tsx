@@ -6,6 +6,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { ModuleNudgeBanner } from "@/components/discovery/ModuleNudgeBanner";
 import { Plus, ListChecks, Package, Sparkles, ShoppingCart, ScanLine, Settings } from "lucide-react";
 import { PantryItemCard } from "@/components/grocery/PantryItemCard";
 import { AddPantryItemDialog } from "@/components/grocery/AddPantryItemDialog";
@@ -534,6 +535,10 @@ const Grocery = () => {
     <div className="page-container">
       <Header />
       <main className="page-content flex-1">
+        <ModuleNudgeBanner
+          moduleKey="grocery"
+          text="Add pantry staples now — FamilyDesk tracks what's running low so you never forget at the store."
+        />
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
           <div>
             <h1 className="page-heading">Grocery</h1>
