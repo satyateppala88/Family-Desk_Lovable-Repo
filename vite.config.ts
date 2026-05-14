@@ -77,4 +77,17 @@ export default defineConfig(({ mode }) => ({
   optimizeDeps: {
     include: ["@tanstack/react-query"],
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          react: ["react", "react-dom", "react-router-dom"],
+          supabase: ["@supabase/supabase-js"],
+          charts: ["recharts"],
+          pdf: ["jspdf", "jspdf-autotable", "html-to-image"],
+          markdown: ["react-markdown", "remark-gfm"],
+        },
+      },
+    },
+  },
 }));
