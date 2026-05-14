@@ -44,7 +44,7 @@ export interface ChangelogEntry {
 
 // ----- Current versions ---------------------------------------------------
 
-export const APP_VERSION = "1.3";
+export const APP_VERSION = "2.0";
 export const PRIVACY_VERSION = "1.1";
 export const TERMS_VERSION = "1.0";
 
