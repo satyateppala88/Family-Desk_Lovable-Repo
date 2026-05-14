@@ -14,6 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ModuleNudgeBanner } from "@/components/discovery/ModuleNudgeBanner";
 import { CalendarDays, Plus } from "lucide-react";
+import { DayDetailSheet } from "@/components/calendar/DayDetailSheet";
 
 const Calendar = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -23,6 +24,12 @@ const Calendar = () => {
   const [showConnectDialog, setShowConnectDialog] = useState(false);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
+  const [dayDetailOpen, setDayDetailOpen] = useState(false);
+
+  const openDayDetail = (date: Date) => {
+    setSelectedDate(date);
+    setDayDetailOpen(true);
+  };
 
   const { householdId } = useHousehold();
   const { data: events, isLoading } = useCalendarEvents(currentDate, "month");
@@ -83,6 +90,7 @@ const Calendar = () => {
                 }}
                 onDateClick={setCurrentDate}
                 onSelectDate={setSelectedDate}
+                onOpenDay={openDayDetail}
               />
             </div>
           )}
