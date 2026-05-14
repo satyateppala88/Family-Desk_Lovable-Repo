@@ -126,9 +126,9 @@ const AskAi = () => {
   const isEmpty = messages.length === 0 && !isLoading;
 
   return (
-    <div className="page-container flex flex-col h-[100dvh]">
+    <div className="page-container">
       <Header />
-      <main className="flex-1 min-h-0 flex flex-col page-content !pb-0">
+      <main className="page-content flex flex-col min-h-0">
         <div className="mb-4">
           <h1 className="page-heading flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-primary" />
@@ -199,10 +199,7 @@ const AskAi = () => {
           </div>
         )}
 
-        <div
-          className="sticky bottom-0 bg-background pt-3 pb-3 border-t border-border -mx-4 px-4"
-          style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
-        >
+        <div className="pt-3 mt-2 border-t border-border">
           <div className="flex gap-2">
             <Input
               value={input}
