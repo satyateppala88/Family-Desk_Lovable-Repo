@@ -51,8 +51,8 @@ export const MODULE_SETUP_COLUMN: Record<ModuleSetupKey, keyof HouseholdPreferen
   finance_setup: "finance_setup_complete",
   grocery_setup: "grocery_setup_complete",
   meals_setup: "meals_setup_complete",
-  habits_setup: null,
-  calendar_setup: null,
+  habits_setup: "habits_setup_complete",
+  calendar_setup: "calendar_setup_complete",
 };
 
 export const MODULE_SETUP_META: Record<ModuleSetupKey, { title: string; moduleName: string; description: string; icon: LucideIcon }> = {
