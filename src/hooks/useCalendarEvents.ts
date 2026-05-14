@@ -5,6 +5,7 @@ import { startOfMonth, endOfMonth, format, addDays, startOfWeek, endOfWeek } fro
 
 export interface CalendarEvent {
   id: string;
+  manualEventId?: string;
   title: string;
   start: string;
   end: string;

@@ -21,6 +21,7 @@ interface CalendarConnection {
 
 interface CalendarEvent {
   id: string;
+  manualEventId?: string;
   title: string;
   start: string;
   end: string;
@@ -309,6 +310,7 @@ serve(async (req) => {
           for (const occ of occurrences) {
             allEvents.push({
               id: `manual-${ev.id}-${occ.start.toISOString().slice(0,10)}`,
+              manualEventId: ev.id,
               title: ev.title,
               start: occ.start.toISOString(),
               end: occ.end.toISOString(),
