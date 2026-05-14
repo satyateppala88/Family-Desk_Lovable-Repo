@@ -10,6 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { Eye, EyeOff, Mail, RefreshCw } from "lucide-react";
 import { FamilyDeskLogo } from "@/components/brand/FamilyDeskLogo";
+import { isProductionHost } from "@/lib/env";
 
 type AuthState = "form" | "verification-pending";
 
@@ -195,7 +196,8 @@ const Auth = () => {
       // Check if email is verified via our custom token flow.
       // Source of truth is profiles.email_verified_at (auth.users.email_confirmed_at
       // is auto-set on signup since we send our own branded verification email).
-      if (data.user) {
+      // Only enforced in production — test/preview environments allow unverified sign-in.
+      if (data.user && isProductionHost()) {
         const { data: profileRow } = await supabase
           .from("profiles")
           .select("email_verified_at, display_name")
