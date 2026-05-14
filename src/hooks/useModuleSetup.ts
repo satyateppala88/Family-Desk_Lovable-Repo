@@ -38,11 +38,11 @@ export const useModuleSetup = (key: ModuleSetupKey) => {
       if (!householdId) throw new Error("No household");
       if (typedColumn != null) {
         // Write the deterministic boolean column — no jsonb merge race.
-        await updatePreferences({ [typedColumn]: true } as any);
+        await updatePreferences({ [typedColumn]: true } as any, { silent: true });
         return { [typedColumn]: true };
       }
       const next = { ...completed, [key]: true };
-      await updatePreferences({ completed_module_setups: next } as any);
+      await updatePreferences({ completed_module_setups: next } as any, { silent: true });
       return next;
     },
     onSuccess: () => {
