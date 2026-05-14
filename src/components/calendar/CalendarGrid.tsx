@@ -18,9 +18,11 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 
 interface CalendarGridProps {
   currentDate: Date;
+  selectedDate: Date;
   events: CalendarEvent[];
   onEventClick: (event: CalendarEvent) => void;
   onDateClick: (date: Date) => void;
+  onSelectDate: (date: Date) => void;
 }
 
 export const CalendarGrid = ({
