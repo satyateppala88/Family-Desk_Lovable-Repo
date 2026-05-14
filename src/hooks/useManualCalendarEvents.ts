@@ -3,6 +3,7 @@ import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useHousehold } from "./useHousehold";
+import type { RecurrenceSpec } from "@/types/recurrence";
 
 interface CreateManualEventInput {
   title: string;
@@ -10,7 +11,7 @@ interface CreateManualEventInput {
   date: Date;
   time?: string | null; // "HH:mm" or null
   allDay: boolean;
-  repeatType?: 'none' | 'daily' | 'weekly' | 'monthly' | 'yearly';
+  recurrence?: RecurrenceSpec | null;
   memberIds?: string[];
 }
 
@@ -25,6 +26,12 @@ function deriveTimes(date: Date, time: string | null | undefined, allDay: boolea
   const start = new Date(`${day}T${time}:00`);
   const end = new Date(start.getTime() + 60 * 60 * 1000);
   return { startAt: start.toISOString(), endAt: end.toISOString(), isAllDay: false };
+}
+
+/** Map shared recurrence spec → legacy repeat_type for backwards compatibility. */
+function deriveRepeatType(rec: RecurrenceSpec | null | undefined): string {
+  if (!rec) return 'none';
+  return rec.frequency;
 }
 
 export const useCreateManualEvent = () => {
@@ -49,7 +56,8 @@ export const useCreateManualEvent = () => {
           start_at: startAt,
           end_at: endAt,
           all_day: isAllDay,
-          repeat_type: input.repeatType ?? 'none',
+          repeat_type: deriveRepeatType(input.recurrence),
+          recurrence: input.recurrence ?? null,
           member_ids: input.memberIds ?? [],
         })
         .select()
@@ -83,7 +91,8 @@ export const useUpdateManualEvent = () => {
           start_at: startAt,
           end_at: endAt,
           all_day: isAllDay,
-          repeat_type: input.repeatType ?? 'none',
+          repeat_type: deriveRepeatType(input.recurrence),
+          recurrence: input.recurrence ?? null,
           ...(input.memberIds ? { member_ids: input.memberIds } : {}),
         })
         .eq("id", input.id)
