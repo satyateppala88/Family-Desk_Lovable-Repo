@@ -156,7 +156,7 @@ const FinanceTransactions = () => {
         ) : !transactions?.length ? (
           <EmptyState
             icon={ArrowLeftRight}
-            title={search || catFilter !== "all" || typeFilter !== "all" ? "No matches found" : "No transactions yet"}
+            title={search || catFilter !== "all" || typeFilter !== "all" ? "No matches found" : "No expenses logged yet"}
             description={search || catFilter !== "all" || typeFilter !== "all"
               ? "Try adjusting your filters to see more results."
               : "Add your first transaction and FamilyDesk will start building your household's spending picture — by category, by member, by month."}
