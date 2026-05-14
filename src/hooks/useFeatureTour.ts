@@ -48,7 +48,7 @@ export const useFeatureTour = (featureName: FeatureName) => {
   // Check if this feature tour should be shown
   useEffect(() => {
     if (!isLoading && completedTours !== undefined) {
-      const hasCompletedTour = completedTours[featureName] === true;
+      const hasCompletedTour = Boolean(completedTours[featureName]);
       setShouldShowTour(!hasCompletedTour);
       setTourChecked(true);
     }
