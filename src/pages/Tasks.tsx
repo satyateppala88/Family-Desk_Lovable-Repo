@@ -115,8 +115,8 @@ const Tasks = () => {
               className="gap-1.5"
             >
               <Sparkles className="w-4 h-4" />
-              <span className="hidden xs:inline">Prioritise my list</span>
-              <span className="xs:hidden">Prioritise</span>
+              <span className="hidden sm:inline">Prioritise my list</span>
+              <span className="sm:hidden">Prioritise</span>
             </Button>
             <Button onClick={handleCreateTask} size="sm" data-tour="add-task-button" className="hidden sm:flex">
               <Plus className="w-4 h-4 mr-1" />
