@@ -84,6 +84,13 @@ const Grocery = () => {
   useEffect(() => {
     const tab = searchParams.get("tab");
     if (tab) setActiveTab(tab);
+    // Open Add Item sheet when navigated with ?add=1 (e.g. dashboard quick action)
+    if (searchParams.get("add") === "1") {
+      setShowAddDialog(true);
+      const next = new URLSearchParams(searchParams);
+      next.delete("add");
+      setSearchParams(next, { replace: true });
+    }
     const newList = searchParams.get("newList");
     const items = searchParams.get("items");
     if (!newList || !householdId || !user?.id) return;
