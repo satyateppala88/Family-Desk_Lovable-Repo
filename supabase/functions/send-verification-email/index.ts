@@ -4,8 +4,8 @@ import { getEmailWrapper, getVerificationEmailContent } from "../_shared/email-t
 import { getCorsHeaders } from "../_shared/cors.ts";
 
 import { sendViaQueue } from "../_shared/send-email-queue.ts";
-const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
-
+const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 interface SendVerificationRequest {
   userId: string;
   email: string;

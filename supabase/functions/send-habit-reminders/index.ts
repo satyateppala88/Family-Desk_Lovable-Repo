@@ -9,8 +9,8 @@ import { getCorsHeaders } from "../_shared/cors.ts";
 import { todayIST } from "../_shared/time.ts";
 
 import { sendViaQueue } from "../_shared/send-email-queue.ts";
-const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
-
+const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const handler = async (req: Request): Promise<Response> => {
   const origin = req.headers.get("origin");
   const corsHeaders = getCorsHeaders(origin);
