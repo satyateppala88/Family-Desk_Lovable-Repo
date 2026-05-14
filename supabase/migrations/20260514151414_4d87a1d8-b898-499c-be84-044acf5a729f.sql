@@ -1,0 +1,2 @@
+REVOKE EXECUTE ON FUNCTION public.has_household_role(uuid, uuid, app_role) FROM authenticated, anon, PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.is_household_member(uuid, uuid) FROM authenticated, anon, PUBLIC;
