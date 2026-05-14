@@ -197,6 +197,11 @@ const Finance = () => {
           })}
         </div>
       </main>
+      <AIActionSheet
+        isOpen={aiOpen}
+        onClose={() => setAiOpen(false)}
+        initialPrompt="Analyse my household's spending for this month. Highlight the top 3 categories, any unusual spikes, and one actionable suggestion to reduce spend."
+      />
     </div>
   );
 };
