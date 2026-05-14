@@ -39,12 +39,34 @@ export function isIos(): boolean {
   return /iPad|iPhone|iPod/.test(window.navigator.userAgent);
 }
 
-/** Was the install previously confirmed (via appinstalled or accepted prompt)? */
+/**
+ * Was the install previously confirmed in this browser?
+ *
+ * NOTE: This is *not* used to hide the install UI, because Android/Chrome
+ * doesn't notify the page when the user uninstalls the PWA — the flag would
+ * stay `true` forever and the user could never re-install. Use
+ * `isStandalone()` for "currently installed" checks. This helper is kept for
+ * analytics / soft-prompt frequency only.
+ */
 export function wasInstalled(): boolean {
   try {
     return window.localStorage.getItem(INSTALLED_KEY) === "1";
   } catch {
     return false;
+  }
+}
+
+/**
+ * Clear the "installed" flag. Call this whenever the browser fires
+ * `beforeinstallprompt`, because that event only fires when the app is
+ * installable — i.e. it is *not* currently installed. This recovers from
+ * the stale-flag-after-uninstall case on Android.
+ */
+export function clearInstalledFlag(): void {
+  try {
+    window.localStorage.removeItem(INSTALLED_KEY);
+  } catch {
+    /* ignore */
   }
 }
 
@@ -57,7 +79,9 @@ export function markInstalled(): void {
 }
 
 export function shouldShowSoftPrompt(): boolean {
-  if (isStandalone() || wasInstalled()) return false;
+  // Only suppress when actually running standalone. The localStorage
+  // "installed" flag is unreliable across uninstall on Android.
+  if (isStandalone()) return false;
 
   try {
     const count = Number(window.localStorage.getItem(SHOWN_COUNT_KEY) ?? "0");
