@@ -1,14 +1,14 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { Resend } from "https://esm.sh/resend@2.0.0";
 import { 
   getEmailWrapper, 
   getMealPlanSummaryContent 
 } from "../_shared/email-templates.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
 
-const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
-
+import { sendViaQueue } from "../_shared/send-email-queue.ts";
+const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 interface MealPlanSummaryRequest {
   mealPlanId: string;
   householdId: string;
@@ -138,15 +138,12 @@ const handler = async (req: Request): Promise<Response> => {
           day: "numeric",
         });
 
-        const emailResponse = await resend.emails.send({
-          from: "Family Desk <noreply@familydesk.in>",
-          to: [userData.user.email],
-          subject: `🍽️ Your Meal Plan for the Week of ${weekStart}`,
-          html: getEmailWrapper(emailContent, {
-            recipientName: profile?.display_name || undefined,
-            preheader: `Your meal plan starting ${weekStart} is ready!`,
-          }),
-        });
+        const emailResponse = await sendViaQueue(supabaseUrl, supabaseServiceKey, {
+      to: userData.user.email,
+      subject: `🍽️ Your Meal Plan for the Week of ${weekStart}`,
+      html: getEmailWrapper(emailContent),
+      templateName: "send-meal-plan-summary",
+    });
 
         console.log(`Meal plan summary sent to ${userData.user.email}:`, emailResponse);
         emailsSent.push(userData.user.email);

@@ -1,14 +1,14 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { Resend } from "https://esm.sh/resend@2.0.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.78.0";
 import { getCorsHeaders } from "../_shared/cors.ts";
+import { sendViaQueue } from "../_shared/send-email-queue.ts";
+const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 import { 
   getEmailWrapper, 
   getAccessApprovedContent, 
   getAccessRejectedContent 
 } from "../_shared/email-templates.ts";
-
-const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
 interface RequestBody {
   email: string;
@@ -116,11 +116,11 @@ const handler = async (req: Request): Promise<Response> => {
       preheader,
     });
 
-    const { data: emailData, error: emailError } = await resend.emails.send({
-      from: "Family Desk <noreply@familydesk.in>",
-      to: [email],
-      subject,
+    const { data: emailData, error: emailError } = await sendViaQueue(supabaseUrl, supabaseServiceKey, {
+      to: email,
+      subject: "Family Desk",
       html: htmlContent,
+      templateName: "send-access-decision",
     });
 
     if (emailError) {
