@@ -1644,6 +1644,7 @@ export type Database = {
       household_preferences: {
         Row: {
           budget_consciousness: string | null
+          calendar_setup_complete: boolean
           children_ages: number[] | null
           completed_module_setups: Json
           cooking_skill_level: string | null
@@ -1656,6 +1657,7 @@ export type Database = {
           finance_setup_complete: boolean
           food_allergies: string[] | null
           grocery_setup_complete: boolean
+          habits_setup_complete: boolean
           household_concerns: string[] | null
           household_id: string
           household_type: string | null
@@ -1678,6 +1680,7 @@ export type Database = {
         }
         Insert: {
           budget_consciousness?: string | null
+          calendar_setup_complete?: boolean
           children_ages?: number[] | null
           completed_module_setups?: Json
           cooking_skill_level?: string | null
@@ -1690,6 +1693,7 @@ export type Database = {
           finance_setup_complete?: boolean
           food_allergies?: string[] | null
           grocery_setup_complete?: boolean
+          habits_setup_complete?: boolean
           household_concerns?: string[] | null
           household_id: string
           household_type?: string | null
@@ -1712,6 +1716,7 @@ export type Database = {
         }
         Update: {
           budget_consciousness?: string | null
+          calendar_setup_complete?: boolean
           children_ages?: number[] | null
           completed_module_setups?: Json
           cooking_skill_level?: string | null
@@ -1724,6 +1729,7 @@ export type Database = {
           finance_setup_complete?: boolean
           food_allergies?: string[] | null
           grocery_setup_complete?: boolean
+          habits_setup_complete?: boolean
           household_concerns?: string[] | null
           household_id?: string
           household_type?: string | null
