@@ -205,6 +205,30 @@ const Meals = () => {
 
   const openAddSheet = (mealType: SlotMealType) => setAddSheet({ open: true, mealType });
   const openAiSheet = (mealType: SlotMealType) => setAiSheet({ open: true, mealType });
+
+  const handleSuggestDinner = () => {
+    try {
+      if (!householdId) {
+        toast({
+          title: "Hang on a sec",
+          description: "Loading your household — try again in a moment.",
+        });
+        return;
+      }
+      setSuggestingDinner(true);
+      openAiSheet("dinner");
+      // Sheet renders its own skeleton; release button shortly after open.
+      setTimeout(() => setSuggestingDinner(false), 600);
+    } catch (e: any) {
+      console.error("Suggest dinner error:", e);
+      setSuggestingDinner(false);
+      toast({
+        title: "Couldn't open suggestions",
+        description: e?.message || "Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
   const openBrowseForToday = (mealType: SlotMealType) => {
     if (recipes.length === 0) {
       toast({ title: "No recipes yet", description: "Try AI Suggest or generate a meal plan first." });
