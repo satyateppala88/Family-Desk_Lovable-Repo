@@ -82,6 +82,11 @@ export const DayDetailSheet = ({
                       {event.calendarOwner}
                     </span>
                   )}
+                  {(event as any).recurrence && (
+                    <p className="text-[11px] text-muted-foreground mt-1">
+                      ↺ {require('@/utils/recurrenceUtils').formatRecurrenceSummary((event as any).recurrence)}
+                    </p>
+                  )}
                 </button>
               ))}
 
