@@ -1,6 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { Resend } from "https://esm.sh/resend@2.0.0";
 import { 
   getEmailWrapper, 
   getPantryAlertContent 
@@ -9,6 +8,7 @@ import { getCorsHeaders } from "../_shared/cors.ts";
 import { todayIST, istDateOffset } from "../_shared/time.ts";
 import { sendWhatsAppTemplate, WHATSAPP_TEMPLATES } from "../_shared/whatsapp.ts";
 
+import { sendViaQueue } from "../_shared/send-email-queue.ts";
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
 const handler = async (req: Request): Promise<Response> => {
@@ -112,15 +112,12 @@ const handler = async (req: Request): Promise<Response> => {
 
             // Send email if not opted out
             if (prefs?.pantry_alerts !== false) {
-              const emailResponse = await resend.emails.send({
-                from: "Family Desk <noreply@familydesk.in>",
-                to: [userData.user.email],
-                subject: `🥫 ${items.length} item${items.length > 1 ? "s" : ""} expiring soon!`,
-                html: getEmailWrapper(emailContent, {
-                  recipientName: profile?.display_name || undefined,
-                  preheader: `${items[0].name}${items.length > 1 ? ` and ${items.length - 1} more items` : ""} expiring within 3 days`,
-                }),
-              });
+              const emailResponse = await sendViaQueue(supabaseUrl, supabaseServiceKey, {
+      to: userData.user.email,
+      subject: `🥫 ${items.length} item${items.length > 1 ? "s" : ""} expiring soon!`,
+      html: getEmailWrapper(emailContent,
+      templateName: "send-pantry-alerts",
+    });
 
               console.log(`Pantry alert email sent to ${userData.user.email}:`, emailResponse);
               emailsSent.push(userData.user.email);

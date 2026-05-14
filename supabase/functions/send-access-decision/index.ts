@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { Resend } from "https://esm.sh/resend@2.0.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.78.0";
 import { getCorsHeaders } from "../_shared/cors.ts";
+import { sendViaQueue } from "../_shared/send-email-queue.ts";
 import { 
   getEmailWrapper, 
   getAccessApprovedContent, 
@@ -116,11 +116,11 @@ const handler = async (req: Request): Promise<Response> => {
       preheader,
     });
 
-    const { data: emailData, error: emailError } = await resend.emails.send({
-      from: "Family Desk <noreply@familydesk.in>",
-      to: [email],
-      subject,
+    const { data: emailData, error: emailError } = await sendViaQueue(supabaseUrl, supabaseServiceKey, {
+      to: email,
+      subject: "Family Desk",
       html: htmlContent,
+      templateName: "send-access-decision",
     });
 
     if (emailError) {

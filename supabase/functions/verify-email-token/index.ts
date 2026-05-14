@@ -1,9 +1,9 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.78.0";
-import { Resend } from "https://esm.sh/resend@2.0.0";
 import { getEmailWrapper, getWelcomeEmailContent } from "../_shared/email-templates.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
 
+import { sendViaQueue } from "../_shared/send-email-queue.ts";
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
 interface VerifyTokenRequest {
@@ -114,12 +114,12 @@ serve(async (req: Request): Promise<Response> => {
     });
 
     try {
-      await resend.emails.send({
-        from: "Family Desk <noreply@familydesk.in>",
-        to: [tokenData.email],
-        subject: "Welcome to Family Desk! 🎉",
-        html: welcomeHtml,
-      });
+      await sendViaQueue(supabaseUrl, supabaseServiceKey, {
+      to: tokenData.email,
+      subject: "Welcome to Family Desk! 🎉",
+      html: welcomeHtml,
+      templateName: "verify-email-token",
+    });
       console.log("Welcome email sent to:", tokenData.email);
     } catch (emailError) {
       console.error("Failed to send welcome email:", emailError);

@@ -1,6 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { Resend } from "https://esm.sh/resend@2.0.0";
 import { 
   getEmailWrapper, 
   getHabitReminderContent,
@@ -9,6 +8,7 @@ import {
 import { getCorsHeaders } from "../_shared/cors.ts";
 import { todayIST } from "../_shared/time.ts";
 
+import { sendViaQueue } from "../_shared/send-email-queue.ts";
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
 const handler = async (req: Request): Promise<Response> => {
@@ -155,15 +155,12 @@ const handler = async (req: Request): Promise<Response> => {
             "https://familydesk.in/habits"
           );
 
-          await resend.emails.send({
-            from: "Family Desk <noreply@familydesk.in>",
-            to: [userData.user.email],
-            subject: `⚠️ Your ${highestStreak.streak}-day streak is at risk!`,
-            html: getEmailWrapper(warningContent, {
-              recipientName: profile?.display_name || undefined,
-              preheader: `Don't lose your ${highestStreak.streak}-day streak on ${highestStreak.name}!`,
-            }),
-          });
+          await sendViaQueue(supabaseUrl, supabaseServiceKey, {
+      to: userData.user.email,
+      subject: `⚠️ Your ${highestStreak.streak}-day streak is at risk!`,
+      html: getEmailWrapper(warningContent,
+      templateName: "send-habit-reminders",
+    });
         } else {
           // Send regular habit reminder
           const emailContent = getHabitReminderContent(
@@ -171,15 +168,12 @@ const handler = async (req: Request): Promise<Response> => {
             "https://familydesk.in/habits"
           );
 
-          await resend.emails.send({
-            from: "Family Desk <noreply@familydesk.in>",
-            to: [userData.user.email],
-            subject: "🌟 Don't forget your habits today!",
-            html: getEmailWrapper(emailContent, {
-              recipientName: profile?.display_name || undefined,
-              preheader: `You have ${habitsToRemind.length} habit${habitsToRemind.length > 1 ? "s" : ""} to check in today`,
-            }),
-          });
+          await sendViaQueue(supabaseUrl, supabaseServiceKey, {
+      to: userData.user.email,
+      subject: "🌟 Don't forget your habits today!",
+      html: getEmailWrapper(emailContent,
+      templateName: "send-habit-reminders",
+    });
         }
 
         console.log(`Habit reminder sent to ${userData.user.email}`);

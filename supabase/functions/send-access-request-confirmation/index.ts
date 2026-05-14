@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { Resend } from "https://esm.sh/resend@2.0.0";
 import { getCorsHeaders } from "../_shared/cors.ts";
+import { sendViaQueue } from "../_shared/send-email-queue.ts";
 import { 
   getEmailWrapper, 
   getAccessRequestConfirmationContent 
@@ -48,11 +48,11 @@ const handler = async (req: Request): Promise<Response> => {
       preheader: "We've received your request to join Family Desk",
     });
 
-    const { data: emailData, error: emailError } = await resend.emails.send({
-      from: "Family Desk <noreply@familydesk.in>",
-      to: [email],
+    const { data: emailData, error: emailError } = await sendViaQueue(supabaseUrl, supabaseServiceKey, {
+      to: email,
       subject: "Access Request Received - Family Desk",
       html: htmlContent,
+      templateName: "send-access-request-confirmation",
     });
 
     if (emailError) {

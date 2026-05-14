@@ -1,6 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { Resend } from "https://esm.sh/resend@2.0.0";
 import { 
   getEmailWrapper, 
   getTaskAssignmentContent 
@@ -8,6 +7,7 @@ import {
 import { getCorsHeaders } from "../_shared/cors.ts";
 import { sendWhatsAppTemplate, WHATSAPP_TEMPLATES } from "../_shared/whatsapp.ts";
 
+import { sendViaQueue } from "../_shared/send-email-queue.ts";
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
 interface TaskNotificationRequest {
@@ -110,14 +110,11 @@ const handler = async (req: Request): Promise<Response> => {
       taskUrl
     );
 
-    const emailResponse = await resend.emails.send({
-      from: "Family Desk <noreply@familydesk.in>",
-      to: [assigneeEmail],
+    const emailResponse = await sendViaQueue(supabaseUrl, supabaseServiceKey, {
+      to: assigneeEmail,
       subject: `New Task Assigned: ${taskTitle}`,
-      html: getEmailWrapper(emailContent, {
-        recipientName: assigneeName,
-        preheader: `${assignerName} assigned you a new task`,
-      }),
+      html: getEmailWrapper(emailContent,
+      templateName: "send-task-notification",
     });
 
     console.log("Task notification email sent:", emailResponse);

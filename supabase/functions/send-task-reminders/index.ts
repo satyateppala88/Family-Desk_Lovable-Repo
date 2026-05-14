@@ -1,6 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { Resend } from "https://esm.sh/resend@2.0.0";
 import { 
   getEmailWrapper, 
   getTaskReminderContent 
@@ -9,6 +8,7 @@ import { getCorsHeaders } from "../_shared/cors.ts";
 import { sendPush } from "../_shared/push.ts";
 import { nextISTMidnightUTC } from "../_shared/time.ts";
 
+import { sendViaQueue } from "../_shared/send-email-queue.ts";
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
 const handler = async (req: Request): Promise<Response> => {
@@ -114,15 +114,12 @@ const handler = async (req: Request): Promise<Response> => {
           "https://familydesk.in/taskmaster/today"
         );
 
-        const emailResponse = await resend.emails.send({
-          from: "Family Desk <noreply@familydesk.in>",
-          to: [userData.user.email],
-          subject: `Reminder: ${userTasks.length} task${userTasks.length > 1 ? "s" : ""} due tomorrow`,
-          html: getEmailWrapper(emailContent, {
-            recipientName: profile?.display_name || undefined,
-            preheader: `You have ${userTasks.length} task${userTasks.length > 1 ? "s" : ""} due tomorrow`,
-          }),
-        });
+        const emailResponse = await sendViaQueue(supabaseUrl, supabaseServiceKey, {
+      to: userData.user.email,
+      subject: `Reminder: ${userTasks.length} task${userTasks.length > 1 ? "s" : ""} due tomorrow`,
+      html: getEmailWrapper(emailContent,
+      templateName: "send-task-reminders",
+    });
 
         console.log(`Task reminder sent to ${userData.user.email}:`, emailResponse);
         emailsSent.push(userData.user.email);
