@@ -27,9 +27,11 @@ interface CalendarGridProps {
 
 export const CalendarGrid = ({
   currentDate,
+  selectedDate,
   events,
   onEventClick,
   onDateClick,
+  onSelectDate,
 }: CalendarGridProps) => {
   const isMobile = useIsMobile();
   
