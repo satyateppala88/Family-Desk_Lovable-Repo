@@ -152,6 +152,20 @@ const TaskmasterProjects = () => {
   return (
     <div className="min-h-screen bg-background">
       <Header />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "BreadcrumbList",
+            itemListElement: [
+              { "@type": "ListItem", position: 1, name: "Home", item: "https://familydesk.in/" },
+              { "@type": "ListItem", position: 2, name: "Taskmaster", item: "https://familydesk.in/taskmaster/today" },
+              { "@type": "ListItem", position: 3, name: "Projects", item: "https://familydesk.in/taskmaster/projects" },
+            ],
+          }),
+        }}
+      />
 
       <main className="container px-4 sm:px-6 py-6 pb-24">
         <TaskmasterSubNav />
