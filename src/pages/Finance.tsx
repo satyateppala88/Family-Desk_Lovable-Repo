@@ -121,8 +121,8 @@ const Finance = () => {
             className="gap-1.5 shrink-0"
           >
             <Sparkles className="w-4 h-4" />
-            <span className="hidden xs:inline">Analyse this month</span>
-            <span className="xs:hidden">Analyse</span>
+            <span className="hidden sm:inline">Analyse this month</span>
+            <span className="sm:hidden">Analyse</span>
           </Button>
         </div>
 
