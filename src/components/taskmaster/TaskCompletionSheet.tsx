@@ -52,15 +52,28 @@ interface TaskCompletionSheetProps {
   onConfirm: (draft: CompletionDraft) => void;
 }
 
-const AiSuggestedBadge = ({ confirmed }: { confirmed: boolean }) =>
+const AiSuggestedBadge = ({
+  confirmed,
+  onConfirm,
+}: {
+  confirmed: boolean;
+  onConfirm?: () => void;
+}) =>
   confirmed ? (
-    <Badge variant="outline" className="gap-1 text-[10px] border-green-500/40 text-green-700 bg-green-50">
+    <Badge
+      variant="outline"
+      className="shrink-0 gap-1 text-[10px] border-green-500/40 text-green-700 bg-green-50"
+    >
       <Check className="h-3 w-3" /> Confirmed
     </Badge>
   ) : (
-    <Badge variant="outline" className="gap-1 text-[10px] border-amber-500/40 text-amber-700 bg-amber-50">
+    <button
+      type="button"
+      onClick={onConfirm}
+      className="shrink-0 inline-flex items-center gap-1 rounded-md border border-amber-500/40 bg-amber-50 px-2 py-0.5 text-[10px] font-medium text-amber-700 hover:bg-amber-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+    >
       <Sparkles className="h-3 w-3" /> AI suggested — tap to confirm
-    </Badge>
+    </button>
   );
 
 const MissingHint = () => (
@@ -156,10 +169,13 @@ export const TaskCompletionSheet = ({
 
           {/* Status */}
           <div className="grid gap-2">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-2 min-w-0">
               <Label>Status</Label>
               {draft.aiSuggested.status ? (
-                <AiSuggestedBadge confirmed={draft.userConfirmed.status} />
+                <AiSuggestedBadge
+                  confirmed={draft.userConfirmed.status}
+                  onConfirm={() => confirmField("status")}
+                />
               ) : !draft.userConfirmed.status ? (
                 <MissingHint />
               ) : null}
@@ -170,6 +186,9 @@ export const TaskCompletionSheet = ({
                 update({ task_status: v as TaskStatus });
                 confirmField("status");
               }}
+              onOpenChange={(open) => {
+                if (!open) confirmField("status");
+              }}
             >
               <SelectTrigger
                 className={cn(
@@ -178,7 +197,7 @@ export const TaskCompletionSheet = ({
               >
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="z-[60]">
                 <SelectItem value="today">Today</SelectItem>
                 <SelectItem value="backlog">Backlog</SelectItem>
                 <SelectItem value="in_progress">In Progress</SelectItem>
@@ -189,16 +208,22 @@ export const TaskCompletionSheet = ({
 
           {/* Category & Priority */}
           <div className="grid grid-cols-2 gap-3">
-            <div className="grid gap-2">
-              <div className="flex items-center justify-between">
+            <div className="grid gap-2 min-w-0">
+              <div className="flex flex-wrap items-center justify-between gap-2 min-w-0">
                 <Label>Category</Label>
-                <AiSuggestedBadge confirmed={draft.userConfirmed.category} />
+                <AiSuggestedBadge
+                  confirmed={draft.userConfirmed.category}
+                  onConfirm={() => confirmField("category")}
+                />
               </div>
               <Select
                 value={draft.task_category}
                 onValueChange={(v) => {
                   update({ task_category: v as TaskCategory });
                   confirmField("category");
+                }}
+                onOpenChange={(open) => {
+                  if (!open) confirmField("category");
                 }}
               >
                 <SelectTrigger
@@ -208,7 +233,7 @@ export const TaskCompletionSheet = ({
                 >
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="z-[60]">
                   <SelectItem value="home">Home</SelectItem>
                   <SelectItem value="work">Work</SelectItem>
                   <SelectItem value="kid">Kid</SelectItem>
@@ -217,16 +242,22 @@ export const TaskCompletionSheet = ({
               </Select>
             </div>
 
-            <div className="grid gap-2">
-              <div className="flex items-center justify-between">
+            <div className="grid gap-2 min-w-0">
+              <div className="flex flex-wrap items-center justify-between gap-2 min-w-0">
                 <Label>Priority</Label>
-                <AiSuggestedBadge confirmed={draft.userConfirmed.priority} />
+                <AiSuggestedBadge
+                  confirmed={draft.userConfirmed.priority}
+                  onConfirm={() => confirmField("priority")}
+                />
               </div>
               <Select
                 value={draft.priority_level.toString()}
                 onValueChange={(v) => {
                   update({ priority_level: parseInt(v) });
                   confirmField("priority");
+                }}
+                onOpenChange={(open) => {
+                  if (!open) confirmField("priority");
                 }}
               >
                 <SelectTrigger
@@ -236,7 +267,7 @@ export const TaskCompletionSheet = ({
                 >
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="z-[60]">
                   <SelectItem value="1">P1 Urgent</SelectItem>
                   <SelectItem value="2">P2 High</SelectItem>
                   <SelectItem value="3">P3 Normal</SelectItem>
@@ -248,10 +279,13 @@ export const TaskCompletionSheet = ({
 
           {/* Due date */}
           <div className="grid gap-2">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-2 min-w-0">
               <Label>Due date</Label>
               {draft.aiSuggested.due ? (
-                <AiSuggestedBadge confirmed={draft.userConfirmed.due} />
+                <AiSuggestedBadge
+                  confirmed={draft.userConfirmed.due}
+                  onConfirm={() => confirmField("due")}
+                />
               ) : !draft.userConfirmed.due ? (
                 <MissingHint />
               ) : null}
@@ -325,7 +359,7 @@ export const TaskCompletionSheet = ({
               <SelectTrigger>
                 <SelectValue placeholder="No project" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="z-[60]">
                 <SelectItem value="none">No project</SelectItem>
                 {projects.map((p) => (
                   <SelectItem key={p.id} value={p.id}>
