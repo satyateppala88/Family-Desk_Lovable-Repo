@@ -14,6 +14,19 @@ interface CreateManualEventInput {
   memberIds?: string[];
 }
 
+function deriveTimes(date: Date, time: string | null | undefined, allDay: boolean) {
+  const day = format(date, "yyyy-MM-dd");
+  const isAllDay = allDay || !time;
+  if (isAllDay) {
+    const start = new Date(`${day}T00:00:00`);
+    const end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
+    return { startAt: start.toISOString(), endAt: end.toISOString(), isAllDay: true };
+  }
+  const start = new Date(`${day}T${time}:00`);
+  const end = new Date(start.getTime() + 60 * 60 * 1000);
+  return { startAt: start.toISOString(), endAt: end.toISOString(), isAllDay: false };
+}
+
 export const useCreateManualEvent = () => {
   const queryClient = useQueryClient();
   const { householdId } = useHousehold();
@@ -24,22 +37,7 @@ export const useCreateManualEvent = () => {
       if (!householdId) throw new Error("No household selected");
       if (!user) throw new Error("Not signed in");
 
-      const day = format(input.date, "yyyy-MM-dd");
-      let startAt: string;
-      let endAt: string;
-
-      if (input.allDay || !input.time) {
-        // Treat as midnight-to-next-midnight in local time
-        const start = new Date(`${day}T00:00:00`);
-        const end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
-        startAt = start.toISOString();
-        endAt = end.toISOString();
-      } else {
-        const start = new Date(`${day}T${input.time}:00`);
-        const end = new Date(start.getTime() + 60 * 60 * 1000); // default 1h
-        startAt = start.toISOString();
-        endAt = end.toISOString();
-      }
+      const { startAt, endAt, isAllDay } = deriveTimes(input.date, input.time, input.allDay);
 
       const { data, error } = await (supabase as any)
         .from("manual_calendar_events")
@@ -50,7 +48,7 @@ export const useCreateManualEvent = () => {
           description: input.description ?? null,
           start_at: startAt,
           end_at: endAt,
-          all_day: input.allDay,
+          all_day: isAllDay,
           repeat_type: input.repeatType ?? 'none',
           member_ids: input.memberIds ?? [],
         })
@@ -63,6 +61,59 @@ export const useCreateManualEvent = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["calendar-events"] });
       queryClient.invalidateQueries({ queryKey: ["today-events"] });
+      queryClient.invalidateQueries({ queryKey: ["calendar-events-today"] });
+    },
+  });
+};
+
+interface UpdateManualEventInput extends CreateManualEventInput {
+  id: string;
+}
+
+export const useUpdateManualEvent = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: UpdateManualEventInput) => {
+      const { startAt, endAt, isAllDay } = deriveTimes(input.date, input.time, input.allDay);
+      const { data, error } = await (supabase as any)
+        .from("manual_calendar_events")
+        .update({
+          title: input.title,
+          description: input.description ?? null,
+          start_at: startAt,
+          end_at: endAt,
+          all_day: isAllDay,
+          repeat_type: input.repeatType ?? 'none',
+          ...(input.memberIds ? { member_ids: input.memberIds } : {}),
+        })
+        .eq("id", input.id)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["calendar-events"] });
+      queryClient.invalidateQueries({ queryKey: ["today-events"] });
+      queryClient.invalidateQueries({ queryKey: ["calendar-events-today"] });
+    },
+  });
+};
+
+export const useDeleteManualEvent = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await (supabase as any)
+        .from("manual_calendar_events")
+        .delete()
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["calendar-events"] });
+      queryClient.invalidateQueries({ queryKey: ["today-events"] });
+      queryClient.invalidateQueries({ queryKey: ["calendar-events-today"] });
     },
   });
 };
