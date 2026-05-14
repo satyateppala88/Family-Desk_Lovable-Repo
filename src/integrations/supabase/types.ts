@@ -2301,19 +2301,16 @@ export type Database = {
         Row: {
           base_url: string
           id: boolean
-          service_role_key: string
           updated_at: string
         }
         Insert: {
           base_url: string
           id?: boolean
-          service_role_key: string
           updated_at?: string
         }
         Update: {
           base_url?: string
           id?: boolean
-          service_role_key?: string
           updated_at?: string
         }
         Relationships: []
@@ -3072,6 +3069,7 @@ export type Database = {
         }[]
       }
       update_completed_tour: { Args: { _key: string }; Returns: undefined }
+      vault_upsert_push_key: { Args: { _key: string }; Returns: undefined }
     }
     Enums: {
       app_role: "household_admin" | "member" | "platform_admin"

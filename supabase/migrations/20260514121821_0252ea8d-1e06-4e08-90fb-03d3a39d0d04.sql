@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.dispatch_push(uuid[], text, text, text, text, text, jsonb) FROM anon, authenticated, public;
