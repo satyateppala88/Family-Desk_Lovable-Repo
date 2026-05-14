@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Plus, Wallet, Leaf, Sparkles } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Plus, Wallet, Leaf, ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TaskmasterTaskDialog } from "@/components/taskmaster/TaskmasterTaskDialog";
 import { TransactionDialog } from "@/components/finance/TransactionDialog";
@@ -17,6 +18,7 @@ interface Props {
 }
 
 export const QuickActionsRow = ({ householdId }: Props) => {
+  const navigate = useNavigate();
   const [taskOpen, setTaskOpen] = useState(false);
   const [txOpen, setTxOpen] = useState(false);
   const [habitOpen, setHabitOpen] = useState(false);
@@ -31,6 +33,7 @@ export const QuickActionsRow = ({ householdId }: Props) => {
   const showTasks = isProductEnabled(enabled, "tasks" as ProductName);
   const showFinance = isProductEnabled(enabled, "finance" as ProductName);
   const showHabits = isProductEnabled(enabled, "habits" as ProductName);
+  const showGrocery = isProductEnabled(enabled, "grocery" as ProductName);
 
   const actions = [
     showTasks && {
@@ -51,12 +54,11 @@ export const QuickActionsRow = ({ householdId }: Props) => {
       label: "Habit",
       onClick: () => setHabitOpen(true),
     },
-    {
-      key: "ai",
-      icon: Sparkles,
-      label: "Ask AI",
-      onClick: () =>
-        window.dispatchEvent(new CustomEvent("familydesk:open-ai")),
+    showGrocery && {
+      key: "grocery",
+      icon: ShoppingCart,
+      label: "Grocery",
+      onClick: () => navigate("/grocery?add=1"),
     },
   ].filter(Boolean) as Array<{
     key: string;
