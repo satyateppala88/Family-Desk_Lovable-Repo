@@ -1,37 +1,66 @@
-## Goal
+## Current state
 
-Keep sending the branded FamilyDesk verification email on sign-up everywhere, but stop blocking sign-in on `profiles.email_verified_at` in the test/preview environment. Production (`familydesk.in` / `www.familydesk.in`) keeps the gate.
+- 14 edge functions send mail directly via the Resend SDK from `noreply@familydesk.in` (root domain).
+- Lovable Email infrastructure is now provisioned on `notify.familydesk.in` (subdomain delegated to Lovable nameservers). The pgmq queue + `process-email-queue` dispatcher are deployed.
+- No DNS conflict: Resend uses the root domain, Lovable Email uses the `notify` subdomain — they can coexist.
 
-## Why a host-based check (not an env var)
+## Decision needed
 
-Lovable publishes the same source from Test → Live, so `import.meta.env.MODE` is `production` in both. The only reliable runtime signal that distinguishes the two is the hostname. Production runs on `familydesk.in` / `www.familydesk.in`; everything else (`*.lovable.app`, `*.lovable.dev`, `localhost`) is treated as test.
+Two valid paths. Pick one:
 
-## Changes
+### Option A — Keep Resend, do nothing
+- Leave all 14 functions on Resend.
+- Take down the unused Lovable Email infra (or leave dormant).
+- Pros: zero work, sender stays `noreply@familydesk.in` (root, recognizable).
+- Cons: still depend on Resend API key + quota; branded auth-email templates from Lovable Email won't be used.
 
-### 1. `src/lib/env.ts` (new, tiny helper)
+### Option B — Migrate everything to Lovable Email (recommended)
+- Replace direct Resend calls with the Lovable Email queue (durable retries, rate-limit handling, send log, suppression, unsubscribe tokens, no Resend dep).
+- New sender becomes `noreply@notify.familydesk.in` (or `Family Desk <noreply@notify.familydesk.in>`).
+- Auth emails (verification, password reset, magic link) automatically use the branded `auth-email-hook` once scaffolded.
 
-Export `isProductionHost()` returning `true` only when `window.location.hostname` is `familydesk.in` or `www.familydesk.in`. SSR-safe (returns `false` if `window` undefined).
+## Plan for Option B
 
-### 2. `src/pages/Auth.tsx` — `handleSignIn` (around lines 195–218)
+1. **Scaffold transactional email system**
+   - Run the transactional email scaffolder. This creates:
+     - `supabase/functions/send-transactional-email/index.ts` (queue-backed sender)
+     - `supabase/functions/_shared/email-templates/registry.ts` + per-template React Email files
+     - `supabase/functions/handle-email-unsubscribe/index.ts`
+   - Set `SENDER_DOMAIN = notify.familydesk.in`, `FROM_DOMAIN = familydesk.in` (display).
 
-Wrap the `email_verified_at` block so it only runs when `isProductionHost()` is true. In test env, sign-in proceeds straight to the household / dashboard logic regardless of verification state.
+2. **Port each existing template into the registry** (14 templates):
+   - `verification-email`, `verify-email-token` (welcome after verify)
+   - `household-invitation`, `invitation-response`, `household-member-welcome`, `join-request-notification`
+   - `access-request-confirmation`, `access-decision`
+   - `task-notification`, `task-reminders`, `habit-reminders`, `pantry-alerts`, `meal-plan-summary`, `weekly-digest`
+   - Convert each existing inline HTML into a React Email template under `_shared/email-templates/`.
+   - Apply Family Desk branding (Poppins, brand green `#0F6E56`, ink scale, surface `#F1EFE8`, logo lockup).
 
-```ts
-if (data.user && isProductionHost()) {
-  // existing email_verified_at lookup + verification-pending screen
-}
-```
+3. **Refactor the 14 edge functions**
+   - Remove `import { Resend } from "npm:resend"` and `RESEND_API_KEY` usage.
+   - Replace `resend.emails.send({...})` with a call to `send-transactional-email` (passing `templateName`, `to`, and template props).
+   - Keep all surrounding business logic (recipient lookup, dedup, logging) untouched.
 
-No other code paths change. The branded verification email continues to be sent from `handleSignUp` exactly as today, and `verify-email-token` still stamps `profiles.email_verified_at` when the link is clicked — so users who do verify in test env still get the same DB state as production users.
+4. **Auth emails**
+   - Scaffold `auth-email-hook` so Supabase auth emails (signup confirm, recovery, magic link, invite, email change, reauthentication) are also branded and queued.
+   - Confirm the hook uses the queue pattern (`enqueue_email`), not direct send.
 
-## Out of scope
+5. **Cleanup**
+   - Delete `RESEND_API_KEY` runtime secret once all functions are migrated and verified.
+   - Optionally disconnect the Resend connector from the workspace.
+   - Remove `npm:resend@2.0.0` imports.
 
-- No DB migration.
-- No change to `send-verification-email` or `verify-email-token`.
-- No change to Supabase auth settings (auto-confirm stays on so Supabase doesn't send its own email).
-- No change to `AuthContext` (it already only looks at `email_confirmed_at`, which is auto-set).
+6. **Verification**
+   - Deploy all touched functions.
+   - Trigger one email per template (test user) and confirm row in `email_send_log` reaches `sent`.
+   - Check spam-folder placement on Gmail/Outlook for the new `notify.familydesk.in` sender.
 
-## Result
+## Estimated work
 
-- Test env (`*.lovable.app`, preview, localhost): branded verification email still arrives, but unverified users can sign in and use the app.
-- Production (`familydesk.in`): unchanged — verification still required to sign in.
+~1–2 hours of mechanical refactoring (14 functions × identical pattern) + template porting.
+
+## Recommendation
+
+Go with **Option B**. The infra is already paid for (DNS delegated, queue running) and removes the Resend dependency, gives durable retries, suppression list, and unified send logging — plus branded auth emails which Resend cannot do for Supabase auth flows out of the box.
+
+Reply with **A** or **B** (and any tweaks) and I'll execute.
