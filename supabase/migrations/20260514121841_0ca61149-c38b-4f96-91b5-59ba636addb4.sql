@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.get_household_member_emails(uuid) FROM anon, authenticated, public;
