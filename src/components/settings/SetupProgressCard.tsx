@@ -53,9 +53,11 @@ export const SetupProgressCard = () => {
 
   const items = useMemo(() => {
     if (!enabledProducts || !preferences) return [];
-    return ORDER.filter((p) => enabledProducts.includes(p)).map((p) => {
-      const key = MODULE_SETUP_KEYS[p];
-      const fields = MODULE_SETUP_FIELDS[key];
+    return ORDER.filter((p) => enabledProducts.includes(p))
+      .map((p) => {
+        const key = MODULE_SETUP_KEYS[p];
+        if (!key) return null; // products without their own setup (e.g. tasks)
+        const fields = MODULE_SETUP_FIELDS[key];
       const hasData = fields.every((f) => {
         const v = (preferences as unknown as Record<string, unknown>)[f as string];
         return v !== null && v !== undefined && v !== "";
@@ -63,7 +65,8 @@ export const SetupProgressCard = () => {
       const tourComplete = !!completedTours?.[key];
       const complete = hasData || tourComplete;
       return { product: p, key, label: MODULE_LABELS[p], complete };
-    });
+      })
+      .filter((x): x is { product: ProductName; key: ModuleSetupKey; label: string; complete: boolean } => x !== null);
   }, [enabledProducts, preferences, completedTours]);
 
   if (items.length === 0) return null;

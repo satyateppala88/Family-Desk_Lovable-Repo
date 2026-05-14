@@ -376,10 +376,7 @@ const TaskmasterToday = () => {
   );
 };
 
-import { ModuleSetupGate } from "@/components/onboarding/ModuleSetupGate";
-const TaskmasterTodayWithGate = () => (
-  <ModuleSetupGate module="habits_setup">
-    <TaskmasterToday />
-  </ModuleSetupGate>
-);
-export default TaskmasterTodayWithGate;
+// Tasks has no dedicated setup questionnaire — render the page directly so
+// /tasks (and the rest of the Taskmaster sub-nav) never shows the Habits
+// setup modal.
+export default TaskmasterToday;

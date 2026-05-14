@@ -14,16 +14,14 @@ export type ModuleSetupKey =
   | "habits_setup"
   | "calendar_setup";
 
-export const MODULE_SETUP_KEYS: Record<ProductName, ModuleSetupKey> = {
+export const MODULE_SETUP_KEYS: Partial<Record<ProductName, ModuleSetupKey>> = {
   meals: "meals_setup",
   grocery: "grocery_setup",
   finance: "finance_setup",
   habits: "habits_setup",
   calendar: "calendar_setup",
-  // Tasks shares the Routine setup with Habits — both consume
-  // `preferred_task_time` and `household_concerns`, so we don't
-  // re-prompt the user with the same questions twice.
-  tasks: "habits_setup",
+  // Tasks intentionally has no setup questionnaire — `/tasks` should never
+  // surface another module's modal.
 };
 
 import type { HouseholdPreferences } from "@/types/database";
