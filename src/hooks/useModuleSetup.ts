@@ -5,6 +5,7 @@ import { useHousehold } from "@/hooks/useHousehold";
 import { useHouseholdPreferences } from "@/hooks/useHouseholdPreferences";
 import {
   MODULE_SETUP_FIELDS,
+  MODULE_SETUP_COLUMN,
   type ModuleSetupKey,
 } from "@/lib/moduleSetup";
 
@@ -26,10 +27,20 @@ export const useModuleSetup = (key: ModuleSetupKey) => {
   const backfillFiredRef = useRef(false);
 
   const completed = (preferences?.completed_module_setups as CompletedMap | undefined) ?? {};
+  const typedColumn = MODULE_SETUP_COLUMN[key];
+  const typedColumnComplete =
+    typedColumn != null
+      ? (preferences as unknown as Record<string, unknown> | null)?.[typedColumn as string] === true
+      : false;
 
   const markComplete = useMutation({
     mutationFn: async () => {
       if (!householdId) throw new Error("No household");
+      if (typedColumn != null) {
+        // Write the deterministic boolean column — no jsonb merge race.
+        await updatePreferences({ [typedColumn]: true } as any);
+        return { [typedColumn]: true };
+      }
       const next = { ...completed, [key]: true };
       await updatePreferences({ completed_module_setups: next } as any);
       return next;
@@ -54,6 +65,7 @@ export const useModuleSetup = (key: ModuleSetupKey) => {
 
   useEffect(() => {
     if (isLoading) return;
+    if (typedColumnComplete) return;
     if (completed?.[key]) return;
     if (backfillFiredRef.current) return;
     if (hasRequiredData && householdId) {
@@ -64,9 +76,9 @@ export const useModuleSetup = (key: ModuleSetupKey) => {
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLoading, completed, hasRequiredData, key, householdId]);
+  }, [isLoading, completed, hasRequiredData, key, householdId, typedColumnComplete]);
 
-  const isComplete = !!completed?.[key] || hasRequiredData;
+  const isComplete = typedColumnComplete || !!completed?.[key] || hasRequiredData;
   const needsSetup = !isLoading && !!user?.id && !!householdId && !isComplete;
 
   return {
