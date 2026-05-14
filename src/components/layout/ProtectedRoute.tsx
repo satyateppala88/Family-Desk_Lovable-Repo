@@ -34,7 +34,7 @@ export const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
   return (
     <>
-      <div className="pb-16 lg:pb-0">{children}</div>
+      <div className="pb-24 lg:pb-0">{children}</div>
       <BottomNav />
       <IOSInstallBanner />
       <PushPermissionPrompt />
