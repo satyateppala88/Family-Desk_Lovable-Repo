@@ -204,7 +204,7 @@ export const CalendarGrid = ({
         {weekDays.map((day) => (
           <div
             key={day}
-            className="py-2 text-center text-sm font-medium text-muted-foreground"
+            className="py-2 md:pb-1 text-center text-sm md:text-[13px] font-medium text-muted-foreground"
           >
             {day}
           </div>
@@ -221,18 +221,18 @@ export const CalendarGrid = ({
           return (
             <div
               key={index}
-              onClick={() => onSelectDate(day)}
+              onClick={() => onOpenDay(day)}
               className={cn(
-                "min-h-[100px] border-b border-r p-1.5 cursor-pointer hover:bg-muted/50 transition-colors",
+                "min-h-[72px] md:min-h-[100px] border-b border-r p-1 cursor-pointer hover:bg-muted/50 transition-colors",
                 !isCurrentMonth && "bg-muted/30",
                 index % 7 === 0 && "border-l"
               )}
             >
               {/* Date number */}
-              <div className="flex items-center gap-1 mb-1">
+              <div className="flex items-center justify-between gap-1 mb-1">
                 <div
                   className={cn(
-                    "w-7 h-7 flex items-center justify-center rounded-full text-sm",
+                    "w-7 h-7 flex items-center justify-center rounded-full text-sm md:text-[15px]",
                     (isToday(day) || isSameDay(day, selectedDate)) && "bg-primary text-primary-foreground font-bold",
                     !isCurrentMonth && "text-muted-foreground"
                   )}
@@ -268,7 +268,7 @@ export const CalendarGrid = ({
                       e.stopPropagation();
                       onEventClick(event);
                     }}
-                    className="text-xs px-1.5 py-1 rounded truncate cursor-pointer hover:opacity-80 transition-opacity"
+                    className="text-xs md:text-[11px] md:h-[22px] md:flex md:items-center px-1.5 md:px-2 py-1 rounded truncate cursor-pointer hover:opacity-80 transition-opacity"
                     style={{
                       backgroundColor: event.color + "20",
                       borderLeft: `3px solid ${event.color}`,
@@ -279,13 +279,20 @@ export const CalendarGrid = ({
                         {format(parseISO(event.start), "h:mm")}
                       </span>
                     )}
-                    {event.title}
+                    <span className="truncate">{event.title}</span>
                   </div>
                 ))}
                 {dayEvents.filter((e) => e.calendarId !== "system").length > 3 && (
-                  <div className="text-xs text-muted-foreground px-1">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onOpenDay(day);
+                    }}
+                    className="text-xs md:text-[11px] text-muted-foreground hover:text-foreground hover:underline px-1 py-1 min-h-[24px] text-left w-full"
+                  >
                     +{dayEvents.filter((e) => e.calendarId !== "system").length - 3} more
-                  </div>
+                  </button>
                 )}
               </div>
             </div>
