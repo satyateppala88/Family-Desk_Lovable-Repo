@@ -76,6 +76,7 @@ export function useAddUserCard(householdId: string | undefined) {
           if (!Array.isArray(list)) return;
           qc.setQueryData(key, list.map((c) => (c.id === ctx?.optimisticId ? row : c)));
         });
+      qc.invalidateQueries({ queryKey: ["user-cards", householdId] });
     },
   });
 }
@@ -101,6 +102,9 @@ export function useRemoveUserCard(householdId: string | undefined) {
     onError: (_e, _v, ctx: any) => {
       ctx?.snapshots?.forEach(([key, prev]: any) => qc.setQueryData(key, prev));
       toast.error("Failed to remove card");
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["user-cards", householdId] });
     },
   });
 }
