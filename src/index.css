@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Serif+Display:ital@0;1&display=swap");
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -7,42 +7,69 @@
 
 @layer base {
   :root {
-    /* ─── FamilyDesk brand palette ─── */
-    --background: 0 0% 100%;
-    --foreground: 60 3% 17%;          /* #2C2C2A */
+    /* ─── FamilyDesk raw palette (hex) ─── */
+    --fd-green: #0F6E56;
+    --fd-green-mid: #1D9E75;
+    --fd-green-light: #E1F5EE;
+    --fd-green-dark: #085041;
+    --fd-ink: #1A1A1A;
+    --fd-ink-2: #4A4A4A;
+    --fd-ink-3: #8A8A8A;
+    --fd-surface: #F7F6F2;
+    --fd-white: #FFFFFF;
+    --fd-border: rgba(15,110,86,0.15);
+    --fd-border-strong: rgba(15,110,86,0.30);
+    --fd-amber: #BA7517;
+    --fd-amber-light: #FAEEDA;
+    --fd-coral: #993C1D;
+    --fd-coral-light: #FAECE7;
+    --fd-blue: #185FA5;
+    --fd-blue-light: #E6F1FB;
+    --fd-pink: #993556;
+    --fd-pink-light: #FBEAF0;
+    --fd-shadow-sm: 0 1px 3px rgba(15,110,86,0.08), 0 4px 12px rgba(15,110,86,0.06);
+    --fd-shadow-lg: 0 4px 16px rgba(15,110,86,0.12), 0 12px 32px rgba(15,110,86,0.08);
+    --fd-radius-sm: 8px;
+    --fd-radius-md: 12px;
+    --fd-radius-lg: 16px;
+    --fd-radius-xl: 24px;
+
+    /* ─── shadcn semantic tokens (HSL — re-pointed at fd palette) ─── */
+    --background: 40 25% 97%;          /* #F7F6F2 fd-surface */
+    --foreground: 0 0% 10%;            /* #1A1A1A fd-ink */
 
     --card: 0 0% 100%;
-    --card-foreground: 60 3% 17%;
+    --card-foreground: 0 0% 10%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 60 3% 17%;
+    --popover-foreground: 0 0% 10%;
 
     /* Primary accent: FamilyDesk green #0F6E56 */
     --primary: 165 76% 24%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 43 19% 93%;          /* #F1EFE8 (ink-surface) */
-    --secondary-foreground: 60 3% 17%;
+    --secondary: 158 53% 92%;          /* #E1F5EE green-light */
+    --secondary-foreground: 165 84% 15%; /* #085041 green-dark */
 
-    --muted: 43 19% 93%;              /* #F1EFE8 */
-    --muted-foreground: 45 3% 53%;    /* #888780 */
+    --muted: 40 25% 97%;               /* surface */
+    --muted-foreground: 0 0% 54%;      /* #8A8A8A */
 
-    --accent: 158 53% 92%;            /* #E1F5EE (brand-muted) */
-    --accent-foreground: 165 76% 24%;
+    --accent: 158 53% 92%;
+    --accent-foreground: 165 84% 15%;
 
     /* Status colors */
-    --success: 152 40% 42%;
+    --success: 165 76% 24%;
     --success-foreground: 0 0% 100%;
 
-    --warning: 38 75% 52%;
-    --warning-foreground: 30 20% 12%;
+    --warning: 30 78% 41%;             /* #BA7517 */
+    --warning-foreground: 0 0% 100%;
 
-    --destructive: 4 60% 52%;
+    --destructive: 13 68% 35%;          /* #993C1D coral */
     --destructive-foreground: 0 0% 100%;
 
-    /* Borders & inputs */
-    --border: 47 13% 80%;             /* #D3D1C7 */
-    --input: 47 13% 80%;
+    /* Borders & inputs — green-tinted */
+    --border: 158 30% 88%;
+    --input: 158 30% 88%;
     --ring: 165 76% 24%;
 
     /* ─── Brand & ink scale (raw hex tokens) ─── */
@@ -52,30 +79,30 @@
     --brand-light: #5DCAA5;
     --brand-muted: #E1F5EE;
 
-    --ink: #2C2C2A;
-    --ink-secondary: #5F5E5A;
-    --ink-muted: #888780;
+    --ink: #1A1A1A;
+    --ink-secondary: #4A4A4A;
+    --ink-muted: #8A8A8A;
     --ink-border: #D3D1C7;
-    --ink-surface: #F1EFE8;
+    --ink-surface: #F7F6F2;
 
     --color-primary: var(--brand);
     --color-primary-hover: var(--brand-dark);
-    --color-background: #FFFFFF;
+    --color-background: #F7F6F2;
     --color-surface: #FFFFFF;
-    --color-surface-raised: #F8F7F4;
-    --color-border: #E5E3DC;
+    --color-surface-raised: #FFFFFF;
+    --color-border: rgba(15,110,86,0.15);
     --color-text: var(--ink);
     --color-text-muted: var(--ink-muted);
     /* Mobile design-system semantic tokens */
-    --color-text-primary: #2C2C2A;
-    --color-text-secondary: #6B6965;
-    --color-text-disabled: #A8A5A0;
+    --color-text-primary: #1A1A1A;
+    --color-text-secondary: #4A4A4A;
+    --color-text-disabled: #8A8A8A;
     --color-brand: #0F6E56;
-    --color-error: #DC2626;
-    --color-warning: #D97706;
-    --color-success: #16A34A;
+    --color-error: #993C1D;
+    --color-warning: #BA7517;
+    --color-success: #0F6E56;
 
-    --radius: 0.625rem;
+    --radius: 0.75rem; /* 12px → fd-radius-md */
 
     /* ─── Module tints (for icon backgrounds, subtle accents) ─── */
     --module-tasks: 165 76% 24%;
@@ -103,14 +130,14 @@
     --chart-4: 280 35% 52%;
     --chart-5: 38 75% 52%;
 
-    /* ─── Shadows — warm-toned, subtle ─── */
-    --shadow-2xs: 0 1px 2px 0 hsl(25 15% 15% / 0.02);
-    --shadow-xs: 0 1px 3px 0 hsl(25 15% 15% / 0.03), 0 1px 2px -1px hsl(25 15% 15% / 0.02);
-    --shadow-sm: 0 2px 6px 0 hsl(25 15% 15% / 0.04), 0 1px 3px -1px hsl(25 15% 15% / 0.03);
-    --shadow-md: 0 4px 12px 0 hsl(25 15% 15% / 0.06), 0 2px 4px -2px hsl(25 15% 15% / 0.04);
-    --shadow-lg: 0 8px 20px 0 hsl(25 15% 15% / 0.08), 0 4px 8px -4px hsl(25 15% 15% / 0.05);
-    --shadow-xl: 0 12px 28px 0 hsl(25 15% 15% / 0.10), 0 6px 12px -6px hsl(25 15% 15% / 0.06);
-    --shadow-2xl: 0 16px 40px 0 hsl(25 15% 15% / 0.12);
+    /* ─── Shadows — green-tinted ─── */
+    --shadow-2xs: 0 1px 2px rgba(15,110,86,0.04);
+    --shadow-xs: 0 1px 3px rgba(15,110,86,0.06);
+    --shadow-sm: 0 1px 3px rgba(15,110,86,0.08), 0 4px 12px rgba(15,110,86,0.06);
+    --shadow-md: 0 2px 8px rgba(15,110,86,0.10), 0 6px 16px rgba(15,110,86,0.06);
+    --shadow-lg: 0 4px 16px rgba(15,110,86,0.12), 0 12px 32px rgba(15,110,86,0.08);
+    --shadow-xl: 0 8px 24px rgba(15,110,86,0.14), 0 16px 40px rgba(15,110,86,0.10);
+    --shadow-2xl: 0 12px 32px rgba(15,110,86,0.16);
 
     --tracking-normal: 0em;
     --spacing: 0.25rem;
@@ -233,13 +260,13 @@
 
   body {
     @apply bg-background text-foreground antialiased;
-    font-family: 'Poppins', ui-sans-serif, system-ui, -apple-system, sans-serif;
+    font-family: 'DM Sans', ui-sans-serif, system-ui, -apple-system, sans-serif;
     font-feature-settings: "cv11", "ss01";
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    /* Mobile-first body baseline: 15px / 1.5 */
-    font-size: 15px;
-    line-height: 1.5;
+    /* Mobile-first body baseline: 14px / 1.6 */
+    font-size: 14px;
+    line-height: 1.6;
   }
 
   /* Type-scale floor: never shrink below 13px */
@@ -258,7 +285,7 @@
 
   h1, h2, h3, h4, h5, h6 {
     letter-spacing: -0.02em;
-    font-weight: 600;
+    font-weight: 500;
     line-height: 1.3;
   }
 
