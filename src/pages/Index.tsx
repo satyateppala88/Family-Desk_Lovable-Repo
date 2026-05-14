@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, Link } from "react-router-dom";
 import { Header } from "@/components/layout/Header";
 import { OnboardingTour } from "@/components/onboarding/OnboardingTour";
@@ -6,7 +7,6 @@ import { PendingInvitationBanner } from "@/components/household/PendingInvitatio
 import { useHousehold } from "@/hooks/useHousehold";
 import { useOnboardingProgress } from "@/hooks/useOnboardingProgress";
 import { useAuth } from "@/contexts/AuthContext";
-import { useFeatureTour } from "@/hooks/useFeatureTour";
 import { useDashboardStats } from "@/hooks/useDashboardStats";
 import { supabase } from "@/lib/supabase";
 import { Card, CardContent } from "@/components/ui/card";
@@ -89,27 +89,47 @@ const Index = () => {
     moduleSetupTotal > 0 && moduleSetupDone === moduleSetupTotal;
   const showSetupBanner = !onboardingCompleted && !allModuleSetupsDone;
 
-  const { shouldShowTour, tourChecked, markTourComplete } = useFeatureTour("dashboard");
+  const queryClient = useQueryClient();
+  const { data: completedTours, isLoading: toursLoading } = useQuery({
+    queryKey: ["completed-tours", user?.id],
+    queryFn: async () => {
+      if (!user?.id) return {} as Record<string, unknown>;
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("completed_tours")
+        .eq("id", user.id)
+        .single();
+      if (error) return {} as Record<string, unknown>;
+      return ((data?.completed_tours as Record<string, unknown>) || {});
+    },
+    enabled: !!user?.id,
+    staleTime: 5 * 60 * 1000,
+  });
+  const toursChecked = !!user?.id && !toursLoading && completedTours !== undefined;
+  const welcomeAlreadyDone = !!completedTours && (completedTours as any).dashboard_welcome === true;
+  const shouldShowWelcome = toursChecked && !welcomeAlreadyDone;
   const [runOnboarding, setRunOnboarding] = useState(false);
   const { ensurePermission, primerProps } = usePermissionPrimer();
+  const welcomeVisible = runOnboarding || shouldShowWelcome;
 
   useEffect(() => {
-    if (tourChecked && shouldShowTour && householdId) {
-      setTimeout(() => setRunOnboarding(true), 500);
+    if (shouldShowWelcome && householdId) {
+      const t = setTimeout(() => setRunOnboarding(true), 500);
+      return () => clearTimeout(t);
     }
-  }, [tourChecked, shouldShowTour, householdId]);
+  }, [shouldShowWelcome, householdId]);
 
-  // Contextual notifications primer: 2 seconds after dashboard mounts,
-  // for users who haven't been asked yet (and aren't in a 7-day remind window).
+  // Contextual notifications primer: only after the welcome modal is gone.
   useEffect(() => {
-    if (!householdId || !tourChecked) return;
+    if (!householdId || !toursChecked) return;
+    if (welcomeVisible) return;
     if (hasAskedPermission("notifications")) return;
     if (isPermissionRemindActive("notifications")) return;
     const t = setTimeout(() => {
       void ensurePermission("notifications", "dashboard-first-load");
-    }, 2000);
+    }, 500);
     return () => clearTimeout(t);
-  }, [householdId, tourChecked, ensurePermission]);
+  }, [householdId, toursChecked, welcomeVisible, ensurePermission]);
 
   useEffect(() => {
     if (!isLoading && !householdId && user) {
@@ -132,9 +152,22 @@ const Index = () => {
   }, [householdId]);
 
   const handleStartOnboarding = () => setRunOnboarding(true);
-  const handleOnboardingComplete = () => {
+  const handleOnboardingComplete = async () => {
     setRunOnboarding(false);
-    markTourComplete();
+    if (!user?.id) return;
+    // Patch-merge the completion into completed_tours via the existing RPC,
+    // which uses jsonb || to avoid clobbering sibling tour keys.
+    const { error } = await supabase.rpc("update_completed_tour", {
+      _key: "dashboard_welcome",
+    });
+    if (error) {
+      console.error("Failed to mark dashboard_welcome complete:", error);
+      return;
+    }
+    queryClient.setQueryData(
+      ["completed-tours", user.id],
+      { ...(completedTours || {}), dashboard_welcome: true }
+    );
   };
 
   const visibleModules = moduleDefinitions.filter((m) =>
@@ -162,12 +195,12 @@ const Index = () => {
   return (
     <div className="page-container">
       <Header onStartOnboarding={handleStartOnboarding} />
-      {tourChecked && (
+      {toursChecked && (
         <OnboardingTour
           run={runOnboarding}
           onComplete={handleOnboardingComplete}
           steps={dashboardTourSteps}
-          featureName="dashboard"
+          featureName="dashboard_welcome"
         />
       )}
       <main className="page-content animate-fade-in">
@@ -175,7 +208,7 @@ const Index = () => {
 
         <FestivalBanner />
 
-        <PermissionPrimerDialog {...primerProps} />
+        {!welcomeVisible && <PermissionPrimerDialog {...primerProps} />}
 
         {showSetupBanner && (
           <Card className="mb-4 border-primary/15">
