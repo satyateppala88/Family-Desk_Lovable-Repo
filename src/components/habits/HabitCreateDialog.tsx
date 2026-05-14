@@ -18,6 +18,13 @@ import {
   FormMessage 
 } from "@/components/ui/form";
 import { HabitAssignmentType, HabitFrequencyType } from "@/types/habits";
+import { RecurrencePicker } from "@/components/shared/RecurrencePicker";
+import { formatRecurrenceSummary } from "@/utils/recurrenceUtils";
+import {
+  type RecurrenceSpec,
+  RECURRENCE_DAYS,
+  dayToDateIndex,
+} from "@/types/recurrence";
 
 const DAYS_OF_WEEK = [
   { value: 0, label: "Sun" },
@@ -52,6 +59,7 @@ interface HabitCreateDialogProps {
     target_value?: number;
     target_unit?: string;
     reminder_time?: string;
+    recurrence?: RecurrenceSpec | null;
   }) => void;
   isLoading?: boolean;
   householdMembers?: Array<{ userId: string; displayName: string; avatarUrl?: string | null }>;
@@ -76,6 +84,12 @@ export const HabitCreateDialog = ({
     else setInternalOpen(v);
   };
   const [showTarget, setShowTarget] = useState(false);
+  const [recurrence, setRecurrence] = useState<RecurrenceSpec | null>({
+    frequency: "daily",
+    interval: 1,
+    days: [...RECURRENCE_DAYS],
+    end: { type: "never" },
+  });
 
   const form = useForm<HabitFormData>({
     resolver: zodResolver(habitSchema),
@@ -101,18 +115,44 @@ export const HabitCreateDialog = ({
   const frequencyType = form.watch("frequencyType");
 
   const handleSubmit = (data: HabitFormData) => {
+    // Derive legacy frequency_type/frequency_days from the recurrence spec.
+    let legacyType: HabitFrequencyType = "daily";
+    let legacyDays: number[] = [];
+    if (recurrence) {
+      if (recurrence.frequency === "daily") {
+        const days = recurrence.days ?? [];
+        if (days.length === 7 || days.length === 0) {
+          legacyType = "daily";
+        } else {
+          legacyType = "specific_days";
+          legacyDays = days.map(dayToDateIndex);
+        }
+      } else if (recurrence.frequency === "weekly") {
+        legacyType = "specific_days";
+        legacyDays = (recurrence.days ?? []).map(dayToDateIndex);
+      } else {
+        legacyType = "weekly";
+      }
+    }
     onCreateHabit({
       name: data.name,
       assignment_type: data.assignmentType as HabitAssignmentType,
       assigned_members: data.assignmentType === "multiple" ? data.assignedMembers : undefined,
-      frequency_type: data.frequencyType as HabitFrequencyType,
-      frequency_days: data.frequencyType === "specific_days" ? data.frequencyDays || [] : [],
+      frequency_type: legacyType,
+      frequency_days: legacyDays,
       target_value: showTarget ? data.targetValue : undefined,
       target_unit: showTarget ? data.targetUnit : undefined,
       reminder_time: data.reminderTime || undefined,
+      recurrence,
     });
     form.reset();
     setShowTarget(false);
+    setRecurrence({
+      frequency: "daily",
+      interval: 1,
+      days: [...RECURRENCE_DAYS],
+      end: { type: "never" },
+    });
     setOpen(false);
   };
 
