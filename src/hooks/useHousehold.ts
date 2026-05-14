@@ -18,6 +18,7 @@ export const useHousehold = () => {
         .from("household_members")
         .select("household_id, households(onboarding_completed, name, avatar_url, created_at)")
         .eq("user_id", user.id)
+        .order("joined_at", { ascending: false })
         .limit(1)
         .maybeSingle();
 

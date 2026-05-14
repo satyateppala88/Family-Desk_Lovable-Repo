@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, cloneElement, isValidElement } from "react";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -47,19 +47,6 @@ export const InviteMemberDialog = ({ householdId, trigger }: InviteMemberDialogP
       }
 
       // Create the invitation - the user will be linked when they accept
-      const { error: insertError } = await supabase
-        .from("household_invitations")
-        .insert({
-          household_id: householdId,
-          invitee_email: normalizedEmail,
-          invitee_name: displayName.trim() || null,
-          requested_role: role,
-          invitation_type: "admin_invite",
-          invited_by: user.id,
-        });
-
-      if (insertError) throw insertError;
-
       // Get household name and inviter's profile for the email
       const [householdResult, profileResult] = await Promise.all([
         supabase.from("households").select("name").eq("id", householdId).single(),
@@ -68,6 +55,20 @@ export const InviteMemberDialog = ({ householdId, trigger }: InviteMemberDialogP
 
       const householdName = householdResult.data?.name || "the household";
       const inviterName = profileResult.data?.display_name || user.email?.split("@")[0] || "Someone";
+
+      const { error: insertError } = await supabase
+        .from("household_invitations")
+        .insert({
+          household_id: householdId,
+          household_name: householdResult.data?.name ?? null,
+          invitee_email: normalizedEmail,
+          invitee_name: displayName.trim() || null,
+          requested_role: role,
+          invitation_type: "admin_invite",
+          invited_by: user.id,
+        } as any);
+
+      if (insertError) throw insertError;
 
       // Send invitation email
       const session = await supabase.auth.getSession();
@@ -117,10 +118,13 @@ export const InviteMemberDialog = ({ householdId, trigger }: InviteMemberDialogP
 
   return (
     <>
-      {trigger ? (
-        <span onClick={() => setOpen(true)} className="contents">
-          {trigger}
-        </span>
+      {trigger && isValidElement(trigger) ? (
+        cloneElement(trigger as React.ReactElement<any>, {
+          onClick: (e: React.MouseEvent) => {
+            (trigger as any).props?.onClick?.(e);
+            if (!e.defaultPrevented) setOpen(true);
+          },
+        })
       ) : (
         <Button onClick={() => setOpen(true)}>
           <UserPlus className="h-4 w-4 mr-2" />
