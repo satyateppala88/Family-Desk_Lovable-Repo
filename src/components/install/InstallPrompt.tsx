@@ -7,6 +7,7 @@ import {
   isIos,
   isStandalone,
   markInstalled,
+  clearInstalledFlag,
   markSoftPromptDismissed,
   markSoftPromptShown,
   shouldShowSoftPrompt,
@@ -75,6 +76,9 @@ export const InstallPrompt = () => {
     let delayTimer: number | undefined;
     const onBeforeInstall = (e: Event) => {
       e.preventDefault();
+      // App is installable again — clear any stale install flag from a
+      // previous install/uninstall cycle on this device.
+      clearInstalledFlag();
       const evt = e as BeforeInstallPromptEvent;
       setDeferred(evt);
       delayTimer = window.setTimeout(() => {
