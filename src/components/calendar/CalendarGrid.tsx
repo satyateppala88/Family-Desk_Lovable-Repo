@@ -23,6 +23,7 @@ interface CalendarGridProps {
   onEventClick: (event: CalendarEvent) => void;
   onDateClick: (date: Date) => void;
   onSelectDate: (date: Date) => void;
+  onOpenDay: (date: Date) => void;
 }
 
 export const CalendarGrid = ({
@@ -32,6 +33,7 @@ export const CalendarGrid = ({
   onEventClick,
   onDateClick,
   onSelectDate,
+  onOpenDay,
 }: CalendarGridProps) => {
   const isMobile = useIsMobile();
   
