@@ -14,7 +14,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { VoiceInputButton } from "@/components/voice/VoiceInputButton";
-import { RecurrenceSelector } from "@/components/taskmaster/RecurrenceSelector";
+import { RecurrencePicker } from "@/components/shared/RecurrencePicker";
+import { formatRecurrenceSummary } from "@/utils/recurrenceUtils";
+import type { RecurrenceSpec } from "@/types/recurrence";
 import type { RecurrencePattern } from "@/lib/recurrence";
 import {
   Select,
@@ -51,8 +53,7 @@ export const TaskmasterTaskDialog = ({
   const [status, setStatus] = useState<TaskStatus>("backlog");
   const [priority, setPriority] = useState<number>(3);
   const [dueDate, setDueDate] = useState("");
-  const [recurringPattern, setRecurringPattern] =
-    useState<RecurrencePattern | null>(null);
+  const [recurrence, setRecurrence] = useState<RecurrenceSpec | null>(null);
 
   useEffect(() => {
     if (task) {
@@ -63,9 +64,7 @@ export const TaskmasterTaskDialog = ({
       setStatus(task.task_status || "backlog");
       setPriority(task.priority_level || 3);
       setDueDate(task.due_date ? new Date(task.due_date).toISOString().split("T")[0] : "");
-      setRecurringPattern(
-        ((task as any).recurring && (task as any).recurring_pattern) || null
-      );
+      setRecurrence(((task as any).recurrence as RecurrenceSpec) ?? null);
     } else {
       setTitle("");
       setDescription("");
@@ -74,11 +73,14 @@ export const TaskmasterTaskDialog = ({
       setStatus("backlog");
       setPriority(3);
       setDueDate("");
-      setRecurringPattern(null);
+      setRecurrence(null);
     }
   }, [task, defaultProjectId, open]);
 
   const handleSave = () => {
+    const legacyPattern: RecurrencePattern | null = recurrence
+      ? ({ type: recurrence.frequency } as RecurrencePattern)
+      : null;
     const taskData: Partial<TaskmasterTask> & { assignee_ids?: string[] } = {
       title,
       description: description || null,
@@ -89,8 +91,9 @@ export const TaskmasterTaskDialog = ({
       due_date: dueDate ? new Date(dueDate).toISOString() : null,
       household_id: householdId,
       assignee_ids: user?.id ? [user.id] : [],
-      recurring: !!recurringPattern,
-      recurring_pattern: recurringPattern,
+      recurring: !!recurrence,
+      recurring_pattern: legacyPattern,
+      recurrence: (recurrence ?? null) as any,
     };
 
     onSave(taskData);
@@ -193,10 +196,19 @@ export const TaskmasterTaskDialog = ({
             </div>
           </div>
 
-          <RecurrenceSelector
-            value={recurringPattern}
-            onChange={setRecurringPattern}
-          />
+          <div className="grid gap-2">
+            <RecurrencePicker
+              value={recurrence}
+              onChange={setRecurrence}
+              baseDate={dueDate ? new Date(dueDate) : new Date()}
+              context="event"
+            />
+            {recurrence && (
+              <p className="text-[12px] text-muted-foreground">
+                {formatRecurrenceSummary(recurrence)}
+              </p>
+            )}
+          </div>
           </div>
         </DialogBody>
 
