@@ -43,6 +43,20 @@ export const MODULE_SETUP_FIELDS: Record<ModuleSetupKey, (keyof HouseholdPrefere
   calendar_setup: ["work_schedule"],
 };
 
+/**
+ * Per-module typed boolean column on `household_preferences` that records
+ * "the user has acknowledged this module's setup". When non-null, the gate
+ * uses this column directly instead of the legacy `completed_module_setups`
+ * jsonb merge — eliminating cache/race issues that re-prompted the modal.
+ */
+export const MODULE_SETUP_COLUMN: Record<ModuleSetupKey, keyof HouseholdPreferences | null> = {
+  finance_setup: "finance_setup_complete",
+  grocery_setup: "grocery_setup_complete",
+  meals_setup: "meals_setup_complete",
+  habits_setup: null,
+  calendar_setup: null,
+};
+
 export const MODULE_SETUP_META: Record<ModuleSetupKey, { title: string; moduleName: string; description: string; icon: LucideIcon }> = {
   meals_setup: {
     title: "Quick setup for Meals",
