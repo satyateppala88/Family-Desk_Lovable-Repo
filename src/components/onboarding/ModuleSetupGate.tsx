@@ -301,12 +301,16 @@ interface ModuleSetupGateProps {
  * inputs. Saves to household_preferences and marks the setup complete.
  */
 export const ModuleSetupGate = ({ module, children, waitForTour = false }: ModuleSetupGateProps) => {
-  const { needsSetup, markComplete, isMarking } = useModuleSetup(module);
+  const { isLoading, needsSetup, markComplete, isMarking } = useModuleSetup(module);
   const { householdId } = useHousehold();
   const { preferences, updatePreferences, isUpdating } = useHouseholdPreferences(householdId);
   const meta = MODULE_SETUP_META[module];
   const [open, setOpen] = useState(true);
 
+  // Hard pre-mount gate: never insert the dialog into the DOM while
+  // preferences are still loading. Avoids the "modal flashes on every visit"
+  // race where the cache returns null before the row hydrates.
+  if (isLoading) return <>{children}</>;
   if (!needsSetup) return <>{children}</>;
 
   return (
