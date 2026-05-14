@@ -44,25 +44,26 @@ export const DidYouKnowCard = () => {
 
   return (
     <Card
-      className="mb-4 flex items-start gap-3 p-3 pr-10 relative bg-card animate-fade-in"
-      style={{ borderLeft: "3px solid #0F6E56" }}
+      className="mb-4 flex items-start gap-2.5 p-3 pr-10 relative bg-fd-green-light animate-fade-in"
+      style={{
+        border: "0.5px solid rgba(15,110,86,0.30)",
+        borderRadius: 12,
+      }}
     >
-      <div className="rounded-full p-1.5 shrink-0" style={{ backgroundColor: "#E8F5F1" }}>
-        <Sparkles className="w-4 h-4" style={{ color: "#0F6E56" }} aria-hidden="true" />
-      </div>
+      <Sparkles className="w-4 h-4 text-fd-green shrink-0 mt-[2px]" aria-hidden="true" />
       <div className="flex-1 min-w-0">
-        <p className="text-[11px] uppercase tracking-wide text-muted-foreground font-medium">
+        <p className="text-[10px] uppercase tracking-[0.12em] text-fd-green font-semibold">
           Did you know?
         </p>
-        <p className="text-sm text-foreground/90 leading-snug mt-0.5">{TIPS[tipIndex]}</p>
+        <p className="text-[12px] text-fd-green-dark leading-[1.5] mt-1">{TIPS[tipIndex]}</p>
       </div>
       <button
         type="button"
         aria-label="Dismiss tip"
         onClick={() => setDismissed(true)}
-        className="absolute top-2 right-2 rounded-md p-1 text-foreground/60 hover:text-foreground hover:bg-black/5 transition-colors"
+        className="absolute top-2 right-2 rounded-md p-1 text-fd-green opacity-60 hover:opacity-100 transition-opacity"
       >
-        <X className="w-4 h-4" />
+        <X className="w-3.5 h-3.5" />
       </button>
     </Card>
   );
