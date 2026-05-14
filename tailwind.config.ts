@@ -15,7 +15,7 @@ export default {
   	extend: {
 		fontFamily: {
 			sans: [
-				'Poppins',
+				'DM Sans',
 				'ui-sans-serif',
 				'system-ui',
 				'-apple-system',
@@ -26,6 +26,18 @@ export default {
 				'Arial',
 				'Noto Sans',
 				'sans-serif'
+			],
+			serif: [
+				'DM Serif Display',
+				'ui-serif',
+				'Georgia',
+				'serif'
+			],
+			display: [
+				'DM Serif Display',
+				'ui-serif',
+				'Georgia',
+				'serif'
 			]
   		},
   		// Mobile-first type scale (sp ≈ px on web).
@@ -112,11 +124,32 @@ export default {
   				muted: '#E1F5EE',
   			},
   			ink: {
-  				DEFAULT: '#2C2C2A',
-  				secondary: '#5F5E5A',
-  				muted: '#888780',
+  				DEFAULT: '#1A1A1A',
+  				secondary: '#4A4A4A',
+  				muted: '#8A8A8A',
   				border: '#D3D1C7',
-  				surface: '#F1EFE8',
+  				surface: '#F7F6F2',
+  			},
+  			fd: {
+  				green: '#0F6E56',
+  				'green-mid': '#1D9E75',
+  				'green-light': '#E1F5EE',
+  				'green-dark': '#085041',
+  				ink: '#1A1A1A',
+  				'ink-2': '#4A4A4A',
+  				'ink-3': '#8A8A8A',
+  				surface: '#F7F6F2',
+  				white: '#FFFFFF',
+  				border: 'rgba(15,110,86,0.15)',
+  				'border-strong': 'rgba(15,110,86,0.30)',
+  				amber: '#BA7517',
+  				'amber-light': '#FAEEDA',
+  				coral: '#993C1D',
+  				'coral-light': '#FAECE7',
+  				blue: '#185FA5',
+  				'blue-light': '#E6F1FB',
+  				pink: '#993556',
+  				'pink-light': '#FBEAF0',
   			},
   		},
   		borderRadius: {
