@@ -1,11 +1,11 @@
 import { NavLink } from "react-router-dom";
-import { Calendar, UtensilsCrossed, ShoppingCart, ChevronRight, Wallet } from "lucide-react";
+import { Calendar, UtensilsCrossed, ShoppingCart, ChevronRight, Leaf } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
 const ROWS = [
-  { to: "/finance", label: "Finance", icon: Wallet },
   { to: "/meals", label: "Meals", icon: UtensilsCrossed },
   { to: "/grocery", label: "Grocery", icon: ShoppingCart },
+  { to: "/habits", label: "Habits", icon: Leaf },
   { to: "/calendar", label: "Calendar", icon: Calendar },
 ];
 
