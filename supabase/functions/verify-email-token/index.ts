@@ -88,6 +88,16 @@ serve(async (req: Request): Promise<Response> => {
       );
     }
 
+    // Mark profile as verified — this is the source of truth for sign-in gating
+    const { error: profileUpdateError } = await supabaseAdmin
+      .from("profiles")
+      .update({ email_verified_at: new Date().toISOString() })
+      .eq("id", tokenData.user_id);
+
+    if (profileUpdateError) {
+      console.error("Error updating profile email_verified_at:", profileUpdateError);
+    }
+
     // Get user's display name for welcome email
     const { data: profile } = await supabaseAdmin
       .from("profiles")
