@@ -188,6 +188,20 @@ const Calendar = () => {
         defaultDate={currentDate}
         eventToEdit={editingEvent}
       />
+
+      <DayDetailSheet
+        open={dayDetailOpen}
+        onOpenChange={setDayDetailOpen}
+        date={selectedDate}
+        events={(events || []).filter((ev) =>
+          format(parseISO(ev.start), "yyyy-MM-dd") === format(selectedDate, "yyyy-MM-dd")
+        )}
+        onEventClick={(ev) => {
+          if (ev.calendarId === "system") return;
+          setDayDetailOpen(false);
+          setSelectedEvent(ev);
+        }}
+      />
     </div>
   );
 };
