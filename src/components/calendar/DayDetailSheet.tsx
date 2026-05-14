@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
 import type { CalendarEvent } from "@/hooks/useCalendarEvents";
+import { formatRecurrenceSummary } from "@/utils/recurrenceUtils";
 
 interface DayDetailSheetProps {
   open: boolean;
@@ -81,6 +82,11 @@ export const DayDetailSheet = ({
                     <span className="inline-block mt-1.5 text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
                       {event.calendarOwner}
                     </span>
+                  )}
+                  {(event as any).recurrence && (
+                    <p className="text-[11px] text-muted-foreground mt-1">
+                      ↺ {formatRecurrenceSummary((event as any).recurrence)}
+                    </p>
                   )}
                 </button>
               ))}
