@@ -10,10 +10,11 @@ import { Switch } from "@/components/ui/switch";
 import { DatePicker } from "@/components/ui/date-picker";
 import { useCreateManualEvent, useUpdateManualEvent } from "@/hooks/useManualCalendarEvents";
 import { useToast } from "@/hooks/use-toast";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useHousehold } from "@/hooks/useHousehold";
 import { useHouseholdMembers } from "@/hooks/useHouseholdMembers";
+import { RecurrencePicker } from "@/components/shared/RecurrencePicker";
+import type { RecurrenceSpec } from "@/types/recurrence";
 import type { CalendarEvent } from "@/hooks/useCalendarEvents";
 
 interface CreateEventDialogProps {
@@ -36,7 +37,7 @@ export const CreateEventDialog = ({ open, onOpenChange, defaultDate, eventToEdit
   const [time, setTime] = useState("");
   const [description, setDescription] = useState("");
   const [allDay, setAllDay] = useState(false);
-  const [repeatType, setRepeatType] = useState<'none'|'daily'|'weekly'|'monthly'|'yearly'>('none');
+  const [recurrence, setRecurrence] = useState<RecurrenceSpec | null>(null);
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
 
   useEffect(() => {
@@ -48,7 +49,7 @@ export const CreateEventDialog = ({ open, onOpenChange, defaultDate, eventToEdit
       setTime(eventToEdit.allDay ? "" : format(start, "HH:mm"));
       setDescription(eventToEdit.description || "");
       setAllDay(eventToEdit.allDay);
-      setRepeatType('none');
+      setRecurrence((eventToEdit as any).recurrence ?? null);
       setSelectedMembers(members.map((m) => m.userId));
     } else {
       setTitle("");
@@ -56,7 +57,7 @@ export const CreateEventDialog = ({ open, onOpenChange, defaultDate, eventToEdit
       setTime("");
       setDescription("");
       setAllDay(false);
-      setRepeatType('none');
+      setRecurrence(null);
       setSelectedMembers(members.map((m) => m.userId));
     }
   }, [open, defaultDate, members, eventToEdit]);
@@ -78,7 +79,7 @@ export const CreateEventDialog = ({ open, onOpenChange, defaultDate, eventToEdit
         date,
         time: allDay ? null : (time || null),
         allDay,
-        repeatType,
+        recurrence,
         memberIds: selectedMembers,
       };
       if (isEdit && eventToEdit?.manualEventId) {
@@ -149,19 +150,12 @@ export const CreateEventDialog = ({ open, onOpenChange, defaultDate, eventToEdit
             </div>
           )}
 
-          <div className="space-y-2">
-            <Label>Repeat</Label>
-            <Select value={repeatType} onValueChange={(v) => setRepeatType(v as any)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">Does not repeat</SelectItem>
-                <SelectItem value="daily">Daily</SelectItem>
-                <SelectItem value="weekly">Weekly</SelectItem>
-                <SelectItem value="monthly">Monthly</SelectItem>
-                <SelectItem value="yearly">Yearly</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          <RecurrencePicker
+            value={recurrence}
+            onChange={setRecurrence}
+            baseDate={date ?? new Date()}
+            context="event"
+          />
 
           {members.length > 0 && (
             <div className="space-y-2">
