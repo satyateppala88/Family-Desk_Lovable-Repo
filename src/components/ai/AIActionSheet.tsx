@@ -162,7 +162,7 @@ export const AIActionSheet = ({ isOpen, onClose, initialPrompt }: AIActionSheetP
         }}
         placeholder="Ask a follow-up…"
         disabled={isLoading}
-        className="flex-1 rounded-full h-10"
+        className="flex-1 rounded-full h-10 bg-fd-surface border-0"
       />
       <Button
         onClick={handleSubmit}
@@ -204,13 +204,13 @@ export const AIActionSheet = ({ isOpen, onClose, initialPrompt }: AIActionSheetP
             )}
             <div
               className={cn(
-                "rounded-2xl px-4 py-2.5 max-w-[85%]",
+                "px-3 py-2.5 max-w-[85%] text-[13px] leading-[1.6]",
                 msg.role === "user"
-                  ? "bg-primary text-primary-foreground rounded-br-sm"
-                  : "bg-muted rounded-bl-sm",
+                  ? "bg-fd-green text-white rounded-[12px] rounded-br-sm"
+                  : "bg-fd-green-light text-fd-green-dark rounded-tr-[12px] rounded-br-[12px] rounded-bl-[12px]",
               )}
             >
-              <p className="text-sm whitespace-pre-wrap leading-relaxed">{msg.content}</p>
+              <p className="whitespace-pre-wrap">{msg.content}</p>
             </div>
           </div>
         ))}
@@ -220,18 +220,18 @@ export const AIActionSheet = ({ isOpen, onClose, initialPrompt }: AIActionSheetP
             <div className="flex-shrink-0 h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center">
               <Sparkles className="h-3.5 w-3.5 text-primary" />
             </div>
-            <div className="bg-muted rounded-2xl rounded-bl-sm px-4 py-3">
+            <div className="bg-fd-green-light rounded-tr-[12px] rounded-br-[12px] rounded-bl-[12px] px-3 py-3">
               <div className="flex gap-1">
                 <div
-                  className="h-1.5 w-1.5 bg-muted-foreground/50 rounded-full animate-bounce"
+                  className="h-1.5 w-1.5 bg-fd-green/60 rounded-full animate-bounce"
                   style={{ animationDelay: "0ms" }}
                 />
                 <div
-                  className="h-1.5 w-1.5 bg-muted-foreground/50 rounded-full animate-bounce"
+                  className="h-1.5 w-1.5 bg-fd-green/60 rounded-full animate-bounce"
                   style={{ animationDelay: "150ms" }}
                 />
                 <div
-                  className="h-1.5 w-1.5 bg-muted-foreground/50 rounded-full animate-bounce"
+                  className="h-1.5 w-1.5 bg-fd-green/60 rounded-full animate-bounce"
                   style={{ animationDelay: "300ms" }}
                 />
               </div>

@@ -153,7 +153,7 @@ const Index = () => {
   }
 
   const firstName = user?.user_metadata?.display_name?.split(" ")[0] || "";
-  const greeting = getGreeting(firstName);
+  const greetingPrefix = getGreetingPrefix();
 
   return (
     <div className="page-container">
@@ -204,8 +204,16 @@ const Index = () => {
         )}
 
         <div className="mb-5">
-          <h1 className="page-heading">{greeting}</h1>
-          <p className="text-sm text-muted-foreground mt-1">
+          <h1 className="font-display text-[26px] leading-tight text-fd-ink">
+            {greetingPrefix}
+            {firstName && (
+              <>
+                ,{" "}
+                <span className="italic text-fd-green">{firstName}</span>
+              </>
+            )}
+          </h1>
+          <p className="text-[12px] text-fd-ink-3 mt-1">
             {household.name} · {format(new Date(), "EEEE, d MMM")}
           </p>
         </div>
@@ -255,10 +263,9 @@ const Index = () => {
   );
 };
 
-function getGreeting(name: string): string {
+function getGreetingPrefix(): string {
   const hour = new Date().getHours();
-  const prefix = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
-  return name ? `${prefix}, ${name}` : prefix;
+  return hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
 }
 
 export default Index;

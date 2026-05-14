@@ -4,7 +4,7 @@ import { supabase } from "@/lib/supabase";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CheckCircle2, XCircle, Loader2, Mail } from "lucide-react";
-import logoImg from "@/assets/logo-family-desk-primary.png";
+import { FamilyDeskLogo } from "@/components/brand/FamilyDeskLogo";
 
 type VerificationStatus = "loading" | "success" | "error" | "expired";
 
@@ -142,16 +142,10 @@ const VerifyEmail = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-secondary/5 p-4">
-      <Card className="w-full max-w-md text-center">
+      <Card className="w-full max-w-md text-center bg-white">
         <CardHeader>
           <div className="flex justify-center mb-4">
-            <div className="bg-white/90 rounded-2xl p-3 shadow-lg ring-1 ring-black/5">
-              <img 
-                src={logoImg} 
-                alt="Family Desk Logo" 
-                className="h-20 w-20 object-contain"
-              />
-            </div>
+            <FamilyDeskLogo size="lg" />
           </div>
           {renderContent()}
         </CardHeader>
