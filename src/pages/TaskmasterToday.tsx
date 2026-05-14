@@ -70,7 +70,7 @@ const TaskmasterToday = () => {
       queryKeys: [["daily-plan", householdId]],
       enabled: !!householdId,
     },
-  ]);
+  ], householdId);
 
   const backlogCount = (tasks || []).filter(
     (t: any) => t.task_status !== "done"

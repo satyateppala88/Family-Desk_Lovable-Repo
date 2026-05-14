@@ -838,7 +838,7 @@ export const useFinanceRealtime = (householdId: string | null) => {
       enabled: !!householdId,
       queryKeys: [["user-cards", householdId]],
     },
-  ]);
+  ], householdId);
 };
 
 // ─── Carry-forward & Annual rollup ───────────────────────────

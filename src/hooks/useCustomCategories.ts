@@ -37,7 +37,7 @@ export function useCustomCategories(scope: CategoryScope = "all") {
       queryKeys: [["finance-custom-categories", householdId]],
       enabled: !!householdId,
     },
-  ]);
+  ], householdId);
 
   const query = useQuery({
     queryKey: ["finance-custom-categories", householdId],
