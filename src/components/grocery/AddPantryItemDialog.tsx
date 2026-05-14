@@ -112,7 +112,7 @@ export const AddPantryItemDialog = ({
               <SelectTrigger id="category">
                 <SelectValue placeholder="Select category" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="z-[60]">
                 {categories.map((cat) => (
                   <SelectItem key={cat.id} value={cat.name}>
                     {cat.icon} {cat.name}
@@ -140,7 +140,7 @@ export const AddPantryItemDialog = ({
                 <SelectTrigger id="unit">
                   <SelectValue placeholder="Select unit" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="z-[60]">
                   <SelectItem value="kg">kg</SelectItem>
                   <SelectItem value="g">g</SelectItem>
                   <SelectItem value="L">L</SelectItem>
