@@ -8,7 +8,7 @@ export const setHasSeenIntro = (): void =>
 
 /* ---------- Welcome Feature Tour (post-install / first-launch) ---------- */
 
-const FEATURE_TOUR_KEY = "familydesk_has_seen_feature_tour_v1";
+const FEATURE_TOUR_KEY = "fd_onboarding_seen";
 
 export const getHasSeenFeatureTour = (): boolean => {
   try {
