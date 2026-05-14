@@ -12,6 +12,7 @@ import { format, isPast, addDays, parse, addMonths } from "date-fns";
 import { useSelectedMonth } from "@/hooks/useSelectedMonth";
 import { MonthSwitcher } from "@/components/finance/MonthSwitcher";
 import { MemberContributions } from "@/components/finance/MemberContributions";
+import { ModuleNudgeBanner } from "@/components/discovery/ModuleNudgeBanner";
 import {
   ArrowLeftRight,
   Target,
