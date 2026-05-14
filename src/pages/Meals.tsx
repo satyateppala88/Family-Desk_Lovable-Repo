@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
+import { ModuleNudgeBanner } from "@/components/discovery/ModuleNudgeBanner";
 import { PageLoading } from "@/components/ui/page-loading";
 import { Sparkles, Calendar, LayoutGrid, UtensilsCrossed, Search, ChevronDown, ChevronRight } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -285,6 +286,10 @@ const Meals = () => {
       <Header />
 
       <main className="page-content">
+        <ModuleNudgeBanner
+          moduleKey="meals"
+          text="Tell us your dietary preferences once and the AI plans meals around them every day."
+        />
         <div className="mb-4 flex items-start justify-between gap-2">
           <div>
             <h1 className="page-heading">Meals</h1>
@@ -411,7 +416,7 @@ const Meals = () => {
               <EmptyState
                 icon={UtensilsCrossed}
                 title="Your recipe collection is empty"
-                description="Tap 'Generate Recipes' to get personalised meal ideas for your family"
+                description="Tap 'Generate Recipes' to get personalised Indian meal ideas for your household. Every suggestion is tailored to your dietary preferences."
                 encouragement="Each recipe is tailored to your household's dietary preferences."
                 action={{
                   label: "Generate Recipes",

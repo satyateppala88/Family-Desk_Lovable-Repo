@@ -12,6 +12,7 @@ import { format, isPast, addDays, parse, addMonths } from "date-fns";
 import { useSelectedMonth } from "@/hooks/useSelectedMonth";
 import { MonthSwitcher } from "@/components/finance/MonthSwitcher";
 import { MemberContributions } from "@/components/finance/MemberContributions";
+import { ModuleNudgeBanner } from "@/components/discovery/ModuleNudgeBanner";
 import {
   ArrowLeftRight,
   Target,
@@ -97,6 +98,10 @@ const Finance = () => {
     <div className="page-container">
       <Header />
       <main className="page-content space-y-4 animate-fade-in">
+        <ModuleNudgeBanner
+          moduleKey="finance"
+          text="Log your first expense in 10 seconds. By month-end, you'll have a full household spending report."
+        />
         <div>
           <h1 className="page-heading">Finance</h1>
           <p className="text-sm text-muted-foreground mt-0.5">

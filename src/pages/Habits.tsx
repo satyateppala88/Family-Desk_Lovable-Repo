@@ -6,6 +6,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { ModuleNudgeBanner } from "@/components/discovery/ModuleNudgeBanner";
 import { PageLoading } from "@/components/ui/page-loading";
 import { useHousehold } from "@/hooks/useHousehold";
 import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
@@ -147,6 +148,10 @@ const Habits = () => {
       <Header />
 
       <main className="page-content">
+        <ModuleNudgeBanner
+          moduleKey="habits"
+          text="Build habits together. Family streaks are harder to break than solo ones."
+        />
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
           <div>
             <h1 className="page-heading">Habits</h1>
@@ -269,7 +274,7 @@ const Habits = () => {
               <EmptyState
                 icon={Leaf}
                 title="No habits yet"
-                description="Small daily actions add up to big changes."
+                description="A small daily action, done consistently, changes everything. Add your first habit and track streaks across your whole household."
                 encouragement="What's one thing you'd like to do every day?"
               />
             ) : (

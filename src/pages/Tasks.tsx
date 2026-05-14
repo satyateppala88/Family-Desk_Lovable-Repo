@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageLoading } from "@/components/ui/page-loading";
 import { QuickActionButton } from "@/components/ui/quick-action-button";
+import { ModuleNudgeBanner } from "@/components/discovery/ModuleNudgeBanner";
 import { Plus, Filter, CheckSquare } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -93,6 +94,10 @@ const Tasks = () => {
       <Header />
 
       <main className="page-content">
+        <ModuleNudgeBanner
+          moduleKey="tasks"
+          text="Assign tasks to family members — everyone sees what's theirs, instantly."
+        />
         <div className="flex items-center justify-between mb-4">
           <div>
             <h1 className="page-heading">Tasks</h1>
@@ -140,7 +145,7 @@ const Tasks = () => {
           <EmptyState
             icon={CheckSquare}
             title={statusFilter !== "all" || priorityFilter !== "all" ? "No matching tasks" : "Nothing on the list yet"}
-            description={statusFilter !== "all" || priorityFilter !== "all" ? "Try widening your filters" : "Add a task to get started — it'll be visible to everyone in your household."}
+            description={statusFilter !== "all" || priorityFilter !== "all" ? "Try widening your filters" : "Add your first task and assign it to anyone in the household. FamilyDesk AI can prioritise your list and remind you before things are due."}
             encouragement={statusFilter === "all" && priorityFilter === "all" ? "Even small wins count. What needs doing?" : undefined}
             action={{ label: "Add a Task", onClick: handleCreateTask }}
           />

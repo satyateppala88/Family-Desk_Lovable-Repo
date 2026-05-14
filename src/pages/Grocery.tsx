@@ -6,6 +6,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
+import { ModuleNudgeBanner } from "@/components/discovery/ModuleNudgeBanner";
 import { Plus, ListChecks, Package, Sparkles, ShoppingCart, ScanLine, Settings } from "lucide-react";
 import { PantryItemCard } from "@/components/grocery/PantryItemCard";
 import { AddPantryItemDialog } from "@/components/grocery/AddPantryItemDialog";
@@ -534,6 +535,10 @@ const Grocery = () => {
     <div className="page-container">
       <Header />
       <main className="page-content flex-1">
+        <ModuleNudgeBanner
+          moduleKey="grocery"
+          text="Add pantry staples now — FamilyDesk tracks what's running low so you never forget at the store."
+        />
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
           <div>
             <h1 className="page-heading">Grocery</h1>
@@ -621,8 +626,8 @@ const Grocery = () => {
             ) : pantryItems.length === 0 ? (
               <EmptyState
                 icon={Package}
-                title="Your pantry is empty"
-                description="Add items to track what you have at home and know what to buy."
+                title="Your pantry is a blank slate"
+                description="Add staples your household always keeps at home. When stock runs low, FamilyDesk will flag it and add items to your shopping list automatically."
                 encouragement="Try AI Import to add everything at once!"
                 action={{ label: "Add Item", onClick: () => setShowAddDialog(true) }}
                 secondaryAction={{ label: "Quick Add Staples", onClick: () => setShowQuickAdd(true) }}
