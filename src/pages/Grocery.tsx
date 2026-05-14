@@ -40,6 +40,7 @@ import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 import type { PantryItem } from "@/hooks/usePantryItems";
 import { decodeIngredientsParam } from "@/lib/meals/shoppingListBridge";
+import { AIActionSheet } from "@/components/ai/AIActionSheet";
 
 const Grocery = () => {
   const { user } = useAuth();
@@ -77,6 +78,7 @@ const Grocery = () => {
   const [activeTab, setActiveTab] = useState<string>(() => searchParams.get("tab") || "pantry");
   const [showPantrySettings, setShowPantrySettings] = useState(false);
   const [isAddingLowStock, setIsAddingLowStock] = useState(false);
+  const [aiOpen, setAiOpen] = useState(false);
 
   // Handle inbound link from Meals: ?tab=shopping&newList=...&items=...
   useEffect(() => {
