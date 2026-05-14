@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 
 export interface MealPlanItem {
   id: string;
@@ -26,6 +27,7 @@ export interface MealPlan {
 export const useMealPlans = (householdId: string | null, weekStartDate?: string) => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const { data: mealPlans, isLoading } = useQuery({
     queryKey: ["meal-plans", householdId, weekStartDate],
@@ -66,12 +68,13 @@ export const useMealPlans = (householdId: string | null, weekStartDate?: string)
       items: Omit<MealPlanItem, "id" | "meal_plan_id">[] 
     }) => {
       if (!householdId) throw new Error("No household ID");
+      if (!user?.id) throw new Error("Not authenticated");
 
       // Step 1: Upsert plan header — safe even if it already exists
       const { data: mealPlan, error: planError } = await (supabase as any)
         .from("meal_plans")
         .upsert(
-          { household_id: householdId, week_start_date: weekStartDate },
+          { household_id: householdId, week_start_date: weekStartDate, created_by: user.id },
           { onConflict: "household_id,week_start_date" }
         )
         .select()

@@ -1,38 +1,41 @@
-## Welcome modal re-shows every visit + stacks behind permission sheet — fix
+## Meal slot 400 — investigation + fix
 
-### Root cause
+### What I found
 
-1. **Welcome modal re-appears.** `Index.tsx` triggers the welcome via `useFeatureTour("dashboard")`, whose `markTourComplete` does a full `UPDATE profiles SET completed_tours = { ...completedTours, dashboard: true }`. `completedTours` is captured at mutation-creation time. On a fresh session — before the `["completed-tours", uid]` query has resolved — that closure value is `{}`, so the write **clobbers** every other tour completion. On the very next dashboard load the same query returns `{}` again (because the prior session's data was wiped), so `shouldShowTour` flips back to `true` and the modal re-mounts.
-2. **Permission sheet stacks behind it.** The `useEffect` at `Index.tsx:104` fires `ensurePermission("notifications", …)` 2s after mount with no awareness of `runOnboarding` / `shouldShowTour`, so the permission sheet opens while the Joyride welcome is still on screen.
+1. **Unique constraint already exists.** `meal_plans_household_id_week_start_date_key UNIQUE (household_id, week_start_date)` is live in the DB, so the upsert's `onConflict: "household_id,week_start_date"` resolves correctly. Phase 0's Fix 4 is a no-op against the current schema.
+2. **`useMealPlans.createMealPlan` has zero callers.** `rg createMealPlan` only matches its own definition. The hook the meal-slot UI actually uses is `src/lib/meals/assignRecipeToSlot.ts`, called from `Meals.tsx`, `AddMealSheet.tsx`, and `AiSuggestSheet.tsx`. Whatever 400 the user sees is coming through `assignRecipeToSlot`, not `createMealPlan`.
+3. **Real 400 cause: `meal_plans.created_by` is NOT NULL with no default.**
+   - `assignRecipeToSlot` already passes `created_by: userId` ✔.
+   - The current `useMealPlans.createMealPlan` body **and** the snippet the user pasted both omit `created_by`, so even after we apply the spec verbatim a brand-new-week upsert will still 400 with `null value in column "created_by" violates not-null constraint`.
 
 ### What to change
 
-#### 1. `src/pages/Index.tsx` — switch the welcome to a dedicated, patch-based persistence
+#### A. `src/hooks/useMealPlans.ts` — apply the spec, plus required `created_by`
 
-Replace the `useFeatureTour("dashboard")` usage **only for the welcome modal** with a small inline check + RPC write:
+The body in the file already matches the user's snippet line-for-line (upsert → delete → insert → invalidate on success). The only edits needed:
 
-- Read `completed_tours` directly from the existing `["completed-tours", user?.id]` query (already populated by `useFeatureTour` for other features). If `completed_tours.dashboard_welcome === true`, **never** set `runOnboarding`.
-- Gate the existing "open after 500ms" effect on `completedToursLoaded === true && completed_tours?.dashboard_welcome !== true`.
-- In `handleOnboardingComplete` (called from Joyride Finish/Skip/Close), call the existing SQL function `public.update_completed_tour('dashboard_welcome')` via `supabase.rpc("update_completed_tour", { _key: "dashboard_welcome" })`. That function does `completed_tours || jsonb_build_object(_key, to_jsonb(now()))` — a true patch that never overwrites siblings. After it returns, `setQueryData(["completed-tours", uid], { ...prev, dashboard_welcome: true })` so the local cache reflects the change immediately.
-- Stop calling `markTourComplete()` from `useFeatureTour("dashboard")` for this modal so we don't re-introduce the clobber.
+1. Pull the auth user (`import { useAuth } from "@/contexts/AuthContext"; const { user } = useAuth();`) and add `created_by: user.id` to the upsert payload so the NOT NULL column is satisfied. Throw early if `user?.id` is missing.
+2. Leave the existing `onSuccess` `queryClient.invalidateQueries({ queryKey: ["meal-plans", householdId] })` and toast in place — that already matches the spec. (No "close meal slot sheet" lives in this hook; sheet open state is owned by `Meals.tsx`, see B.)
+3. No other behaviour changes.
 
-The existing `useFeatureTour` hook is **not modified** — other tours (tasks/meals/grocery/habits/calendar/taskmaster) keep their current behaviour exactly as-is, per the user's "do not change any other tour logic" constraint.
+#### B. Sheet-close behaviour (already correct, just verify, no edit)
 
-#### 2. `src/pages/Index.tsx` — guard the permission primer
+- `AddMealSheet.tsx` already calls `onOpenChange(false)` after a successful `assignRecipeToSlot`.
+- `AiSuggestSheet.tsx` already calls `onOpenChange(false)` after assign.
+- `Meals.tsx` `handleAssignFromBrowser` already calls `setBrowserOpen(false)` and invalidates `["meal-plans", householdId]`.
 
-- Add `welcomeVisible = runOnboarding || shouldShowWelcome` (where `shouldShowWelcome` is the boolean computed in step 1).
-- In the notifications `useEffect`: bail out while `welcomeVisible` is `true`. When it flips to `false`, start a **500 ms** timeout before calling `ensurePermission("notifications", "dashboard-first-load")`. (Drop the existing 2 s timer so the two timings don't compose.)
-- Conditionally render `<PermissionPrimerDialog {...primerProps} />` only when `!welcomeVisible`. This satisfies "if welcome modal is visible, do not mount the permissions sheet".
+No edits needed in the sheet components — the spec's "close the meal slot sheet on success" is already satisfied along the live path.
 
-#### 3. No DB migration
+#### C. No DB migration
 
-The column (`profiles.completed_tours jsonb`) and the RPC (`public.update_completed_tour(text)`) already exist. The new key `dashboard_welcome` is just a new entry inside the same jsonb — no schema change.
+The unique constraint is already in place. Nothing to add for Phase 0 Fix 4.
 
 ### Out of scope
-- Other tours, the `useFeatureTour` hook, save/skip handlers in module setup gates, and any unrelated dashboard logic.
+- `assignRecipeToSlot` (works correctly today, no change needed).
+- The Phase 0 SQL — Fix 4 is already represented in the live schema; no new migration.
+- Any other meal-related logic (cooking, pantry deduction, exports).
 
 ### Verification
-1. Sign in fresh → visit `/dashboard` → "Welcome to FamilyDesk" appears → click **Finish**. Reload `/dashboard` → modal does **not** re-appear.
-2. Inspect `profiles.completed_tours` for the user → contains `"dashboard_welcome": "<timestamp>"` and any pre-existing keys are preserved.
-3. On the same first visit, the "Gentle, useful nudges" sheet does **not** overlap the welcome — it appears 500 ms after the welcome is dismissed.
-4. Other tours (tasks/meals/etc.) still trigger normally on their first visit.
+1. From a week with no existing plan, open a meal slot → AI Suggest → pick a recipe. Network tab shows 201 (not 400) for `meal_plans` and `meal_plan_items`. Sheet closes, slot fills.
+2. Repeat on the same week with a different slot — upsert returns the existing plan row (no constraint error), new item inserted.
+3. Manually invoke `createMealPlan.mutateAsync({ weekStartDate, items: [...] })` (e.g. via a temporary devtool call) — succeeds end-to-end, no NOT NULL error on `created_by`, query cache refreshes.
