@@ -821,6 +821,12 @@ const Grocery = () => {
       />
 
       <PantrySettingsSheet open={showPantrySettings} onOpenChange={setShowPantrySettings} />
+
+      <AIActionSheet
+        isOpen={aiOpen}
+        onClose={() => setAiOpen(false)}
+        initialPrompt="Based on my current pantry inventory, what staples are running low and what should I add to my shopping list this week?"
+      />
     </div>
   );
 };
