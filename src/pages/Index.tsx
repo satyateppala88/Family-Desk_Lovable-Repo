@@ -21,6 +21,7 @@ import { FestivalBanner } from "@/components/dashboard/FestivalBanner";
 import { TodaySnapshot } from "@/components/dashboard/TodaySnapshot";
 import { QuickActionsRow } from "@/components/dashboard/QuickActionsRow";
 import { DidYouKnowCard } from "@/components/dashboard/DidYouKnowCard";
+import { InstallAppButton } from "@/components/install/InstallAppButton";
 import { useDashboardSnapshot } from "@/hooks/useDashboardSnapshot";
 import { format } from "date-fns";
 import { PermissionsTutorial } from "@/components/permissions/PermissionsTutorial";
@@ -214,6 +215,12 @@ const Index = () => {
 
         {/* Rotating discovery tip */}
         <DidYouKnowCard />
+
+        {/* PWA install CTA — auto-hides if already installed, unsupported,
+            or running inside the Lovable preview iframe. */}
+        <div className="mb-4">
+          <InstallAppButton fullWidth label="Install FamilyDesk" />
+        </div>
 
         {/* Quick actions */}
         {householdId && <QuickActionsRow householdId={householdId} />}
