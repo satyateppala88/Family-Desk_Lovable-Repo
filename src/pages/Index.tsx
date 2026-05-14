@@ -263,10 +263,9 @@ const Index = () => {
   );
 };
 
-function getGreeting(name: string): string {
+function getGreetingPrefix(): string {
   const hour = new Date().getHours();
-  const prefix = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
-  return name ? `${prefix}, ${name}` : prefix;
+  return hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
 }
 
 export default Index;
