@@ -15,10 +15,13 @@ import {
   useCreateSavingsGoal,
   useUpdateSavingsGoal,
   useDeleteSavingsGoal,
+  useCreateTransaction,
   type FinanceSavingsGoal,
 } from "@/hooks/useFinance";
 import { useSavingsContributions } from "@/hooks/useSavingsContributions";
 import { useHouseholdMembers } from "@/hooks/useHouseholdMembers";
+import { useAuth } from "@/contexts/AuthContext";
+import { useQueryClient } from "@tanstack/react-query";
 import { formatINR } from "@/lib/formatINR";
 import { SavingsGoalDialog } from "@/components/finance/SavingsGoalDialog";
 import { format, differenceInDays, addMonths } from "date-fns";
@@ -38,6 +41,8 @@ const firstName = (n: string) => (n || "Member").split(/\s+/)[0];
 
 const FinanceSavings = () => {
   const { householdId } = useHousehold();
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
   useFinanceRealtime(householdId);
   const { data: goals, isLoading } = useFinanceSavingsGoals(householdId);
   const { data: contributions } = useSavingsContributions(householdId);
@@ -55,6 +60,7 @@ const FinanceSavings = () => {
   const createGoal = useCreateSavingsGoal(householdId);
   const updateGoal = useUpdateSavingsGoal();
   const deleteGoal = useDeleteSavingsGoal();
+  const createTxn = useCreateTransaction(householdId);
   const [showAdd, setShowAdd] = useState(false);
   const [addAmounts, setAddAmounts] = useState<Record<string, string>>({});
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
@@ -66,16 +72,38 @@ const FinanceSavings = () => {
   const activeGoals = (goals || []).filter((g) => g.status === "active");
   const completedGoals = (goals || []).filter((g) => g.status === "completed");
 
-  const handleAddFunds = (goalId: string, currentAmount: number) => {
+  // Inline "Add" on a savings goal card now creates a real
+  // finance_transactions row (type='savings', linked to the goal) instead
+  // of mutating the goal's `current_amount` directly. This keeps the
+  // savings timeline, member contribution breakdown and transaction
+  // history all consistent with a single source of truth: the linked
+  // transaction list. The progress bar reads `linkedSum` below, so the
+  // bar updates as soon as the optimistic transaction lands in cache.
+  const handleAddFunds = (goalId: string, _currentAmount: number) => {
     const addAmount = Number(addAmounts[goalId]);
     if (!addAmount || addAmount <= 0) return;
+    if (!householdId || !user?.id) return;
     const goal = goals?.find((g) => g.id === goalId);
-    const newAmount = currentAmount + addAmount;
-    const updates: any = { id: goalId, current_amount: newAmount };
-    if (goal && newAmount >= Number(goal.target_amount)) {
-      updates.status = "completed";
-    }
-    updateGoal.mutate(updates);
+    createTxn.mutate(
+      {
+        type: "savings",
+        amount: addAmount,
+        category: "sip",
+        savings_goal_id: goalId,
+        paid_by: user.id,
+        description: goal ? `Contribution to ${goal.name}` : "Savings contribution",
+        transaction_date: format(new Date(), "yyyy-MM-dd"),
+      },
+      {
+        onSuccess: () => {
+          // Refresh derived caches so the timeline, member breakdown,
+          // and goal progress all pick up the new row.
+          queryClient.invalidateQueries({ queryKey: ["savings-contributions", householdId] });
+          queryClient.invalidateQueries({ queryKey: ["finance-savings-goals", householdId] });
+          queryClient.invalidateQueries({ queryKey: ["finance-summary", householdId] });
+        },
+      },
+    );
     setAddAmounts((prev) => ({ ...prev, [goalId]: "" }));
   };
 
@@ -187,6 +215,10 @@ const FinanceSavings = () => {
           <div className="space-y-3">
             {activeGoals.map((goal) => {
               const linkedSum = sumContrib(goal.id);
+              // Single source of truth for progress: the sum of linked
+              // savings transactions. Direct edits to `current_amount`
+              // (legacy / manual fixes via the goal dialog) are still
+              // honoured as a floor so existing data isn't lost.
               const effectiveAmount = Math.max(Number(goal.current_amount), linkedSum);
               const signal = signalsByGoal.get(goal.id) || { kind: "none" };
               const isReached = signal.kind === "reached";

@@ -93,10 +93,13 @@ export const CalendarGrid = ({
                 onClick={() => onSelectDate(day)}
                 className={cn(
                   "aspect-square flex items-center justify-center rounded-full text-xs cursor-pointer transition-colors min-h-[32px]",
-                  (isToday(day) || isSameDay(day, selectedDate)) && "bg-primary text-primary-foreground font-bold",
-                  !isToday(day) && !isSameDay(day, selectedDate) && hasEvents && "bg-accent font-medium",
+                  // Only the explicitly selected date gets the filled style.
+                  // Today gets a subtle ring so it's still distinguishable.
+                  isSameDay(day, selectedDate) && "bg-primary text-primary-foreground font-bold",
+                  !isSameDay(day, selectedDate) && isToday(day) && "ring-1 ring-primary/50 font-semibold",
+                  !isSameDay(day, selectedDate) && !isToday(day) && hasEvents && "bg-accent font-medium",
                   !isCurrentMonth && "text-muted-foreground opacity-50",
-                  !isToday(day) && !isSameDay(day, selectedDate) && !hasEvents && "hover:bg-muted"
+                  !isSameDay(day, selectedDate) && !isToday(day) && !hasEvents && "hover:bg-muted"
                 )}
               >
                 {format(day, "d")}
@@ -233,7 +236,8 @@ export const CalendarGrid = ({
                 <div
                   className={cn(
                     "w-7 h-7 flex items-center justify-center rounded-full text-sm md:text-[15px]",
-                    (isToday(day) || isSameDay(day, selectedDate)) && "bg-primary text-primary-foreground font-bold",
+                    isSameDay(day, selectedDate) && "bg-primary text-primary-foreground font-bold",
+                    !isSameDay(day, selectedDate) && isToday(day) && "ring-1 ring-primary/50 font-semibold",
                     !isCurrentMonth && "text-muted-foreground"
                   )}
                 >

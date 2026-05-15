@@ -67,6 +67,18 @@ export const TransactionDialog = ({ open, onOpenChange, onSave, initialData, use
     }
   }, [open, initialData, user?.id]);
 
+  // Safety net for BUG-FIX-03: if the dialog opened before `members`
+  // resolved, the Select's value won't match any item until `paidBy` is
+  // synced to the current user. Re-run once members lands and we still
+  // don't have a selection.
+  useEffect(() => {
+    if (!open) return;
+    if (paidBy) return;
+    if (!user?.id) return;
+    if (!members || members.length === 0) return;
+    setPaidBy(user.id);
+  }, [open, paidBy, user?.id, members]);
+
   const handleTypeChange = (next: string) => {
     setUserTouchedType(true);
     setType(next);
