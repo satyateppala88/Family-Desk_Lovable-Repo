@@ -32,9 +32,10 @@ interface TransactionDialogProps {
   onSave: (data: Partial<FinanceTransaction>) => void;
   initialData?: FinanceTransaction | null;
   userCardIds?: string[];
+  isSaving?: boolean;
 }
 
-export const TransactionDialog = ({ open, onOpenChange, onSave, initialData, userCardIds = [] }: TransactionDialogProps) => {
+export const TransactionDialog = ({ open, onOpenChange, onSave, initialData, userCardIds = [], isSaving = false }: TransactionDialogProps) => {
   const [type, setType] = useState<string>(initialData?.type || "expense");
   const [amount, setAmount] = useState(initialData?.amount?.toString() || "");
   const [category, setCategory] = useState(initialData?.category || "other");
@@ -140,8 +141,8 @@ export const TransactionDialog = ({ open, onOpenChange, onSave, initialData, use
       title={initialData ? "Edit Transaction" : "Add Transaction"}
       description={!initialData ? "Record an income or expense entry." : undefined}
       footer={
-        <Button onClick={handleSave} disabled={submitting} className="w-full">
-          {submitting ? "Saving…" : `${initialData ? "Update" : "Add"} Transaction`}
+        <Button onClick={handleSave} disabled={submitting || isSaving} className="w-full">
+          {(submitting || isSaving) ? "Saving…" : `${initialData ? "Update" : "Add"} Transaction`}
         </Button>
       }
     >
