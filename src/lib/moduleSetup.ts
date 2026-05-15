@@ -114,3 +114,57 @@ export const MODULE_SETUP_META: Record<ModuleSetupKey, { title: string; moduleNa
     icon: Calendar,
   },
 };
+
+// ---------------------------------------------------------------------------
+// Local "setup acknowledged" flag
+// ---------------------------------------------------------------------------
+//
+// The DB columns (`{module}_setup_complete`) remain the source of truth, but
+// the React Query cache is cold on first paint after sign-in / hard reload /
+// new browser, which can cause the gate to flash open before the preferences
+// row hydrates. We mirror "user has dismissed or completed this module's
+// setup" into localStorage so the gate has a synchronous, zero-latency
+// answer before the network call returns.
+
+const MODULE_SETUP_DONE_PREFIX = "familydesk:module-setup-done";
+
+export const moduleSetupLocalKey = (
+  householdId: string | null | undefined,
+  key: ModuleSetupKey,
+) => `${MODULE_SETUP_DONE_PREFIX}:${householdId ?? "_"}:${key}`;
+
+export const isModuleSetupDoneLocally = (
+  householdId: string | null | undefined,
+  key: ModuleSetupKey,
+): boolean => {
+  if (typeof window === "undefined" || !householdId) return false;
+  try {
+    return window.localStorage.getItem(moduleSetupLocalKey(householdId, key)) === "true";
+  } catch {
+    return false;
+  }
+};
+
+export const markModuleSetupDoneLocally = (
+  householdId: string | null | undefined,
+  key: ModuleSetupKey,
+) => {
+  if (typeof window === "undefined" || !householdId) return;
+  try {
+    window.localStorage.setItem(moduleSetupLocalKey(householdId, key), "true");
+  } catch {
+    /* quota or disabled storage — silently ignore */
+  }
+};
+
+export const clearModuleSetupDoneLocally = (
+  householdId: string | null | undefined,
+  key: ModuleSetupKey,
+) => {
+  if (typeof window === "undefined" || !householdId) return;
+  try {
+    window.localStorage.removeItem(moduleSetupLocalKey(householdId, key));
+  } catch {
+    /* noop */
+  }
+};
