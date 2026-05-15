@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { markSelfWrite } from "@/hooks/useRealtimeSubscription";
 import { Habit, HabitLog, HabitStreak, HabitWithStreak, HabitAssignmentType, HabitFrequencyType } from "@/types/habits";
 import { format, subDays } from "date-fns";
 import type { RecurrenceSpec } from "@/types/recurrence";
@@ -260,6 +261,7 @@ export const useHabits = (householdId: string | null, userId?: string) => {
       return data;
     },
     onMutate: async ({ habitId, completed, actualValue }) => {
+      markSelfWrite("habit_logs");
       const queryKey = ["habit-logs-today", householdId, targetUserId, today] as const;
       await queryClient.cancelQueries({ queryKey });
       const previous = queryClient.getQueryData<HabitLog[]>(queryKey);
