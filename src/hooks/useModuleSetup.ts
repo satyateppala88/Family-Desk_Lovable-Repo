@@ -7,6 +7,8 @@ import {
   MODULE_SETUP_COLUMN,
   hasModuleSetupData,
   isModuleSetupComplete,
+  isModuleSetupDoneLocally,
+  markModuleSetupDoneLocally,
   type ModuleSetupKey,
 } from "@/lib/moduleSetup";
 
@@ -37,6 +39,9 @@ export const useModuleSetup = (key: ModuleSetupKey) => {
   const markComplete = useMutation({
     mutationFn: async () => {
       if (!householdId) throw new Error("No household");
+      // Persist locally FIRST so the gate stays closed even if the DB
+      // write below fails or the cache invalidation races on next mount.
+      markModuleSetupDoneLocally(householdId, key);
       if (typedColumn != null) {
         // Write the deterministic boolean column — no jsonb merge race.
         await updatePreferences({ [typedColumn]: true } as any, { silent: true });
@@ -73,11 +78,13 @@ export const useModuleSetup = (key: ModuleSetupKey) => {
   }, [isLoading, completed, hasRequiredData, key, householdId, typedColumnComplete]);
 
   const isComplete = isModuleSetupComplete(preferences, key);
-  const needsSetup = !isLoading && !!user?.id && !!householdId && !isComplete;
+  const localDone = isModuleSetupDoneLocally(householdId, key);
+  const needsSetup =
+    !isLoading && !!user?.id && !!householdId && !isComplete && !localDone;
 
   return {
     isLoading,
-    isComplete,
+    isComplete: isComplete || localDone,
     needsSetup,
     markComplete: () => markComplete.mutateAsync(),
     isMarking: markComplete.isPending,
