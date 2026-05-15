@@ -1,29 +1,47 @@
 ## Goal
 
-Once a user dismisses the calendar event nudge banner ("… today — open calendar?") on the Dashboard, it should never reappear for that specific event. Different events still each show their own nudge once.
+Make "Add Transaction" feel instant and immune to duplicate submits. Optimistic insert is already in place — the residual lag/risk comes from (a) `onSuccess`+`onSettled` re-invalidating the transactions list (forcing a refetch and brief flash) and (b) the dialog's local 600 ms re-enable timer that isn't tied to the real mutation state.
 
-## Where
+## Files
 
-`src/components/dashboard/FestivalBanner.tsx` — the calendar event branch (lines ~117–175). It already uses `localStorage`, but with a 30-day TTL. The user wants permanent, boolean-style persistence using the key pattern `familydesk:event-nudge-dismissed:{eventId|eventDate}`.
+- `src/hooks/useFinance.ts` — `useCreateTransaction`
+- `src/components/finance/TransactionDialog.tsx`
+- `src/pages/FinanceTransactions.tsx`
+- `src/pages/FinanceSavings.tsx`
+- `src/components/dashboard/QuickActionsRow.tsx`
 
 ## Changes
 
-1. Introduce dedicated helpers (alongside the existing festival ones, which stay TTL-based):
-   - `eventNudgeKey(idOrDate)` → `familydesk:event-nudge-dismissed:${idOrDate}`
-   - `isEventNudgeDismissed(key)` → `localStorage.getItem(key) === 'true'`
-   - `markEventNudgeDismissed(key)` → `localStorage.setItem(key, 'true')`
+### 1. `useCreateTransaction` (useFinance.ts)
 
-2. In the calendar event branch:
-   - Compute `eventId` from `upcoming.id || upcoming.event_id`. If neither exists, fall back to the event date (`start_date || start_time || start`, normalized to `yyyy-MM-dd`).
-   - Build `dismissKey = eventNudgeKey(eventId)`.
-   - Replace the current TTL check with `if (isEventNudgeDismissed(dismissKey)) return null;` (evaluated synchronously before the JSX returns).
-   - On X click, call `markEventNudgeDismissed(dismissKey)` then bump `dismissTick` to force a re-render and unmount the banner.
+Keep the existing optimistic `onMutate` and the in-place `onSuccess` replacement (lines 480–489). Then:
 
-3. Leave the festival branch untouched — its TTL behavior is unrelated to this request.
+- In `onSuccess`, remove `invalidateQueries({ queryKey: ["finance-transactions", householdId] })` (line 490). The cache already holds the real row.
+- Drop the `onSettled` block entirely. It re-invalidates `finance-transactions` and the summaries already invalidated in `onSuccess`, causing a redundant refetch that can briefly flicker the new row.
+- Keep these invalidations in `onSuccess` only (summary/aggregate queries that genuinely need a recompute):
+  `finance-monthly-summary`, `finance-snapshot`, `finance-dashboard`, `finance-annual-budget`, `finance-budgets`.
+- On error rollback path, no change.
+
+Net effect: the optimistic row stays on screen, gets swapped to the server row in place, no list refetch, no flicker.
+
+### 2. `TransactionDialog.tsx`
+
+- Add an optional `isSaving?: boolean` prop.
+- Compute `const disabled = isSaving || submitting;` and use it for the footer Button's `disabled`.
+- Button label: `"Saving…"` when `disabled`, otherwise `"${initialData ? "Update" : "Add"} Transaction"`.
+- Keep the existing local `submitting` flag (covers callers that don't pass `isSaving`), but no other behavior changes.
+
+### 3. Caller wiring
+
+Pass the live mutation pending state into the dialog so the button stays locked until the mutation settles:
+
+- `FinanceTransactions.tsx`: `<TransactionDialog ... isSaving={createTx.isPending} onSave={(data) => createTx.mutate(data)} />` for both the add and edit instances (edit can pass `updateTx.isPending`).
+- `FinanceSavings.tsx`: same pattern for whichever create/update mutation it wires.
+- `QuickActionsRow.tsx`: same — pass `createTx.isPending` to the dialog instance there.
+
+No change to `mutationFn`, no DB or schema changes, no new files.
 
 ## Result
 
-- Each calendar event has its own permanent dismissed flag in `localStorage`.
-- Dismissed nudges never reappear on subsequent `/dashboard` visits.
-- New events on different days/IDs still surface their own nudge once.
-- No backend, hook, or unrelated UI changes.
+- New transaction appears instantly on click (already optimistic) and no longer briefly disappears, because the list query is no longer invalidated post-insert.
+- Button is disabled the moment the user clicks and stays disabled until the mutation succeeds or errors — preventing double submissions across the dialog and any reopen race.

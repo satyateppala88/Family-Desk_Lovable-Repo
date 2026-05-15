@@ -487,17 +487,6 @@ export const useCreateTransaction = (householdId: string | null) => {
             list.map((t) => (t.id === ctx?.optimisticId ? inserted : t))
           );
         });
-      queryClient.invalidateQueries({ queryKey: ["finance-transactions", householdId] });
-      queryClient.invalidateQueries({ queryKey: ["finance-monthly-summary", householdId] });
-      queryClient.invalidateQueries({ queryKey: ["finance-snapshot", householdId] });
-      queryClient.invalidateQueries({ queryKey: ["finance-dashboard", householdId] });
-      queryClient.invalidateQueries({ queryKey: ["finance-annual-budget", householdId] });
-      queryClient.invalidateQueries({ queryKey: ["finance-budgets", householdId] });
-    },
-    onSettled: () => {
-      // Light reconciliation; the cache already holds the real row so this
-      // is just a safety net for edge cases (filters that excluded it, etc.).
-      queryClient.invalidateQueries({ queryKey: ["finance-transactions", householdId] });
       queryClient.invalidateQueries({ queryKey: ["finance-monthly-summary", householdId] });
       queryClient.invalidateQueries({ queryKey: ["finance-snapshot", householdId] });
       queryClient.invalidateQueries({ queryKey: ["finance-dashboard", householdId] });
