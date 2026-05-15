@@ -8,7 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useHousehold } from "@/hooks/useHousehold";
 import { useHouseholdPreferences } from "@/hooks/useHouseholdPreferences";
 import { useModuleSetup } from "@/hooks/useModuleSetup";
-import { MODULE_SETUP_META, type ModuleSetupKey } from "@/lib/moduleSetup";
+import { MODULE_SETUP_META, isModuleSetupDoneLocally, type ModuleSetupKey } from "@/lib/moduleSetup";
 import { toast } from "sonner";
 import { Loader2, AlertCircle, RotateCcw, CheckCircle2, History } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -306,6 +306,12 @@ export const ModuleSetupGate = ({ module, children, waitForTour = false }: Modul
   const { preferences, updatePreferences, isUpdating } = useHouseholdPreferences(householdId);
   const meta = MODULE_SETUP_META[module];
   const [open, setOpen] = useState(true);
+
+  // Synchronous pre-render guard: if this browser already recorded a Skip
+  // or Save for this household + module, never even mount the dialog. This
+  // beats the cache-cold race where `isLoading` flips false before the
+  // preferences row hydrates.
+  if (isModuleSetupDoneLocally(householdId, module)) return <>{children}</>;
 
   // Hard pre-mount gate: never insert the dialog into the DOM while
   // preferences are still loading. Avoids the "modal flashes on every visit"
