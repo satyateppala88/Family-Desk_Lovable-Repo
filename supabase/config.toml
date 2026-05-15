@@ -1,124 +1,87 @@
 project_id = "oohjebftkvlhpaljvijn"
 
-[functions.google-calendar-auth]
-verify_jwt = false
-
-[functions.fetch-calendar-events]
-verify_jwt = false
-
-[functions.generate-meal-suggestions]
-verify_jwt = false
-
-[functions.regenerate-meals]
-verify_jwt = false
-
-[functions.ai-chat]
-verify_jwt = false
-
-[functions.ai-pantry-import]
-verify_jwt = false
-
-[functions.create-household]
-verify_jwt = false
-
-[functions.extract-calendar-tasks]
-verify_jwt = false
-
-[functions.extract-calendar-tasks-preview]
-verify_jwt = false
-
-[functions.generate-daily-plan]
-verify_jwt = false
-
-[functions.generate-shopping-list]
-verify_jwt = false
-
-[functions.parse-task-input]
-verify_jwt = false
-
-[functions.send-access-decision]
-verify_jwt = false
-
-[functions.send-access-request-confirmation]
-verify_jwt = false
-
-[functions.send-daily-plan-whatsapp]
-verify_jwt = false
-
-[functions.send-habit-reminders]
-verify_jwt = false
-
-[functions.send-household-invitation]
-verify_jwt = false
-
-[functions.send-household-member-welcome]
-verify_jwt = false
-
-[functions.send-invitation-response]
-verify_jwt = false
-
-[functions.send-join-request-notification]
-verify_jwt = false
-
-[functions.send-meal-plan-summary]
-verify_jwt = false
-
-[functions.send-pantry-alerts]
-verify_jwt = false
-
-[functions.send-task-notification]
-verify_jwt = false
-
-[functions.send-task-reminders]
-verify_jwt = false
-
-[functions.send-verification-email]
-verify_jwt = false
-
-[functions.send-weekly-digest]
-verify_jwt = false
-
-[functions.verify-email-token]
-verify_jwt = false
-
-[functions.whatsapp-notify]
-verify_jwt = false
-
-[functions.whatsapp-send-otp]
-verify_jwt = false
-
-[functions.whatsapp-verify-otp]
-verify_jwt = false
-
-[functions.bootstrap-push-config]
-verify_jwt = false
-
-[functions.send-subscription-reminders]
-verify_jwt = false
-
-[functions.send-dinner-prep-reminder]
-verify_jwt = false
-
-[functions.send-savings-goal-nudge]
-verify_jwt = false
-
-[functions.ai-scan-bill]
-verify_jwt = false
-
-[functions.pantry-low-reminder]
-verify_jwt = false
-
-[functions.process-email-queue]
-verify_jwt = true
-
-[functions.send-transactional-email]
-verify_jwt = true
-
-[functions.preview-transactional-email]
-verify_jwt = false
-
-[functions.handle-email-unsubscribe]
-verify_jwt = false
-
-[functions.handle-email-suppression]
-verify_jwt = false
+[functions]
+  [functions.ai-chat]
+    verify_jwt = false
+  [functions.ai-pantry-import]
+    verify_jwt = false
+  [functions.ai-scan-bill]
+    verify_jwt = false
+  [functions.auth-email-hook]
+    verify_jwt = false
+  [functions.bootstrap-push-config]
+    verify_jwt = false
+  [functions.create-household]
+    verify_jwt = false
+  [functions.extract-calendar-tasks]
+    verify_jwt = false
+  [functions.extract-calendar-tasks-preview]
+    verify_jwt = false
+  [functions.fetch-calendar-events]
+    verify_jwt = false
+  [functions.generate-daily-plan]
+    verify_jwt = false
+  [functions.generate-meal-suggestions]
+    verify_jwt = false
+  [functions.generate-shopping-list]
+    verify_jwt = false
+  [functions.google-calendar-auth]
+    verify_jwt = false
+  [functions.handle-email-suppression]
+    verify_jwt = false
+  [functions.handle-email-unsubscribe]
+    verify_jwt = false
+  [functions.pantry-low-reminder]
+    verify_jwt = false
+  [functions.parse-task-input]
+    verify_jwt = false
+  [functions.preview-transactional-email]
+    verify_jwt = false
+  [functions.process-email-queue]
+    verify_jwt = true
+  [functions.regenerate-meals]
+    verify_jwt = false
+  [functions.send-access-decision]
+    verify_jwt = false
+  [functions.send-access-request-confirmation]
+    verify_jwt = false
+  [functions.send-daily-plan-whatsapp]
+    verify_jwt = false
+  [functions.send-dinner-prep-reminder]
+    verify_jwt = false
+  [functions.send-habit-reminders]
+    verify_jwt = false
+  [functions.send-household-invitation]
+    verify_jwt = false
+  [functions.send-household-member-welcome]
+    verify_jwt = false
+  [functions.send-invitation-response]
+    verify_jwt = false
+  [functions.send-join-request-notification]
+    verify_jwt = false
+  [functions.send-meal-plan-summary]
+    verify_jwt = false
+  [functions.send-pantry-alerts]
+    verify_jwt = false
+  [functions.send-savings-goal-nudge]
+    verify_jwt = false
+  [functions.send-subscription-reminders]
+    verify_jwt = false
+  [functions.send-task-notification]
+    verify_jwt = false
+  [functions.send-task-reminders]
+    verify_jwt = false
+  [functions.send-transactional-email]
+    verify_jwt = true
+  [functions.send-verification-email]
+    verify_jwt = false
+  [functions.send-weekly-digest]
+    verify_jwt = false
+  [functions.verify-email-token]
+    verify_jwt = false
+  [functions.whatsapp-notify]
+    verify_jwt = false
+  [functions.whatsapp-send-otp]
+    verify_jwt = false
+  [functions.whatsapp-verify-otp]
+    verify_jwt = false
