@@ -94,7 +94,11 @@ export const BottomSheet = ({
           {/* Scrollable content */}
           <div
             className={cn(
-              "flex-1 overflow-y-auto overscroll-contain px-4 pt-4",
+              // `min-h-0` is required so the flex item can actually shrink
+              // below its content's intrinsic height — without it, the body
+              // refuses to clip and the sticky footer can be pushed off-screen
+              // and visually overlap form fields when the form is tall.
+              "flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 pt-4",
               footer ? "pb-6" : "pb-4",
             )}
           >

@@ -14,8 +14,9 @@ import { ModuleSetupGate } from "@/components/onboarding/ModuleSetupGate";
 
 const FinanceReport = () => {
   const { householdId } = useHousehold();
-  // Default to previous month
-  const defaultMonth = format(addMonths(startOfMonth(new Date()), -1), "yyyy-MM");
+  // Default to current month so the page opens on "this month" by default.
+  // Users can navigate back via the < arrow if they want a closed prior month.
+  const defaultMonth = format(startOfMonth(new Date()), "yyyy-MM");
   const [month, setMonth] = useState(defaultMonth);
 
   const { data: report, isLoading } = useMonthlyReport(month);
