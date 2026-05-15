@@ -36,6 +36,23 @@ const setDismissedKey = (key: string) => {
   } catch {}
 };
 
+// Permanent per-event dismissal for the calendar event nudge banner.
+// Once a user closes a specific event nudge it never reappears.
+const eventNudgeKey = (idOrDate: string) =>
+  `familydesk:event-nudge-dismissed:${idOrDate}`;
+const isEventNudgeDismissed = (key: string) => {
+  try {
+    return localStorage.getItem(key) === "true";
+  } catch {
+    return false;
+  }
+};
+const markEventNudgeDismissed = (key: string) => {
+  try {
+    localStorage.setItem(key, "true");
+  } catch {}
+};
+
 export const FestivalBanner = () => {
   const { data: festival } = useUpcomingFestival();
   const { householdId } = useHousehold();
@@ -127,26 +144,21 @@ export const FestivalBanner = () => {
   });
 
   if (upcoming) {
-    // Build a stable key: prefer a real id, but fall back to title+date so
-    // the dismissal sticks even when the event object reshapes between fetches.
-    const rawId =
-      (upcoming as any).id ||
-      (upcoming as any).event_id ||
-      `${(upcoming as any).title || "event"}-${
-        (upcoming as any).start_date ||
-        (upcoming as any).start_time ||
-        (upcoming as any).start ||
-        ""
-      }`;
-    const id = rawId;
-    const dismissKey = `event-nudge-dismissed-${id}`;
-    if (!isDismissed(dismissKey)) {
+    const rawDate =
+      (upcoming as any).start_date ||
+      (upcoming as any).start_time ||
+      (upcoming as any).start ||
+      "";
+    const eventId =
+      (upcoming as any).id || (upcoming as any).event_id || rawDate;
+    const dismissKey = eventNudgeKey(String(eventId));
+    if (!isEventNudgeDismissed(dismissKey)) {
       const d = (upcoming as any).start_date || (upcoming as any).start_time || (upcoming as any).start;
       const dt = typeof d === "string" ? parseISO(d) : new Date(d);
       const when = isToday(dt) ? "today" : "tomorrow";
       const title = (upcoming as any).title || (upcoming as any).summary || "Event";
       const dismiss = () => {
-        setDismissedKey(dismissKey);
+        markEventNudgeDismissed(dismissKey);
         setDismissTick((n) => n + 1);
       };
       return (
