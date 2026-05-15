@@ -13,7 +13,10 @@ import { addDays, format, isToday, isTomorrow, parseISO } from "date-fns";
 import { useCalendarEvents } from "@/hooks/useCalendarEvents";
 import { useNavigate } from "react-router-dom";
 
-const DISMISS_TTL_MS = 3 * 24 * 60 * 60 * 1000;
+// Once a user dismisses an event nudge or festival banner, keep it dismissed
+// for 30 days. The previous 3-day window made the same reminder reappear
+// repeatedly for the same upcoming event.
+const DISMISS_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 
 const isDismissed = (key: string) => {
   try {
@@ -124,7 +127,18 @@ export const FestivalBanner = () => {
   });
 
   if (upcoming) {
-    const id = (upcoming as any).id || (upcoming as any).event_id || (upcoming as any).title;
+    // Build a stable key: prefer a real id, but fall back to title+date so
+    // the dismissal sticks even when the event object reshapes between fetches.
+    const rawId =
+      (upcoming as any).id ||
+      (upcoming as any).event_id ||
+      `${(upcoming as any).title || "event"}-${
+        (upcoming as any).start_date ||
+        (upcoming as any).start_time ||
+        (upcoming as any).start ||
+        ""
+      }`;
+    const id = rawId;
     const dismissKey = `event-nudge-dismissed-${id}`;
     if (!isDismissed(dismissKey)) {
       const d = (upcoming as any).start_date || (upcoming as any).start_time || (upcoming as any).start;
