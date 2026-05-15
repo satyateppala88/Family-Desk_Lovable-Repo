@@ -259,17 +259,48 @@ export const useHabits = (householdId: string | null, userId?: string) => {
 
       return data;
     },
+    onMutate: async ({ habitId, completed, actualValue }) => {
+      const queryKey = ["habit-logs-today", householdId, targetUserId, today] as const;
+      await queryClient.cancelQueries({ queryKey });
+      const previous = queryClient.getQueryData<HabitLog[]>(queryKey);
+      queryClient.setQueryData<HabitLog[]>(queryKey, (old) => {
+        const list = old || [];
+        const existing = list.find((l) => l.habit_id === habitId);
+        if (existing) {
+          return list.map((l) =>
+            l.habit_id === habitId
+              ? { ...l, completed, actual_value: actualValue ?? l.actual_value }
+              : l
+          );
+        }
+        const optimistic = {
+          id: `optimistic-${Date.now()}`,
+          habit_id: habitId,
+          user_id: targetUserId!,
+          log_date: today,
+          completed,
+          actual_value: actualValue ?? null,
+          notes: null,
+          logged_at: new Date().toISOString(),
+        } as unknown as HabitLog;
+        return [optimistic, ...list];
+      });
+      return { previous, queryKey };
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["habit-logs-today"] });
+      // habit-logs-today is already up to date via the optimistic cache write.
       queryClient.invalidateQueries({ queryKey: ["habit-streaks"] });
       queryClient.invalidateQueries({ queryKey: ["household-habit-stats"] });
       queryClient.invalidateQueries({ queryKey: ["habit-leaderboard"] });
       queryClient.invalidateQueries({ queryKey: ["habit-scores"] });
     },
-    onError: (error: Error) => {
+    onError: (error: Error, _vars, ctx) => {
+      if (ctx?.queryKey) {
+        queryClient.setQueryData(ctx.queryKey, ctx.previous);
+      }
       toast({
-        title: "Something went wrong",
-        description: "Please try again.",
+        title: "Could not save habit",
+        description: error.message,
         variant: "destructive",
       });
     },

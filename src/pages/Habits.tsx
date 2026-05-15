@@ -291,6 +291,7 @@ const Habits = () => {
                     habit={habit}
                     onToggle={handleToggleHabit}
                     onUpdateValue={handleUpdateValue}
+                    isPending={logHabit.isPending}
                   />
                 ))}
               </div>
