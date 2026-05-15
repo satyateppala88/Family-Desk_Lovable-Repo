@@ -442,6 +442,7 @@ export const useCreateTransaction = (householdId: string | null) => {
       return inserted as FinanceTransaction;
     },
     onMutate: async (data) => {
+      markSelfWrite("finance_transactions");
       await queryClient.cancelQueries({ queryKey: ["finance-transactions", householdId] });
       const optimistic: FinanceTransaction = {
         id: `optimistic-${Date.now()}`,
@@ -510,6 +511,7 @@ export const useUpdateTransaction = () => {
       return updated as FinanceTransaction;
     },
     onMutate: async (vars) => {
+      markSelfWrite("finance_transactions");
       await queryClient.cancelQueries({ queryKey: ["finance-transactions"] });
       const snapshots: Array<[readonly unknown[], unknown]> = [];
       queryClient
@@ -569,6 +571,7 @@ export const useDeleteTransaction = () => {
       if (error) throw error;
     },
     onMutate: async (id) => {
+      markSelfWrite("finance_transactions");
       await queryClient.cancelQueries({ queryKey: ["finance-transactions"] });
       const snapshots: Array<[readonly unknown[], unknown]> = [];
       queryClient
