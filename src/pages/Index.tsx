@@ -104,8 +104,18 @@ const Index = () => {
     enabled: !!user?.id,
     staleTime: 5 * 60 * 1000,
   });
+  const WELCOME_KEY = "familydesk:welcome-tour-completed";
+  const [localWelcomeDone, setLocalWelcomeDone] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem(WELCOME_KEY) === "true";
+    } catch {
+      return false;
+    }
+  });
   const toursChecked = !!user?.id && !toursLoading && completedTours !== undefined;
-  const welcomeAlreadyDone = !!completedTours && Boolean((completedTours as any).dashboard_welcome);
+  const welcomeAlreadyDone =
+    localWelcomeDone ||
+    (!!completedTours && Boolean((completedTours as any).dashboard_welcome));
   const shouldShowWelcome = toursChecked && !welcomeAlreadyDone;
   const [runOnboarding, setRunOnboarding] = useState(false);
   const { ensurePermission, primerProps } = usePermissionPrimer();
@@ -153,6 +163,12 @@ const Index = () => {
   const handleStartOnboarding = () => setRunOnboarding(true);
   const handleOnboardingComplete = async () => {
     setRunOnboarding(false);
+    // Persist locally first so the popup never re-appears in this browser,
+    // even if the RPC below fails or races with the next render.
+    try {
+      localStorage.setItem(WELCOME_KEY, "true");
+    } catch {}
+    setLocalWelcomeDone(true);
     if (!user?.id) return;
     // Patch-merge the completion into completed_tours via the existing RPC,
     // which uses jsonb || to avoid clobbering sibling tour keys.
