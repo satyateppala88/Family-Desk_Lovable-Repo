@@ -11,7 +11,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useEnabledProducts, type ProductName } from "@/hooks/useEnabledProducts";
 import { useHousehold } from "@/hooks/useHousehold";
 import { useHouseholdPreferences } from "@/hooks/useHouseholdPreferences";
-import { MODULE_SETUP_COLUMN, MODULE_SETUP_KEYS, type ModuleSetupKey } from "@/lib/moduleSetup";
+import { MODULE_SETUP_COLUMN, MODULE_SETUP_KEYS, clearModuleSetupDoneLocally, type ModuleSetupKey } from "@/lib/moduleSetup";
 import { EditMealsPreferencesDialog } from "./EditMealsPreferencesDialog";
 import { EditGroceryPreferencesDialog } from "./EditGroceryPreferencesDialog";
 import { EditBudgetPreferencesDialog } from "./EditBudgetPreferencesDialog";
@@ -71,6 +71,8 @@ export const ModulePreferencesSection = () => {
       if (column && householdId) {
         await updatePreferences({ [column]: false } as any, { silent: true });
       }
+      // Clear the local "done" flag so the gate actually re-opens next visit.
+      clearModuleSetupDoneLocally(householdId, key);
       queryClient.invalidateQueries({ queryKey: ["module-setup", user.id] });
       queryClient.invalidateQueries({ queryKey: ["completed-tours", user.id] });
       toast.success("Setup will replay next time you open this module");
