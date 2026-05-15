@@ -103,6 +103,7 @@ export const QuickActionsRow = ({ householdId }: Props) => {
         <TransactionDialog
           open={txOpen}
           onOpenChange={setTxOpen}
+          isSaving={createTransaction.isPending}
           onSave={(data) => {
             createTransaction.mutate(data);
             setTxOpen(false);
