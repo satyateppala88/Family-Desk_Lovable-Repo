@@ -105,8 +105,11 @@ const HouseholdSetup = () => {
       description: `Welcome to ${householdName}. Let's set up your preferences.`,
     });
 
-    // Invalidate household query cache to ensure fresh data on next page
-    queryClient.invalidateQueries({ queryKey: ["household"] });
+    // Await the refetch so the next page sees the new household immediately.
+    // Invalidate alone leaves stale `data` (null) with `isLoading=false` during
+    // the background refetch, which causes the onboarding page to bounce the
+    // user back here — producing duplicate households on every retry.
+    await queryClient.refetchQueries({ queryKey: ["household"] });
 
     navigate("/onboarding/preferences");
     } catch (error: any) {
