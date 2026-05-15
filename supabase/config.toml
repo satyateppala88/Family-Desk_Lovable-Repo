@@ -72,7 +72,7 @@ project_id = "oohjebftkvlhpaljvijn"
   [functions.send-task-reminders]
     verify_jwt = false
   [functions.send-transactional-email]
-    verify_jwt = true
+    verify_jwt = false
   [functions.send-verification-email]
     verify_jwt = false
   [functions.send-weekly-digest]
