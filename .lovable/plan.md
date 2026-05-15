@@ -1,41 +1,70 @@
-## Root cause
+## What you reported
 
-The Live (and Test) email queue dispatcher cron job has been failing every 5 seconds with:
+The "Quick setup for Finance / Grocery / Meals / Habits" modals (the bottom sheets that appear when you open a module page) keep re-appearing even after you've clicked **Skip** or **Set up now**.
+
+## Why your proposed fix won't work
+
+The `familydesk:module-setup-touched:{householdId}:{moduleKey}` localStorage key you spotted is **not** the gate that decides whether the modal shows. It's an internal helper used inside the questionnaire form to remember which individual questions the user has answered, so the "Step X of Y" progress bar restores correctly after a refresh. Changing it to a boolean would break that progress UI without affecting whether the modal opens.
+
+The actual gate lives server-side. `useModuleSetup` checks `household_preferences.{module}_setup_complete` (a typed boolean column per module) and a few legacy fallbacks. When you click Skip or Set up now, the code already calls `markComplete()` which writes `true` into that column.
+
+## The real bug
+
+The DB write happens, but the modal can still flash on the next visit because:
+
+1. **Cross-browser / incognito / fresh device** — localStorage is empty and the React Query cache is cold, so before the `household_preferences` fetch resolves, the gate briefly believes setup is incomplete. (Right now there's nothing client-side at all to short-circuit this.)
+2. **Cache miss after sign-out / cache clear** — same race.
+3. **Silent write failures** — if the upsert ever fails (RLS hiccup, transient network), nothing remembers the user's intent locally and the modal returns next visit.
+
+In short: completion is tracked **only** on the server, with no local memory of "I already dismissed this", which is why even a successful skip can resurface the modal under any of the conditions above.
+
+## Fix
+
+Add a localStorage **completion** flag (separate from the existing `touched` progress key) and use it as a synchronous pre-render gate, in addition to the existing DB check. Belt-and-suspenders: if either source says "done", the modal stays closed.
+
+### Changes
+
+**1. New helper in `src/lib/moduleSetup.ts`**
+
+Add two pure functions:
 
 ```text
-ERROR: relation "pgmq.q_auth_emails" does not exist
+moduleSetupLocalKey(householdId, key)  → "familydesk:module-setup-done:{householdId}:{key}"
+isModuleSetupDoneLocally(householdId, key) → boolean   // reads localStorage === "true"
+markModuleSetupDoneLocally(householdId, key)           // writes "true"
 ```
 
-The cron command runs `EXISTS (SELECT 1 FROM pgmq.q_auth_emails ...)` before posting to `process-email-queue`. Because the `auth_emails` queue was never created in either environment, that check throws, the HTTP post never fires, and every verification email enqueued to `transactional_emails` stays `pending` forever.
+**2. `src/hooks/useModuleSetup.ts`**
 
-That is why Manoj, Amritha, and Anuradha never receive a verification email no matter how many times they retry — the email is generated and queued, then silently stuck.
+- In `markComplete.mutationFn`, call `markModuleSetupDoneLocally(householdId, key)` synchronously **before** the async DB write. So even if the upsert later fails, the local flag is set.
+- In the returned `isComplete` / `needsSetup` computation, OR-in `isModuleSetupDoneLocally(householdId, key)` so a true local flag immediately satisfies the gate.
 
-Profiles are also still missing `email_verified_at`, so even if they were verified via Supabase's own confirm link, the app's production sign-in gate keeps blocking them.
+**3. `src/components/onboarding/ModuleSetupGate.tsx`**
 
-## Plan
+- Top of the `ModuleSetupGate` component, **before** the `if (isLoading)` early return, add a synchronous check: `if (isModuleSetupDoneLocally(householdId, module)) return <>{children}</>;`. This is the "happens before render" guard you asked for — no useEffect, no race.
+- No other changes to the dismiss / skip / save flows. They already funnel through `markComplete`, which now also writes the local flag.
 
-1. **Create the missing `auth_emails` pgmq queue (Test + Live)**
-   - Migration that calls `pgmq.create('auth_emails')` if absent, plus seeds the `email_send_state` config row with sane defaults if empty.
-   - Once the queue exists, the cron job stops erroring and starts invoking `process-email-queue` again on its 5-second schedule.
-   - The 5 stuck transactional emails (all to Manoj) will drain on the next tick.
+**4. Leave the existing `module-setup-touched` key alone.** It's serving a different purpose (in-form progress) and the form depends on it being an array.
 
-2. **Backfill verified flag for the three users in Live**
-   - Set `profiles.email_verified_at = now()` for Manoj, Amritha (both addresses), and Anuradha so they can sign in immediately without waiting for a fresh email round-trip.
-   - Same backfill in Test for parity.
+### Behaviour after the fix
 
-3. **Verify**
-   - Re-check `cron.job_run_details` — runs should be `succeeded`.
-   - Re-check `pgmq.q_transactional_emails` count — should drop to 0.
-   - Re-check `email_send_log` — Manoj rows should flip from `pending` to `sent`.
-   - Re-check the four profile rows — `email_verified_at` populated.
+| Scenario | Before | After |
+|---|---|---|
+| User clicks Skip → reopens module page | Modal can re-flash if cache cold | Stays closed (local flag) |
+| User clicks Set up now → saves → reopens | Same race possible | Stays closed |
+| New browser / incognito | Modal opens (still no record) | Modal opens (correct — DB gate kicks in once preferences load) |
+| Sign out / sign back in same browser | Modal could flash | Stays closed |
+| User wants to redo setup | Re-run from Settings → Module Preferences (existing path, unchanged) | Same path — also clears the local flag there |
 
-4. **Publish**
-   - The migration applies to Test on save and to Live on Publish, so the user must Publish to fix Live.
-   - The data backfill (step 2) for Live needs to run via the data-update tool against production immediately after Publish, since data does not sync between environments.
+**5. `src/components/settings/ModulePreferencesSection.tsx`** (small follow-on)
 
-## Technical notes
+Where the user can manually re-trigger a module setup from Settings, also `localStorage.removeItem(moduleSetupLocalKey(...))` so re-running setup actually shows the form again.
 
-- No app/UI code changes. This is purely a backend/infra repair.
-- `pgmq.create()` is idempotent-ish but we'll guard with a `DO` block that checks `pg_class` first.
-- The `email_send_state` insert uses `ON CONFLICT (id) DO NOTHING` so existing rows are untouched.
-- Custom verification flow stays the source of truth (`profiles.email_verified_at`); auto-confirm-on-signup remains enabled on the auth side so Lovable Cloud doesn't send its own verification email.
+## Files touched
+
+- `src/lib/moduleSetup.ts` — add 3 helpers
+- `src/hooks/useModuleSetup.ts` — write local flag in `markComplete`, OR into `isComplete`
+- `src/components/onboarding/ModuleSetupGate.tsx` — synchronous pre-render guard
+- `src/components/settings/ModulePreferencesSection.tsx` — clear local flag when user manually reopens setup
+
+No DB migration. No changes to the questionnaire forms or the touched/draft persistence.
