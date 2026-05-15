@@ -23,6 +23,18 @@ export async function sendViaQueue(
   const idempotencyKey =
     params.idempotencyKey ?? `${params.templateName}-${crypto.randomUUID()}`;
 
+  // Use the anon/publishable key for the Authorization header. The
+  // send-transactional-email function only requires *a valid JWT* at the
+  // gateway (verify_jwt = true) and runs all privileged work with its own
+  // SUPABASE_SERVICE_ROLE_KEY internally. Using the anon key here avoids
+  // 401s when the caller's SUPABASE_SERVICE_ROLE_KEY env var is stale
+  // (e.g. after a key rotation that hasn't been republished to this
+  // function yet).
+  const anonKey =
+    Deno.env.get("SUPABASE_ANON_KEY") ??
+    Deno.env.get("SUPABASE_PUBLISHABLE_KEY") ??
+    serviceRoleKey;
+
   try {
     const resp = await fetch(
       `${supabaseUrl}/functions/v1/send-transactional-email`,
@@ -30,8 +42,8 @@ export async function sendViaQueue(
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${serviceRoleKey}`,
-          apikey: serviceRoleKey,
+          Authorization: `Bearer ${anonKey}`,
+          apikey: anonKey,
         },
         body: JSON.stringify({
           templateName: "raw-html",
