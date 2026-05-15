@@ -39,6 +39,10 @@ export const CreateEventDialog = ({ open, onOpenChange, defaultDate, eventToEdit
   const [allDay, setAllDay] = useState(false);
   const [recurrence, setRecurrence] = useState<RecurrenceSpec | null>(null);
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
+  // Inline validation error for the time field. Shown when the user submits
+  // with an empty time and All-day is OFF — instead of silently converting
+  // the event to all-day (which surprised users in BUG-FIX-06).
+  const [timeError, setTimeError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -60,7 +64,14 @@ export const CreateEventDialog = ({ open, onOpenChange, defaultDate, eventToEdit
       setRecurrence(null);
       setSelectedMembers(members.map((m) => m.userId));
     }
+    setTimeError(null);
   }, [open, defaultDate, members, eventToEdit]);
+
+  // Clearing the All-day toggle should clear any stale time-required error
+  // the moment the user toggles it on (since time is no longer needed).
+  useEffect(() => {
+    if (allDay) setTimeError(null);
+  }, [allDay]);
 
   const handleSubmit = async () => {
     if (!title.trim()) {
@@ -71,6 +82,14 @@ export const CreateEventDialog = ({ open, onOpenChange, defaultDate, eventToEdit
       toast({ title: "Date required", description: "Please pick a date for the event.", variant: "destructive" });
       return;
     }
+    if (!allDay && !time) {
+      setTimeError("Please enter a time, or toggle All day above.");
+      // Move focus to the time input so the user can act on the error.
+      const el = document.getElementById("event-time") as HTMLInputElement | null;
+      el?.focus();
+      return;
+    }
+    setTimeError(null);
 
     try {
       const payload = {
@@ -140,13 +159,23 @@ export const CreateEventDialog = ({ open, onOpenChange, defaultDate, eventToEdit
 
           {!allDay && (
             <div className="space-y-2">
-              <Label htmlFor="event-time">Time (optional)</Label>
+              <Label htmlFor="event-time">Time</Label>
               <Input
                 id="event-time"
                 type="time"
                 value={time}
-                onChange={(e) => setTime(e.target.value)}
+                onChange={(e) => {
+                  setTime(e.target.value);
+                  if (e.target.value) setTimeError(null);
+                }}
+                aria-invalid={!!timeError}
+                aria-describedby={timeError ? "event-time-error" : undefined}
               />
+              {timeError && (
+                <p id="event-time-error" className="text-xs text-destructive">
+                  {timeError}
+                </p>
+              )}
             </div>
           )}
 
