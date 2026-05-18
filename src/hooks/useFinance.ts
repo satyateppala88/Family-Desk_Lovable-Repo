@@ -675,7 +675,14 @@ export const useUpsertBudget = (householdId: string | null) => {
   const { user } = useAuth();
 
   return useMutation({
-    mutationFn: async (data: { month: string; category: string; planned_amount: number }) => {
+    mutationFn: async (data: {
+      month: string;
+      category: string;
+      planned_amount: number;
+      is_recurring?: boolean;
+      budget_type?: "monthly" | "annual";
+      annual_amount?: number | null;
+    }) => {
       const { data: row, error } = await supabase.from("finance_budgets").upsert(
         {
           household_id: householdId!,
@@ -683,6 +690,9 @@ export const useUpsertBudget = (householdId: string | null) => {
           month: data.month,
           category: data.category,
           planned_amount: data.planned_amount,
+          is_recurring: data.is_recurring ?? false,
+          budget_type: data.budget_type ?? "monthly",
+          annual_amount: data.annual_amount ?? null,
           updated_at: new Date().toISOString(),
         },
         { onConflict: "household_id,month,category" }
@@ -698,6 +708,9 @@ export const useUpsertBudget = (householdId: string | null) => {
         month: data.month,
         category: data.category,
         planned_amount: data.planned_amount,
+        is_recurring: data.is_recurring ?? false,
+        budget_type: data.budget_type ?? "monthly",
+        annual_amount: data.annual_amount ?? null,
         created_by: user?.id || "",
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
