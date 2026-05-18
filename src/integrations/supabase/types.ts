@@ -3109,6 +3109,10 @@ export type Database = {
         Args: { _household_id: string; _user_id: string }
         Returns: boolean
       }
+      log_household_habit: {
+        Args: { _actual_value?: number; _completed: boolean; _habit_id: string }
+        Returns: undefined
+      }
       move_to_dlq: {
         Args: {
           dlq_name: string
