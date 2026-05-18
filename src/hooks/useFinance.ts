@@ -323,10 +323,66 @@ export const useFinanceBudgets = (householdId: string | null, month?: string) =>
         .from("finance_budgets")
         .select("*")
         .eq("household_id", householdId!)
-        .eq("month", currentMonth)
-        .order("category");
+        .or(`month.eq.${currentMonth},is_recurring.eq.true`)
+        .lte("month", currentMonth)
+        .order("month", { ascending: false });
       if (error) throw error;
-      return data as FinanceBudget[];
+      const rows = (data || []) as FinanceBudget[];
+      const currentYear = currentMonth.slice(0, 4);
+      const exactByCat = new Map<string, FinanceBudget>();
+      const recurringByCat = new Map<string, FinanceBudget>(); // most-recent wins (data is desc)
+      const annualByCat = new Map<string, FinanceBudget>();
+      for (const r of rows) {
+        if (r.month === currentMonth && (r.budget_type ?? "monthly") === "monthly" && !r.is_recurring) {
+          if (!exactByCat.has(r.category)) exactByCat.set(r.category, r);
+        } else if (r.is_recurring && (r.budget_type ?? "monthly") === "monthly") {
+          if (!recurringByCat.has(r.category)) recurringByCat.set(r.category, r);
+        } else if (r.is_recurring && r.budget_type === "annual") {
+          // Annual rows are anchored to <year>-01 and scoped to that calendar year only.
+          if (r.month.slice(0, 4) === currentYear && !annualByCat.has(r.category)) {
+            annualByCat.set(r.category, r);
+          }
+        } else if (r.month === currentMonth) {
+          // Fallback: any row matching the exact month (e.g. legacy without flags).
+          if (!exactByCat.has(r.category)) exactByCat.set(r.category, r);
+        }
+      }
+      const resolved: FinanceBudget[] = [];
+      const allCats = new Set<string>([
+        ...exactByCat.keys(),
+        ...recurringByCat.keys(),
+        ...annualByCat.keys(),
+      ]);
+      for (const cat of allCats) {
+        const exact = exactByCat.get(cat);
+        if (exact) {
+          resolved.push({ ...exact, _source: "exact" });
+          continue;
+        }
+        const annual = annualByCat.get(cat);
+        if (annual) {
+          resolved.push({
+            ...annual,
+            month: currentMonth,
+            _source: "annual",
+            _originalId: annual.id,
+            _originalMonth: annual.month,
+          });
+          continue;
+        }
+        const rec = recurringByCat.get(cat);
+        if (rec) {
+          resolved.push({
+            ...rec,
+            month: currentMonth,
+            _source: "recurring",
+            _originalId: rec.id,
+            _originalMonth: rec.month,
+          });
+        }
+      }
+      resolved.sort((a, b) => a.category.localeCompare(b.category));
+      return resolved;
     },
     enabled: !!householdId,
     staleTime: 1000 * 60 * 5,
