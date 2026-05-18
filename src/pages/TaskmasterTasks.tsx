@@ -1,4 +1,7 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { Header } from "@/components/layout/Header";
 
 import { useHousehold } from "@/hooks/useHousehold";
@@ -57,8 +60,24 @@ import { cn } from "@/lib/utils";
 const TaskmasterTasks = () => {
   const { householdId, isLoading: loadingHousehold } = useHousehold();
   const { user } = useAuth();
-  const { tasks, isLoading, createTask, updateTask, deleteTask, markTaskDone, startTask } = useTaskmaster(householdId);
+  const { tasks, isLoading, createTask, updateTask, deleteTask, markTaskDone, startTask } = useTaskmaster(householdId, { excludeDone: true });
   const { projects } = useProjects(householdId);
+
+  // Lightweight count of completed tasks — drives the "View completed tasks" link.
+  const { data: completedCount = 0 } = useQuery({
+    queryKey: ["taskmaster-tasks-completed-count", householdId],
+    queryFn: async () => {
+      if (!householdId) return 0;
+      const { count } = await supabase
+        .from("tasks")
+        .select("id", { count: "exact", head: true })
+        .eq("household_id", householdId)
+        .eq("task_status", "done");
+      return count ?? 0;
+    },
+    enabled: !!householdId,
+    staleTime: 60 * 1000,
+  });
 
   useRealtimeSubscription([
     {
@@ -276,7 +295,6 @@ const TaskmasterTasks = () => {
                 <SelectItem value="today">Today</SelectItem>
                 <SelectItem value="in_progress">In Progress</SelectItem>
                 <SelectItem value="blocked">Blocked</SelectItem>
-                <SelectItem value="done">Done</SelectItem>
               </SelectContent>
             </Select>
 
