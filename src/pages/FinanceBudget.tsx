@@ -493,7 +493,28 @@ const FinanceBudget = () => {
       <BudgetDialog
         open={showAdd}
         onOpenChange={setShowAdd}
-        onSave={(data) => upsertBudget.mutate({ month: currentMonth, ...data })}
+        monthLabel={monthLabel}
+        onSave={(data: BudgetSavePayload) => {
+          if (data.budget_type === "annual") {
+            const year = currentMonth.slice(0, 4);
+            upsertBudget.mutate({
+              month: `${year}-01`,
+              category: data.category,
+              planned_amount: data.planned_amount,
+              is_recurring: true,
+              budget_type: "annual",
+              annual_amount: data.annual_amount ?? null,
+            });
+          } else {
+            upsertBudget.mutate({
+              month: currentMonth,
+              category: data.category,
+              planned_amount: data.planned_amount,
+              is_recurring: data.is_recurring,
+              budget_type: "monthly",
+            });
+          }
+        }}
         existingCategories={(budgets || []).map((b) => b.category)}
       />
 
@@ -503,13 +524,60 @@ const FinanceBudget = () => {
         mode="edit"
         initialCategory={editingBudget?.category}
         initialAmount={editingBudget ? Number(editingBudget.planned_amount) : undefined}
-        onSave={(data) => {
+        initialBudgetType={editingBudget?.budget_type ?? "monthly"}
+        initialAnnualAmount={editingBudget?.annual_amount ?? null}
+        monthLabel={monthLabel}
+        editSource={editingBudget?._source ?? "exact"}
+        onSave={(data: BudgetSavePayload) => {
           if (!editingBudget) return;
-          upsertBudget.mutate({
-            month: currentMonth,
-            category: editingBudget.category,
-            planned_amount: data.planned_amount,
-          });
+          const src = editingBudget._source ?? "exact";
+          // Annual budget edit → update the anchor row's annual + monthly amount.
+          if (data.budget_type === "annual" || src === "annual") {
+            const annual = data.annual_amount ?? Number(data.planned_amount) * 12;
+            const monthly = Math.floor(annual / 12);
+            if (editingBudget._originalId) {
+              updateBudgetById.mutate({
+                id: editingBudget._originalId,
+                planned_amount: monthly,
+                annual_amount: annual,
+              });
+            } else {
+              upsertBudget.mutate({
+                month: editingBudget.month,
+                category: editingBudget.category,
+                planned_amount: monthly,
+                is_recurring: true,
+                budget_type: "annual",
+                annual_amount: annual,
+              });
+            }
+          } else if (src === "recurring") {
+            if (data.edit_scope === "all_future" && editingBudget._originalId) {
+              // Update the original recurring row → propagates to all future months.
+              updateBudgetById.mutate({
+                id: editingBudget._originalId,
+                planned_amount: data.planned_amount,
+              });
+            } else {
+              // "This month only" → create a per-month override.
+              upsertBudget.mutate({
+                month: currentMonth,
+                category: editingBudget.category,
+                planned_amount: data.planned_amount,
+                is_recurring: false,
+                budget_type: "monthly",
+              });
+            }
+          } else {
+            // Exact period-specific row → straight upsert at this month.
+            upsertBudget.mutate({
+              month: currentMonth,
+              category: editingBudget.category,
+              planned_amount: data.planned_amount,
+              is_recurring: editingBudget.is_recurring ?? false,
+              budget_type: "monthly",
+            });
+          }
           setEditingBudget(null);
         }}
       />
