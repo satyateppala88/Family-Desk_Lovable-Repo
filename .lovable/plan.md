@@ -1,49 +1,38 @@
-## Plan: live "due today" count on dashboard
+## Problem
 
-### Problem
-The Tasks snapshot card and Tasks module tile show subtitles via `useDashboardSnapshot`, which derives the label from the `useTaskmaster` query. In practice, when the dashboard renders before `useTaskmaster` data hydrates (or filters strip due-dated rows), the subtitle falls into the `"All clear ✓"` branch, making it look static. The user wants a dedicated, focused live count.
+The Calendar page shows connected calendars as chips in the header, with a small `×` button to disconnect. That `×` is styled `opacity-0 group-hover:opacity-100`, so on touch devices (the primary form factor) it is invisible and effectively unusable. There is also no single place to see *all* household calendars with who connected them, their account email, and a clear Disconnect action.
 
-### Changes
+The underlying data and mutations already exist (`useCalendarConnections` → `connections`, `disconnectCalendar`, `updateConnection`). Only the UI surface is missing.
 
-**1. New hook: `src/hooks/useTodayTaskCount.ts`**
+## Plan
 
-A small React Query hook returning a live integer count:
+1. **New component: `src/components/calendar/ManageCalendarsSheet.tsx`**
+   - Bottom Sheet (shadcn `Sheet`, side="bottom") titled "Connected calendars".
+   - Lists every `connection` from `useCalendarConnections()` for the household, showing:
+     - color dot + `display_name`
+     - `google_account_email` (muted)
+     - "Connected by you" / member name if we can resolve it cheaply (otherwise just the email is enough for v1 — skip member lookup to keep scope small)
+     - Eye/EyeOff toggle for `is_visible` (reuses `updateConnection`)
+     - Always-visible "Disconnect" button (destructive, with `AlertDialog` confirm) calling `disconnectCalendar.mutate(connection.id)`
+   - Empty state: "No calendars connected yet" + a button that triggers `onConnectCalendar` and closes the sheet.
 
-```ts
-export const useTodayTaskCount = (householdId: string | null) => {
-  return useQuery({
-    queryKey: ["today-task-count", householdId],
-    queryFn: async () => {
-      if (!householdId) return 0;
-      const today = new Date().toISOString().slice(0, 10);
-      const { count, error } = await supabase
-        .from("tasks")
-        .select("*", { count: "exact", head: true })
-        .eq("household_id", householdId)
-        .eq("due_date", today)
-        .not("task_status", "in", '("completed","done")');
-      if (error) throw error;
-      return count ?? 0;
-    },
-    enabled: !!householdId,
-    staleTime: 30 * 1000,
-  });
-};
-```
+2. **Wire it into `src/pages/Calendar.tsx`**
+   - Add `const [showManageSheet, setShowManageSheet] = useState(false);`
+   - Render `<ManageCalendarsSheet open={...} onOpenChange={...} onConnectCalendar={() => { setShowManageSheet(false); setShowConnectDialog(true); }} />`.
 
-Notes on schema: the `tasks.task_status` enum is `backlog | today | in_progress | blocked | done` — there is no `completed` value, but the `NOT IN ('completed','done')` filter still works correctly (it just excludes `done`). Keeping `completed` in the filter matches the user's spec and is future-proof.
+3. **Update `src/components/calendar/CalendarHeader.tsx`**
+   - Add a new prop `onManageCalendars: () => void`.
+   - Replace the "Connect" button with a "Calendars" button (Settings icon + label) that opens the manage sheet. Keep "Connect" reachable from inside the sheet (and from the existing empty-state CTA on the Calendar page).
+   - In the chip strip, remove the hover-only `×` (keep visibility toggle on tap). Tapping any chip can also open the manage sheet for full controls — simpler and consistent on touch.
 
-**2. Wire into `src/hooks/useDashboardSnapshot.ts`**
+4. **No backend / hook changes** — `disconnectCalendar` and the safe view already return household-scoped connections.
 
-- Call `useTodayTaskCount(householdId)` alongside the existing queries.
-- Replace the current `tasksLabel` computation so it reads:
-  - `count > 0` → `` `${count} task${count > 1 ? "s" : ""} due today` ``
-  - `count === 0` → `"All clear ✓"`
-- Use this new label for both `items.tasks.subtitle` and `moduleSubtitles.tasks`. The "All clear ✓" string is preserved as the empty state.
-- Keep the existing `overdue` urgency flag (still derived from `tasks`) so the card still highlights overdue work via its amber styling.
+### Technical notes
+- Uses existing `Sheet`, `AlertDialog`, `Button` primitives. No new deps.
+- All mutations already invalidate `["calendar-connections"]` and `["calendar-events"]`, so the list and grid refresh automatically.
+- Touch-friendly: 44px hit targets, no hover-only affordances.
 
-### Files touched
-- `src/hooks/useTodayTaskCount.ts` (new)
-- `src/hooks/useDashboardSnapshot.ts` (use the new hook for the Tasks subtitle)
-
-No component-level changes needed: `TodaySnapshot.tsx` already reads `subtitle` from the hook, and `Index.tsx` reads `moduleSubtitles.tasks` from the same hook, so both surfaces update automatically.
+### Files
+- add `src/components/calendar/ManageCalendarsSheet.tsx`
+- edit `src/components/calendar/CalendarHeader.tsx`
+- edit `src/pages/Calendar.tsx`

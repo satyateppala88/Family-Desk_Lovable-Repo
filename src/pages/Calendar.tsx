@@ -7,6 +7,7 @@ import { CalendarHeader } from "@/components/calendar/CalendarHeader";
 import { CalendarEventDialog } from "@/components/calendar/CalendarEventDialog";
 import { ConnectCalendarDialog } from "@/components/calendar/ConnectCalendarDialog";
 import { CreateEventDialog } from "@/components/calendar/CreateEventDialog";
+import { ManageCalendarsSheet } from "@/components/calendar/ManageCalendarsSheet";
 import { useCalendarEvents, type CalendarEvent } from "@/hooks/useCalendarEvents";
 import { useCalendarConnections } from "@/hooks/useCalendarConnections";
 import { useHousehold } from "@/hooks/useHousehold";
@@ -23,6 +24,7 @@ const Calendar = () => {
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [showConnectDialog, setShowConnectDialog] = useState(false);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [showManageSheet, setShowManageSheet] = useState(false);
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
   const [dayDetailOpen, setDayDetailOpen] = useState(false);
 
@@ -60,6 +62,7 @@ const Calendar = () => {
             onDateChange={setCurrentDate}
             onConnectCalendar={() => setShowConnectDialog(true)}
             onAddEvent={() => setShowCreateDialog(true)}
+            onManageCalendars={() => setShowManageSheet(true)}
           />
         </div>
 
@@ -173,6 +176,15 @@ const Calendar = () => {
       <ConnectCalendarDialog
         open={showConnectDialog}
         onOpenChange={setShowConnectDialog}
+      />
+
+      <ManageCalendarsSheet
+        open={showManageSheet}
+        onOpenChange={setShowManageSheet}
+        onConnectCalendar={() => {
+          setShowManageSheet(false);
+          setShowConnectDialog(true);
+        }}
       />
 
       <CreateEventDialog

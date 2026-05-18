@@ -1,18 +1,7 @@
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, Plus, Eye, EyeOff, X, Loader2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Eye, EyeOff, Loader2, Settings2 } from "lucide-react";
 import { format, addMonths, subMonths } from "date-fns";
 import { useCalendarConnections } from "@/hooks/useCalendarConnections";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
 import { useState } from "react";
 
 interface CalendarHeaderProps {
@@ -20,6 +9,7 @@ interface CalendarHeaderProps {
   onDateChange: (date: Date) => void;
   onConnectCalendar: () => void;
   onAddEvent: () => void;
+  onManageCalendars: () => void;
 }
 
 export const CalendarHeader = ({
@@ -27,8 +17,9 @@ export const CalendarHeader = ({
   onDateChange,
   onConnectCalendar,
   onAddEvent,
+  onManageCalendars,
 }: CalendarHeaderProps) => {
-  const { connections, updateConnection, disconnectCalendar } = useCalendarConnections();
+  const { connections, updateConnection } = useCalendarConnections();
   const [togglingId, setTogglingId] = useState<string | null>(null);
   
   const goToPreviousMonth = () => onDateChange(subMonths(currentDate, 1));
@@ -45,10 +36,6 @@ export const CalendarHeader = ({
     } finally {
       setTogglingId(null);
     }
-  };
-
-  const handleRemoveCalendar = (connectionId: string) => {
-    disconnectCalendar.mutate(connectionId);
   };
 
   return (
@@ -77,8 +64,17 @@ export const CalendarHeader = ({
             <Plus className="h-3.5 w-3.5 sm:mr-1" />
             <span className="hidden sm:inline">Add Event</span>
           </Button>
-          <Button size="sm" variant="outline" onClick={onConnectCalendar} data-tour="connect-calendar" className="shrink-0">
-            <span>Connect</span>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={connections.length > 0 ? onManageCalendars : onConnectCalendar}
+            data-tour="connect-calendar"
+            className="shrink-0"
+          >
+            <Settings2 className="h-3.5 w-3.5 sm:mr-1" />
+            <span className="hidden sm:inline">
+              {connections.length > 0 ? "Calendars" : "Connect"}
+            </span>
           </Button>
         </div>
       </div>
@@ -89,7 +85,7 @@ export const CalendarHeader = ({
           {connections.map((connection) => (
             <div
               key={connection.id}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-muted/60 shrink-0 group text-xs"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-muted/60 shrink-0 text-xs"
             >
               <button
                 onClick={() => handleToggleVisibility(connection)}
@@ -111,36 +107,14 @@ export const CalendarHeader = ({
                   {connection.display_name}
                 </span>
               </button>
-              
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <button
-                    className="ml-0.5 p-0.5 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors opacity-0 group-hover:opacity-100"
-                    aria-label={`Remove ${connection.display_name}`}
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Remove Calendar</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Disconnect "{connection.display_name}" ({connection.google_account_email})?
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={() => handleRemoveCalendar(connection.id)}
-                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                    >
-                      Remove
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
             </div>
           ))}
+          <button
+            onClick={onManageCalendars}
+            className="shrink-0 text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 px-1"
+          >
+            Manage
+          </button>
         </div>
       )}
     </div>
