@@ -436,7 +436,17 @@ const FinanceBudget = () => {
 
       <QuickActionButton
         items={[
-          { label: "Add Budget", icon: Plus, onClick: () => setShowAdd(true) },
+          {
+            label: "Add Budget",
+            icon: Plus,
+            onClick: () => {
+              if (allCategoriesBudgeted) {
+                toast.info(addDisabledTooltip);
+                return;
+              }
+              setShowAdd(true);
+            },
+          },
           { label: "Categories", icon: Tag, onClick: () => navigate("/finance/budget/categories") },
         ]}
         className="sm:hidden"
@@ -447,6 +457,23 @@ const FinanceBudget = () => {
         onOpenChange={setShowAdd}
         onSave={(data) => upsertBudget.mutate({ month: currentMonth, ...data })}
         existingCategories={(budgets || []).map((b) => b.category)}
+      />
+
+      <BudgetDialog
+        open={!!editingBudget}
+        onOpenChange={(o) => { if (!o) setEditingBudget(null); }}
+        mode="edit"
+        initialCategory={editingBudget?.category}
+        initialAmount={editingBudget ? Number(editingBudget.planned_amount) : undefined}
+        onSave={(data) => {
+          if (!editingBudget) return;
+          upsertBudget.mutate({
+            month: currentMonth,
+            category: editingBudget.category,
+            planned_amount: data.planned_amount,
+          });
+          setEditingBudget(null);
+        }}
       />
     </div>
   );
