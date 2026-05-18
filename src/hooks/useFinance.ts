@@ -473,9 +473,13 @@ export const useCreateTransaction = (householdId: string | null) => {
       toast.success("Transaction added");
       return { snapshots, optimisticId: optimistic.id };
     },
-    onError: (e: Error, _vars, ctx) => {
+    onError: (e: any, _vars, ctx) => {
       ctx?.snapshots?.forEach(([key, prev]) => queryClient.setQueryData(key, prev));
-      toast.error(e.message);
+      if (e?.code === "23505") {
+        toast.error("A budget for this category already exists. Use Edit to update it.");
+      } else {
+        toast.error(e?.message || "Failed to save budget. Please try again.");
+      }
     },
     onSuccess: (inserted, _vars, ctx) => {
       // Replace the optimistic placeholder with the real row in-place.
