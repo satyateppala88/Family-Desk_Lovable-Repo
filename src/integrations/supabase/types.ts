@@ -609,31 +609,40 @@ export type Database = {
       }
       finance_budgets: {
         Row: {
+          annual_amount: number | null
+          budget_type: string
           category: string
           created_at: string
           created_by: string
           household_id: string
           id: string
+          is_recurring: boolean
           month: string
           planned_amount: number
           updated_at: string
         }
         Insert: {
+          annual_amount?: number | null
+          budget_type?: string
           category: string
           created_at?: string
           created_by: string
           household_id: string
           id?: string
+          is_recurring?: boolean
           month: string
           planned_amount?: number
           updated_at?: string
         }
         Update: {
+          annual_amount?: number | null
+          budget_type?: string
           category?: string
           created_at?: string
           created_by?: string
           household_id?: string
           id?: string
+          is_recurring?: boolean
           month?: string
           planned_amount?: number
           updated_at?: string

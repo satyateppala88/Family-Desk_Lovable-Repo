@@ -18,6 +18,7 @@ import {
   useFinanceMonthlySummary,
   useFinanceRealtime,
   useUpsertBudget,
+  useUpdateBudgetById,
   useCarryForwardBudgets,
   useFinanceTransactions,
   CATEGORY_LABELS,
@@ -28,6 +29,7 @@ import { useHouseholdMembers } from "@/hooks/useHouseholdMembers";
 import { formatINR } from "@/lib/formatINR";
 import { PrivateValue } from "@/components/shared/PrivateValue";
 import { BudgetDialog } from "@/components/finance/BudgetDialog";
+import type { BudgetSavePayload } from "@/components/finance/BudgetDialog";
 import { useCustomCategories } from "@/hooks/useCustomCategories";
 import { resolveCategoryLabel } from "@/components/finance/CategorySelect";
 import { format } from "date-fns";
@@ -53,6 +55,7 @@ const FinanceBudget = () => {
     { month: currentMonth, type: "expense" },
   );
   const upsertBudget = useUpsertBudget(householdId);
+  const updateBudgetById = useUpdateBudgetById(householdId);
   const carryForward = useCarryForwardBudgets(householdId);
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -186,7 +189,16 @@ const FinanceBudget = () => {
       toast.error("Enter a valid amount");
       return;
     }
-    upsertBudget.mutate({ month: currentMonth, category, planned_amount: n });
+    // Inline edit always creates a per-month override at the current month
+    // (does not touch the recurring/annual source row — use the full dialog
+    // for "this and all future months" updates).
+    upsertBudget.mutate({
+      month: currentMonth,
+      category,
+      planned_amount: n,
+      is_recurring: false,
+      budget_type: "monthly",
+    });
     setEditingId(null);
   };
 
@@ -308,14 +320,39 @@ const FinanceBudget = () => {
                       <span className="text-sm font-medium">
                         {resolveCategoryLabel(row.category, CATEGORY_LABELS, customCats)}
                       </span>
-                      {Number(row.planned_amount) > 0 && (
-                        <span
-                          className="inline-flex items-center text-[11px] font-medium px-2 py-0.5 rounded-full"
-                          style={{ background: "#E6F2EE", color: "#0F6E56" }}
-                        >
-                          Budget set
-                        </span>
-                      )}
+                      {Number(row.planned_amount) > 0 && (() => {
+                        const src = row._source ?? "exact";
+                        const chipLabel =
+                          src === "annual"
+                            ? "Budget set · Annual"
+                            : src === "recurring"
+                              ? "Budget set · Recurring"
+                              : "Budget set";
+                        const chip = (
+                          <span
+                            className="inline-flex items-center text-[11px] font-medium px-2 py-0.5 rounded-full"
+                            style={{ background: "#E6F2EE", color: "#0F6E56" }}
+                          >
+                            {chipLabel}
+                          </span>
+                        );
+                        if (src === "annual" && row.annual_amount) {
+                          return (
+                            <TooltipProvider delayDuration={150}>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <button type="button" className="focus:outline-none">{chip}</button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  ₹{Number(row.annual_amount).toLocaleString("en-IN")} annual · ₹
+                                  {Number(row.planned_amount).toLocaleString("en-IN")}/month
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          );
+                        }
+                        return chip;
+                      })()}
                     </div>
                     <div className="text-right shrink-0">
                       {Number(row.planned_amount) > 0 ? (
@@ -456,7 +493,28 @@ const FinanceBudget = () => {
       <BudgetDialog
         open={showAdd}
         onOpenChange={setShowAdd}
-        onSave={(data) => upsertBudget.mutate({ month: currentMonth, ...data })}
+        monthLabel={monthLabel}
+        onSave={(data: BudgetSavePayload) => {
+          if (data.budget_type === "annual") {
+            const year = currentMonth.slice(0, 4);
+            upsertBudget.mutate({
+              month: `${year}-01`,
+              category: data.category,
+              planned_amount: data.planned_amount,
+              is_recurring: true,
+              budget_type: "annual",
+              annual_amount: data.annual_amount ?? null,
+            });
+          } else {
+            upsertBudget.mutate({
+              month: currentMonth,
+              category: data.category,
+              planned_amount: data.planned_amount,
+              is_recurring: data.is_recurring,
+              budget_type: "monthly",
+            });
+          }
+        }}
         existingCategories={(budgets || []).map((b) => b.category)}
       />
 
@@ -466,13 +524,60 @@ const FinanceBudget = () => {
         mode="edit"
         initialCategory={editingBudget?.category}
         initialAmount={editingBudget ? Number(editingBudget.planned_amount) : undefined}
-        onSave={(data) => {
+        initialBudgetType={editingBudget?.budget_type ?? "monthly"}
+        initialAnnualAmount={editingBudget?.annual_amount ?? null}
+        monthLabel={monthLabel}
+        editSource={editingBudget?._source ?? "exact"}
+        onSave={(data: BudgetSavePayload) => {
           if (!editingBudget) return;
-          upsertBudget.mutate({
-            month: currentMonth,
-            category: editingBudget.category,
-            planned_amount: data.planned_amount,
-          });
+          const src = editingBudget._source ?? "exact";
+          // Annual budget edit → update the anchor row's annual + monthly amount.
+          if (data.budget_type === "annual" || src === "annual") {
+            const annual = data.annual_amount ?? Number(data.planned_amount) * 12;
+            const monthly = Math.floor(annual / 12);
+            if (editingBudget._originalId) {
+              updateBudgetById.mutate({
+                id: editingBudget._originalId,
+                planned_amount: monthly,
+                annual_amount: annual,
+              });
+            } else {
+              upsertBudget.mutate({
+                month: editingBudget.month,
+                category: editingBudget.category,
+                planned_amount: monthly,
+                is_recurring: true,
+                budget_type: "annual",
+                annual_amount: annual,
+              });
+            }
+          } else if (src === "recurring") {
+            if (data.edit_scope === "all_future" && editingBudget._originalId) {
+              // Update the original recurring row → propagates to all future months.
+              updateBudgetById.mutate({
+                id: editingBudget._originalId,
+                planned_amount: data.planned_amount,
+              });
+            } else {
+              // "This month only" → create a per-month override.
+              upsertBudget.mutate({
+                month: currentMonth,
+                category: editingBudget.category,
+                planned_amount: data.planned_amount,
+                is_recurring: false,
+                budget_type: "monthly",
+              });
+            }
+          } else {
+            // Exact period-specific row → straight upsert at this month.
+            upsertBudget.mutate({
+              month: currentMonth,
+              category: editingBudget.category,
+              planned_amount: data.planned_amount,
+              is_recurring: editingBudget.is_recurring ?? false,
+              budget_type: "monthly",
+            });
+          }
           setEditingBudget(null);
         }}
       />
