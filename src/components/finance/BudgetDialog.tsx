@@ -8,6 +8,7 @@ import { CategorySelect, resolveCategoryLabel } from "@/components/finance/Categ
 import { useCustomCategories } from "@/hooks/useCustomCategories";
 import { cn } from "@/lib/utils";
 import { formatINR } from "@/lib/formatINR";
+import { Trash2, AlertTriangle } from "lucide-react";
 
 export interface BudgetSavePayload {
   category: string;
@@ -32,6 +33,8 @@ interface BudgetDialogProps {
   monthLabel?: string;
   /** When editing, indicates the row came from rollforward (needs scope picker). */
   editSource?: "exact" | "recurring" | "annual";
+  /** Called when the user confirms deleting this budget (edit mode only). */
+  onDelete?: () => void;
 }
 
 export const BudgetDialog = ({
@@ -46,6 +49,7 @@ export const BudgetDialog = ({
   initialAnnualAmount = null,
   monthLabel = "this month",
   editSource = "exact",
+  onDelete,
 }: BudgetDialogProps) => {
   const isEdit = mode === "edit";
   const [category, setCategory] = useState(initialCategory || "");
@@ -95,6 +99,12 @@ export const BudgetDialog = ({
     : 0;
 
   const showScopePicker = isEdit && editSource === "recurring";
+
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  useEffect(() => {
+    if (!open) setConfirmingDelete(false);
+  }, [open]);
+  const removesFromFuture = editSource === "recurring" || editSource === "annual";
 
   const handleSave = () => {
     if (submitting) return;
@@ -268,6 +278,57 @@ export const BudgetDialog = ({
               />
               <span>This and all future months</span>
             </label>
+          </div>
+        )}
+
+        {/* Delete budget — edit mode only */}
+        {isEdit && onDelete && (
+          <div className="pt-2">
+            {!confirmingDelete ? (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setConfirmingDelete(true)}
+                className="w-full border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive"
+              >
+                <Trash2 className="w-4 h-4 mr-2" aria-hidden="true" />
+                Delete this budget
+              </Button>
+            ) : (
+              <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-3 space-y-2">
+                <p className="text-sm font-medium text-destructive">
+                  Are you sure? This cannot be undone.
+                </p>
+                {removesFromFuture && (
+                  <p className="text-xs flex items-start gap-1.5 text-destructive/90">
+                    <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" aria-hidden="true" />
+                    <span>This will remove this budget from all future months too.</span>
+                  </p>
+                )}
+                <div className="flex gap-2 pt-1">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => setConfirmingDelete(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    className="flex-1"
+                    onClick={() => {
+                      onDelete();
+                      setConfirmingDelete(false);
+                      onOpenChange(false);
+                    }}
+                  >
+                    Yes, delete
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
