@@ -1,72 +1,121 @@
-## Goal
+## FIX-08 — Remove setup modals + welcome toast
 
-Stop redundant GETs after a user's own write. When the realtime channel echoes a row that was just written by the same user (and the cache is already correct via the optimistic update), skip the `invalidateQueries` call. Other members' writes still trigger a refetch as today.
+### Part 1: Remove ModuleSetupGate wrappers (keep Meals)
 
-## Mechanism
+Strip `ModuleSetupGate` from these pages (delete the import, unwrap the JSX it surrounds — keep all children intact):
+- `src/pages/Finance.tsx` (line 211/213)
+- `src/pages/Calendar.tsx` (line 209/211)
+- `src/pages/FinanceTrends.tsx` (line 25/217)
+- `src/pages/FinanceReport.tsx` (line 13/73)
+- `src/pages/Habits.tsx` (line 424/426)
+- `src/pages/Grocery.tsx` (line 841/843)
 
-Two-part guard inside `useRealtimeSubscription`:
+Keep `Meals.tsx` gate as-is (explicitly excluded by the brief).
 
-1. **Author check** — if `payload.new?.created_by === currentUserId` (or `payload.old?.created_by` for deletes), the row was written by this session.
-2. **Recency window** — only skip when this session marked a self-write on that table within the last 2000 ms. This prevents accidentally swallowing a stale realtime event that arrives much later (e.g., reconnect replay).
+Note: there is no separate Budget setup modal — `/finance/budget` (`FinanceBudget.tsx`) has no `ModuleSetupGate`. Confirmed via grep. So "Budget setup" disappears automatically.
 
-Both must be true; otherwise invalidate as today. Tables without a `created_by` column are unaffected (the check fails and we fall back to invalidation).
+### Part 2: Dead-code cleanup
 
-## Files
+After unwrapping, these become unused — delete them:
+- `src/components/onboarding/ModuleSetupGate.tsx`
+- `src/components/onboarding/ModuleSetupGate.test.tsx`
+- `src/hooks/useModuleSetup.ts` (only consumed by the gate)
 
-- `src/hooks/useRealtimeSubscription.ts` — add guard + export `markSelfWrite(table)` helper.
-- `src/hooks/useFinance.ts` — call `markSelfWrite` from `onMutate` of `useCreateTransaction`, `useUpdateTransaction`, `useDeleteTransaction` (table: `finance_transactions`).
-- `src/hooks/useHabits.ts` — call `markSelfWrite("habit_logs")` from `logHabit.onMutate`.
+Keep, because they remain in use by the dashboard setup banner and progress card (`Index.tsx`, `SetupProgressCard.tsx`, `UserPreferencesOnboarding.tsx`, onboarding flow):
+- `src/lib/moduleSetup.ts`
+- `MODULE_SETUP_KEYS`, `isModuleSetupComplete`, `*_setup_complete` DB columns
 
-That covers the hot paths the user is feeling. The mechanism is opt-in: any other mutation continues to behave exactly as today until it adopts `markSelfWrite`.
+No DB migration. No changes to the dashboard "Let's finish setting up" banner (that's not a modal).
 
-## Changes
+### Part 3: Replace dashboard welcome modal with one-time toast
 
-### 1. `useRealtimeSubscription.ts`
+In `src/pages/Index.tsx`:
+- Remove `OnboardingTour` import, `dashboardTourSteps`, `runOnboarding` state, `welcomeVisible`, `shouldShowWelcome`, `welcomeAlreadyDone`, `localWelcomeDone`, `WELCOME_KEY`, `completedTours` query, `handleOnboardingComplete`, `handleStartOnboarding`, the `<OnboardingTour …>` JSX, and the setTimeout that triggers it.
+- Header's `onStartOnboarding` prop: pass a no-op or remove if optional (verify in `Header.tsx`).
+- Simplify the notification primer effect: drop the `welcomeVisible` gate, keep the rest.
+- Add a new effect that fires the welcome toast:
+  ```ts
+  useEffect(() => {
+    if (!user?.created_at) return;
+    const isNewUser = Date.now() - new Date(user.created_at).getTime() < 5 * 60 * 1000;
+    if (!isNewUser) return;
+    const key = `fd_welcome_toast_shown:${user.id}`;
+    if (sessionStorage.getItem(key)) return;
+    sessionStorage.setItem(key, "1");
+    const firstName = user.user_metadata?.display_name?.split(" ")[0] || "there";
+    toast(`Welcome to FamilyDesk, ${firstName}! 👋`, {
+      description: "Your household is set up and ready.",
+      duration: 4000,
+      closeButton: true,
+    });
+  }, [user]);
+  ```
+- Import `toast` from `sonner`. Session-storage guard prevents duplicate fires from re-mounts inside the 5-minute window; the time check handles all later sessions.
 
-```ts
-// Module-scoped registry: table -> last self-write timestamp (ms).
-const SELF_WRITE_WINDOW_MS = 2000;
-const selfWriteTimestamps = new Map<string, number>();
+### Part 4: Info banners
 
-export function markSelfWrite(table: string) {
-  selfWriteTimestamps.set(table, Date.now());
-}
+`ModuleNudgeBanner` (used by `Finance.tsx`, `Calendar.tsx`, `Tasks.tsx`) **already** has an X button and per-user localStorage dismissal (`fd_module_nudge_dismissed:<userId>:<moduleKey>`). No work needed — verify and move on.
+
+---
+
+## FIX-09 — Tasks history
+
+### Part 1: Filter `/tasks` to open tasks at the query level
+
+In `src/hooks/useTasks.ts`:
+- Add an optional `includeCompleted?: boolean` (default `false`) parameter alongside `pagination`.
+- In the Supabase query, when not including completed, append `.neq("status", "completed")`. Apply to both the rows query and the `count: "exact"` count so `totalCount`/`activeCount` are correct. (The schema uses the single value `"completed"` — confirmed in `Tasks.tsx` line 57 and `TaskCard.tsx`.)
+- Update the query key to include the flag: `["tasks", householdId, page, pageSize, includeCompleted]`.
+
+In `src/pages/Tasks.tsx`:
+- Calls `useTasks(householdId)` → now returns only open tasks.
+- Remove the in-memory `t.status !== "completed"` filter for `activeCount` (the list is already filtered).
+- The status filter `<Select>` currently offers "completed" as an option — drop the completed option from that select (it would always return 0 now) and keep "all / pending / in-progress".
+
+### Part 2: "View completed tasks →" link
+
+- Add a small query in `Tasks.tsx` (or extend `useTasks`) that returns just the count of completed tasks for the household:
+  ```ts
+  const { data: completedCount } = useQuery({
+    queryKey: ["tasks-completed-count", householdId],
+    queryFn: async () => {
+      const { count } = await supabase
+        .from("tasks").select("id", { count: "exact", head: true })
+        .eq("household_id", householdId).eq("status", "completed");
+      return count ?? 0;
+    },
+    enabled: !!householdId,
+    staleTime: 60_000,
+  });
+  ```
+- Render below the last task card, above the FAB/bottom-nav:
+  ```tsx
+  {completedCount > 0 && (
+    <div className="mt-4 text-left">
+      <Link to="/tasks/history" className="text-[13px] text-fd-ink-3 hover:text-fd-ink underline-offset-2 hover:underline">
+        View completed tasks →
+      </Link>
+    </div>
+  )}
+  ```
+
+### Part 3: `/tasks/history` page
+
+Create `src/pages/TasksHistory.tsx`:
+- Header with back arrow → `navigate("/tasks")`, title "Completed Tasks".
+- Query `tasks` where `household_id = … AND status = 'completed'`, order `completed_at desc nulls last, created_at desc`, range-paginated 30 per page. Track `page` in state; "Load more" button appends results client-side.
+- Group rendered items by month using `format(date, "MMMM yyyy")` on `completed_at ?? updated_at`.
+- Per row: greyed strikethrough title (`text-fd-ink-3 line-through`), small `Completed {format(date, "d MMM")}` line, optional assignee avatar (reuse the avatar bit from `TaskCard`). Read-only — no checkbox/edit/delete.
+- Empty state: `EmptyState` component with check icon, "No completed tasks yet" / "Tasks you complete will appear here".
+
+Register the route in `src/App.tsx` under the protected routes block, next to `/tasks`:
+```tsx
+<Route path="/tasks/history" element={<ProtectedRoute><TasksHistory /></ProtectedRoute>} />
 ```
 
-- Import `useAuth` and read `user?.id` in the hook.
-- Replace the channel callback so it inspects `payload`:
+### Out of scope
 
-```ts
-(payload: any) => {
-  const authorId = payload?.new?.created_by ?? payload?.old?.created_by;
-  const ts = selfWriteTimestamps.get(cfg.table) ?? 0;
-  const isOwnWrite =
-    !!user?.id &&
-    authorId === user.id &&
-    Date.now() - ts < SELF_WRITE_WINDOW_MS;
-  if (isOwnWrite) return;
-  cfg.queryKeys.forEach((key) =>
-    queryClient.invalidateQueries({ queryKey: key })
-  );
-}
-```
-
-- Add `user?.id` to the effect dep list (already covered indirectly by `signature`/`channelName`, but include explicitly to be safe).
-
-### 2. `useFinance.ts`
-
-- `import { markSelfWrite } from "@/hooks/useRealtimeSubscription";`
-- In `useCreateTransaction.onMutate`, `useUpdateTransaction.onMutate`, `useDeleteTransaction.onMutate`: prepend `markSelfWrite("finance_transactions");`.
-
-### 3. `useHabits.ts`
-
-- `import { markSelfWrite } from "@/hooks/useRealtimeSubscription";`
-- In `logHabit.onMutate`: prepend `markSelfWrite("habit_logs");`.
-
-No DB or schema changes. No behavior change for non-author realtime events. No behavior change for tables that haven't adopted `markSelfWrite`.
-
-## Result
-
-- Optimistic mutations (finance txns, habit toggles) no longer trigger a self-echo refetch — the cache write stands and one network round-trip is eliminated.
-- Other household members' writes still flow in via realtime and refetch as today.
-- The 2-second window keeps the suppression safe against late echoes.
+- My Tasks, Projects, Templates tabs untouched.
+- Task completion flow untouched.
+- No DB migrations.
+- Taskmaster pages (`/taskmaster/*`) untouched — only `/tasks` is in scope.
