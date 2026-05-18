@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -12,7 +13,6 @@ import {
   isModuleSetupComplete,
   type ModuleSetupKey,
 } from "@/lib/moduleSetup";
-import { ModuleSetupDialog } from "@/components/onboarding/ModuleSetupGate";
 
 const MODULE_LABELS: Record<ProductName, string> = {
   meals: "Meals",
@@ -27,9 +27,9 @@ const ORDER: ProductName[] = ["meals", "grocery", "finance", "habits", "calendar
 
 export const SetupProgressCard = () => {
   const { householdId } = useHousehold();
+  const navigate = useNavigate();
   const { data: enabledProducts } = useEnabledProducts(householdId);
   const { preferences } = useHouseholdPreferences(householdId);
-  const [activeSetup, setActiveSetup] = useState<ModuleSetupKey | null>(null);
 
   const items = useMemo(() => {
     if (!enabledProducts || !preferences) return [];
@@ -51,8 +51,7 @@ export const SetupProgressCard = () => {
   const allDone = completedCount === total;
 
   return (
-    <>
-      <Card>
+    <Card>
         <CardHeader>
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-start gap-3">
@@ -96,7 +95,7 @@ export const SetupProgressCard = () => {
                     variant="ghost"
                     size="sm"
                     className="h-8 text-xs"
-                    onClick={() => setActiveSetup(item.key)}
+                    onClick={() => navigate("/onboarding/preferences")}
                   >
                     Finish setup
                     <ArrowRight className="h-3 w-3 ml-1" />
@@ -106,18 +105,6 @@ export const SetupProgressCard = () => {
             ))}
           </ul>
         </CardContent>
-      </Card>
-
-      {activeSetup && (
-        <ModuleSetupDialog
-          module={activeSetup}
-          open={true}
-          dismissible={true}
-          onComplete={() => setActiveSetup(null)}
-          onSkip={() => setActiveSetup(null)}
-          onOpenChange={(o) => { if (!o) setActiveSetup(null); }}
-        />
-      )}
-    </>
+    </Card>
   );
 };
