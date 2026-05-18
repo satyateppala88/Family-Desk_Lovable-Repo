@@ -213,9 +213,4 @@ const FinanceTrends = () => {
   );
 };
 
-const FinanceTrendsWithGate = () => (
-  <ModuleSetupGate module="finance_setup">
-    <FinanceTrends />
-  </ModuleSetupGate>
-);
-export default FinanceTrendsWithGate;
+export default FinanceTrends;

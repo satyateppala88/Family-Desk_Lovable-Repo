@@ -69,10 +69,4 @@ const FinanceReport = () => {
   );
 };
 
-const FinanceReportWithGate = () => (
-  <ModuleSetupGate module="finance_setup">
-    <FinanceReport />
-  </ModuleSetupGate>
-);
-
-export default FinanceReportWithGate;
+export default FinanceReport;

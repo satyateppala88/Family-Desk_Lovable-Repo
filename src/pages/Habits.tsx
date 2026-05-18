@@ -421,10 +421,4 @@ const Habits = () => {
   );
 };
 
-import { ModuleSetupGate } from "@/components/onboarding/ModuleSetupGate";
-const HabitsWithGate = () => (
-  <ModuleSetupGate module="habits_setup">
-    <Habits />
-  </ModuleSetupGate>
-);
-export default HabitsWithGate;
+export default Habits;
