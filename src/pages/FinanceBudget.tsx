@@ -201,9 +201,24 @@ const FinanceBudget = () => {
                 <Tag className="w-4 h-4 mr-1" /> Categories
               </Link>
             </Button>
-            <Button size="sm" onClick={() => setShowAdd(true)}>
-              <Plus className="w-4 h-4 mr-1" /> Add
-            </Button>
+            <TooltipProvider delayDuration={150}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span tabIndex={allCategoriesBudgeted ? 0 : -1}>
+                    <Button
+                      size="sm"
+                      onClick={() => setShowAdd(true)}
+                      disabled={allCategoriesBudgeted}
+                    >
+                      <Plus className="w-4 h-4 mr-1" /> Add
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                {allCategoriesBudgeted && (
+                  <TooltipContent>{addDisabledTooltip}</TooltipContent>
+                )}
+              </Tooltip>
+            </TooltipProvider>
           </div>
         </div>
 
