@@ -16,6 +16,8 @@ import {
 import { useCustomCategories } from "@/hooks/useCustomCategories";
 import { resolveCategoryLabel } from "@/components/finance/CategorySelect";
 import { formatINR } from "@/lib/formatINR";
+import { PrivateValue } from "@/components/shared/PrivateValue";
+import { usePrivacyMode } from "@/contexts/PrivacyModeContext";
 import { cn } from "@/lib/utils";
 import { BudgetSubNav } from "@/components/finance/BudgetSubNav";
 
