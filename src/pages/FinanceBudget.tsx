@@ -141,6 +141,24 @@ const FinanceBudget = () => {
     return { ...b, actual, pct, over };
   }).sort((a, b) => b.pct - a.pct);
 
+  // All available expense categories (built-in minus income + custom)
+  const incomeKeys = new Set(["salary", "freelance", "investment_returns"]);
+  const selectableCategories = useMemo(() => {
+    const builtIn = FINANCE_CATEGORIES.filter((c) => !incomeKeys.has(c));
+    const custom = (customCats || []).map((c) => c.key);
+    return Array.from(new Set([...builtIn, ...custom]));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [customCats]);
+  const budgetedSet = useMemo(
+    () => new Set((budgets || []).map((b) => b.category)),
+    [budgets]
+  );
+  const allCategoriesBudgeted =
+    selectableCategories.length > 0 &&
+    selectableCategories.every((c) => budgetedSet.has(c));
+  const addDisabledTooltip =
+    "All categories have budgets set. Edit an existing one to make changes.";
+
   const selectedMember = isMemberView ? memberById.get(selectedPaidBy) : null;
   const selectedFirstName = selectedMember ? firstName(selectedMember.displayName) : "";
 
