@@ -6,24 +6,31 @@ import { useAuth } from "@/contexts/AuthContext";
 import { cloneTaskAsNextOccurrence, type RecurrencePattern } from "@/lib/recurrence";
 import { format } from "date-fns";
 
-export const useTaskmaster = (householdId: string | null) => {
+export const useTaskmaster = (
+  householdId: string | null,
+  options?: { excludeDone?: boolean },
+) => {
+  const excludeDone = options?.excludeDone ?? false;
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { user } = useAuth();
 
   const { data: tasks, isLoading } = useQuery({
-    queryKey: ["taskmaster-tasks", householdId],
+    queryKey: ["taskmaster-tasks", householdId, { excludeDone }],
     queryFn: async () => {
       if (!householdId) return [];
 
-      const { data, error } = await supabase
+      let query = supabase
         .from("tasks")
         .select(`
           *,
           project:projects(*)
         `)
-        .eq("household_id", householdId)
-        .order("created_at", { ascending: false });
+        .eq("household_id", householdId);
+      if (excludeDone) {
+        query = query.neq("task_status", "done");
+      }
+      const { data, error } = await query.order("created_at", { ascending: false });
 
       if (error) throw error;
 
