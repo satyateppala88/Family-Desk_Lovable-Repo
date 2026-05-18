@@ -178,6 +178,15 @@ const Calendar = () => {
         onOpenChange={setShowConnectDialog}
       />
 
+      <ManageCalendarsSheet
+        open={showManageSheet}
+        onOpenChange={setShowManageSheet}
+        onConnectCalendar={() => {
+          setShowManageSheet(false);
+          setShowConnectDialog(true);
+        }}
+      />
+
       <CreateEventDialog
         open={showCreateDialog || !!editingEvent}
         onOpenChange={(open) => {
