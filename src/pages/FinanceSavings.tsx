@@ -27,6 +27,7 @@ import { PrivateValue, PrivateText } from "@/components/shared/PrivateValue";
 import { SavingsGoalDialog } from "@/components/finance/SavingsGoalDialog";
 import { format, differenceInDays, addMonths } from "date-fns";
 import { cn } from "@/lib/utils";
+import { formatTimeLeft } from "@/lib/formatTimeLeft";
 
 type Signal =
   | { kind: "reached" }
@@ -230,7 +231,6 @@ const FinanceSavings = () => {
                   : 0;
               const daysLeft = goal.target_date ? differenceInDays(new Date(goal.target_date), new Date()) : null;
               const allContribs = contribByGoal.get(goal.id) || [];
-              const goalContribs = allContribs.slice(0, 5);
 
               // Per-member breakdown for this goal
               const memberTotals: Record<string, number> = {};
@@ -269,11 +269,7 @@ const FinanceSavings = () => {
                             "text-[11px] mt-0.5",
                             daysLeft !== null && daysLeft < 0 ? "text-destructive" : "text-muted-foreground"
                           )}>
-                            {daysLeft !== null && daysLeft > 0
-                              ? `${daysLeft} days left`
-                              : daysLeft === 0
-                              ? "Due today"
-                              : "Overdue"}
+                            {formatTimeLeft(daysLeft)}
                             {" · "}{format(new Date(goal.target_date), "dd/MM/yyyy")}
                           </p>
                         )}
@@ -349,23 +345,72 @@ const FinanceSavings = () => {
                       </div>
                     )}
 
-                    {goalContribs.length > 0 && (
-                      <div className="border-t pt-2 space-y-1">
-                        <p className="text-[11px] font-medium text-muted-foreground">Recent contributions</p>
-                        {goalContribs.map((c) => {
-                          const m = c.paid_by ? memberById.get(c.paid_by) : null;
-                          return (
-                            <div key={c.id} className="flex items-center justify-between text-[11px]">
-                              <span className="truncate">
-                                {format(new Date(c.transaction_date), "dd MMM")} · {c.description || c.category}
-                                {m && <span className="text-muted-foreground"> · {m.displayName.split(" ")[0]}</span>}
-                              </span>
-                              <span className="font-semibold tabular-nums text-primary"><PrivateValue value={Number(c.amount)} /></span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
+                    {goal.target_date && (() => {
+                      // Build month buckets from goal creation → current month (cap last 12).
+                      const now = new Date();
+                      const created = new Date(goal.created_at);
+                      const totalMonths =
+                        (now.getFullYear() - created.getFullYear()) * 12 +
+                        (now.getMonth() - created.getMonth()) + 1;
+                      const span = Math.max(1, Math.min(12, totalMonths));
+                      const months: { y: number; m: number; key: string; label: string; isCurrent: boolean }[] = [];
+                      for (let i = span - 1; i >= 0; i--) {
+                        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                        months.push({
+                          y: d.getFullYear(),
+                          m: d.getMonth(),
+                          key: `${d.getFullYear()}-${d.getMonth()}`,
+                          label: format(d, "MMM")[0],
+                          isCurrent: i === 0,
+                        });
+                      }
+                      const hitSet = new Set<string>();
+                      for (const c of allContribs) {
+                        const d = new Date(c.transaction_date);
+                        hitSet.add(`${d.getFullYear()}-${d.getMonth()}`);
+                      }
+                      const hits = months.filter((mo) => hitSet.has(mo.key)).length;
+                      // Trailing streak ending at current month
+                      let streak = 0;
+                      for (let i = months.length - 1; i >= 0; i--) {
+                        if (hitSet.has(months[i].key)) streak++;
+                        else break;
+                      }
+                      return (
+                        <div className="border-t pt-2 space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <p className="text-[11px] font-medium text-muted-foreground">Consistency</p>
+                            <p className="text-[11px] text-muted-foreground tabular-nums">
+                              {hits} / {months.length} {months.length === 1 ? "month" : "months"}
+                            </p>
+                          </div>
+                          <div className="flex gap-1">
+                            {months.map((mo) => {
+                              const isHit = hitSet.has(mo.key);
+                              return (
+                                <div
+                                  key={mo.key}
+                                  title={`${format(new Date(mo.y, mo.m, 1), "MMM yyyy")} · ${isHit ? "Contributed" : "No contribution"}`}
+                                  className={cn(
+                                    "flex-1 h-6 rounded-sm flex items-center justify-center text-[9px] font-semibold",
+                                    isHit ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground",
+                                    mo.isCurrent && "ring-1 ring-primary/60",
+                                  )}
+                                >
+                                  {mo.label}
+                                </div>
+                              );
+                            })}
+                          </div>
+                          <p className="text-[11px] text-muted-foreground">
+                            {hits === 0
+                              ? "No contributions yet"
+                              : `Contributed in ${hits} of the last ${months.length} ${months.length === 1 ? "month" : "months"}`}
+                            {streak >= 2 && ` · ${streak}-month streak`}
+                          </p>
+                        </div>
+                      );
+                    })()}
 
                     <div className="flex gap-2">
                       <Input
