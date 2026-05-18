@@ -231,7 +231,6 @@ const FinanceSavings = () => {
                   : 0;
               const daysLeft = goal.target_date ? differenceInDays(new Date(goal.target_date), new Date()) : null;
               const allContribs = contribByGoal.get(goal.id) || [];
-              const goalContribs = allContribs.slice(0, 5);
 
               // Per-member breakdown for this goal
               const memberTotals: Record<string, number> = {};
