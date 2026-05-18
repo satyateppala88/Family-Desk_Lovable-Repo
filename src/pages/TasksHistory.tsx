@@ -32,8 +32,8 @@ const TasksHistory = () => {
     queryKey: ["taskmaster-tasks-history", householdId, page],
     queryFn: async () => {
       if (!householdId) return { rows: [] as CompletedTaskRow[], total: 0 };
-      const from = page * PAGE_SIZE;
-      const to = from + PAGE_SIZE - 1;
+      // Fetch from the start up to the current page so "Load more" accumulates naturally.
+      const to = (page + 1) * PAGE_SIZE - 1;
       const { data: tasks, count, error } = await supabase
         .from("tasks")
         .select("id, title, completed_at, updated_at, created_at", { count: "exact" })
@@ -41,7 +41,7 @@ const TasksHistory = () => {
         .eq("task_status", "done")
         .order("completed_at", { ascending: false, nullsFirst: false })
         .order("created_at", { ascending: false })
-        .range(from, to);
+        .range(0, to);
       if (error) throw error;
 
       const taskIds = (tasks ?? []).map((t: any) => t.id);
