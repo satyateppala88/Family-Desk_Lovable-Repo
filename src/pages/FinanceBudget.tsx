@@ -55,6 +55,7 @@ const FinanceBudget = () => {
     { month: currentMonth, type: "expense" },
   );
   const upsertBudget = useUpsertBudget(householdId);
+  const updateBudgetById = useUpdateBudgetById(householdId);
   const carryForward = useCarryForwardBudgets(householdId);
   const queryClient = useQueryClient();
   const navigate = useNavigate();
