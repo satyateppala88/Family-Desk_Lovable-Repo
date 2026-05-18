@@ -247,6 +247,7 @@ const App = () => (
                 <Route path="/finance/budget/categories" element={<ProtectedRoute><FinancePinGate><FinanceBudgetCategories /></FinancePinGate></ProtectedRoute>} />
                 <Route path="/finance/savings" element={<ProtectedRoute><FinancePinGate><FinanceSavings /></FinancePinGate></ProtectedRoute>} />
                 <Route path="/finance/chat" element={<ProtectedRoute><FinancePinGate><FinanceChat /></FinancePinGate></ProtectedRoute>} />
+                <Route path="/finance/ai-advisor" element={<ProtectedRoute><Navigate to="/finance/chat" replace /></ProtectedRoute>} />
                 <Route path="/finance/review" element={<ProtectedRoute><FinancePinGate><FinanceMonthlyReview /></FinancePinGate></ProtectedRoute>} />
                 <Route path="/finance/cards" element={<ProtectedRoute><FinancePinGate><FinanceCards /></FinancePinGate></ProtectedRoute>} />
                 <Route path="/finance/trends" element={<ProtectedRoute><FinancePinGate><FinanceTrends /></FinancePinGate></ProtectedRoute>} />
