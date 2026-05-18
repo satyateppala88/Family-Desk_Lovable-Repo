@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { format, differenceInCalendarDays } from "date-fns";
 import { Users, User, Leaf, PartyPopper, Trophy, Snowflake, Plus } from "lucide-react";
 import { Header } from "@/components/layout/Header";
@@ -44,7 +44,7 @@ const Habits = () => {
     { table: "challenge_participants", enabled: !!householdId, queryKeys: [["challenges", householdId]] },
   ], householdId);
 
-  const { habits: allUserHabits, todaysHabits, isLoading: habitsLoading, createHabit, logHabit } = useHabits(householdId);
+  const { habits: allUserHabits, allHabits, todaysHabits, isLoading: habitsLoading, createHabit, logHabit } = useHabits(householdId);
   const { data: householdStats, isLoading: statsLoading } = useHouseholdHabitStats(householdId);
   const { data: leaderboardEntries, isLoading: leaderboardLoading } = useHabitLeaderboard(householdId);
   const { data: householdMembers } = useHouseholdMembers(householdId);
@@ -69,6 +69,31 @@ const Habits = () => {
   const [stackSuggestionFor, setStackSuggestionFor] = useState<string | null>(null);
   const [prefillName, setPrefillName] = useState<string | undefined>(undefined);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+
+  const coachDismissKey = currentUserId ? `habit-coach-dismissed-${currentUserId}-${format(today, "yyyy-MM-dd")}` : null;
+  const [dismissedCoachKeys, setDismissedCoachKeys] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    if (!coachDismissKey) return;
+    try {
+      const raw = localStorage.getItem(coachDismissKey);
+      setDismissedCoachKeys(raw ? new Set(JSON.parse(raw)) : new Set());
+    } catch {
+      setDismissedCoachKeys(new Set());
+    }
+  }, [coachDismissKey]);
+  const dismissCoach = useCallback((id: string) => {
+    setDismissedCoachKeys((prev) => {
+      const next = new Set(prev);
+      next.add(id);
+      if (coachDismissKey) {
+        try { localStorage.setItem(coachDismissKey, JSON.stringify(Array.from(next))); } catch { /* ignore */ }
+      }
+      return next;
+    });
+  }, [coachDismissKey]);
+  const isCoachDismissed = (id: string) => dismissedCoachKeys.has(id);
+
+  const householdHabits = (allHabits || []).filter((h) => h.assignment_type === "household");
 
   const userActiveChallenges = challenges.filter((c) =>
     currentUserId ? c.participants.some((p) => p.user_id === currentUserId) : false
@@ -262,16 +287,18 @@ const Habits = () => {
             </Button>
 
             {totalCount === 0 ? (
-              <HabitCoachInsight content={emptyCoachCopy} onDismiss={() => {}} />
+              !isCoachDismissed("empty") && <HabitCoachInsight content={emptyCoachCopy} onDismiss={() => dismissCoach("empty")} />
             ) : householdTooNew ? (
-              <HabitCoachInsight content={newHouseholdCopy} onDismiss={() => {}} />
+              !isCoachDismissed("new-household") && <HabitCoachInsight content={newHouseholdCopy} onDismiss={() => dismissCoach("new-household")} />
             ) : completedCount === 0 ? (
-              <HabitCoachInsight content={startTodayCopy} onDismiss={() => {}} />
+              !isCoachDismissed("start-today") && <HabitCoachInsight content={startTodayCopy} onDismiss={() => dismissCoach("start-today")} />
             ) : completedCount < totalCount ? (
-              <HabitCoachInsight
-                content="You're making progress! Keep the momentum going — every check-off counts."
-                onDismiss={() => {}}
-              />
+              !isCoachDismissed("progress") && (
+                <HabitCoachInsight
+                  content="You're making progress! Keep the momentum going — every check-off counts."
+                  onDismiss={() => dismissCoach("progress")}
+                />
+              )
             ) : null}
 
             {habitsLoading ? (
@@ -323,6 +350,39 @@ const Habits = () => {
             ) : (
               <>
                 <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <h2 className="text-section-title">Shared Habits</h2>
+                    <span className="text-xs text-muted-foreground">{householdHabits.length} shared</span>
+                  </div>
+                  {householdHabits.length === 0 ? (
+                    <EmptyState
+                      icon={Users}
+                      title="No shared habits yet"
+                      description="Create a habit and tag it 'Whole Household' so everyone in the family sees it here and in their daily list."
+                    />
+                  ) : (
+                    <div className="space-y-2">
+                      {householdHabits.map((h) => (
+                        <Card key={h.id}>
+                          <CardContent className="p-3 flex items-center justify-between gap-3">
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-medium truncate">{h.name}</p>
+                              <p className="text-[11px] text-muted-foreground capitalize">
+                                {h.frequency_type === "daily" ? "Every day" : h.frequency_type.replace("_", " ")}
+                              </p>
+                            </div>
+                            <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 text-primary px-2 py-0.5 text-[11px] font-medium">
+                              <Users className="h-3 w-3" aria-hidden="true" />
+                              Household
+                            </span>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div>
                   <h2 className="text-section-title mb-3">Today's Summary</h2>
                   <HouseholdHabitSummary stats={householdStats} />
                 </div>
@@ -351,16 +411,18 @@ const Habits = () => {
                 </div>
 
                 {householdTotalHabits === 0 ? (
-                  <HabitCoachInsight content={emptyCoachCopy} onDismiss={() => {}} />
+                  !isCoachDismissed("household-empty") && <HabitCoachInsight content={emptyCoachCopy} onDismiss={() => dismissCoach("household-empty")} />
                 ) : householdTooNew ? (
-                  <HabitCoachInsight content={newHouseholdCopy} onDismiss={() => {}} />
+                  !isCoachDismissed("household-new") && <HabitCoachInsight content={newHouseholdCopy} onDismiss={() => dismissCoach("household-new")} />
                 ) : householdCompletedToday === 0 ? (
-                  <HabitCoachInsight content={startTodayCopy} onDismiss={() => {}} />
+                  !isCoachDismissed("household-start") && <HabitCoachInsight content={startTodayCopy} onDismiss={() => dismissCoach("household-start")} />
                 ) : (
-                  <HabitCoachInsight
-                    content="Your household is building great consistency! Consider adding a shared family habit like an evening walk or gratitude moment."
-                    onDismiss={() => {}}
-                  />
+                  !isCoachDismissed("household-built") && (
+                    <HabitCoachInsight
+                      content="Your household is building great consistency! Consider adding a shared family habit like an evening walk or gratitude moment."
+                      onDismiss={() => dismissCoach("household-built")}
+                    />
+                  )
                 )}
               </>
             )}

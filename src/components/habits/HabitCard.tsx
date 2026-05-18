@@ -1,4 +1,4 @@
-import { Check, Flame, Plus, Minus, Sparkles } from "lucide-react";
+import { Check, Flame, Plus, Minus, Sparkles, Users } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -115,6 +115,12 @@ export const HabitCard = ({ habit, onToggle, onUpdateValue, isPending = false }:
             >
               {habit.name}
             </span>
+            {(habit.assignment_type === "household" || habit.assignment_type === "multiple") && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 text-primary px-1.5 py-0.5 text-[10px] font-medium">
+                <Users className="h-2.5 w-2.5" aria-hidden="true" />
+                {habit.assignment_type === "household" ? "Household" : "Shared"}
+              </span>
+            )}
           </div>
 
           {/* Streak display */}
