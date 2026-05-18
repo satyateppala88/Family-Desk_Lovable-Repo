@@ -1,82 +1,82 @@
-## F-22 — Budget: duplicate block, set indicator, edit mode
+## FIX-10 — Realtime channel hygiene + cache invalidation
 
-### Schema findings (no migration needed)
+### Audit results
 
-- Period is stored in a single text column `month` on `public.finance_budgets` (format `YYYY-MM`), not separate `period_month`/`period_year`.
-- A unique constraint **already exists**: `finance_budgets_household_id_month_category_key (household_id, month, category)`. Skip Part 2 / Change 2 (no SQL to run).
-- The category dropdown already excludes already-budgeted categories (`BudgetDialog` accepts `existingCategories` and `FinanceBudget` passes them in). Keep this; extend with the additional UX below.
+**Realtime subscriptions (3 files total):**
 
-### 1. "Budget set" chip on category cards
+1. `src/components/realtime/HouseholdRealtimeProvider.tsx` — already correct: deterministic name `household-${householdId}`, single channel multiplexing every shared table, cleanup via `removeChannel`, stable deps `[user?.id, householdId, queryClient]`. **No changes.**
+2. `src/hooks/useRealtimeSubscription.ts` — already correct: deterministic name `realtime-${householdId}-${sortedTables}`, cleanup, self-write suppression in place. **No changes.**
+3. `src/components/settings/NotificationPreferencesSection.tsx` — **bug**: uses fixed name `"profile-changes"` with no user/household scope; if remounted (HMR, dialog reopen) Supabase will reject the duplicate topic. Also subscribes to *every* profile UPDATE in the schema rather than the current user's row.
 
-In `src/pages/FinanceBudget.tsx`, inside each row card (around the category-name flex row), render a small chip directly under the category name:
+**Mutations missing invalidations** (write-author path; the realtime echo is suppressed for the writer, so onSuccess is the *only* refetch trigger for them):
 
-- Only shown when `Number(row.planned_amount) > 0` (matches the spec's "budget exists for current period" — `budgetRows` is already scoped to `currentMonth`).
-- Markup: `<span className="inline-flex items-center text-[11px] font-medium px-2 py-0.5 rounded-full" style={{ background: "#E6F2EE", color: "#0F6E56" }}>Budget set</span>`.
-- Left-aligned, below the title, above the progress bar. Move the title + chip into a small vertical stack while keeping the percentage on the right.
+- `useTasks` create/update/delete → invalidates only `["tasks", householdId]`. Missing: `["taskmaster-tasks", householdId]`, `["daily-plan"]`, `["dashboard-stats", householdId]`.
+- `useHabits` logHabit → already invalidates streaks, leaderboard, scores. Verify it also hits `["habits", householdId]` (it does for create/delete; logging should add `["household-habit-stats"]` if missing — confirm during edit).
+- `useFinance.useUpsertBudget` already invalidates budgets/annual/dashboard. Verify transaction mutations invalidate `finance-monthly-summary` + `finance-dashboard` + savings goals.
+- Calendar event mutations (`useManualCalendarEvents`) — already invalidate `calendar-events`, `today-events`, `calendar-events-today`. **OK.**
+- Grocery (`usePantryItems`) — already invalidates `pantry-items` + `pantry-stats`. Add `["dashboard-stats", householdId]` for parity with realtime map.
+- Member-related: `HouseholdMembers.tsx` invalidates `["household-members"]` only. Add `["household-member-emails"]` and `["household"]`.
 
-### 2. Block duplicate creation
+The QueryClient itself (`src/lib/query-client.ts`) uses `staleTime: 5 minutes`. Spec wants 30s with `refetchOnMount` + `refetchOnWindowFocus`.
 
-Disable "+ Add" when every selectable category is already budgeted for `currentMonth`.
+### Changes
 
-- Compute `allCategoriesBudgeted` in `FinanceBudget.tsx`:
-  - Selectable set = `FINANCE_CATEGORIES` minus income (`salary`, `freelance`, `investment_returns`) plus all `customCats` keys (scope `transaction`).
-  - `budgetedSet = new Set((budgets || []).map(b => b.category))`.
-  - `allCategoriesBudgeted = selectable.every(c => budgetedSet.has(c))`.
-- Wrap the desktop and `QuickActionButton` "Add Budget" trigger with a `Tooltip` (shadcn). When disabled, tooltip text: `"All categories have budgets set. Edit an existing one to make changes."`
-- Pass the same `existingCategories` to `BudgetDialog` (already wired).
-
-Improve error handling in `useUpsertBudget.onError` (`src/hooks/useFinance.ts`):
+**1. `src/lib/query-client.ts` — tune defaults (do not touch persistence)**
 
 ```ts
-onError: (e: any, _vars, ctx) => {
-  ctx?.snapshots?.forEach(([key, prev]) => queryClient.setQueryData(key, prev));
-  if (e?.code === "23505") {
-    toast.error("A budget for this category already exists. Use Edit to update it.");
-  } else {
-    toast.error(e?.message || "Failed to save budget. Please try again.");
-  }
+defaultOptions: {
+  queries: {
+    staleTime: 30 * 1000,
+    gcTime: MAX_AGE_MS,            // keep 7d so persister still has data
+    refetchOnReconnect: true,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
+    retry: 2,
+  },
 },
 ```
 
-### 3. Edit existing budget via dialog
+Persister stays — `gcTime` of 7d is independent of `staleTime`. We do not change the persister config.
 
-Today there is only an inline-input pencil next to the amount. Add a top-right pencil icon button on each budgeted card that opens `BudgetDialog` in edit mode. Keep the existing inline edit untouched (it still works, no scope creep).
+**2. `src/App.tsx` — wipe orphan channels on app mount**
 
-Changes in `src/components/finance/BudgetDialog.tsx`:
+Inside the `App` component add a small effect-only child or convert `App` to use `useEffect`:
 
-- Add props: `mode?: "create" | "edit"`, `initialCategory?: string`, `initialAmount?: number`.
-- When `mode === "edit"`:
-  - Render Category as plain read-only text (resolved label via `resolveCategoryLabel`) instead of `CategorySelect`. No chevron.
-  - Pre-fill `amount` from `initialAmount` (via a `useEffect` keyed on `open` + `initialAmount`).
-  - Submit button label: `"Update Budget"` (saving state `"Updating..."`).
-- Reset internal state when the sheet closes so the next open is clean.
+```ts
+useEffect(() => {
+  supabase.removeAllChannels();
+}, []);
+```
 
-Changes in `src/pages/FinanceBudget.tsx`:
+The cleanest spot: add the call at the top of `HouseholdRealtimeProvider`'s effect *guarded by a module-level `didInitialPurge` ref* so it runs exactly once per page load, before the provider opens its own channel. This avoids changing `App.tsx`'s structure and ensures the purge runs before any `useRealtimeSubscription` subscribes.
 
-- New state: `const [editingBudget, setEditingBudget] = useState<FinanceBudget | null>(null)`.
-- Add a pencil `IconButton` (lucide `Pencil`, 16px, `text-[#6B6965]`, `aria-label="Edit budget"`) absolutely positioned top-right of each row card (only when `Number(row.planned_amount) > 0`).
-- On click: `setEditingBudget(row)`.
-- Render a second `BudgetDialog`:
-  ```tsx
-  <BudgetDialog
-    open={!!editingBudget}
-    onOpenChange={(o) => !o && setEditingBudget(null)}
-    mode="edit"
-    initialCategory={editingBudget?.category}
-    initialAmount={Number(editingBudget?.planned_amount || 0)}
-    onSave={(data) => upsertBudget.mutate({ month: currentMonth, category: editingBudget!.category, planned_amount: data.planned_amount })}
-  />
-  ```
-  The upsert hits the unique key and updates the existing row (effectively an UPDATE by id+category+month).
+**3. `src/components/settings/NotificationPreferencesSection.tsx` — scope the channel**
 
-### 4. Period scoping
+- Get `user.id` (already available via `useAuth` or fall back to fetching once).
+- Rename channel to `profile-${user.id}`.
+- Add `filter: \`id=eq.${user.id}\`` to the `postgres_changes` config.
+- Add `user?.id` to the effect deps.
 
-Already correct: `useFinanceBudgets(householdId, currentMonth)` returns only the selected month's rows, so chip, "all budgeted" check, and edit button are intrinsically scoped to `currentMonth`. No extra work.
+**4. Mutation invalidation fixes** (small additions, all in onSuccess):
 
-### Files touched
+| File | Mutation | Add invalidation for |
+|------|----------|----------------------|
+| `src/hooks/useTasks.ts` | createTask, updateTask, deleteTask | `["taskmaster-tasks", householdId]`, `["daily-plan"]`, `["dashboard-stats", householdId]` |
+| `src/hooks/usePantryItems.ts` | add/update/delete | `["dashboard-stats", householdId]` |
+| `src/pages/HouseholdMembers.tsx` | remove member | `["household-member-emails"]`, `["household"]` |
+| `src/hooks/useHabits.ts` | logHabit | confirm `["household-habit-stats"]` present; add if missing |
+| `src/hooks/useFinance.ts` | useCreateTransaction / useUpdateTransaction / useDeleteTransaction | confirm `finance-monthly-summary`, `finance-dashboard`, and (when `savings_goal_id`) `finance-savings-goals`; add any missing |
 
-- `src/pages/FinanceBudget.tsx` — chip, top-right edit pencil, second `BudgetDialog`, disabled "+ Add" with tooltip, `allCategoriesBudgeted` calc.
-- `src/components/finance/BudgetDialog.tsx` — `mode`/`initialCategory`/`initialAmount` props, read-only category in edit mode, dynamic submit label.
-- `src/hooks/useFinance.ts` — `useUpsertBudget.onError` 23505 branch.
+Each addition is a 1-line `queryClient.invalidateQueries({ queryKey: [...] })` in the existing onSuccess.
 
-No DB migration. Out of scope: F-15 "By Member" view, categories page, deletion, progress-bar logic, monthly review flow.
+### Out of scope
+
+- No DB / RLS / edge-function changes.
+- No new realtime topics — the `HouseholdRealtimeProvider` already covers every shared table.
+- No UI, data-model, or business-logic changes.
+
+### Verification
+
+After edits:
+- `rg "supabase\.channel\(" src` returns exactly 3 callers — provider, generic hook, notification preferences — all with deterministic names and cleanup.
+- Live test with `testuser@dealcompass.test / Test1234!`: add a transaction → navigate away → return → list shows the new row without manual refresh; member count is stable across navigations.

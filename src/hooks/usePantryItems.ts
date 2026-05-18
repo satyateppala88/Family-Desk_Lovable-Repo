@@ -55,6 +55,7 @@ export const usePantryItems = (householdId: string | null) => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["pantry-items", householdId] });
       queryClient.invalidateQueries({ queryKey: ["pantry-stats", householdId] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats", householdId] });
       toast({
         title: "Item added",
         description: "Pantry item has been added successfully.",
@@ -84,6 +85,7 @@ export const usePantryItems = (householdId: string | null) => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["pantry-items", householdId] });
       queryClient.invalidateQueries({ queryKey: ["pantry-stats", householdId] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats", householdId] });
       toast({
         title: "Item updated",
         description: "Pantry item has been updated successfully.",
@@ -110,6 +112,7 @@ export const usePantryItems = (householdId: string | null) => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["pantry-items", householdId] });
       queryClient.invalidateQueries({ queryKey: ["pantry-stats", householdId] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats", householdId] });
       toast({
         title: "Item deleted",
         description: "Pantry item has been removed.",
@@ -137,6 +140,7 @@ export const usePantryItems = (householdId: string | null) => {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["pantry-items", householdId] });
       queryClient.invalidateQueries({ queryKey: ["pantry-stats", householdId] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats", householdId] });
       // Broad invalidation safety net — catches any pantry list view that
       // cached under a different filter / household-less key (e.g. dashboard
       // snapshot). The count was updating but the list stayed blank because

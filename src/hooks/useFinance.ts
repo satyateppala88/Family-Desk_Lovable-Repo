@@ -497,6 +497,7 @@ export const useCreateTransaction = (householdId: string | null) => {
       queryClient.invalidateQueries({ queryKey: ["finance-dashboard", householdId] });
       queryClient.invalidateQueries({ queryKey: ["finance-annual-budget", householdId] });
       queryClient.invalidateQueries({ queryKey: ["finance-budgets", householdId] });
+      queryClient.invalidateQueries({ queryKey: ["finance-savings-goals", householdId] });
     },
   });
 };
@@ -542,6 +543,7 @@ export const useUpdateTransaction = () => {
       queryClient.invalidateQueries({ queryKey: ["finance-dashboard"] });
       queryClient.invalidateQueries({ queryKey: ["finance-annual-budget"] });
       queryClient.invalidateQueries({ queryKey: ["finance-budgets"] });
+      queryClient.invalidateQueries({ queryKey: ["finance-savings-goals"] });
     },
   });
 };
@@ -600,6 +602,7 @@ export const useDeleteTransaction = () => {
       queryClient.invalidateQueries({ queryKey: ["finance-dashboard"] });
       queryClient.invalidateQueries({ queryKey: ["finance-annual-budget"] });
       queryClient.invalidateQueries({ queryKey: ["finance-budgets"] });
+      queryClient.invalidateQueries({ queryKey: ["finance-savings-goals"] });
     },
   });
 };

@@ -80,6 +80,9 @@ export const useTasks = (householdId: string | null, pagination?: PaginationPara
     },
     onSuccess: async (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["tasks", householdId] });
+      queryClient.invalidateQueries({ queryKey: ["taskmaster-tasks", householdId] });
+      queryClient.invalidateQueries({ queryKey: ["daily-plan"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats", householdId] });
       toast({
         title: "Task created",
         description: "Your task has been added successfully.",
@@ -126,6 +129,9 @@ export const useTasks = (householdId: string | null, pagination?: PaginationPara
     },
     onSuccess: async (result, variables) => {
       queryClient.invalidateQueries({ queryKey: ["tasks", householdId] });
+      queryClient.invalidateQueries({ queryKey: ["taskmaster-tasks", householdId] });
+      queryClient.invalidateQueries({ queryKey: ["daily-plan"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats", householdId] });
       toast({
         title: "Task updated",
         description: "Your changes have been saved.",
@@ -170,6 +176,9 @@ export const useTasks = (householdId: string | null, pagination?: PaginationPara
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tasks", householdId] });
+      queryClient.invalidateQueries({ queryKey: ["taskmaster-tasks", householdId] });
+      queryClient.invalidateQueries({ queryKey: ["daily-plan"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats", householdId] });
       toast({
         title: "Task deleted",
         description: "The task has been removed.",
