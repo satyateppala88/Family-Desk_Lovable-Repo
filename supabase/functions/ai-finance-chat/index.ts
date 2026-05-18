@@ -5,6 +5,8 @@ import { z } from "https://deno.land/x/zod@v3.23.8/mod.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
 import { checkRateLimit, AI_RATE_LIMIT } from "../_shared/rate-limit.ts";
 import { Logger } from "../_shared/logger.ts";
+import { buildHouseholdContext, DEGRADED_CONTEXT } from "../_shared/aiContext.ts";
+import { renderSystemPrompt } from "../_shared/aiSystemPrompts.ts";
 
 const MAX_MESSAGE_LENGTH = 4000;
 const MAX_MESSAGES = 50;
@@ -95,105 +97,23 @@ serve(async (req) => {
       });
     }
 
-    // Fetch financial context
-    const now = new Date();
-    const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-    const [y, m] = [now.getFullYear(), now.getMonth() + 1];
-    const monthStart = `${currentMonth}-01`;
-    const nextMonth = m === 12 ? `${y + 1}-01-01` : `${y}-${String(m + 1).padStart(2, "0")}-01`;
-
-    // Format YYYY-MM-DD → DD/MM/YYYY for AI context
-    const fmtDate = (d?: string | null) => {
-      if (!d) return "";
-      const parts = String(d).slice(0, 10).split("-");
-      if (parts.length !== 3) return String(d);
-      return `${parts[2]}/${parts[1]}/${parts[0]}`;
-    };
-    const monthLabel = `${String(m).padStart(2, "0")}/${y}`;
-
-    // Get transactions for current month
-    const { data: transactions } = await supabase
-      .from("finance_transactions")
-      .select("amount, type, category, description, transaction_date")
-      .eq("household_id", householdId)
-      .gte("transaction_date", monthStart)
-      .lt("transaction_date", nextMonth)
-      .order("transaction_date", { ascending: false })
-      .limit(100);
-
-    // Get budgets
-    const { data: budgets } = await supabase
-      .from("finance_budgets")
-      .select("category, planned_amount")
-      .eq("household_id", householdId)
-      .eq("month", currentMonth);
-
-    // Get savings goals
-    const { data: goals } = await supabase
-      .from("finance_savings_goals")
-      .select("name, target_amount, current_amount, target_date, status")
-      .eq("household_id", householdId)
-      .eq("status", "active");
-
-    // Compute summary
-    const txList = transactions || [];
-    const income = txList.filter((t: any) => t.type === "income").reduce((s: number, t: any) => s + Number(t.amount), 0);
-    const expenses = txList.filter((t: any) => t.type === "expense").reduce((s: number, t: any) => s + Number(t.amount), 0);
-
-    const categorySpend: Record<string, number> = {};
-    txList.filter((t: any) => t.type === "expense").forEach((t: any) => {
-      categorySpend[t.category] = (categorySpend[t.category] || 0) + Number(t.amount);
-    });
-
-    const overBudget = (budgets || [])
-      .filter((b: any) => (categorySpend[b.category] || 0) > Number(b.planned_amount))
-      .map((b: any) => `${b.category}: spent ₹${categorySpend[b.category]?.toFixed(0)} vs ₹${Number(b.planned_amount).toFixed(0)} budget`);
-
-    const financialContext = `
-HOUSEHOLD FINANCIAL DATA (${monthLabel}):
-- Monthly Income: ₹${income.toFixed(0)}
-- Monthly Expenses: ₹${expenses.toFixed(0)}
-- Net Savings: ₹${(income - expenses).toFixed(0)}
-- Savings Rate: ${income > 0 ? ((income - expenses) / income * 100).toFixed(0) : 0}%
-
-Category-wise Spending:
-${Object.entries(categorySpend).map(([cat, amt]) => `  ${cat}: ₹${(amt as number).toFixed(0)}`).join("\n") || "  No expenses recorded"}
-
-${overBudget.length > 0 ? `\nOver-Budget Categories:\n${overBudget.map(s => `  ⚠ ${s}`).join("\n")}` : ""}
-
-${budgets?.length ? `\nMonthly Budgets:\n${budgets.map((b: any) => `  ${b.category}: ₹${Number(b.planned_amount).toFixed(0)}`).join("\n")}` : ""}
-
-${goals?.length ? `\nSavings Goals:\n${goals.map((g: any) => `  ${g.name}: ₹${Number(g.current_amount).toFixed(0)} / ₹${Number(g.target_amount).toFixed(0)} (${g.target_date ? `due ${fmtDate(g.target_date)}` : "no deadline"})`).join("\n")}` : ""}
-
-Recent Transactions (last 10):
-${txList.slice(0, 10).map((t: any) => `  ${fmtDate(t.transaction_date)} | ${t.type} | ${t.category} | ₹${Number(t.amount).toFixed(0)} | ${t.description || "-"}`).join("\n") || "  None"}
-`.trim();
-
-    const systemPrompt = `You are FamilyDesk Finance Advisor, a friendly and supportive household finance assistant for Indian families.
-
-Your personality:
-- Warm, encouraging, and professional — never casual to the point of pet names
-- Uses simple language — no financial jargon
-- Focuses on practical, actionable advice
-- Uses ₹ (INR) everywhere, formats in Indian style (lakhs, crores)
-- NEVER uses diminutives or pet names such as "sweetie", "honey", "darling", "dear", or "Awww". Tone is that of a smart, friendly assistant.
-
-Your capabilities:
-- Analyse household spending patterns
-- Compare budget vs actual spending
-- Suggest areas to save money
-- Help plan for savings goals
-- Provide cash flow insights
-
-IMPORTANT RULES:
-- You are NOT a licensed financial advisor. Never give investment or tax advice.
-- Never recommend specific stocks, mutual funds, or financial products.
-- Focus on budgeting, cash flow, and savings trade-offs.
-- Always reference the actual household data when answering.
-- Be supportive — celebrate wins, gently flag concerns.
-- Keep responses concise and practical.
-
-${financialContext}`;
+    // Build finance context using the shared module-aware builder.
+    let contextBlock: string;
+    let contextDegraded = false;
+    try {
+      contextBlock = await buildHouseholdContext({
+        supabase,
+        module: "finance",
+        householdId,
+        userId: user.id,
+      });
+    } catch (ctxErr) {
+      log.warn("Context build failed", { error: String(ctxErr) });
+      contextBlock = DEGRADED_CONTEXT;
+      contextDegraded = true;
+    }
+    const systemPrompt = renderSystemPrompt("finance", contextBlock);
+    const trimmedMessages = messages.length > 20 ? messages.slice(-20) : messages;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -203,7 +123,7 @@ ${financialContext}`;
       },
       body: JSON.stringify({
         model: "google/gemini-3-flash-preview",
-        messages: [{ role: "system", content: systemPrompt }, ...messages],
+        messages: [{ role: "system", content: systemPrompt }, ...trimmedMessages],
         stream: true,
       }),
     });
@@ -225,7 +145,12 @@ ${financialContext}`;
     }
 
     return new Response(response.body, {
-      headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
+      headers: {
+        ...corsHeaders,
+        "Content-Type": "text/event-stream",
+        "x-context-degraded": contextDegraded ? "true" : "false",
+        "Access-Control-Expose-Headers": "x-context-degraded",
+      },
     });
   } catch (error: any) {
     console.error("Finance chat error:", error);
