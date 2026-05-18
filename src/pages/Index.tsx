@@ -1,16 +1,15 @@
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { Header } from "@/components/layout/Header";
 import { PendingInvitationBanner } from "@/components/household/PendingInvitationBanner";
 import { useHousehold } from "@/hooks/useHousehold";
 import { useOnboardingProgress } from "@/hooks/useOnboardingProgress";
 import { useAuth } from "@/contexts/AuthContext";
 import { useDashboardStats } from "@/hooks/useDashboardStats";
-import { supabase } from "@/lib/supabase";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { PageLoadingGrid } from "@/components/ui/page-loading";
-import { Household } from "@/types/database";
 import { useEnabledProducts, isProductEnabled, ProductName } from "@/hooks/useEnabledProducts";
 import { useHouseholdPreferences } from "@/hooks/useHouseholdPreferences";
 import { MODULE_SETUP_KEYS, isModuleSetupComplete } from "@/lib/moduleSetup";
@@ -53,9 +52,9 @@ const moduleDefinitions: {
 
 const Index = () => {
   const navigate = useNavigate();
-  const { householdId, isLoading, onboardingCompleted } = useHousehold();
+  const { householdId, isLoading, onboardingCompleted, householdName, error, refetch } = useHousehold();
   const { user } = useAuth();
-  const [household, setHousehold] = useState<Household | null>(null);
+  const queryClient = useQueryClient();
   const { data: enabledProducts } = useEnabledProducts(householdId);
   const { data: progressData } = useOnboardingProgress(householdId);
   const { data: dashStats } = useDashboardStats(householdId);
@@ -119,20 +118,6 @@ const Index = () => {
     }
   }, [isLoading, householdId, user, navigate]);
 
-  useEffect(() => {
-    const fetchHousehold = async () => {
-      if (householdId) {
-        const { data } = await supabase
-          .from("households")
-          .select("*")
-          .eq("id", householdId)
-          .single();
-        if (data) setHousehold(data);
-      }
-    };
-    fetchHousehold();
-  }, [householdId]);
-
   const visibleModules = moduleDefinitions.filter((m) =>
     isProductEnabled(enabledProducts, m.product)
   );
@@ -141,12 +126,38 @@ const Index = () => {
     return moduleSubtitles?.[product] ?? null;
   };
 
-  if (isLoading || !household) {
+  if (isLoading) {
     return (
       <div className="page-container">
         <Header />
         <main className="page-content">
           <PageLoadingGrid columns={2} cards={6} />
+        </main>
+      </div>
+    );
+  }
+
+  if (error || (!householdId && user)) {
+    return (
+      <div className="page-container">
+        <Header />
+        <main className="page-content">
+          <Card>
+            <CardContent className="p-6 text-center space-y-3">
+              <p className="text-sm text-fd-ink-2">
+                Having trouble loading your home.
+              </p>
+              <Button
+                size="sm"
+                onClick={() => {
+                  queryClient.invalidateQueries({ queryKey: ["household"] });
+                  refetch?.();
+                }}
+              >
+                Tap to retry
+              </Button>
+            </CardContent>
+          </Card>
         </main>
       </div>
     );
@@ -203,7 +214,7 @@ const Index = () => {
             )}
           </h1>
           <p className="text-[12px] text-fd-ink-3 mt-1">
-            {household.name} · {format(new Date(), "EEEE, d MMM")}
+            {householdName ?? ""} · {format(new Date(), "EEEE, d MMM")}
           </p>
         </div>
 

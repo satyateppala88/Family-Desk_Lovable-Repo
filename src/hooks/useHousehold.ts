@@ -5,7 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 export const useHousehold = () => {
   const { user } = useAuth();
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["household", user?.id],
     queryFn: async () => {
       if (!user) return { householdId: null, onboardingCompleted: false, householdName: null, householdAvatarUrl: null };
@@ -49,5 +49,7 @@ export const useHousehold = () => {
     householdAvatarUrl: data?.householdAvatarUrl || null,
     householdCreatedAt: data?.householdCreatedAt || null,
     isLoading,
+    error,
+    refetch,
   };
 };

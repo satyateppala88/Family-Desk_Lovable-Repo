@@ -1,82 +1,55 @@
-# FIX-11 — Reopen Completed Task from History
+# FIX-12 — Household Context, Home Empty State, Install Badge
 
-## Scope
-Only `src/pages/TasksHistory.tsx` changes. No new files, no schema changes, no edits to other views.
+## Findings from codebase exploration
 
-## Schema notes (verified)
-- Tasks use column `task_status` (enum: `backlog | today | in_progress | blocked | done`).
-- Completed = `task_status = 'done'` with `completed_at` set.
-- Default open status on creation in this codebase = `'backlog'` (see `src/lib/recurrence.ts`, `useTaskmaster.ts`).
-- So "reopen" = `task_status: 'backlog'`, `completed_at: null`. (Prompt's "pending" is generic — `backlog` is the actual creation value here.)
-- Active query keys in this project are `taskmaster-tasks` and `taskmaster-tasks-history` / `taskmaster-tasks-completed-count` (no `tasks` / `tasks-summary` keys exist). I'll invalidate the real keys to match the prompt's intent.
+- `useHousehold` (`src/hooks/useHousehold.ts`) already uses React Query with `enabled: !!user` and 5-min staleTime — household persists across navigation via the cache. There is **no `HouseholdProvider`** that could unmount.
+- `App.tsx` already wraps routes with `QueryClientProvider` → `AuthProvider` → `PrivacyModeProvider` → `BrowserRouter`. Correct order.
+- Dependent hooks (`useEnabledProducts`, `useOnboardingProgress`, `useDashboardStats`, `useHabits`, realtime hook) all have `enabled: !!householdId` guards.
+- `useHabits` already passes `household_id: householdId` on insert and invalidates `["habits", householdId]` on success.
 
-## Part 1 — UI: Reopen button on each row
-In the existing row `<li>` inside `TasksHistory.tsx`, append a Reopen `<button>` after the assignees block:
-- Inline styles to match exact spec: `border: 1px solid #6B6965`, `color: #6B6965`, `borderRadius: 6px`, `padding: 4px 10px`, `fontSize: 12px`, transparent background.
-- Vertically centered (row already uses `items-center`).
-- No icon. Disabled while its mutation is pending.
+**So Part 1 / Part 4 are already structurally correct.** The actual bug surface is in two specific places:
 
-## Part 2 — Reopen behaviour
-Add a `useMutation` inside `TasksHistory`:
+1. **`src/pages/Index.tsx`** keeps a separate `useState<Household | null>(household)` populated by a one-off `useEffect` fetch from the `households` table. On every remount of `Index` (which happens because the page is lazy-loaded and rendered fresh on each `/` visit), this state starts as `null`, so the page either:
+   - shows the skeleton until the extra fetch resolves, or
+   - if that fetch silently fails / RLS misbehaves, gets stuck rendering nothing useful.
+   It also creates a redundant network call. This is the realistic source of the "empty home after navigation" symptom.
 
-```ts
-const reopenTask = useMutation({
-  mutationFn: async (taskId: string) => {
-    const { error } = await supabase
-      .from("tasks")
-      .update({ task_status: "backlog", completed_at: null })
-      .eq("id", taskId);
-    if (error) throw error;
-  },
-  onMutate: async (taskId) => {
-    await queryClient.cancelQueries({ queryKey: ["taskmaster-tasks-history", householdId] });
-    const snapshots = queryClient.getQueriesData({ queryKey: ["taskmaster-tasks-history", householdId] });
-    queryClient.setQueriesData(
-      { queryKey: ["taskmaster-tasks-history", householdId] },
-      (old: any) => old ? { ...old, rows: old.rows.filter((r: any) => r.id !== taskId), total: Math.max(0, (old.total ?? 1) - 1) } : old,
-    );
-    return { snapshots };
-  },
-  onError: (_e, _id, ctx) => {
-    ctx?.snapshots.forEach(([key, data]) => queryClient.setQueryData(key, data));
-    toast.error("Couldn't reopen task. Please try again.");
-  },
-  onSuccess: (_d, taskId) => {
-    queryClient.invalidateQueries({ queryKey: ["taskmaster-tasks", householdId] });
-    queryClient.invalidateQueries({ queryKey: ["taskmaster-tasks-history", householdId] });
-    queryClient.invalidateQueries({ queryKey: ["taskmaster-tasks-completed-count", householdId] });
-    queryClient.invalidateQueries({ queryKey: ["daily-plan"] });
+2. **`src/components/install/InstallAppButton.tsx`** shows the "App installed ✓" badge whenever `isStandalone()` is true — forever. No 10-minute / new-install check.
 
-    toast.success("Task reopened", {
-      duration: 5000,
-      action: {
-        label: "Undo",
-        onClick: async () => {
-          const { error } = await supabase
-            .from("tasks")
-            .update({ task_status: "done", completed_at: new Date().toISOString() })
-            .eq("id", taskId);
-          if (error) { toast.error("Undo failed"); return; }
-          queryClient.invalidateQueries({ queryKey: ["taskmaster-tasks", householdId] });
-          queryClient.invalidateQueries({ queryKey: ["taskmaster-tasks-history", householdId] });
-          queryClient.invalidateQueries({ queryKey: ["taskmaster-tasks-completed-count", householdId] });
-        },
-      },
-    });
-  },
-});
-```
+## Plan
 
-Click handler on the button calls `reopenTask.mutate(task.id)`.
+### Part 1 — Household context (verify only, no code changes)
+Document that `useHousehold` already lives in the React Query cache with the required `enabled: !!user` guard, and that all consuming hooks already use `enabled: !!householdId`. No restructuring needed.
 
-## Part 3 — Edge cases
-- Empty state: optimistic removal already shrinks `rows`; existing `allRows.length === 0` branch will render the "No completed tasks yet" empty state automatically.
-- The "View completed tasks →" link on All Tasks reads `taskmaster-tasks-completed-count`, which we invalidate — link disappears when count hits zero.
-- Recurring tasks: single-row update by `id`, so only the specific occurrence is affected. No special handling.
+### Part 2 — Home screen empty / loading / error states (`src/pages/Index.tsx`)
+1. Drop the local `useState<Household | null>` + `useEffect` fetch. Use `householdName` / `householdAvatarUrl` already returned by `useHousehold()` (and pass `householdId` itself as the unique identifier).
+2. Loading guard becomes simply `if (isLoading) { … PageLoadingGrid … }` — page never blanks waiting on a redundant second fetch.
+3. After `isLoading === false` and still no `householdId`, the existing `useEffect` already redirects to `/household-setup` — keep that.
+4. Add an **error / no-data card** for the rare case where `useHousehold` errors out (or returns null while the user is logged in and the redirect hasn't fired):
+   - Single muted card: "Having trouble loading your home — Tap to retry".
+   - Button calls `queryClient.invalidateQueries({ queryKey: ["household"] })`.
+   - Expose `error` and `refetch` from `useHousehold` (small hook tweak: also return `error` and `refetch` from the underlying `useQuery`).
+   - Show this card only on `error` (React Query already auto-retries twice per `query-client.ts`).
+5. Header `household.name` reference becomes `householdName`. `household.avatar_url` (not currently used on Home) is irrelevant.
 
-## Imports to add in `TasksHistory.tsx`
-- `useMutation, useQueryClient` from `@tanstack/react-query`
-- `toast` from `sonner`
+### Part 3 — Install badge (`src/components/install/InstallAppButton.tsx`)
+1. Import `useAuth` from `@/contexts/AuthContext`.
+2. Compute:
+   ```ts
+   const isNewInstall = !!user?.created_at &&
+     (Date.now() - new Date(user.created_at).getTime()) < 10 * 60 * 1000;
+   ```
+3. In the `if (installed)` branch: `return null` unless `isNewInstall`. The rest of the component (install CTA when not installed) is unchanged.
+
+### Part 4 — Habits across navigation
+No code change required after Part 2 — `useHabits` already has the right guards, the right invalidations, and writes `household_id` on insert. Verify the symptom is gone after Part 1+2 ship. The prompt's diagnostic `SELECT * FROM public.habits WHERE household_id IS NULL` can be run separately if it recurs; no preemptive change.
+
+## Files touched
+- `src/pages/Index.tsx` — remove local household state + extra fetch, add error/retry card.
+- `src/hooks/useHousehold.ts` — also return `error` and `refetch` from underlying `useQuery`.
+- `src/components/install/InstallAppButton.tsx` — gate "App installed" badge on 10-min `user.created_at` window.
 
 ## Out of scope
-No layout/grouping/sorting changes. No edit/delete actions. No changes to All Tasks beyond invalidation.
+- No changes to home layout, module grid, or card styling.
+- No changes to Habits UI, creation flow, or RLS.
+- No new HouseholdProvider — React Query cache already provides this.

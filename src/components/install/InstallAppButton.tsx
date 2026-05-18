@@ -9,6 +9,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   isIos,
   isStandalone,
@@ -58,6 +59,7 @@ export const InstallAppButton = ({
   const [installing, setInstalling] = useState(false);
   const [iosOpen, setIosOpen] = useState(false);
   const [supported, setSupported] = useState(false);
+  const { user } = useAuth();
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -105,6 +107,10 @@ export const InstallAppButton = ({
   }, []);
 
   if (installed) {
+    const createdAt = (user as any)?.created_at;
+    const isNewInstall = !!createdAt &&
+      (Date.now() - new Date(createdAt).getTime()) < 10 * 60 * 1000;
+    if (!isNewInstall) return null;
     return (
       <div
         className={`inline-flex items-center gap-2 text-sm text-muted-foreground ${
