@@ -1,121 +1,82 @@
-## FIX-08 — Remove setup modals + welcome toast
+## F-22 — Budget: duplicate block, set indicator, edit mode
 
-### Part 1: Remove ModuleSetupGate wrappers (keep Meals)
+### Schema findings (no migration needed)
 
-Strip `ModuleSetupGate` from these pages (delete the import, unwrap the JSX it surrounds — keep all children intact):
-- `src/pages/Finance.tsx` (line 211/213)
-- `src/pages/Calendar.tsx` (line 209/211)
-- `src/pages/FinanceTrends.tsx` (line 25/217)
-- `src/pages/FinanceReport.tsx` (line 13/73)
-- `src/pages/Habits.tsx` (line 424/426)
-- `src/pages/Grocery.tsx` (line 841/843)
+- Period is stored in a single text column `month` on `public.finance_budgets` (format `YYYY-MM`), not separate `period_month`/`period_year`.
+- A unique constraint **already exists**: `finance_budgets_household_id_month_category_key (household_id, month, category)`. Skip Part 2 / Change 2 (no SQL to run).
+- The category dropdown already excludes already-budgeted categories (`BudgetDialog` accepts `existingCategories` and `FinanceBudget` passes them in). Keep this; extend with the additional UX below.
 
-Keep `Meals.tsx` gate as-is (explicitly excluded by the brief).
+### 1. "Budget set" chip on category cards
 
-Note: there is no separate Budget setup modal — `/finance/budget` (`FinanceBudget.tsx`) has no `ModuleSetupGate`. Confirmed via grep. So "Budget setup" disappears automatically.
+In `src/pages/FinanceBudget.tsx`, inside each row card (around the category-name flex row), render a small chip directly under the category name:
 
-### Part 2: Dead-code cleanup
+- Only shown when `Number(row.planned_amount) > 0` (matches the spec's "budget exists for current period" — `budgetRows` is already scoped to `currentMonth`).
+- Markup: `<span className="inline-flex items-center text-[11px] font-medium px-2 py-0.5 rounded-full" style={{ background: "#E6F2EE", color: "#0F6E56" }}>Budget set</span>`.
+- Left-aligned, below the title, above the progress bar. Move the title + chip into a small vertical stack while keeping the percentage on the right.
 
-After unwrapping, these become unused — delete them:
-- `src/components/onboarding/ModuleSetupGate.tsx`
-- `src/components/onboarding/ModuleSetupGate.test.tsx`
-- `src/hooks/useModuleSetup.ts` (only consumed by the gate)
+### 2. Block duplicate creation
 
-Keep, because they remain in use by the dashboard setup banner and progress card (`Index.tsx`, `SetupProgressCard.tsx`, `UserPreferencesOnboarding.tsx`, onboarding flow):
-- `src/lib/moduleSetup.ts`
-- `MODULE_SETUP_KEYS`, `isModuleSetupComplete`, `*_setup_complete` DB columns
+Disable "+ Add" when every selectable category is already budgeted for `currentMonth`.
 
-No DB migration. No changes to the dashboard "Let's finish setting up" banner (that's not a modal).
+- Compute `allCategoriesBudgeted` in `FinanceBudget.tsx`:
+  - Selectable set = `FINANCE_CATEGORIES` minus income (`salary`, `freelance`, `investment_returns`) plus all `customCats` keys (scope `transaction`).
+  - `budgetedSet = new Set((budgets || []).map(b => b.category))`.
+  - `allCategoriesBudgeted = selectable.every(c => budgetedSet.has(c))`.
+- Wrap the desktop and `QuickActionButton` "Add Budget" trigger with a `Tooltip` (shadcn). When disabled, tooltip text: `"All categories have budgets set. Edit an existing one to make changes."`
+- Pass the same `existingCategories` to `BudgetDialog` (already wired).
 
-### Part 3: Replace dashboard welcome modal with one-time toast
+Improve error handling in `useUpsertBudget.onError` (`src/hooks/useFinance.ts`):
 
-In `src/pages/Index.tsx`:
-- Remove `OnboardingTour` import, `dashboardTourSteps`, `runOnboarding` state, `welcomeVisible`, `shouldShowWelcome`, `welcomeAlreadyDone`, `localWelcomeDone`, `WELCOME_KEY`, `completedTours` query, `handleOnboardingComplete`, `handleStartOnboarding`, the `<OnboardingTour …>` JSX, and the setTimeout that triggers it.
-- Header's `onStartOnboarding` prop: pass a no-op or remove if optional (verify in `Header.tsx`).
-- Simplify the notification primer effect: drop the `welcomeVisible` gate, keep the rest.
-- Add a new effect that fires the welcome toast:
-  ```ts
-  useEffect(() => {
-    if (!user?.created_at) return;
-    const isNewUser = Date.now() - new Date(user.created_at).getTime() < 5 * 60 * 1000;
-    if (!isNewUser) return;
-    const key = `fd_welcome_toast_shown:${user.id}`;
-    if (sessionStorage.getItem(key)) return;
-    sessionStorage.setItem(key, "1");
-    const firstName = user.user_metadata?.display_name?.split(" ")[0] || "there";
-    toast(`Welcome to FamilyDesk, ${firstName}! 👋`, {
-      description: "Your household is set up and ready.",
-      duration: 4000,
-      closeButton: true,
-    });
-  }, [user]);
-  ```
-- Import `toast` from `sonner`. Session-storage guard prevents duplicate fires from re-mounts inside the 5-minute window; the time check handles all later sessions.
-
-### Part 4: Info banners
-
-`ModuleNudgeBanner` (used by `Finance.tsx`, `Calendar.tsx`, `Tasks.tsx`) **already** has an X button and per-user localStorage dismissal (`fd_module_nudge_dismissed:<userId>:<moduleKey>`). No work needed — verify and move on.
-
----
-
-## FIX-09 — Tasks history
-
-### Part 1: Filter `/tasks` to open tasks at the query level
-
-In `src/hooks/useTasks.ts`:
-- Add an optional `includeCompleted?: boolean` (default `false`) parameter alongside `pagination`.
-- In the Supabase query, when not including completed, append `.neq("status", "completed")`. Apply to both the rows query and the `count: "exact"` count so `totalCount`/`activeCount` are correct. (The schema uses the single value `"completed"` — confirmed in `Tasks.tsx` line 57 and `TaskCard.tsx`.)
-- Update the query key to include the flag: `["tasks", householdId, page, pageSize, includeCompleted]`.
-
-In `src/pages/Tasks.tsx`:
-- Calls `useTasks(householdId)` → now returns only open tasks.
-- Remove the in-memory `t.status !== "completed"` filter for `activeCount` (the list is already filtered).
-- The status filter `<Select>` currently offers "completed" as an option — drop the completed option from that select (it would always return 0 now) and keep "all / pending / in-progress".
-
-### Part 2: "View completed tasks →" link
-
-- Add a small query in `Tasks.tsx` (or extend `useTasks`) that returns just the count of completed tasks for the household:
-  ```ts
-  const { data: completedCount } = useQuery({
-    queryKey: ["tasks-completed-count", householdId],
-    queryFn: async () => {
-      const { count } = await supabase
-        .from("tasks").select("id", { count: "exact", head: true })
-        .eq("household_id", householdId).eq("status", "completed");
-      return count ?? 0;
-    },
-    enabled: !!householdId,
-    staleTime: 60_000,
-  });
-  ```
-- Render below the last task card, above the FAB/bottom-nav:
-  ```tsx
-  {completedCount > 0 && (
-    <div className="mt-4 text-left">
-      <Link to="/tasks/history" className="text-[13px] text-fd-ink-3 hover:text-fd-ink underline-offset-2 hover:underline">
-        View completed tasks →
-      </Link>
-    </div>
-  )}
-  ```
-
-### Part 3: `/tasks/history` page
-
-Create `src/pages/TasksHistory.tsx`:
-- Header with back arrow → `navigate("/tasks")`, title "Completed Tasks".
-- Query `tasks` where `household_id = … AND status = 'completed'`, order `completed_at desc nulls last, created_at desc`, range-paginated 30 per page. Track `page` in state; "Load more" button appends results client-side.
-- Group rendered items by month using `format(date, "MMMM yyyy")` on `completed_at ?? updated_at`.
-- Per row: greyed strikethrough title (`text-fd-ink-3 line-through`), small `Completed {format(date, "d MMM")}` line, optional assignee avatar (reuse the avatar bit from `TaskCard`). Read-only — no checkbox/edit/delete.
-- Empty state: `EmptyState` component with check icon, "No completed tasks yet" / "Tasks you complete will appear here".
-
-Register the route in `src/App.tsx` under the protected routes block, next to `/tasks`:
-```tsx
-<Route path="/tasks/history" element={<ProtectedRoute><TasksHistory /></ProtectedRoute>} />
+```ts
+onError: (e: any, _vars, ctx) => {
+  ctx?.snapshots?.forEach(([key, prev]) => queryClient.setQueryData(key, prev));
+  if (e?.code === "23505") {
+    toast.error("A budget for this category already exists. Use Edit to update it.");
+  } else {
+    toast.error(e?.message || "Failed to save budget. Please try again.");
+  }
+},
 ```
 
-### Out of scope
+### 3. Edit existing budget via dialog
 
-- My Tasks, Projects, Templates tabs untouched.
-- Task completion flow untouched.
-- No DB migrations.
-- Taskmaster pages (`/taskmaster/*`) untouched — only `/tasks` is in scope.
+Today there is only an inline-input pencil next to the amount. Add a top-right pencil icon button on each budgeted card that opens `BudgetDialog` in edit mode. Keep the existing inline edit untouched (it still works, no scope creep).
+
+Changes in `src/components/finance/BudgetDialog.tsx`:
+
+- Add props: `mode?: "create" | "edit"`, `initialCategory?: string`, `initialAmount?: number`.
+- When `mode === "edit"`:
+  - Render Category as plain read-only text (resolved label via `resolveCategoryLabel`) instead of `CategorySelect`. No chevron.
+  - Pre-fill `amount` from `initialAmount` (via a `useEffect` keyed on `open` + `initialAmount`).
+  - Submit button label: `"Update Budget"` (saving state `"Updating..."`).
+- Reset internal state when the sheet closes so the next open is clean.
+
+Changes in `src/pages/FinanceBudget.tsx`:
+
+- New state: `const [editingBudget, setEditingBudget] = useState<FinanceBudget | null>(null)`.
+- Add a pencil `IconButton` (lucide `Pencil`, 16px, `text-[#6B6965]`, `aria-label="Edit budget"`) absolutely positioned top-right of each row card (only when `Number(row.planned_amount) > 0`).
+- On click: `setEditingBudget(row)`.
+- Render a second `BudgetDialog`:
+  ```tsx
+  <BudgetDialog
+    open={!!editingBudget}
+    onOpenChange={(o) => !o && setEditingBudget(null)}
+    mode="edit"
+    initialCategory={editingBudget?.category}
+    initialAmount={Number(editingBudget?.planned_amount || 0)}
+    onSave={(data) => upsertBudget.mutate({ month: currentMonth, category: editingBudget!.category, planned_amount: data.planned_amount })}
+  />
+  ```
+  The upsert hits the unique key and updates the existing row (effectively an UPDATE by id+category+month).
+
+### 4. Period scoping
+
+Already correct: `useFinanceBudgets(householdId, currentMonth)` returns only the selected month's rows, so chip, "all budgeted" check, and edit button are intrinsically scoped to `currentMonth`. No extra work.
+
+### Files touched
+
+- `src/pages/FinanceBudget.tsx` — chip, top-right edit pencil, second `BudgetDialog`, disabled "+ Add" with tooltip, `allCategoriesBudgeted` calc.
+- `src/components/finance/BudgetDialog.tsx` — `mode`/`initialCategory`/`initialAmount` props, read-only category in edit mode, dynamic submit label.
+- `src/hooks/useFinance.ts` — `useUpsertBudget.onError` 23505 branch.
+
+No DB migration. Out of scope: F-15 "By Member" view, categories page, deletion, progress-bar logic, monthly review flow.

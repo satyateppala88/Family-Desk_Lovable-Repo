@@ -21,6 +21,8 @@ import {
   useCarryForwardBudgets,
   useFinanceTransactions,
   CATEGORY_LABELS,
+  FINANCE_CATEGORIES,
+  type FinanceBudget as FinanceBudgetType,
 } from "@/hooks/useFinance";
 import { useHouseholdMembers } from "@/hooks/useHouseholdMembers";
 import { formatINR } from "@/lib/formatINR";
@@ -32,6 +34,7 @@ import { cn } from "@/lib/utils";
 import { BudgetSubNav } from "@/components/finance/BudgetSubNav";
 import { supabase } from "@/lib/supabase";
 import { useQueryClient } from "@tanstack/react-query";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 const FinanceBudget = () => {
   const { householdId } = useHousehold();
@@ -53,6 +56,7 @@ const FinanceBudget = () => {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [showAdd, setShowAdd] = useState(false);
+  const [editingBudget, setEditingBudget] = useState<FinanceBudgetType | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editAmount, setEditAmount] = useState<string>("");
   const [expandedBreakdown, setExpandedBreakdown] = useState<Record<string, boolean>>({});
@@ -137,6 +141,24 @@ const FinanceBudget = () => {
     return { ...b, actual, pct, over };
   }).sort((a, b) => b.pct - a.pct);
 
+  // All available expense categories (built-in minus income + custom)
+  const incomeKeys = new Set(["salary", "freelance", "investment_returns"]);
+  const selectableCategories = useMemo(() => {
+    const builtIn = FINANCE_CATEGORIES.filter((c) => !incomeKeys.has(c));
+    const custom = (customCats || []).map((c) => c.key);
+    return Array.from(new Set([...builtIn, ...custom]));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [customCats]);
+  const budgetedSet = useMemo(
+    () => new Set((budgets || []).map((b) => b.category)),
+    [budgets]
+  );
+  const allCategoriesBudgeted =
+    selectableCategories.length > 0 &&
+    selectableCategories.every((c) => budgetedSet.has(c));
+  const addDisabledTooltip =
+    "All categories have budgets set. Edit an existing one to make changes.";
+
   const selectedMember = isMemberView ? memberById.get(selectedPaidBy) : null;
   const selectedFirstName = selectedMember ? firstName(selectedMember.displayName) : "";
 
@@ -179,9 +201,24 @@ const FinanceBudget = () => {
                 <Tag className="w-4 h-4 mr-1" /> Categories
               </Link>
             </Button>
-            <Button size="sm" onClick={() => setShowAdd(true)}>
-              <Plus className="w-4 h-4 mr-1" /> Add
-            </Button>
+            <TooltipProvider delayDuration={150}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span tabIndex={allCategoriesBudgeted ? 0 : -1}>
+                    <Button
+                      size="sm"
+                      onClick={() => setShowAdd(true)}
+                      disabled={allCategoriesBudgeted}
+                    >
+                      <Plus className="w-4 h-4 mr-1" /> Add
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                {allCategoriesBudgeted && (
+                  <TooltipContent>{addDisabledTooltip}</TooltipContent>
+                )}
+              </Tooltip>
+            </TooltipProvider>
           </div>
         </div>
 
@@ -253,13 +290,33 @@ const FinanceBudget = () => {
         ) : (
           <div className="space-y-2">
             {budgetRows.map((row) => (
-              <Card key={row.id} className={cn(row.over && "border-destructive/20")}>
+              <Card key={row.id} className={cn("relative", row.over && "border-destructive/20")}>
                 <CardContent className="p-3 sm:p-4 space-y-2">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium">
-                      {resolveCategoryLabel(row.category, CATEGORY_LABELS, customCats)}
-                    </span>
-                    <div className="text-right">
+                  {Number(row.planned_amount) > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setEditingBudget(row)}
+                      aria-label="Edit budget"
+                      className="absolute top-2 right-2 p-1 rounded hover:bg-muted/60 transition"
+                    >
+                      <Pencil className="w-4 h-4" style={{ color: "#6B6965" }} />
+                    </button>
+                  )}
+                  <div className="flex justify-between items-start gap-2 pr-7">
+                    <div className="min-w-0 flex flex-col items-start gap-1">
+                      <span className="text-sm font-medium">
+                        {resolveCategoryLabel(row.category, CATEGORY_LABELS, customCats)}
+                      </span>
+                      {Number(row.planned_amount) > 0 && (
+                        <span
+                          className="inline-flex items-center text-[11px] font-medium px-2 py-0.5 rounded-full"
+                          style={{ background: "#E6F2EE", color: "#0F6E56" }}
+                        >
+                          Budget set
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-right shrink-0">
                       {Number(row.planned_amount) > 0 ? (
                         <span className={cn(
                           "text-xs font-medium",
@@ -379,7 +436,17 @@ const FinanceBudget = () => {
 
       <QuickActionButton
         items={[
-          { label: "Add Budget", icon: Plus, onClick: () => setShowAdd(true) },
+          {
+            label: "Add Budget",
+            icon: Plus,
+            onClick: () => {
+              if (allCategoriesBudgeted) {
+                toast.info(addDisabledTooltip);
+                return;
+              }
+              setShowAdd(true);
+            },
+          },
           { label: "Categories", icon: Tag, onClick: () => navigate("/finance/budget/categories") },
         ]}
         className="sm:hidden"
@@ -390,6 +457,23 @@ const FinanceBudget = () => {
         onOpenChange={setShowAdd}
         onSave={(data) => upsertBudget.mutate({ month: currentMonth, ...data })}
         existingCategories={(budgets || []).map((b) => b.category)}
+      />
+
+      <BudgetDialog
+        open={!!editingBudget}
+        onOpenChange={(o) => { if (!o) setEditingBudget(null); }}
+        mode="edit"
+        initialCategory={editingBudget?.category}
+        initialAmount={editingBudget ? Number(editingBudget.planned_amount) : undefined}
+        onSave={(data) => {
+          if (!editingBudget) return;
+          upsertBudget.mutate({
+            month: currentMonth,
+            category: editingBudget.category,
+            planned_amount: data.planned_amount,
+          });
+          setEditingBudget(null);
+        }}
       />
     </div>
   );
