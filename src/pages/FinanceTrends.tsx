@@ -22,7 +22,6 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { ModuleSetupGate } from "@/components/onboarding/ModuleSetupGate";
 
 const FinanceTrends = () => {
   const { householdId } = useHousehold();
@@ -213,9 +212,4 @@ const FinanceTrends = () => {
   );
 };
 
-const FinanceTrendsWithGate = () => (
-  <ModuleSetupGate module="finance_setup">
-    <FinanceTrends />
-  </ModuleSetupGate>
-);
-export default FinanceTrendsWithGate;
+export default FinanceTrends;

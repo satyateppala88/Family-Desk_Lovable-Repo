@@ -206,10 +206,4 @@ const Calendar = () => {
   );
 };
 
-import { ModuleSetupGate } from "@/components/onboarding/ModuleSetupGate";
-const CalendarWithGate = () => (
-  <ModuleSetupGate module="calendar_setup">
-    <Calendar />
-  </ModuleSetupGate>
-);
-export default CalendarWithGate;
+export default Calendar;

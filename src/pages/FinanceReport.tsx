@@ -10,7 +10,6 @@ import { useReportTagline } from "@/hooks/useReportTagline";
 import { ReportCard } from "@/components/finance/ReportCard";
 import { ReportShareButton } from "@/components/finance/ReportShareButton";
 import { format, addMonths, parse, startOfMonth } from "date-fns";
-import { ModuleSetupGate } from "@/components/onboarding/ModuleSetupGate";
 
 const FinanceReport = () => {
   const { householdId } = useHousehold();
@@ -69,10 +68,4 @@ const FinanceReport = () => {
   );
 };
 
-const FinanceReportWithGate = () => (
-  <ModuleSetupGate module="finance_setup">
-    <FinanceReport />
-  </ModuleSetupGate>
-);
-
-export default FinanceReportWithGate;
+export default FinanceReport;
