@@ -16,6 +16,8 @@ import { CREDIT_CARD_CATALOG } from "@/data/creditCardCatalog";
 import { AddCardDialog } from "@/components/finance/AddCardDialog";
 import { CardRecommender } from "@/components/finance/CardRecommender";
 import { formatINR } from "@/lib/formatINR";
+import { PrivateValue } from "@/components/shared/PrivateValue";
+import { usePrivacyMode } from "@/contexts/PrivacyModeContext";
 import { cn } from "@/lib/utils";
 
 const FinanceCards = () => {
