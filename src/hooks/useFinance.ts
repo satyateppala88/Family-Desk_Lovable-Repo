@@ -758,6 +758,43 @@ export const useUpsertBudget = (householdId: string | null) => {
   });
 };
 
+/**
+ * Update an existing recurring/annual budget row by id (e.g. "this and all
+ * future months"). For annual rows, pass `annual_amount` and the monthly
+ * `planned_amount` will be re-derived by the caller.
+ */
+export const useUpdateBudgetById = (householdId: string | null) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: {
+      id: string;
+      planned_amount: number;
+      annual_amount?: number | null;
+    }) => {
+      const patch: Record<string, unknown> = {
+        planned_amount: data.planned_amount,
+        updated_at: new Date().toISOString(),
+      };
+      if (data.annual_amount !== undefined) patch.annual_amount = data.annual_amount;
+      const { data: row, error } = await supabase
+        .from("finance_budgets")
+        .update(patch)
+        .eq("id", data.id)
+        .select()
+        .single();
+      if (error) throw error;
+      return row as FinanceBudget;
+    },
+    onSuccess: () => {
+      toast.success("Budget updated");
+      queryClient.invalidateQueries({ queryKey: ["finance-budgets", householdId] });
+      queryClient.invalidateQueries({ queryKey: ["finance-annual-budget", householdId] });
+      queryClient.invalidateQueries({ queryKey: ["finance-dashboard", householdId] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+};
+
 export const useCreateSavingsGoal = (householdId: string | null) => {
   const queryClient = useQueryClient();
   const { user } = useAuth();
