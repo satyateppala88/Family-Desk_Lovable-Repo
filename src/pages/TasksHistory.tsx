@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { Header } from "@/components/layout/Header";
 import { supabase } from "@/integrations/supabase/client";
 import { useHousehold } from "@/hooks/useHousehold";
@@ -27,6 +28,59 @@ interface CompletedTaskRow {
 const TasksHistory = () => {
   const { householdId, isLoading: loadingHousehold } = useHousehold();
   const [page, setPage] = useState(0);
+  const queryClient = useQueryClient();
+
+  const reopenTask = useMutation({
+    mutationFn: async (taskId: string) => {
+      const { error } = await supabase
+        .from("tasks")
+        .update({ task_status: "backlog", completed_at: null } as any)
+        .eq("id", taskId);
+      if (error) throw error;
+    },
+    onMutate: async (taskId: string) => {
+      await queryClient.cancelQueries({ queryKey: ["taskmaster-tasks-history", householdId] });
+      const snapshots = queryClient.getQueriesData({ queryKey: ["taskmaster-tasks-history", householdId] });
+      queryClient.setQueriesData(
+        { queryKey: ["taskmaster-tasks-history", householdId] },
+        (old: any) =>
+          old
+            ? { ...old, rows: old.rows.filter((r: any) => r.id !== taskId), total: Math.max(0, (old.total ?? 1) - 1) }
+            : old,
+      );
+      return { snapshots };
+    },
+    onError: (_e, _id, ctx: any) => {
+      ctx?.snapshots?.forEach(([key, data]: any) => queryClient.setQueryData(key, data));
+      toast.error("Couldn't reopen task. Please try again.");
+    },
+    onSuccess: (_d, taskId: string) => {
+      queryClient.invalidateQueries({ queryKey: ["taskmaster-tasks", householdId] });
+      queryClient.invalidateQueries({ queryKey: ["taskmaster-tasks-history", householdId] });
+      queryClient.invalidateQueries({ queryKey: ["taskmaster-tasks-completed-count", householdId] });
+      queryClient.invalidateQueries({ queryKey: ["daily-plan"] });
+
+      toast.success("Task reopened", {
+        duration: 5000,
+        action: {
+          label: "Undo",
+          onClick: async () => {
+            const { error } = await supabase
+              .from("tasks")
+              .update({ task_status: "done", completed_at: new Date().toISOString() } as any)
+              .eq("id", taskId);
+            if (error) {
+              toast.error("Undo failed");
+              return;
+            }
+            queryClient.invalidateQueries({ queryKey: ["taskmaster-tasks", householdId] });
+            queryClient.invalidateQueries({ queryKey: ["taskmaster-tasks-history", householdId] });
+            queryClient.invalidateQueries({ queryKey: ["taskmaster-tasks-completed-count", householdId] });
+          },
+        },
+      });
+    },
+  });
 
   const { data, isLoading } = useQuery({
     queryKey: ["taskmaster-tasks-history", householdId, page],
@@ -176,6 +230,23 @@ const TasksHistory = () => {
                             })}
                           </div>
                         )}
+                        <button
+                          type="button"
+                          onClick={() => reopenTask.mutate(task.id)}
+                          disabled={reopenTask.isPending}
+                          style={{
+                            border: "1px solid #6B6965",
+                            color: "#6B6965",
+                            borderRadius: 6,
+                            padding: "4px 10px",
+                            fontSize: 12,
+                            background: "transparent",
+                            lineHeight: 1,
+                          }}
+                          className="shrink-0 disabled:opacity-50"
+                        >
+                          Reopen
+                        </button>
                       </li>
                     );
                   })}
