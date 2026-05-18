@@ -10,26 +10,29 @@ export const useHousehold = () => {
     queryFn: async () => {
       if (!user) return { householdId: null, onboardingCompleted: false, householdName: null, householdAvatarUrl: null };
 
-      // Single join query instead of two sequential round-trips.
-      // Order by household created_at DESC so users in multiple households
-      // deterministically land in the most recently created one.
-      // maybeSingle() returns null instead of throwing when no row exists.
+      // Fetch recent memberships and choose the best household client-side.
+      // If a user has an abandoned/incomplete household plus a real one,
+      // prefer the completed household so the dashboard does not open empty.
       const { data: memberData, error: memberError } = await (supabase as any)
         .from("household_members")
         .select("household_id, households(onboarding_completed, name, avatar_url, created_at)")
         .eq("user_id", user.id)
         .order("joined_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .limit(10);
 
       if (memberError) throw memberError;
 
-      const householdId = memberData?.household_id || null;
+      const memberships = Array.isArray(memberData) ? memberData : [];
+      const selectedMembership =
+        memberships.find((m: any) => m?.households?.onboarding_completed) ||
+        memberships[0];
+
+      const householdId = selectedMembership?.household_id || null;
       if (!householdId) {
         return { householdId: null, onboardingCompleted: false, householdName: null, householdAvatarUrl: null, householdCreatedAt: null };
       }
 
-      const householdData = memberData?.households;
+      const householdData = selectedMembership?.households;
       return {
         householdId,
         onboardingCompleted: householdData?.onboarding_completed || false,
