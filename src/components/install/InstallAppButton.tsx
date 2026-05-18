@@ -9,6 +9,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   isIos,
   isStandalone,
