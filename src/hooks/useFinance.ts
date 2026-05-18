@@ -49,6 +49,13 @@ export interface FinanceBudget {
   created_by: string;
   created_at: string;
   updated_at: string;
+  is_recurring?: boolean;
+  budget_type?: "monthly" | "annual";
+  annual_amount?: number | null;
+  // Resolution metadata added by useFinanceBudgets — never written to DB.
+  _source?: "exact" | "recurring" | "annual";
+  _originalId?: string;
+  _originalMonth?: string;
 }
 
 export interface FinanceSavingsGoal {
