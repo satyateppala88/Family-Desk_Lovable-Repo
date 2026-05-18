@@ -230,6 +230,19 @@ export const useHabits = (householdId: string | null, userId?: string) => {
     }) => {
       if (!user?.id || !householdId) throw new Error("Not authenticated");
 
+      // Household-level habits fan out to all members via SECURITY DEFINER RPC,
+      // so one tick credits everyone with the log, streak, and points.
+      const habit = (habits ?? []).find((h) => h.id === habitId);
+      if (habit?.assignment_type === "household") {
+        const { error } = await supabase.rpc("log_household_habit", {
+          _habit_id: habitId,
+          _completed: completed,
+          _actual_value: actualValue ?? null,
+        });
+        if (error) throw error;
+        return null;
+      }
+
       // Upsert the log
       const { data, error } = await supabase
         .from("habit_logs")
@@ -295,6 +308,8 @@ export const useHabits = (householdId: string | null, userId?: string) => {
       queryClient.invalidateQueries({ queryKey: ["household-habit-stats"] });
       queryClient.invalidateQueries({ queryKey: ["habit-leaderboard"] });
       queryClient.invalidateQueries({ queryKey: ["habit-scores"] });
+      // Household-habit fan-out writes logs for other members too; force a refetch.
+      queryClient.invalidateQueries({ queryKey: ["habit-logs-today"] });
     },
     onError: (error: Error, _vars, ctx) => {
       if (ctx?.queryKey) {
