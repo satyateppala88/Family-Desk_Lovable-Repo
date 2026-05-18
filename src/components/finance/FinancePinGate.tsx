@@ -47,7 +47,7 @@ export const FinancePinGate = ({ children }: { children: React.ReactNode }) => {
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4 py-10">
       <div className="mb-8">
-        <FamilyDeskLogo size="md" showTagline={false} />
+        <FamilyDeskLogo size="lg" showTagline={false} />
       </div>
       <h1 className="text-xl font-semibold text-foreground mb-2">Enter PIN to access Finance</h1>
       <p className="text-sm text-muted-foreground mb-8">Your financial data is locked on this device.</p>
