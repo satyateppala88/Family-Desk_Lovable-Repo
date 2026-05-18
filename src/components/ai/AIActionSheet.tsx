@@ -56,6 +56,7 @@ export const AIActionSheet = ({ isOpen, onClose, initialPrompt }: AIActionSheetP
               messages: next.map((m) => ({ role: m.role, content: m.content })),
               householdId,
               userId: user.id,
+              module: "general",
             }),
           },
         );
