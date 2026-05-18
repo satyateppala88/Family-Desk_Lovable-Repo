@@ -57,6 +57,7 @@ const FinanceBudget = () => {
   );
   const upsertBudget = useUpsertBudget(householdId);
   const updateBudgetById = useUpdateBudgetById(householdId);
+  const deleteBudgetById = useDeleteBudgetById(householdId);
   const carryForward = useCarryForwardBudgets(householdId);
   const queryClient = useQueryClient();
   const navigate = useNavigate();
