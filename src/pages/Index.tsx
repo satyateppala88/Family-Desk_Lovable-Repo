@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { useNavigate, Link } from "react-router-dom";
 import { Header } from "@/components/layout/Header";
 import { PendingInvitationBanner } from "@/components/household/PendingInvitationBanner";
