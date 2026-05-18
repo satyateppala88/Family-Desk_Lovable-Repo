@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useNotificationPreferences } from "@/hooks/useNotificationPreferences";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface NotificationType {
   id: string;
@@ -83,18 +84,18 @@ export function NotificationPreferencesSection() {
   const { preferences, isLoading, togglePreference, isUpdating } = useNotificationPreferences();
   const [phoneVerified, setPhoneVerified] = useState(false);
   const [loadingPhone, setLoadingPhone] = useState(true);
+  const { user } = useAuth();
+  const userId = user?.id;
 
   // Check phone verification status
   useEffect(() => {
+    if (!userId) return;
     const checkPhoneVerification = async () => {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
-
         const { data: profile } = await supabase
           .from("profiles")
           .select("phone_verified")
-          .eq("id", user.id)
+          .eq("id", userId)
           .maybeSingle();
 
         setPhoneVerified(profile?.phone_verified || false);
@@ -107,15 +108,17 @@ export function NotificationPreferencesSection() {
 
     checkPhoneVerification();
 
-    // Subscribe to profile changes
+    // Subscribe to this user's profile changes only — deterministic
+    // channel name so HMR/remount cannot leave a zombie topic behind.
     const channel = supabase
-      .channel("profile-changes")
+      .channel(`profile-${userId}`)
       .on(
         "postgres_changes",
         {
           event: "UPDATE",
           schema: "public",
           table: "profiles",
+          filter: `id=eq.${userId}`,
         },
         (payload) => {
           if (payload.new.phone_verified !== undefined) {
@@ -128,7 +131,7 @@ export function NotificationPreferencesSection() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [userId]);
 
   if (isLoading || loadingPhone) {
     return (
