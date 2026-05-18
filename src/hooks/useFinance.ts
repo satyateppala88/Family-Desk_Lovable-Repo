@@ -1104,9 +1104,11 @@ export const useFinanceAnnualBudget = (householdId: string | null, year: number)
       const [budgetsRes, txnsRes] = await Promise.all([
         supabase
           .from("finance_budgets")
-          .select("month,category,planned_amount")
+          .select("month,category,planned_amount,is_recurring,budget_type,annual_amount")
           .eq("household_id", householdId!)
-          .gte("month", yStart)
+          .or(
+            `and(month.gte.${yStart},month.lte.${yEnd}),is_recurring.eq.true`,
+          )
           .lte("month", yEnd),
         supabase
           .from("finance_transactions")
@@ -1135,13 +1137,50 @@ export const useFinanceAnnualBudget = (householdId: string | null, year: number)
         return r;
       };
 
-      (budgetsRes.data || []).forEach((b: any) => {
-        const m = parseInt(String(b.month).slice(5, 7), 10) - 1;
-        if (m < 0 || m > 11) return;
-        const row = ensure(b.category);
-        row.monthlyPlanned[m] += Number(b.planned_amount) || 0;
-        row.annualPlanned += Number(b.planned_amount) || 0;
-      });
+      const allBudgets = (budgetsRes.data || []) as Array<any>;
+      // Resolve a planned amount for each (category, month-of-year) using the
+      // same precedence as useFinanceBudgets: exact > annual > most-recent recurring.
+      // Build per-month resolution per category.
+      const cats = new Set<string>(allBudgets.map((b) => b.category));
+      // Pre-sort recurring monthly rows desc by month for "most-recent prior" lookup.
+      const recurringMonthly = allBudgets
+        .filter((b) => b.is_recurring && (b.budget_type ?? "monthly") === "monthly")
+        .sort((a, b) => String(b.month).localeCompare(String(a.month)));
+      const annualRows = allBudgets.filter(
+        (b) => b.is_recurring && b.budget_type === "annual" && String(b.month).slice(0, 4) === String(year),
+      );
+      const exactRows = allBudgets.filter(
+        (b) => !b.is_recurring && String(b.month).slice(0, 4) === String(year),
+      );
+
+      for (const cat of cats) {
+        const row = ensure(cat);
+        const annual = annualRows.find((b) => b.category === cat);
+        const exactsByMonthIdx = new Map<number, number>(); // 0..11 -> amount
+        exactRows
+          .filter((b) => b.category === cat)
+          .forEach((b) => {
+            const mi = parseInt(String(b.month).slice(5, 7), 10) - 1;
+            if (mi >= 0 && mi < 12) exactsByMonthIdx.set(mi, Number(b.planned_amount) || 0);
+          });
+        const catRecurring = recurringMonthly.filter((b) => b.category === cat);
+        for (let i = 0; i < 12; i++) {
+          if (exactsByMonthIdx.has(i)) {
+            row.monthlyPlanned[i] = exactsByMonthIdx.get(i)!;
+            continue;
+          }
+          if (annual) {
+            row.monthlyPlanned[i] = Math.floor(Number(annual.annual_amount ?? annual.planned_amount * 12) / 12);
+            continue;
+          }
+          // Most-recent recurring row whose anchor month is <= (year-monthIdx).
+          const targetMonth = `${year}-${String(i + 1).padStart(2, "0")}`;
+          const rec = catRecurring.find((b) => String(b.month) <= targetMonth);
+          if (rec) row.monthlyPlanned[i] = Number(rec.planned_amount) || 0;
+        }
+        row.annualPlanned = row.monthlyPlanned.reduce((a, b) => a + b, 0);
+      }
+
       (txnsRes.data || []).forEach((t: any) => {
         const m = parseInt(String(t.transaction_date).slice(5, 7), 10) - 1;
         if (m < 0 || m > 11) return;
