@@ -59,6 +59,7 @@ export const InstallAppButton = ({
   const [installing, setInstalling] = useState(false);
   const [iosOpen, setIosOpen] = useState(false);
   const [supported, setSupported] = useState(false);
+  const { user } = useAuth();
 
   useEffect(() => {
     if (typeof window === "undefined") return;
