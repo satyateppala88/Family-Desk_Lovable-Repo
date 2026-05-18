@@ -481,6 +481,17 @@ const TaskmasterTasks = () => {
             </Table>
           </div>
         </Card>
+
+        {completedCount > 0 && (
+          <div className="mt-4">
+            <Link
+              to="/tasks/history"
+              className="text-[13px] text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
+            >
+              View completed tasks →
+            </Link>
+          </div>
+        )}
       </main>
 
       
