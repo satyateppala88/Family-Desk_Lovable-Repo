@@ -250,7 +250,7 @@ const FinanceSavings = () => {
                     <div className="flex justify-between items-start gap-2">
                       <div className="min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <p className="text-sm font-semibold">{goal.name}</p>
+                          <p className="text-sm font-semibold"><PrivateText value={goal.name} /></p>
                           {signal.kind === "reached" && (
                             <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-[hsl(var(--success))]/10 text-[hsl(var(--success))]">Goal reached 🎉</span>
                           )}
@@ -397,7 +397,7 @@ const FinanceSavings = () => {
                     <CardContent className="p-3 flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <PartyPopper className="w-4 h-4 text-[hsl(var(--success))]" />
-                        <span className="text-sm line-through text-muted-foreground">{goal.name}</span>
+                        <span className="text-sm line-through text-muted-foreground"><PrivateText value={goal.name} /></span>
                       </div>
                       <span className="text-xs font-medium text-[hsl(var(--success))]"><PrivateValue value={Number(goal.target_amount)} /></span>
                     </CardContent>
