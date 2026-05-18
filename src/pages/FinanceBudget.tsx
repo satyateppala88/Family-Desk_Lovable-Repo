@@ -320,14 +320,39 @@ const FinanceBudget = () => {
                       <span className="text-sm font-medium">
                         {resolveCategoryLabel(row.category, CATEGORY_LABELS, customCats)}
                       </span>
-                      {Number(row.planned_amount) > 0 && (
-                        <span
-                          className="inline-flex items-center text-[11px] font-medium px-2 py-0.5 rounded-full"
-                          style={{ background: "#E6F2EE", color: "#0F6E56" }}
-                        >
-                          Budget set
-                        </span>
-                      )}
+                      {Number(row.planned_amount) > 0 && (() => {
+                        const src = row._source ?? "exact";
+                        const chipLabel =
+                          src === "annual"
+                            ? "Budget set · Annual"
+                            : src === "recurring"
+                              ? "Budget set · Recurring"
+                              : "Budget set";
+                        const chip = (
+                          <span
+                            className="inline-flex items-center text-[11px] font-medium px-2 py-0.5 rounded-full"
+                            style={{ background: "#E6F2EE", color: "#0F6E56" }}
+                          >
+                            {chipLabel}
+                          </span>
+                        );
+                        if (src === "annual" && row.annual_amount) {
+                          return (
+                            <TooltipProvider delayDuration={150}>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <button type="button" className="focus:outline-none">{chip}</button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  ₹{Number(row.annual_amount).toLocaleString("en-IN")} annual · ₹
+                                  {Number(row.planned_amount).toLocaleString("en-IN")}/month
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          );
+                        }
+                        return chip;
+                      })()}
                     </div>
                     <div className="text-right shrink-0">
                       {Number(row.planned_amount) > 0 ? (
