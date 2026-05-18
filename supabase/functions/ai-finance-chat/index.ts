@@ -145,7 +145,12 @@ serve(async (req) => {
     }
 
     return new Response(response.body, {
-      headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
+      headers: {
+        ...corsHeaders,
+        "Content-Type": "text/event-stream",
+        "x-context-degraded": contextDegraded ? "true" : "false",
+        "Access-Control-Expose-Headers": "x-context-degraded",
+      },
     });
   } catch (error: any) {
     console.error("Finance chat error:", error);
