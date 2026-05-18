@@ -3,6 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Calendar } from "lucide-react";
 import { useDailySpend } from "@/hooks/useFinanceTrends";
 import { formatINRCompact, formatINR } from "@/lib/formatINR";
+import { PrivateValue } from "@/components/shared/PrivateValue";
+import { usePrivacyMode } from "@/contexts/PrivacyModeContext";
 
 interface Props {
   householdId: string | null;
@@ -11,6 +13,7 @@ interface Props {
 
 export const DailySpendChart = ({ householdId, month }: Props) => {
   const { data, isLoading } = useDailySpend(householdId, month);
+  const { isPrivate } = usePrivacyMode();
   if (isLoading || !data) return null;
   const total = data.reduce((s, d) => s + d.amount, 0);
   if (total === 0) return null;
@@ -38,7 +41,7 @@ export const DailySpendChart = ({ householdId, month }: Props) => {
                 tickLine={false}
               />
               <YAxis
-                tickFormatter={(v) => formatINRCompact(v)}
+                tickFormatter={(v) => (isPrivate ? "₹ ••••" : formatINRCompact(v))}
                 tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }}
                 axisLine={false}
                 tickLine={false}
@@ -52,7 +55,7 @@ export const DailySpendChart = ({ householdId, month }: Props) => {
                   borderRadius: 8,
                   fontSize: 12,
                 }}
-                formatter={(v: number) => [formatINR(v), "Spent"]}
+                formatter={(v: number) => [isPrivate ? "₹ ••••" : formatINR(v), "Spent"]}
                 labelFormatter={(d) => `Day ${d}`}
               />
               <Bar dataKey="amount" radius={[3, 3, 0, 0]}>
@@ -68,7 +71,7 @@ export const DailySpendChart = ({ householdId, month }: Props) => {
         </div>
         {peak && peak.amount > 0 && (
           <p className="text-[11px] text-muted-foreground mt-2 text-center">
-            Highest spend on day {peak.day}: {formatINR(peak.amount)} · weekends shown lighter
+            Highest spend on day {peak.day}: <PrivateValue value={peak.amount} /> · weekends shown lighter
           </p>
         )}
       </CardContent>
