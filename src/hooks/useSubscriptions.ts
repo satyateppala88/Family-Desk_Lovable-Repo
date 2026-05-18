@@ -145,13 +145,21 @@ export const useUpdateSubscription = () => {
   return useMutation({
     mutationFn: async (input: Partial<FinanceSubscription> & { id: string }) => {
       const { id, recurrence, ...rest } = input;
+      // Strip undefined fields so we never accidentally overwrite a column
+      // (e.g. is_active) with `undefined` coming from a partial form payload.
+      const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
+      Object.entries(rest).forEach(([k, v]) => {
+        if (v !== undefined) patch[k] = v;
+      });
+      if (recurrence !== undefined) patch.recurrence = recurrence as any;
       const { data, error } = await supabase
         .from("finance_subscriptions")
-        .update({ ...rest, ...(recurrence !== undefined ? { recurrence: recurrence as any } : {}), updated_at: new Date().toISOString() })
+        .update(patch)
         .eq("id", id)
         .select()
         .single();
       if (error) throw error;
+      if (!data) throw new Error("Update returned no row — check household access.");
       return data as unknown as FinanceSubscription;
     },
     onMutate: async (vars) => {
@@ -164,12 +172,12 @@ export const useUpdateSubscription = () => {
             qc.setQueryData(key, list.map((s) => (s.id === vars.id ? { ...s, ...vars } as FinanceSubscription : s)));
           }
         });
-      toast.success("Subscription updated");
       return { snapshots };
     },
-    onError: (_e, _v, ctx: any) => {
+    onError: (e, _v, ctx: any) => {
       ctx?.snapshots?.forEach(([key, prev]: any) => qc.setQueryData(key, prev));
-      toast.error("Failed to update");
+      console.error("[useUpdateSubscription] failed", e);
+      toast.error((e as Error)?.message || "Failed to update");
     },
     onSuccess: (row) => {
       if (row) {
@@ -180,6 +188,7 @@ export const useUpdateSubscription = () => {
           });
       }
       qc.invalidateQueries({ queryKey: ["finance-subscriptions"] });
+      toast.success("Subscription updated");
     },
   });
 };
@@ -199,15 +208,16 @@ export const useDeleteSubscription = () => {
           snapshots.push([key, list]);
           if (Array.isArray(list)) qc.setQueryData(key, list.filter((s) => s.id !== id));
         });
-      toast.success("Subscription removed");
       return { snapshots };
     },
-    onError: (_e, _v, ctx: any) => {
+    onError: (e, _v, ctx: any) => {
       ctx?.snapshots?.forEach(([key, prev]: any) => qc.setQueryData(key, prev));
-      toast.error("Failed to delete");
+      console.error("[useDeleteSubscription] failed", e);
+      toast.error((e as Error)?.message || "Failed to delete");
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["finance-subscriptions"] });
+      toast.success("Subscription removed");
     },
   });
 };

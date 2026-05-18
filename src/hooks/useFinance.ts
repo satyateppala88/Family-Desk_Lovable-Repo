@@ -533,15 +533,15 @@ export const useCreateTransaction = (householdId: string | null) => {
           snapshots.push([key, prev]);
           if (Array.isArray(prev)) queryClient.setQueryData(key, [optimistic, ...prev]);
         });
-      toast.success("Transaction added");
       return { snapshots, optimisticId: optimistic.id };
     },
     onError: (e: any, _vars, ctx) => {
       ctx?.snapshots?.forEach(([key, prev]) => queryClient.setQueryData(key, prev));
+      console.error("[useCreateTransaction] failed", e);
       if (e?.code === "23505") {
         toast.error("A budget for this category already exists. Use Edit to update it.");
       } else {
-        toast.error(e?.message || "Failed to save budget. Please try again.");
+        toast.error(e?.message || "Failed to save transaction. Please try again.");
       }
     },
     onSuccess: (inserted, _vars, ctx) => {
@@ -561,6 +561,7 @@ export const useCreateTransaction = (householdId: string | null) => {
       queryClient.invalidateQueries({ queryKey: ["finance-annual-budget", householdId] });
       queryClient.invalidateQueries({ queryKey: ["finance-budgets", householdId] });
       queryClient.invalidateQueries({ queryKey: ["finance-savings-goals", householdId] });
+      toast.success("Transaction added");
     },
   });
 };
@@ -592,12 +593,15 @@ export const useUpdateTransaction = () => {
             list.map((t) => (t.id === vars.id ? { ...t, ...vars } : t))
           );
         });
-      toast.success("Transaction updated");
       return { snapshots };
     },
     onError: (e: Error, _vars, ctx) => {
       ctx?.snapshots?.forEach(([key, prev]) => queryClient.setQueryData(key, prev));
+      console.error("[useUpdateTransaction] failed", e);
       toast.error(e.message);
+    },
+    onSuccess: () => {
+      toast.success("Transaction updated");
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["finance-transactions"] });
@@ -651,12 +655,15 @@ export const useDeleteTransaction = () => {
             queryClient.setQueryData(key, list.filter((t) => t.id !== id));
           }
         });
-      toast.success("Transaction deleted");
       return { snapshots };
     },
     onError: (e: Error, _id, ctx) => {
       ctx?.snapshots?.forEach(([key, prev]) => queryClient.setQueryData(key, prev));
+      console.error("[useDeleteTransaction] failed", e);
       toast.error(e.message);
+    },
+    onSuccess: () => {
+      toast.success("Transaction deleted");
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["finance-transactions"] });
@@ -858,11 +865,11 @@ export const useCreateSavingsGoal = (householdId: string | null) => {
           snapshots.push([key, prev]);
           if (Array.isArray(prev)) queryClient.setQueryData(key, [optimistic, ...prev]);
         });
-      toast.success("Savings goal created");
       return { snapshots, optimisticId: optimistic.id };
     },
     onError: (e: Error, _vars, ctx) => {
       ctx?.snapshots?.forEach(([key, prev]) => queryClient.setQueryData(key, prev));
+      console.error("[useCreateSavingsGoal] failed", e);
       toast.error(e.message);
     },
     onSuccess: (inserted, _vars, ctx) => {
@@ -877,6 +884,7 @@ export const useCreateSavingsGoal = (householdId: string | null) => {
         });
       queryClient.invalidateQueries({ queryKey: ["finance-savings-goals", householdId] });
       queryClient.invalidateQueries({ queryKey: ["finance-dashboard", householdId] });
+      toast.success("Savings goal created");
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["finance-savings-goals", householdId] });
@@ -911,16 +919,17 @@ export const useUpdateSavingsGoal = () => {
             list.map((g) => (g.id === vars.id ? { ...g, ...vars } : g))
           );
         });
-      toast.success("Goal updated");
       return { snapshots };
     },
     onError: (e: Error, _vars, ctx) => {
       ctx?.snapshots?.forEach(([key, prev]) => queryClient.setQueryData(key, prev));
+      console.error("[useUpdateSavingsGoal] failed", e);
       toast.error(e.message);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["finance-savings-goals"] });
       queryClient.invalidateQueries({ queryKey: ["finance-dashboard"] });
+      toast.success("Goal updated");
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["finance-savings-goals"] });
@@ -933,8 +942,18 @@ export const useDeleteSavingsGoal = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("finance_savings_goals").delete().eq("id", id);
+      // .select() so RLS-filtered deletes surface as an explicit error instead
+      // of silently no-op'ing while the UI toasts "deleted".
+      const { data, error } = await supabase
+        .from("finance_savings_goals")
+        .delete()
+        .eq("id", id)
+        .select("id");
       if (error) throw error;
+      if (!data || data.length === 0) {
+        throw new Error("This goal couldn't be deleted — you may not have access.");
+      }
+      return id;
     },
     onMutate: async (id) => {
       await queryClient.cancelQueries({ queryKey: ["finance-savings-goals"] });
@@ -947,12 +966,15 @@ export const useDeleteSavingsGoal = () => {
             queryClient.setQueryData(key, list.filter((g) => g.id !== id));
           }
         });
-      toast.success("Goal deleted");
       return { snapshots };
     },
     onError: (e: Error, _id, ctx) => {
       ctx?.snapshots?.forEach(([key, prev]) => queryClient.setQueryData(key, prev));
+      console.error("[useDeleteSavingsGoal] failed", e);
       toast.error(e.message);
+    },
+    onSuccess: () => {
+      toast.success("Goal deleted");
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["finance-savings-goals"] });
