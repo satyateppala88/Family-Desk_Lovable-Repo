@@ -105,6 +105,10 @@ export const InstallAppButton = ({
   }, []);
 
   if (installed) {
+    const createdAt = (user as any)?.created_at;
+    const isNewInstall = !!createdAt &&
+      (Date.now() - new Date(createdAt).getTime()) < 10 * 60 * 1000;
+    if (!isNewInstall) return null;
     return (
       <div
         className={`inline-flex items-center gap-2 text-sm text-muted-foreground ${
