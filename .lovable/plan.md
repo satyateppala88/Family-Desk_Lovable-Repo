@@ -1,35 +1,33 @@
-## Households to delete
+## Bug
 
-| ID | Name | Onboarded | Created |
-|---|---|---|---|
-| `9828cda5-5b78-40e6-adba-8ad527b0dd02` | Test Household | yes | 2026-01-28 |
-| `094d8b3c-13b9-4573-90ef-c34eb6369bbc` | Satya's Home | no | 2026-02-11 |
+In `useHouseholdHabitStats` (the hook powering the per-member counters on the Habits page), a habit is attributed to a member purely by **creator**:
 
-The DB has **no FK constraints** in the `public` schema, so nothing cascades — every related row must be deleted explicitly. Will be done in a single transactional `supabase--insert` call against **Live (production)**.
+```ts
+const memberHabits = habits.filter(h => h.user_id === userId); // line 104
+```
 
-## Deletion order
+This ignores `assignment_type`. So Rajashree's "Swimming" habit (assignment_type=`multiple`, assignee=Satya) is counted under **Rajashree's** column even though she isn't an assignee, while Satya — the actual assignee — gets nothing for it.
 
-**1. Child rows (reference a per-household parent by id):**
-- `ai_messages` where `conversation_id ∈ ai_conversations(household)`
-- `daily_plan_items` where `daily_plan_id ∈ daily_plans(household)` OR `task_id ∈ tasks(household)`
-- `meal_plan_items` where `meal_plan_id ∈ meal_plans(household)`
-- `shopping_list_items` where `shopping_list_id ∈ shopping_lists(household)`
-- `task_assignees`, `task_comments` where `task_id ∈ tasks(household)`
-- `habit_assignees`, `habit_logs`, `habit_streaks`, `user_habit_badges` where `habit_id ∈ habits(household)`
-- `challenge_logs`, `challenge_participants` where `challenge_id ∈ household_challenges(household)`
-- `pantry_item_usage` where `pantry_item_id ∈ pantry_items(household)`
-- `finance_chat_messages` where `session_id ∈ finance_chat_sessions(household)`
-- `finance_transactions` where `account_id ∈ finance_accounts(household)` (also deleted again via household_id below — safe)
+`useHabits` already handles this correctly for "My Habits" (personal → creator only; household → everyone; multiple → only listed assignees). The household-stats hook needs the same rule.
 
-**2. All tables with a `household_id` column** (38 tables, excluding the `calendar_connections_safe` view):
-`ai_conversations, ai_suggestions, calendar_connections, calendar_settings, daily_plans, dietary_preferences, finance_accounts, finance_budgets, finance_chat_sessions, finance_custom_cards, finance_custom_categories, finance_monthly_snapshots, finance_savings_goals, finance_subscriptions, finance_transactions, finance_user_cards, habit_coach_recommendations, habit_scores, habits, household_challenges, household_enabled_products, household_family_members, household_habit_goals, household_invitations, household_members, household_preferences, manual_calendar_events, meal_plans, pantry_categories, pantry_items, projects, recipes, shopping_lists, task_categories, tasks, user_roles`
+## Fix
 
-**3. Finally:** `DELETE FROM households WHERE id IN (...)`.
+Update `src/hooks/useHouseholdHabitStats.ts`:
 
-## Not touched
-- `auth.users` and `profiles` — users keep their accounts (one of these households belongs to a live user with another household).
-- Storage objects in `avatars` — household-level avatars, if any, are not removed (bucket is keyed by user, not household).
-- Edge function logs, pgmq queues — not household-scoped.
+1. Fetch `habit_assignees` for the household's habits alongside the existing queries.
+2. Build a per-member habit list using:
+   - `personal` → `h.user_id === userId`
+   - `household` → every member
+   - `multiple` → `userId ∈ habit_assignees(habit_id)`
+3. Use that filtered list for **both** `memberPlannedToday` and the weekly rate denominator (`memberHabits.length * 7`).
+4. Today/weekly completion counts already come from `habit_logs.user_id` so they're correct — but restrict them to logs whose `habit_id` is in the member's filtered list, so a stray log can't inflate a member's number for a habit they're no longer assigned to.
 
-## Confirmation
-This is destructive and irreversible. Approving the plan will execute the deletes in one SQL batch wrapped in `BEGIN ... COMMIT`.
+Household-wide `totalHabits`, `plannedToday`, `completedToday`, `longestStreak` stay as-is (they aggregate across the household).
+
+No schema changes. No UI changes. Only `useHouseholdHabitStats.ts` is touched.
+
+## Expected result for Rajashree's case
+
+- "Swimming" disappears from Rajashree's counter (she's not an assignee).
+- It shows under Satya's counter (planned today if today matches the recurrence days).
+- Household totals unchanged.
