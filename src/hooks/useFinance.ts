@@ -533,15 +533,15 @@ export const useCreateTransaction = (householdId: string | null) => {
           snapshots.push([key, prev]);
           if (Array.isArray(prev)) queryClient.setQueryData(key, [optimistic, ...prev]);
         });
-      toast.success("Transaction added");
       return { snapshots, optimisticId: optimistic.id };
     },
     onError: (e: any, _vars, ctx) => {
       ctx?.snapshots?.forEach(([key, prev]) => queryClient.setQueryData(key, prev));
+      console.error("[useCreateTransaction] failed", e);
       if (e?.code === "23505") {
         toast.error("A budget for this category already exists. Use Edit to update it.");
       } else {
-        toast.error(e?.message || "Failed to save budget. Please try again.");
+        toast.error(e?.message || "Failed to save transaction. Please try again.");
       }
     },
     onSuccess: (inserted, _vars, ctx) => {
@@ -561,6 +561,7 @@ export const useCreateTransaction = (householdId: string | null) => {
       queryClient.invalidateQueries({ queryKey: ["finance-annual-budget", householdId] });
       queryClient.invalidateQueries({ queryKey: ["finance-budgets", householdId] });
       queryClient.invalidateQueries({ queryKey: ["finance-savings-goals", householdId] });
+      toast.success("Transaction added");
     },
   });
 };
@@ -592,12 +593,15 @@ export const useUpdateTransaction = () => {
             list.map((t) => (t.id === vars.id ? { ...t, ...vars } : t))
           );
         });
-      toast.success("Transaction updated");
       return { snapshots };
     },
     onError: (e: Error, _vars, ctx) => {
       ctx?.snapshots?.forEach(([key, prev]) => queryClient.setQueryData(key, prev));
+      console.error("[useUpdateTransaction] failed", e);
       toast.error(e.message);
+    },
+    onSuccess: () => {
+      toast.success("Transaction updated");
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["finance-transactions"] });
@@ -651,12 +655,15 @@ export const useDeleteTransaction = () => {
             queryClient.setQueryData(key, list.filter((t) => t.id !== id));
           }
         });
-      toast.success("Transaction deleted");
       return { snapshots };
     },
     onError: (e: Error, _id, ctx) => {
       ctx?.snapshots?.forEach(([key, prev]) => queryClient.setQueryData(key, prev));
+      console.error("[useDeleteTransaction] failed", e);
       toast.error(e.message);
+    },
+    onSuccess: () => {
+      toast.success("Transaction deleted");
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["finance-transactions"] });
