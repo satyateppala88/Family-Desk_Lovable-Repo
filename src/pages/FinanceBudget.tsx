@@ -290,13 +290,33 @@ const FinanceBudget = () => {
         ) : (
           <div className="space-y-2">
             {budgetRows.map((row) => (
-              <Card key={row.id} className={cn(row.over && "border-destructive/20")}>
+              <Card key={row.id} className={cn("relative", row.over && "border-destructive/20")}>
                 <CardContent className="p-3 sm:p-4 space-y-2">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium">
-                      {resolveCategoryLabel(row.category, CATEGORY_LABELS, customCats)}
-                    </span>
-                    <div className="text-right">
+                  {Number(row.planned_amount) > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setEditingBudget(row)}
+                      aria-label="Edit budget"
+                      className="absolute top-2 right-2 p-1 rounded hover:bg-muted/60 transition"
+                    >
+                      <Pencil className="w-4 h-4" style={{ color: "#6B6965" }} />
+                    </button>
+                  )}
+                  <div className="flex justify-between items-start gap-2 pr-7">
+                    <div className="min-w-0 flex flex-col items-start gap-1">
+                      <span className="text-sm font-medium">
+                        {resolveCategoryLabel(row.category, CATEGORY_LABELS, customCats)}
+                      </span>
+                      {Number(row.planned_amount) > 0 && (
+                        <span
+                          className="inline-flex items-center text-[11px] font-medium px-2 py-0.5 rounded-full"
+                          style={{ background: "#E6F2EE", color: "#0F6E56" }}
+                        >
+                          Budget set
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-right shrink-0">
                       {Number(row.planned_amount) > 0 ? (
                         <span className={cn(
                           "text-xs font-medium",
