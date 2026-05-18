@@ -17,6 +17,10 @@ import { NotificationPermissionPrompt } from "@/components/notifications/Notific
 import { NotificationActionRunner } from "@/components/notifications/NotificationActionRunner";
 import { InstallPrompt } from "@/components/install/InstallPrompt";
 import { HouseholdRealtimeProvider } from "@/components/realtime/HouseholdRealtimeProvider";
+import { PrivacyModeProvider } from "@/contexts/PrivacyModeContext";
+import { PrivacyBanner } from "@/components/shared/PrivacyBanner";
+import { IdleAutoLockRunner } from "@/components/shared/IdleAutoLockRunner";
+import { FinancePinGate } from "@/components/finance/FinancePinGate";
 
 // Eagerly loaded (auth flow)
 import Auth from "./pages/Auth";
@@ -92,10 +96,13 @@ const App = () => (
       <BrowserRouter>
 
           <AuthProvider>
-            <ScrollToTop />
-            <NotificationActionRunner />
-            <HouseholdRealtimeProvider />
-            <Suspense fallback={<PageLoader />}>
+            <PrivacyModeProvider>
+              <ScrollToTop />
+              <NotificationActionRunner />
+              <HouseholdRealtimeProvider />
+              <IdleAutoLockRunner />
+              <PrivacyBanner />
+              <Suspense fallback={<PageLoader />}>
               <Routes>
                 <Route path="/" element={<AppEntryGate />} />
                 <Route path="/auth" element={<Auth />} />
@@ -231,19 +238,19 @@ const App = () => (
                     <Habits />
                   </ProtectedRoute>
                 } />
-                <Route path="/finance" element={<ProtectedRoute><Finance /></ProtectedRoute>} />
+                <Route path="/finance" element={<ProtectedRoute><FinancePinGate><Finance /></FinancePinGate></ProtectedRoute>} />
                 <Route path="/ai" element={<ProtectedRoute><AskAi /></ProtectedRoute>} />
-                <Route path="/finance/transactions" element={<ProtectedRoute><FinanceTransactions /></ProtectedRoute>} />
-                <Route path="/finance/subscriptions" element={<ProtectedRoute><FinanceSubscriptions /></ProtectedRoute>} />
-                <Route path="/finance/budget" element={<ProtectedRoute><FinanceBudget /></ProtectedRoute>} />
-                <Route path="/finance/budget/annual" element={<ProtectedRoute><FinanceBudgetAnnual /></ProtectedRoute>} />
-                <Route path="/finance/budget/categories" element={<ProtectedRoute><FinanceBudgetCategories /></ProtectedRoute>} />
-                <Route path="/finance/savings" element={<ProtectedRoute><FinanceSavings /></ProtectedRoute>} />
-                <Route path="/finance/chat" element={<ProtectedRoute><FinanceChat /></ProtectedRoute>} />
-                <Route path="/finance/review" element={<ProtectedRoute><FinanceMonthlyReview /></ProtectedRoute>} />
-                <Route path="/finance/cards" element={<ProtectedRoute><FinanceCards /></ProtectedRoute>} />
-                <Route path="/finance/trends" element={<ProtectedRoute><FinanceTrends /></ProtectedRoute>} />
-                <Route path="/finance/report" element={<ProtectedRoute><FinanceReport /></ProtectedRoute>} />
+                <Route path="/finance/transactions" element={<ProtectedRoute><FinancePinGate><FinanceTransactions /></FinancePinGate></ProtectedRoute>} />
+                <Route path="/finance/subscriptions" element={<ProtectedRoute><FinancePinGate><FinanceSubscriptions /></FinancePinGate></ProtectedRoute>} />
+                <Route path="/finance/budget" element={<ProtectedRoute><FinancePinGate><FinanceBudget /></FinancePinGate></ProtectedRoute>} />
+                <Route path="/finance/budget/annual" element={<ProtectedRoute><FinancePinGate><FinanceBudgetAnnual /></FinancePinGate></ProtectedRoute>} />
+                <Route path="/finance/budget/categories" element={<ProtectedRoute><FinancePinGate><FinanceBudgetCategories /></FinancePinGate></ProtectedRoute>} />
+                <Route path="/finance/savings" element={<ProtectedRoute><FinancePinGate><FinanceSavings /></FinancePinGate></ProtectedRoute>} />
+                <Route path="/finance/chat" element={<ProtectedRoute><FinancePinGate><FinanceChat /></FinancePinGate></ProtectedRoute>} />
+                <Route path="/finance/review" element={<ProtectedRoute><FinancePinGate><FinanceMonthlyReview /></FinancePinGate></ProtectedRoute>} />
+                <Route path="/finance/cards" element={<ProtectedRoute><FinancePinGate><FinanceCards /></FinancePinGate></ProtectedRoute>} />
+                <Route path="/finance/trends" element={<ProtectedRoute><FinancePinGate><FinanceTrends /></FinancePinGate></ProtectedRoute>} />
+                <Route path="/finance/report" element={<ProtectedRoute><FinancePinGate><FinanceReport /></FinancePinGate></ProtectedRoute>} />
                 <Route path="/terms" element={<TermsOfService />} />
                 <Route path="/privacy" element={<PrivacyPolicy />} />
                 <Route path="/install" element={<Install />} />
@@ -276,10 +283,11 @@ const App = () => (
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
-            </Suspense>
-            <AIChatWidget />
-            <NotificationPermissionPrompt />
-            <InstallPrompt />
+              </Suspense>
+              <AIChatWidget />
+              <NotificationPermissionPrompt />
+              <InstallPrompt />
+            </PrivacyModeProvider>
           </AuthProvider>
         
       </BrowserRouter>
