@@ -530,6 +530,18 @@ const FinanceBudget = () => {
         initialAnnualAmount={editingBudget?.annual_amount ?? null}
         monthLabel={monthLabel}
         editSource={editingBudget?._source ?? "exact"}
+        onDelete={() => {
+          if (!editingBudget) return;
+          // Recurring/annual: delete the anchor row (originalId). Exact: delete by id.
+          const targetId = editingBudget._originalId ?? editingBudget.id;
+          // Skip optimistic synthesized ids (no real row to delete).
+          if (!targetId || targetId.startsWith("optimistic-") || targetId.startsWith("virtual-")) {
+            setEditingBudget(null);
+            return;
+          }
+          deleteBudgetById.mutate(targetId);
+          setEditingBudget(null);
+        }}
         onSave={(data: BudgetSavePayload) => {
           if (!editingBudget) return;
           const src = editingBudget._source ?? "exact";
