@@ -795,6 +795,31 @@ export const useUpdateBudgetById = (householdId: string | null) => {
   });
 };
 
+/**
+ * Delete a budget row by id. For recurring/annual rows, this removes the
+ * anchor — the resolver will stop projecting it into future months.
+ */
+export const useDeleteBudgetById = (householdId: string | null) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("finance_budgets")
+        .delete()
+        .eq("id", id)
+        .eq("household_id", householdId!);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Budget deleted");
+      queryClient.invalidateQueries({ queryKey: ["finance-budgets", householdId] });
+      queryClient.invalidateQueries({ queryKey: ["finance-annual-budget", householdId] });
+      queryClient.invalidateQueries({ queryKey: ["finance-dashboard", householdId] });
+    },
+    onError: (e: Error) => toast.error(e.message || "Failed to delete budget"),
+  });
+};
+
 export const useCreateSavingsGoal = (householdId: string | null) => {
   const queryClient = useQueryClient();
   const { user } = useAuth();
