@@ -416,11 +416,25 @@ const Habits = () => {
                   !isCoachDismissed("household-new") && <HabitCoachInsight content={newHouseholdCopy} onDismiss={() => dismissCoach("household-new")} />
                 ) : householdCompletedToday === 0 ? (
                   !isCoachDismissed("household-start") && <HabitCoachInsight content={startTodayCopy} onDismiss={() => dismissCoach("household-start")} />
-                ) : (
-                  !isCoachDismissed("household-built") && (
+                ) : householdHabits.length === 0 ? (
+                  !isCoachDismissed("household-built-empty") && (
                     <HabitCoachInsight
-                      content="Your household is building great consistency! Consider adding a shared family habit like an evening walk or gratitude moment."
-                      onDismiss={() => dismissCoach("household-built")}
+                      content="Your household is building great consistency. Want to add a shared habit everyone tracks together — like an evening walk or a gratitude moment?"
+                      onDismiss={() => dismissCoach("household-built-empty")}
+                    />
+                  )
+                ) : householdHabits.length === 1 ? (
+                  !isCoachDismissed("household-built-one") && (
+                    <HabitCoachInsight
+                      content={`Nice — "${householdHabits[0].name}" is your shared family habit. Keeping it consistent together is what builds the routine.`}
+                      onDismiss={() => dismissCoach("household-built-one")}
+                    />
+                  )
+                ) : (
+                  !isCoachDismissed("household-built-many") && (
+                    <HabitCoachInsight
+                      content={`Your household has ${householdHabits.length} shared habits going. Consistency together is the win — keep checking in.`}
+                      onDismiss={() => dismissCoach("household-built-many")}
                     />
                   )
                 )}
