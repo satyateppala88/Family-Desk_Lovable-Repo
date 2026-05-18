@@ -157,7 +157,7 @@ export const AIChatWidget = () => {
       const response = await fetch(CHAT_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
-        body: JSON.stringify({ messages: allMessages.map(m => ({ role: m.role, content: m.content })), householdId, userId: user.id }),
+        body: JSON.stringify({ messages: allMessages.map(m => ({ role: m.role, content: m.content })), householdId, userId: user.id, module: "general" }),
       });
 
       if (!response.ok) throw new Error(await response.text());
