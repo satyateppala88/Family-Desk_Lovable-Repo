@@ -9,6 +9,8 @@ import { useFinanceTrends } from "@/hooks/useFinanceTrends";
 import { useCustomCategories } from "@/hooks/useCustomCategories";
 import { resolveCategoryLabel } from "@/components/finance/CategorySelect";
 import { formatINR, formatINRCompact } from "@/lib/formatINR";
+import { PrivateValue } from "@/components/shared/PrivateValue";
+import { usePrivacyMode } from "@/contexts/PrivacyModeContext";
 import { BarChart3, TrendingUp, TrendingDown, ArrowUp, ArrowDown } from "lucide-react";
 import {
   Bar,
@@ -28,6 +30,9 @@ const FinanceTrends = () => {
   useFinanceRealtime(householdId);
   const { categories: customCats } = useCustomCategories("transaction");
   const { data: trends, isLoading } = useFinanceTrends(householdId, 6);
+  const { isPrivate } = usePrivacyMode();
+  const moneyAxis = (v: number) => (isPrivate ? "₹ ••••" : formatINRCompact(v));
+  const moneyTip = (v: number) => (isPrivate ? "₹ ••••" : formatINR(v));
 
   const hasData = !!trends?.some((t) => t.count > 0);
 
@@ -111,10 +116,10 @@ const FinanceTrends = () => {
                     <BarChart data={trends} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
                       <XAxis dataKey="label" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
-                      <YAxis tickFormatter={(v) => formatINRCompact(v)} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} width={50} />
+                      <YAxis tickFormatter={(v) => moneyAxis(v)} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} width={50} />
                       <Tooltip
                         contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }}
-                        formatter={(v: number) => formatINR(v)}
+                        formatter={(v: number) => moneyTip(v)}
                       />
                       <Legend wrapperStyle={{ fontSize: 11 }} />
                       <Bar dataKey="income" name="Income" fill="hsl(var(--success))" radius={[4, 4, 0, 0]} />
@@ -160,10 +165,10 @@ const FinanceTrends = () => {
                       <BarChart data={stackedData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
                         <XAxis dataKey="label" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
-                        <YAxis tickFormatter={(v) => formatINRCompact(v)} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} width={50} />
+                        <YAxis tickFormatter={(v) => moneyAxis(v)} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} width={50} />
                         <Tooltip
                           contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }}
-                          formatter={(v: number) => formatINR(v)}
+                          formatter={(v: number) => moneyTip(v)}
                         />
                         <Legend wrapperStyle={{ fontSize: 11 }} formatter={(v) => resolveCategoryLabel(v as string, CATEGORY_LABELS, customCats)} />
                         {topCats.map((c, i) => (
@@ -190,7 +195,7 @@ const FinanceTrends = () => {
                       <div key={m.category} className="flex items-center justify-between text-sm">
                         <span className="font-medium">{resolveCategoryLabel(m.category, CATEGORY_LABELS, customCats)}</span>
                         <div className="flex items-center gap-2">
-                          <span className="text-muted-foreground tabular-nums">{formatINR(m.current)}</span>
+                          <span className="text-muted-foreground tabular-nums"><PrivateValue value={m.current} /></span>
                           <Badge
                             variant={up ? "destructive" : "success"}
                             className="gap-0.5"
