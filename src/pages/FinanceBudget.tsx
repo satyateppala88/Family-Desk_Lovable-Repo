@@ -189,7 +189,16 @@ const FinanceBudget = () => {
       toast.error("Enter a valid amount");
       return;
     }
-    upsertBudget.mutate({ month: currentMonth, category, planned_amount: n });
+    // Inline edit always creates a per-month override at the current month
+    // (does not touch the recurring/annual source row — use the full dialog
+    // for "this and all future months" updates).
+    upsertBudget.mutate({
+      month: currentMonth,
+      category,
+      planned_amount: n,
+      is_recurring: false,
+      budget_type: "monthly",
+    });
     setEditingId(null);
   };
 
