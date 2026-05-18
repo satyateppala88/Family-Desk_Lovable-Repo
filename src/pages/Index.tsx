@@ -1,8 +1,7 @@
 import { useState, useEffect } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useNavigate, Link } from "react-router-dom";
 import { Header } from "@/components/layout/Header";
-import { OnboardingTour } from "@/components/onboarding/OnboardingTour";
 import { PendingInvitationBanner } from "@/components/household/PendingInvitationBanner";
 import { useHousehold } from "@/hooks/useHousehold";
 import { useOnboardingProgress } from "@/hooks/useOnboardingProgress";
@@ -27,6 +26,7 @@ import { format } from "date-fns";
 import { usePermissionPrimer } from "@/hooks/usePermissionPrimer";
 import { PermissionPrimerDialog } from "@/components/permissions/PermissionPrimerDialog";
 import { hasAskedPermission, isPermissionRemindActive } from "@/lib/launchStorage";
+import { toast } from "sonner";
 import {
   CheckSquare,
   UtensilsCrossed,
@@ -35,7 +35,6 @@ import {
   Leaf,
   Wallet,
 } from "lucide-react";
-import type { Step } from "react-joyride";
 
 const moduleDefinitions: {
   product: ProductName;
@@ -51,15 +50,6 @@ const moduleDefinitions: {
   { product: "calendar", icon: Calendar, label: "Calendar", description: "Family schedule", path: "/calendar", tintClass: "module-tint-calendar" },
   { product: "habits", icon: Leaf, label: "Habits", description: "Daily routines", path: "/habits", tintClass: "module-tint-habits" },
   { product: "finance", icon: Wallet, label: "Finance", description: "Budget & savings", path: "/finance", tintClass: "module-tint-finance" },
-];
-
-const dashboardTourSteps: Step[] = [
-  {
-    target: "body",
-    content: "Welcome to FamilyDesk — your family's hub. Tap a tile below to dive in.",
-    placement: "center",
-    disableBeacon: true,
-  },
 ];
 
 const Index = () => {
@@ -88,57 +78,41 @@ const Index = () => {
     moduleSetupTotal === 0 || moduleSetupDone === moduleSetupTotal;
   const showSetupBanner = !preferencesLoading && !onboardingCompleted && !allModuleSetupsDone;
 
-  const queryClient = useQueryClient();
-  const { data: completedTours, isLoading: toursLoading } = useQuery({
-    queryKey: ["completed-tours", user?.id],
-    queryFn: async () => {
-      if (!user?.id) return {} as Record<string, unknown>;
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("completed_tours")
-        .eq("id", user.id)
-        .single();
-      if (error) return {} as Record<string, unknown>;
-      return ((data?.completed_tours as Record<string, unknown>) || {});
-    },
-    enabled: !!user?.id,
-    staleTime: 5 * 60 * 1000,
-  });
-  const WELCOME_KEY = "familydesk:welcome-tour-completed";
-  const [localWelcomeDone, setLocalWelcomeDone] = useState<boolean>(() => {
-    try {
-      return localStorage.getItem(WELCOME_KEY) === "true";
-    } catch {
-      return false;
-    }
-  });
-  const toursChecked = !!user?.id && !toursLoading && completedTours !== undefined;
-  const welcomeAlreadyDone =
-    localWelcomeDone ||
-    (!!completedTours && Boolean((completedTours as any).dashboard_welcome));
-  const shouldShowWelcome = toursChecked && !welcomeAlreadyDone;
-  const [runOnboarding, setRunOnboarding] = useState(false);
   const { ensurePermission, primerProps } = usePermissionPrimer();
-  const welcomeVisible = runOnboarding || shouldShowWelcome;
 
+  // One-time welcome toast for brand-new accounts (created within the last 5 minutes).
   useEffect(() => {
-    if (shouldShowWelcome && householdId) {
-      const t = setTimeout(() => setRunOnboarding(true), 500);
-      return () => clearTimeout(t);
+    if (!user?.id || !user?.created_at) return;
+    const isNewUser =
+      Date.now() - new Date(user.created_at).getTime() < 5 * 60 * 1000;
+    if (!isNewUser) return;
+    const key = `fd_welcome_toast_shown:${user.id}`;
+    try {
+      if (sessionStorage.getItem(key)) return;
+      sessionStorage.setItem(key, "1");
+    } catch {
+      /* sessionStorage unavailable — fall through, toast will just show once per mount */
     }
-  }, [shouldShowWelcome, householdId]);
+    const firstName =
+      (user.user_metadata?.display_name as string | undefined)?.split(" ")[0] ||
+      "there";
+    toast(`Welcome to FamilyDesk, ${firstName}! 👋`, {
+      description: "Your household is set up and ready.",
+      duration: 4000,
+      closeButton: true,
+    });
+  }, [user]);
 
-  // Contextual notifications primer: only after the welcome modal is gone.
+  // Contextual notifications primer.
   useEffect(() => {
-    if (!householdId || !toursChecked) return;
-    if (welcomeVisible) return;
+    if (!householdId) return;
     if (hasAskedPermission("notifications")) return;
     if (isPermissionRemindActive("notifications")) return;
     const t = setTimeout(() => {
       void ensurePermission("notifications", "dashboard-first-load");
     }, 500);
     return () => clearTimeout(t);
-  }, [householdId, toursChecked, welcomeVisible, ensurePermission]);
+  }, [householdId, ensurePermission]);
 
   useEffect(() => {
     if (!isLoading && !householdId && user) {
@@ -160,31 +134,6 @@ const Index = () => {
     fetchHousehold();
   }, [householdId]);
 
-  const handleStartOnboarding = () => setRunOnboarding(true);
-  const handleOnboardingComplete = async () => {
-    setRunOnboarding(false);
-    // Persist locally first so the popup never re-appears in this browser,
-    // even if the RPC below fails or races with the next render.
-    try {
-      localStorage.setItem(WELCOME_KEY, "true");
-    } catch {}
-    setLocalWelcomeDone(true);
-    if (!user?.id) return;
-    // Patch-merge the completion into completed_tours via the existing RPC,
-    // which uses jsonb || to avoid clobbering sibling tour keys.
-    const { error } = await supabase.rpc("update_completed_tour", {
-      _key: "dashboard_welcome",
-    });
-    if (error) {
-      console.error("Failed to mark dashboard_welcome complete:", error);
-      return;
-    }
-    queryClient.setQueryData(
-      ["completed-tours", user.id],
-      { ...(completedTours || {}), dashboard_welcome: true }
-    );
-  };
-
   const visibleModules = moduleDefinitions.filter((m) =>
     isProductEnabled(enabledProducts, m.product)
   );
@@ -196,7 +145,7 @@ const Index = () => {
   if (isLoading || !household) {
     return (
       <div className="page-container">
-        <Header onStartOnboarding={handleStartOnboarding} />
+        <Header />
         <main className="page-content">
           <PageLoadingGrid columns={2} cards={6} />
         </main>
@@ -209,21 +158,13 @@ const Index = () => {
 
   return (
     <div className="page-container">
-      <Header onStartOnboarding={handleStartOnboarding} />
-      {toursChecked && (
-        <OnboardingTour
-          run={runOnboarding}
-          onComplete={handleOnboardingComplete}
-          steps={dashboardTourSteps}
-          featureName="dashboard_welcome"
-        />
-      )}
+      <Header />
       <main className="page-content animate-fade-in">
         <PendingInvitationBanner />
 
         <FestivalBanner />
 
-        {!welcomeVisible && <PermissionPrimerDialog {...primerProps} />}
+        <PermissionPrimerDialog {...primerProps} />
 
         {showSetupBanner && (
           <Card className="mb-4 border-primary/15">
