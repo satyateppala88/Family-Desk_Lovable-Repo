@@ -70,6 +70,7 @@ const HowToUse = lazy(() => import("./pages/HowToUse"));
 const WhatsNew = lazy(() => import("./pages/WhatsNew"));
 const Welcome = lazy(() => import("./pages/Welcome"));
 const AskAi = lazy(() => import("./pages/AskAi"));
+const TasksHistory = lazy(() => import("./pages/TasksHistory"));
 
 const queryClient = createPersistedQueryClient();
 
@@ -163,6 +164,11 @@ const App = () => (
                 <Route path="/tasks/all" element={
                   <ProtectedRoute>
                     <Navigate to="/taskmaster/tasks" replace />
+                  </ProtectedRoute>
+                } />
+                <Route path="/tasks/history" element={
+                  <ProtectedRoute>
+                    <TasksHistory />
                   </ProtectedRoute>
                 } />
                 <Route path="/taskmaster" element={
