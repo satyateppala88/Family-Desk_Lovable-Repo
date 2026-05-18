@@ -17,6 +17,7 @@ import { useIsHouseholdAdmin } from "@/hooks/useIsHouseholdAdmin";
 import { usePendingInvitations } from "@/hooks/usePendingInvitations";
 import { useIsPlatformAdmin } from "@/hooks/useIsPlatformAdmin";
 import { FamilyDeskLogo } from "@/components/brand/FamilyDeskLogo";
+import { PrivacyToggle } from "@/components/shared/PrivacyToggle";
 
 interface HeaderProps {
   onStartOnboarding?: () => void;
@@ -179,7 +180,9 @@ export const Header = (_props: HeaderProps) => {
           </button>
         </div>
 
-        {/* Right: Avatar / Profile */}
+        {/* Right: Privacy + Avatar / Profile */}
+        <div className="flex items-center gap-1">
+        <PrivacyToggle />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button
@@ -264,6 +267,7 @@ export const Header = (_props: HeaderProps) => {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+        </div>
       </div>
     </header>
   );
