@@ -1,5 +1,6 @@
 import { forwardRef } from "react";
 import { formatINR } from "@/lib/formatINR";
+import { usePrivacyMode } from "@/contexts/PrivacyModeContext";
 import type { MonthlyReportData } from "@/hooks/useMonthlyReport";
 
 interface ReportCardProps {
