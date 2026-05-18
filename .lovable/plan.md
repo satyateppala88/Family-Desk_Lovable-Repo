@@ -1,82 +1,113 @@
-## FIX-10 — Realtime channel hygiene + cache invalidation
+## F-23 — Privacy Mode, Finance PIN, Idle Auto-lock
 
-### Audit results
+Implement in the order the spec mandates. Each step is independent enough to verify before moving on.
 
-**Realtime subscriptions (3 files total):**
+### Discovery summary
 
-1. `src/components/realtime/HouseholdRealtimeProvider.tsx` — already correct: deterministic name `household-${householdId}`, single channel multiplexing every shared table, cleanup via `removeChannel`, stable deps `[user?.id, householdId, queryClient]`. **No changes.**
-2. `src/hooks/useRealtimeSubscription.ts` — already correct: deterministic name `realtime-${householdId}-${sortedTables}`, cleanup, self-write suppression in place. **No changes.**
-3. `src/components/settings/NotificationPreferencesSection.tsx` — **bug**: uses fixed name `"profile-changes"` with no user/household scope; if remounted (HMR, dialog reopen) Supabase will reject the duplicate topic. Also subscribes to *every* profile UPDATE in the schema rather than the current user's row.
+- `formatINR` / `formatINRCompact` live in `src/lib/formatINR.ts` and are called from 17 files (all finance pages, dashboard snapshot, transaction/report cards, report share, etc.).
+- App shell uses `src/components/layout/Header.tsx` everywhere; Home (`src/pages/Index.tsx`) and Finance hub (`src/pages/Finance.tsx`) both render `<Header />`.
+- Existing settings live in `src/pages/Settings.tsx`. Note: `<PrivacySection />` there today is just a *legal* "Privacy Policy" link — the new "Privacy & Security" section is a different block; we add it without removing the legal one (rename the legal one's heading if collision is visible).
+- App is wrapped in `QueryClientProvider` → `TooltipProvider` → `AuthProvider` inside `src/App.tsx`. New context slots in below `AuthProvider` so we get the user, before `Routes`.
 
-**Mutations missing invalidations** (write-author path; the realtime echo is suppressed for the writer, so onSuccess is the *only* refetch trigger for them):
+### Part 1 — Privacy Mode foundation + rollout
 
-- `useTasks` create/update/delete → invalidates only `["tasks", householdId]`. Missing: `["taskmaster-tasks", householdId]`, `["daily-plan"]`, `["dashboard-stats", householdId]`.
-- `useHabits` logHabit → already invalidates streaks, leaderboard, scores. Verify it also hits `["habits", householdId]` (it does for create/delete; logging should add `["household-habit-stats"]` if missing — confirm during edit).
-- `useFinance.useUpsertBudget` already invalidates budgets/annual/dashboard. Verify transaction mutations invalidate `finance-monthly-summary` + `finance-dashboard` + savings goals.
-- Calendar event mutations (`useManualCalendarEvents`) — already invalidate `calendar-events`, `today-events`, `calendar-events-today`. **OK.**
-- Grocery (`usePantryItems`) — already invalidates `pantry-items` + `pantry-stats`. Add `["dashboard-stats", householdId]` for parity with realtime map.
-- Member-related: `HouseholdMembers.tsx` invalidates `["household-members"]` only. Add `["household-member-emails"]` and `["household"]`.
+**New: `src/contexts/PrivacyModeContext.tsx`**
+- State: `isPrivate: boolean`, `togglePrivacy()`, `setPrivacy(v)`.
+- Init from `sessionStorage.getItem('familydesk_privacy_mode') === '1'`.
+- Persist on change to sessionStorage. Expose via `usePrivacyMode()`.
+- Wrap inside `AuthProvider` in `src/App.tsx` so all routes see it.
 
-The QueryClient itself (`src/lib/query-client.ts`) uses `staleTime: 5 minutes`. Spec wants 30s with `refetchOnMount` + `refetchOnWindowFocus`.
+**New: `src/components/shared/PrivateValue.tsx`**
+- Props: `value: string | number`, `prefix?: string` (default `"₹"`), `mask?: string` (default `"••••"`), `className?: string`.
+- When private → render `<span aria-label="hidden">{prefix} {mask}</span>` (or just mask if `prefix===""`).
+- When not private → if `value` is a number, format via `formatINR`; if string, render as-is with prefix.
+- Also export `<PrivateText>` (no prefix) for descriptions / goal names.
 
-### Changes
+**New: `src/components/shared/PrivacyToggle.tsx`** — eye / eye-off button used in headers and settings row.
 
-**1. `src/lib/query-client.ts` — tune defaults (do not touch persistence)**
+**New: `src/components/shared/PrivacyBanner.tsx`** — fixed top strip (`#2C2C2A`, white text, 32 px) shown only when `isPrivate`; click toggles off. Mount once in `src/App.tsx` above `<Routes>`. Sits above page content; pages already use their own headers, so we offset with `padding-top` only when banner active via a small layout effect (or simpler: render inline at top of body and let normal flow push content).
 
-```ts
-defaultOptions: {
-  queries: {
-    staleTime: 30 * 1000,
-    gcTime: MAX_AGE_MS,            // keep 7d so persister still has data
-    refetchOnReconnect: true,
-    refetchOnMount: true,
-    refetchOnWindowFocus: true,
-    retry: 2,
-  },
-},
-```
+**Headers**
+- `src/components/layout/Header.tsx` accepts existing avatar slot; add `<PrivacyToggle />` rendered to the left of the avatar so it appears on every page (Home + Finance both use Header, single change covers both). If the spec's "only Home + Finance" matters, gate via `showPrivacyToggle` prop and pass on those two pages. Plan: render unconditionally — visible toggle on all pages is harmless and matches mental model.
 
-Persister stays — `gcTime` of 7d is independent of `staleTime`. We do not change the persister config.
+**Rollout — replace `formatINR(x)` calls with `<PrivateValue value={x} />`** in the 17 files listed. Targets that must be masked per spec:
+- Home (`Index.tsx`) — Income/Spent/member rows.
+- Finance hub (`Finance.tsx`) — Income/Expense cards, member contributions.
+- Transactions list (`FinanceTransactions.tsx`) — amount + description (use `PrivateText` for description).
+- Budgets (`FinanceBudget.tsx`, `FinanceBudgetAnnual.tsx`) — planned/spent.
+- Savings (`FinanceSavings.tsx`) — name (PrivateText), target, saved.
+- Subscriptions, Cards, Trends, MonthlyReview, DailySpendChart, MemberContributions, CardRecommender, Report cards.
+- `useDashboardSnapshot.ts` produces strings consumed in Home — keep raw numbers in the hook, mask only at render side to keep logic untouched.
 
-**2. `src/App.tsx` — wipe orphan channels on app mount**
+Category names, calendar/tasks/habits, member names: untouched.
 
-Inside the `App` component add a small effect-only child or convert `App` to use `useEffect`:
+### Part 2 — Finance PIN lock
 
-```ts
-useEffect(() => {
-  supabase.removeAllChannels();
-}, []);
-```
+**New: `src/lib/financePin.ts`**
+- `hashPin(pin: string): Promise<string>` using `crypto.subtle.digest('SHA-256', ...)`.
+- `getStoredHash() / setStoredHash(h) / clearStoredHash()` against `localStorage['familydesk_finance_pin_hash']`.
+- `isPinEnabled()`, `verifyPin(pin)`.
+- Session unlock: `markUnlocked()` writes `Date.now()` to `sessionStorage['finance_unlocked_at']`; `isUnlocked(idleMs)` compares against idle timeout.
 
-The cleanest spot: add the call at the top of `HouseholdRealtimeProvider`'s effect *guarded by a module-level `didInitialPurge` ref* so it runs exactly once per page load, before the provider opens its own channel. This avoids changing `App.tsx`'s structure and ensures the purge runs before any `useRealtimeSubscription` subscribes.
+**New: `src/components/finance/PinKeypad.tsx`** — 4-digit boxes + on-screen numeric keypad (also accepts hardware keyboard); used both for entry and for set/confirm.
 
-**3. `src/components/settings/NotificationPreferencesSection.tsx` — scope the channel**
+**New: `src/components/finance/FinancePinGate.tsx`**
+- Reads enabled flag + unlock state.
+- If not enabled or unlocked → render `children`.
+- Else → show full-screen lock UI: FamilyDesk wordmark, "Enter PIN to access Finance", `PinKeypad`, "Forgot PIN?" → modal with reset instructions, shake + "Incorrect PIN" on bad attempt.
+- Wrap every `/finance*` route in `src/App.tsx` with `<FinancePinGate>` — single place to edit.
 
-- Get `user.id` (already available via `useAuth` or fall back to fetching once).
-- Rename channel to `profile-${user.id}`.
-- Add `filter: \`id=eq.${user.id}\`` to the `postgres_changes` config.
-- Add `user?.id` to the effect deps.
+**Set / change / disable PIN flows** live inside Settings → Privacy (Part 4) as dialogs that reuse `PinKeypad` for current + new + confirm.
 
-**4. Mutation invalidation fixes** (small additions, all in onSuccess):
+### Part 3 — Idle auto-lock
 
-| File | Mutation | Add invalidation for |
-|------|----------|----------------------|
-| `src/hooks/useTasks.ts` | createTask, updateTask, deleteTask | `["taskmaster-tasks", householdId]`, `["daily-plan"]`, `["dashboard-stats", householdId]` |
-| `src/hooks/usePantryItems.ts` | add/update/delete | `["dashboard-stats", householdId]` |
-| `src/pages/HouseholdMembers.tsx` | remove member | `["household-member-emails"]`, `["household"]` |
-| `src/hooks/useHabits.ts` | logHabit | confirm `["household-habit-stats"]` present; add if missing |
-| `src/hooks/useFinance.ts` | useCreateTransaction / useUpdateTransaction / useDeleteTransaction | confirm `finance-monthly-summary`, `finance-dashboard`, and (when `savings_goal_id`) `finance-savings-goals`; add any missing |
+**New: `src/hooks/useIdleAutoLock.ts`**
+- Reads `localStorage['familydesk_idle_timeout']` (minutes; default `5`; `'never'` disables).
+- Attaches passive listeners for `mousedown`, `touchstart`, `keydown`, `scroll` to `document`; resets a `setTimeout` ref on each.
+- On fire: `setPrivacy(true)`, clear `finance_unlocked_at`, toast `"Screen locked due to inactivity"` (3s), and if current path matches `/finance` the `FinancePinGate` re-renders into locked state automatically (since unlock TS now stale).
 
-Each addition is a 1-line `queryClient.invalidateQueries({ queryKey: [...] })` in the existing onSuccess.
+**Mount:** new component `<IdleAutoLockRunner />` rendered inside `PrivacyModeProvider` in `App.tsx`. Reads context + router location; no UI of its own.
 
-### Out of scope
+### Part 4 — Settings → Privacy section
 
-- No DB / RLS / edge-function changes.
-- No new realtime topics — the `HouseholdRealtimeProvider` already covers every shared table.
-- No UI, data-model, or business-logic changes.
+**New: `src/components/settings/PrivacySecuritySection.tsx`** rendered in `src/pages/Settings.tsx` near the existing legal `PrivacySection` (rename the legal one's *displayed* heading to "Legal" if both end up adjacent, to avoid duplicate "Privacy" labels).
+
+Rows:
+1. **Privacy Mode** — `Switch` bound to `usePrivacyMode()`.
+2. **Finance PIN Lock** — `Switch` + adjacent "Set PIN" / "Change PIN" button. Switch flow: on→`SetPinDialog` (enter + confirm). Off→`VerifyPinDialog` then clear hash. "Change PIN" → verify current then set new.
+3. **Auto-lock after** — `Select` with `1m / 2m / 5m / 10m / Never`, writes `localStorage['familydesk_idle_timeout']`. `useIdleAutoLock` reads via a small reactive subscription (custom event on write) so changes apply immediately.
+
+### Files touched (summary)
+
+New:
+- `src/contexts/PrivacyModeContext.tsx`
+- `src/components/shared/PrivateValue.tsx`
+- `src/components/shared/PrivacyToggle.tsx`
+- `src/components/shared/PrivacyBanner.tsx`
+- `src/components/shared/IdleAutoLockRunner.tsx`
+- `src/lib/financePin.ts`
+- `src/components/finance/PinKeypad.tsx`
+- `src/components/finance/FinancePinGate.tsx`
+- `src/components/settings/PrivacySecuritySection.tsx`
+- `src/hooks/useIdleAutoLock.ts`
+
+Edited:
+- `src/App.tsx` — add `PrivacyModeProvider`, `<PrivacyBanner />`, `<IdleAutoLockRunner />`, wrap `/finance*` routes with `<FinancePinGate>`.
+- `src/components/layout/Header.tsx` — add `<PrivacyToggle />`.
+- `src/pages/Settings.tsx` — render new section.
+- All 17 files calling `formatINR` — swap raw rupee renders for `<PrivateValue value={n} />`. No logic changes.
+
+### Explicitly out of scope
+
+- No DB schema changes. PIN hash + idle timeout live in localStorage; privacy mode in sessionStorage.
+- No changes to existing finance logic, calculations, or layouts beyond swapping the render call.
+- No PIN lockout / brute-force throttling (spec defers this).
+- No password-recovery flow; "Forgot PIN?" only links to Settings instructions.
 
 ### Verification
 
-After edits:
-- `rg "supabase\.channel\(" src` returns exactly 3 callers — provider, generic hook, notification preferences — all with deterministic names and cleanup.
-- Live test with `testuser@dealcompass.test / Test1234!`: add a transaction → navigate away → return → list shows the new row without manual refresh; member count is stable across navigations.
+After each part:
+1. Toggle eye on Home → all amounts on Home + Finance hub show `₹ ••••`; tasks/calendar/habits unchanged.
+2. Set 4-digit PIN in Settings → navigate to `/finance` from any other module → PIN screen blocks content; correct PIN unlocks for the session.
+3. Set auto-lock to 1 min → leave idle → toast appears, amounts blur, `/finance` requires PIN again.
+4. Refresh tab → privacy mode resets (sessionStorage), PIN setting persists (localStorage), Finance requires PIN again (sessionStorage cleared).
