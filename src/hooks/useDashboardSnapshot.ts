@@ -7,6 +7,7 @@ import { useShoppingLists } from "@/hooks/useShoppingLists";
 import { useFinanceMonthlySummary, useFinanceBudgets } from "@/hooks/useFinance";
 import { useTodayEvents, useCalendarEvents } from "@/hooks/useCalendarEvents";
 import { formatINR } from "@/lib/formatINR";
+import { usePrivacyMode } from "@/contexts/PrivacyModeContext";
 
 export interface SnapshotItem {
   key: "tasks" | "meals" | "finance" | "habits" | "grocery" | "calendar";
@@ -26,8 +27,10 @@ export const useDashboardSnapshot = (householdId: string | null) => {
   const { data: budgets } = useFinanceBudgets(householdId);
   const { data: todayEvents } = useTodayEvents();
   const { data: weekEvents } = useCalendarEvents(new Date(), "week");
+  const { isPrivate } = usePrivacyMode();
 
   return useMemo(() => {
+    const money = (n: number) => (isPrivate ? "₹ ••••" : formatINR(n));
     const todayStr = format(new Date(), "yyyy-MM-dd");
     const startOfTodayMs = new Date(todayStr + "T00:00:00").getTime();
 
@@ -60,9 +63,9 @@ export const useDashboardSnapshot = (householdId: string | null) => {
     const financeLabel =
       totalBudget > 0
         ? overspent
-          ? `${formatINR(spent)} spent — over budget`
-          : `${formatINR(spent)} spent — ${formatINR(left)} left`
-        : `${formatINR(spent)} spent this month`;
+          ? `${money(spent)} spent — over budget`
+          : `${money(spent)} spent — ${money(left)} left`
+        : `${money(spent)} spent this month`;
 
     // Habits today
     const habitsTotal = (todaysHabits || []).length;
@@ -143,9 +146,9 @@ export const useDashboardSnapshot = (householdId: string | null) => {
       grocery: `${dashStats?.pantryItemsCount ?? 0} pantry items`,
       calendar: calendarLabel,
       habits: habitsTotal > 0 ? `${habitsDone}/${habitsTotal} done` : "—",
-      finance: `${formatINR(spent)} spent this month`,
+      finance: `${money(spent)} spent this month`,
     } as Record<string, string>;
 
     return { items, moduleSubtitles, todayEvents: todayEvents || [] };
-  }, [tasks, dashStats, monthly, budgets, todaysHabits, shoppingLists, weekEvents, todayEvents]);
+  }, [tasks, dashStats, monthly, budgets, todaysHabits, shoppingLists, weekEvents, todayEvents, isPrivate]);
 };

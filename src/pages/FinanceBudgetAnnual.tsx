@@ -16,6 +16,8 @@ import {
 import { useCustomCategories } from "@/hooks/useCustomCategories";
 import { resolveCategoryLabel } from "@/components/finance/CategorySelect";
 import { formatINR } from "@/lib/formatINR";
+import { PrivateValue } from "@/components/shared/PrivateValue";
+import { usePrivacyMode } from "@/contexts/PrivacyModeContext";
 import { cn } from "@/lib/utils";
 import { BudgetSubNav } from "@/components/finance/BudgetSubNav";
 
@@ -39,6 +41,7 @@ export default function FinanceBudgetAnnual() {
   const [year, setYear] = useState<number>(initialYear);
   const { data, isLoading } = useFinanceAnnualBudget(householdId, year);
   const { categories: customCats } = useCustomCategories("transaction");
+  const { isPrivate } = usePrivacyMode();
 
   const overallPct =
     data && data.totalPlanned > 0
@@ -75,7 +78,7 @@ export default function FinanceBudgetAnnual() {
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Year total</span>
               <span className={cn("font-medium", overallPct > 90 && "text-destructive")}>
-                {formatINR(data?.totalActual || 0)} / {formatINR(data?.totalPlanned || 0)}
+                <PrivateValue value={data?.totalActual || 0} /> / <PrivateValue value={data?.totalPlanned || 0} />
               </span>
             </div>
             <Progress value={overallPct} className="h-2" />
@@ -109,8 +112,8 @@ export default function FinanceBudgetAnnual() {
                       </div>
                       <div className="text-right shrink-0">
                         <div className="text-xs">
-                          {formatINR(row.annualActual)}
-                          <span className="text-muted-foreground"> / {formatINR(row.annualPlanned)}</span>
+                          <PrivateValue value={row.annualActual} />
+                          <span className="text-muted-foreground"> / <PrivateValue value={row.annualPlanned} /></span>
                         </div>
                         <div
                           className={cn(
@@ -119,7 +122,7 @@ export default function FinanceBudgetAnnual() {
                           )}
                         >
                           {variance < 0 ? "Over " : "Under "}
-                          {formatINR(Math.abs(variance))}
+                          <PrivateValue value={Math.abs(variance)} />
                           {row.annualPlanned > 0 && (
                             <> ({Math.round(Math.abs(variancePct))}%)</>
                           )}
@@ -130,7 +133,9 @@ export default function FinanceBudgetAnnual() {
                       {row.monthlyPlanned.map((p, i) => {
                         const a = row.monthlyActual[i];
                         const monthStr = `${year}-${String(i + 1).padStart(2, "0")}`;
-                        const title = `${MONTH_LABELS[i]} · ${formatINR(a)} / ${formatINR(p)}`;
+                        const title = isPrivate
+                          ? `${MONTH_LABELS[i]} · ₹ •••• / ₹ ••••`
+                          : `${MONTH_LABELS[i]} · ${formatINR(a)} / ${formatINR(p)}`;
                         return (
                           <Link
                             key={i}

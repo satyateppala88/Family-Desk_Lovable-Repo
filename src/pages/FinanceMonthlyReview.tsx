@@ -15,6 +15,7 @@ import {
   CATEGORY_LABELS,
 } from "@/hooks/useFinance";
 import { formatINR } from "@/lib/formatINR";
+import { PrivateValue, PrivateText } from "@/components/shared/PrivateValue";
 import { format } from "date-fns";
 import { TrendingUp, TrendingDown, AlertTriangle, CheckCircle, Lightbulb, PartyPopper, Shield, BarChart3 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -83,13 +84,13 @@ const FinanceMonthlyReview = () => {
               <Card>
                 <CardContent className="p-4 text-center">
                   <p className="text-label mb-1">Earned</p>
-                  <p className="text-lg font-bold text-foreground">{formatINR(summary?.income || 0)}</p>
+                  <p className="text-lg font-bold text-foreground"><PrivateValue value={summary?.income || 0} /></p>
                 </CardContent>
               </Card>
               <Card>
                 <CardContent className="p-4 text-center">
                   <p className="text-label mb-1">Spent</p>
-                  <p className="text-lg font-bold text-foreground">{formatINR(summary?.expenses || 0)}</p>
+                  <p className="text-lg font-bold text-foreground"><PrivateValue value={summary?.expenses || 0} /></p>
                 </CardContent>
               </Card>
               <Card>
@@ -148,7 +149,7 @@ const FinanceMonthlyReview = () => {
                       <div key={b.id} className="flex items-start gap-2 text-sm">
                         <Badge variant="destructive" className="mt-0.5 shrink-0">Over</Badge>
                         <span className="text-muted-foreground">
-                          {resolveCategoryLabel(b.category, CATEGORY_LABELS, customCats)}: spent {formatINR(actual)} against a {formatINR(Number(b.planned_amount))} budget
+                          {resolveCategoryLabel(b.category, CATEGORY_LABELS, customCats)}: spent <PrivateValue value={actual} /> against a <PrivateValue value={Number(b.planned_amount)} /> budget
                         </span>
                       </div>
                     );
@@ -173,7 +174,7 @@ const FinanceMonthlyReview = () => {
                       <div key={cat} className="space-y-1">
                         <div className="flex justify-between text-sm">
                           <span className="text-foreground font-medium">{resolveCategoryLabel(cat, CATEGORY_LABELS, customCats)}</span>
-                          <span className="text-muted-foreground">{formatINR(amount as number)}</span>
+                          <span className="text-muted-foreground"><PrivateValue value={amount as number} /></span>
                         </div>
                         {budget && <Progress value={pct} className="h-1.5" />}
                       </div>
@@ -199,11 +200,11 @@ const FinanceMonthlyReview = () => {
                     return (
                       <div key={g.id} className="space-y-1.5">
                         <div className="flex justify-between text-sm">
-                          <span className="font-medium text-foreground">{g.name}</span>
+                          <span className="font-medium text-foreground"><PrivateText value={g.name} /></span>
                           <span className="text-muted-foreground">{pct}%</span>
                         </div>
                         <Progress value={pct} className="h-1.5" />
-                        <p className="text-xs text-muted-foreground">{formatINR(Number(g.current_amount))} of {formatINR(Number(g.target_amount))}</p>
+                        <p className="text-xs text-muted-foreground"><PrivateValue value={Number(g.current_amount)} /> of <PrivateValue value={Number(g.target_amount)} /></p>
                       </div>
                     );
                   })}

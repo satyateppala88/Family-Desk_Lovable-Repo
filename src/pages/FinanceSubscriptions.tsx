@@ -25,6 +25,7 @@ import { SubscriptionDialog } from "@/components/finance/SubscriptionDialog";
 import { useCustomCategories } from "@/hooks/useCustomCategories";
 import { resolveCategoryLabel } from "@/components/finance/CategorySelect";
 import { formatINR } from "@/lib/formatINR";
+import { PrivateValue } from "@/components/shared/PrivateValue";
 import { format, isPast, isToday, addDays } from "date-fns";
 import { cn } from "@/lib/utils";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -93,7 +94,7 @@ const FinanceSubscriptions = () => {
           <CardContent className="p-4 flex items-center justify-between">
             <div>
               <p className="text-xs text-muted-foreground">Est. Monthly Cost</p>
-              <p className="text-xl font-bold text-primary">{formatINR(Math.round(totalMonthly))}</p>
+              <p className="text-xl font-bold text-primary"><PrivateValue value={Math.round(totalMonthly)} /></p>
             </div>
             <div className="text-right">
               <p className="text-xs text-muted-foreground">Active</p>
@@ -185,7 +186,7 @@ const FinanceSubscriptions = () => {
                         )}
                       </div>
                     </div>
-                    <span className="text-sm font-semibold tabular-nums shrink-0">{formatINR(Number(sub.amount))}</span>
+                    <span className="text-sm font-semibold tabular-nums shrink-0"><PrivateValue value={Number(sub.amount)} /></span>
                     <div className="flex gap-0.5 shrink-0">
                       <Button
                         variant="ghost"

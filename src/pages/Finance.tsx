@@ -8,6 +8,7 @@ import { useSubscriptions } from "@/hooks/useSubscriptions";
 import { useFinanceSavingsGoals } from "@/hooks/useFinance";
 import { useUserCards } from "@/hooks/useUserCards";
 import { formatINR } from "@/lib/formatINR";
+import { PrivateValue } from "@/components/shared/PrivateValue";
 import { format, isPast, addDays, parse, addMonths } from "date-fns";
 import { useSelectedMonth } from "@/hooks/useSelectedMonth";
 import { MonthSwitcher } from "@/components/finance/MonthSwitcher";
@@ -147,7 +148,7 @@ const Finance = () => {
                 <Skeleton className="h-6 w-24" />
               ) : (
                 <>
-                  <p className="text-lg font-bold">{formatINR(summary?.income || 0)}</p>
+                  <p className="text-lg font-bold"><PrivateValue value={summary?.income || 0} /></p>
                   {prevSummary && renderDelta(summary?.income || 0, prevSummary.income, false)}
                 </>
               )}
@@ -162,7 +163,7 @@ const Finance = () => {
                 <Skeleton className="h-6 w-24" />
               ) : (
                 <>
-                  <p className="text-lg font-bold">{formatINR(summary?.expenses || 0)}</p>
+                  <p className="text-lg font-bold"><PrivateValue value={summary?.expenses || 0} /></p>
                   {prevSummary && renderDelta(summary?.expenses || 0, prevSummary.expenses, true)}
                 </>
               )}

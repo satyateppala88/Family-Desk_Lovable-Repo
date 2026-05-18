@@ -29,6 +29,7 @@ import { useUserCards } from "@/hooks/useUserCards";
 import { useCustomCategories } from "@/hooks/useCustomCategories";
 import { resolveCategoryLabel } from "@/components/finance/CategorySelect";
 import { formatINR } from "@/lib/formatINR";
+import { PrivateValue, PrivateText } from "@/components/shared/PrivateValue";
 import { TransactionDialog } from "@/components/finance/TransactionDialog";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -151,19 +152,19 @@ const FinanceTransactions = () => {
                         <div>
                           <p className="text-[10px] text-muted-foreground">Income</p>
                           <p className="text-sm font-semibold tabular-nums text-[hsl(var(--success))]">
-                            {t.income > 0 ? formatINR(t.income) : "—"}
+                            {t.income > 0 ? <PrivateValue value={t.income} /> : "—"}
                           </p>
                         </div>
                         <div>
                           <p className="text-[10px] text-muted-foreground">Spent</p>
                           <p className="text-sm font-semibold tabular-nums">
-                            {t.spent > 0 ? formatINR(t.spent) : "—"}
+                            {t.spent > 0 ? <PrivateValue value={t.spent} /> : "—"}
                           </p>
                         </div>
                         <div>
                           <p className="text-[10px] text-muted-foreground">Saved</p>
                           <p className="text-sm font-semibold tabular-nums text-primary">
-                            {t.saved > 0 ? formatINR(t.saved) : "—"}
+                            {t.saved > 0 ? <PrivateValue value={t.saved} /> : "—"}
                           </p>
                         </div>
                       </div>
@@ -311,7 +312,11 @@ const FinanceTransactions = () => {
                     {tx.type === "income" ? "+" : tx.type === "savings" ? "→" : "−"}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{tx.description || resolveCategoryLabel(tx.category, CATEGORY_LABELS, customCats)}</p>
+                    <p className="text-sm font-medium truncate">
+                      {tx.description
+                        ? <PrivateText value={tx.description} />
+                        : resolveCategoryLabel(tx.category, CATEGORY_LABELS, customCats)}
+                    </p>
                     <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
                       <span>{format(new Date(tx.transaction_date), "MMM d")}</span>
                       <span>·</span>
@@ -338,7 +343,7 @@ const FinanceTransactions = () => {
                     tx.type === "income" && "text-[hsl(var(--success))]",
                     tx.type === "savings" && "text-primary"
                   )}>
-                    {tx.type === "income" ? "+" : tx.type === "savings" ? "→" : "−"}{formatINR(Number(tx.amount))}
+                    {tx.type === "income" ? "+" : tx.type === "savings" ? "→" : "−"}<PrivateValue value={Number(tx.amount)} />
                   </span>
                   <div className="flex gap-0.5 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity shrink-0">
                     <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditTx(tx)} style={{ minHeight: "28px" }}>

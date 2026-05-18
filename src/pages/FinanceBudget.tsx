@@ -26,6 +26,7 @@ import {
 } from "@/hooks/useFinance";
 import { useHouseholdMembers } from "@/hooks/useHouseholdMembers";
 import { formatINR } from "@/lib/formatINR";
+import { PrivateValue } from "@/components/shared/PrivateValue";
 import { BudgetDialog } from "@/components/finance/BudgetDialog";
 import { useCustomCategories } from "@/hooks/useCustomCategories";
 import { resolveCategoryLabel } from "@/components/finance/CategorySelect";
@@ -255,7 +256,7 @@ const FinanceBudget = () => {
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">{monthLabel}</span>
               <span className={cn("font-medium", overallPct > 90 ? "text-destructive" : "")}>
-                {formatINR(totalActual)} / {formatINR(totalPlanned)}
+                <PrivateValue value={totalActual} /> / <PrivateValue value={totalPlanned} />
               </span>
             </div>
             {totalPlanned > 0 ? (
@@ -271,7 +272,7 @@ const FinanceBudget = () => {
 
         {!isMemberView && topSpender && (
           <p className="text-xs text-muted-foreground px-1">
-            Highest spender this month: <span className="font-medium text-foreground">{topSpender.name}</span> — {formatINR(topSpender.amount)} across all categories
+            Highest spender this month: <span className="font-medium text-foreground">{topSpender.name}</span> — <PrivateValue value={topSpender.amount} /> across all categories
           </p>
         )}
 
@@ -331,14 +332,14 @@ const FinanceBudget = () => {
                   </div>
                   {isMemberView && selectedFirstName && (
                     <p className="text-[11px] text-muted-foreground">
-                      {selectedFirstName}'s spend · Household limit: {formatINR(Number(row.planned_amount))}
+                      {selectedFirstName}'s spend · Household limit: <PrivateValue value={Number(row.planned_amount)} />
                     </p>
                   )}
                   {Number(row.planned_amount) > 0 && (
                     <Progress value={row.pct} className="h-1.5" />
                   )}
                   <div className="flex justify-between items-center text-[11px] text-muted-foreground">
-                    <span>{formatINR(row.actual)} spent</span>
+                    <span><PrivateValue value={row.actual} /> spent</span>
                     {editingId === row.id ? (
                       <div className="flex items-center gap-1">
                         <Input
@@ -381,7 +382,7 @@ const FinanceBudget = () => {
                         className="inline-flex items-center gap-1 hover:text-foreground transition"
                         aria-label="Edit budget for this month"
                       >
-                        {formatINR(Number(row.planned_amount))} budget
+                        <PrivateValue value={Number(row.planned_amount)} /> budget
                         <Pencil className="w-3 h-3 opacity-60" />
                       </button>
                     )}
@@ -415,7 +416,7 @@ const FinanceBudget = () => {
                                   {mr.name.slice(0, 2).toUpperCase()}
                                 </span>
                                 <span className="text-[11px] flex-1 min-w-0 truncate">{mr.name}</span>
-                                <span className="text-[11px] font-medium tabular-nums">{formatINR(mr.amount)}</span>
+                                <span className="text-[11px] font-medium tabular-nums"><PrivateValue value={mr.amount} /></span>
                                 <div className="w-20 h-1.5 rounded-full bg-muted overflow-hidden">
                                   <div className="h-full bg-primary" style={{ width: `${mr.pct}%` }} />
                                 </div>

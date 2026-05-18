@@ -1,5 +1,6 @@
 import { forwardRef } from "react";
 import { formatINR } from "@/lib/formatINR";
+import { usePrivacyMode } from "@/contexts/PrivacyModeContext";
 import type { MonthlyReportData } from "@/hooks/useMonthlyReport";
 
 interface ReportCardProps {
@@ -32,6 +33,10 @@ const formatAmountCompact = (amount: number): string => {
 
 export const ReportCard = forwardRef<HTMLDivElement, ReportCardProps>(({ report, tagline }, ref) => {
   const maxValue = Math.max(...report.topCategories.map((c) => c.amount), 0);
+  const { isPrivate } = usePrivacyMode();
+  const money = (n: number) => (isPrivate ? "₹ ••••" : formatINR(n));
+  const moneyAmount = (n: number) => (isPrivate ? "₹ ••••" : formatAmount(n));
+  const moneyCompact = (n: number) => (isPrivate ? "₹ ••••" : formatAmountCompact(n));
 
   return (
     <section
@@ -55,8 +60,8 @@ export const ReportCard = forwardRef<HTMLDivElement, ReportCardProps>(({ report,
 
       {/* 4 headline stats */}
       <div className="grid grid-cols-2 gap-3">
-        <StatCard label="Total spent" value={formatINR(report.spent)} accent={BRAND_GREEN} />
-        <StatCard label="Total saved" value={formatINR(report.saved)} accent={BRAND_GREEN} positive={report.saved >= 0} />
+        <StatCard label="Total spent" value={money(report.spent)} accent={BRAND_GREEN} />
+        <StatCard label="Total saved" value={money(report.saved)} accent={BRAND_GREEN} positive={report.saved >= 0} />
         <StatCard label="Habits done" value={`${report.habits.percent}%`} accent={BRAND_GREEN} />
         <StatCard label="Meals at home" value={`${report.mealsCooked} days`} accent={BRAND_GREEN} />
       </div>
@@ -95,8 +100,8 @@ export const ReportCard = forwardRef<HTMLDivElement, ReportCardProps>(({ report,
                     className="text-left text-[13px] font-bold shrink-0 truncate"
                     style={{ width: 90, color: INK }}
                   >
-                    <span className="hidden min-[360px]:inline">{formatAmount(cat.amount)}</span>
-                    <span className="inline min-[360px]:hidden">{formatAmountCompact(cat.amount)}</span>
+                    <span className="hidden min-[360px]:inline">{moneyAmount(cat.amount)}</span>
+                    <span className="inline min-[360px]:hidden">{moneyCompact(cat.amount)}</span>
                   </div>
                 </div>
               );
