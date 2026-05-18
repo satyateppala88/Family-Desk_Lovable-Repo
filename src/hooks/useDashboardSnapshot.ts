@@ -6,6 +6,7 @@ import { useHabits } from "@/hooks/useHabits";
 import { useShoppingLists } from "@/hooks/useShoppingLists";
 import { useFinanceMonthlySummary, useFinanceBudgets } from "@/hooks/useFinance";
 import { useTodayEvents, useCalendarEvents } from "@/hooks/useCalendarEvents";
+import { useTodayTaskCount } from "@/hooks/useTodayTaskCount";
 import { formatINR } from "@/lib/formatINR";
 import { usePrivacyMode } from "@/contexts/PrivacyModeContext";
 
@@ -27,6 +28,7 @@ export const useDashboardSnapshot = (householdId: string | null) => {
   const { data: budgets } = useFinanceBudgets(householdId);
   const { data: todayEvents } = useTodayEvents();
   const { data: weekEvents } = useCalendarEvents(new Date(), "week");
+  const { data: todayTaskCount } = useTodayTaskCount(householdId);
   const { isPrivate } = usePrivacyMode();
 
   return useMemo(() => {
@@ -43,10 +45,11 @@ export const useDashboardSnapshot = (householdId: string | null) => {
       if (!t.due_date) return false;
       return new Date(t.due_date).getTime() < startOfTodayMs;
     }).length;
+    const liveCount = todayTaskCount ?? 0;
     const tasksLabel =
-      dueToday === 0 && overdue === 0
-        ? "All clear ✓"
-        : `${dueToday} due today${overdue > 0 ? ` — ${overdue} overdue` : ""}`;
+      liveCount > 0
+        ? `${liveCount} task${liveCount > 1 ? "s" : ""} due today`
+        : "All clear ✓";
 
     // Dinner tonight
     const dinnerItem =
@@ -150,5 +153,5 @@ export const useDashboardSnapshot = (householdId: string | null) => {
     } as Record<string, string>;
 
     return { items, moduleSubtitles, todayEvents: todayEvents || [] };
-  }, [tasks, dashStats, monthly, budgets, todaysHabits, shoppingLists, weekEvents, todayEvents, isPrivate]);
+  }, [tasks, dashStats, monthly, budgets, todaysHabits, shoppingLists, weekEvents, todayEvents, todayTaskCount, isPrivate]);
 };
