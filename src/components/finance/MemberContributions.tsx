@@ -4,6 +4,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useHouseholdMembers } from "@/hooks/useHouseholdMembers";
 import { useMemberContributions } from "@/hooks/useMemberContributions";
 import { formatINR } from "@/lib/formatINR";
+import { usePrivacyMode } from "@/contexts/PrivacyModeContext";
 import { Users } from "lucide-react";
 
 interface Props {
@@ -38,7 +39,8 @@ export const MemberContributions = ({ householdId, month }: Props) => {
     }))
     .sort((a, b) => b.spent + b.income - (a.spent + a.income));
 
-  const fmt = (v: number) => (v > 0 ? formatINR(v) : "—");
+  const { isPrivate } = usePrivacyMode();
+  const fmt = (v: number) => (v > 0 ? (isPrivate ? "₹ ••••" : formatINR(v)) : "—");
 
   return (
     <Card>
