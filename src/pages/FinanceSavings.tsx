@@ -23,6 +23,7 @@ import { useHouseholdMembers } from "@/hooks/useHouseholdMembers";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQueryClient } from "@tanstack/react-query";
 import { formatINR } from "@/lib/formatINR";
+import { PrivateValue, PrivateText } from "@/components/shared/PrivateValue";
 import { SavingsGoalDialog } from "@/components/finance/SavingsGoalDialog";
 import { format, differenceInDays, addMonths } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -278,7 +279,7 @@ const FinanceSavings = () => {
                         )}
                         {(signal.kind === "behind" || signal.kind === "review") && signal.shortfall > 0 && (
                           <p className="text-[11px] mt-0.5 text-muted-foreground">
-                            Needed to stay on track: {formatINR(signal.shortfall)} more/month
+                            Needed to stay on track: <PrivateValue value={signal.shortfall} /> more/month
                           </p>
                         )}
                       </div>
@@ -310,8 +311,8 @@ const FinanceSavings = () => {
                         className={cn("h-2", isReached && "[&>*]:bg-[hsl(var(--success))]")}
                       />
                       <div className="flex justify-between text-[11px] text-muted-foreground">
-                        <span>{formatINR(effectiveAmount)} saved</span>
-                        <span className="font-medium">{Math.round(pct)}% of {formatINR(Number(goal.target_amount))}</span>
+                        <span><PrivateValue value={effectiveAmount} /> saved</span>
+                        <span className="font-medium">{Math.round(pct)}% of <PrivateValue value={Number(goal.target_amount)} /></span>
                       </div>
                     </div>
 
@@ -337,7 +338,7 @@ const FinanceSavings = () => {
                                 {initialsOf(name)}
                               </span>
                               <span className="text-[11px] flex-1 min-w-0 truncate">{firstName(name)}</span>
-                              <span className="text-[11px] font-medium tabular-nums">{formatINR(mr.amount)}</span>
+                              <span className="text-[11px] font-medium tabular-nums"><PrivateValue value={mr.amount} /></span>
                               <div className="w-20 h-1.5 rounded-full bg-muted overflow-hidden">
                                 <div className="h-full bg-primary" style={{ width: `${pctMember}%` }} />
                               </div>
@@ -359,7 +360,7 @@ const FinanceSavings = () => {
                                 {format(new Date(c.transaction_date), "dd MMM")} · {c.description || c.category}
                                 {m && <span className="text-muted-foreground"> · {m.displayName.split(" ")[0]}</span>}
                               </span>
-                              <span className="font-semibold tabular-nums text-primary">{formatINR(Number(c.amount))}</span>
+                              <span className="font-semibold tabular-nums text-primary"><PrivateValue value={Number(c.amount)} /></span>
                             </div>
                           );
                         })}
@@ -398,7 +399,7 @@ const FinanceSavings = () => {
                         <PartyPopper className="w-4 h-4 text-[hsl(var(--success))]" />
                         <span className="text-sm line-through text-muted-foreground">{goal.name}</span>
                       </div>
-                      <span className="text-xs font-medium text-[hsl(var(--success))]">{formatINR(Number(goal.target_amount))}</span>
+                      <span className="text-xs font-medium text-[hsl(var(--success))]"><PrivateValue value={Number(goal.target_amount)} /></span>
                     </CardContent>
                   </Card>
                 ))}
