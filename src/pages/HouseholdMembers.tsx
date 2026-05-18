@@ -124,6 +124,8 @@ const HouseholdMembers = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["household-members"] });
+      queryClient.invalidateQueries({ queryKey: ["household-member-emails"] });
+      queryClient.invalidateQueries({ queryKey: ["household"] });
       toast.success("Member role updated");
     },
     onError: (error: any) => {
