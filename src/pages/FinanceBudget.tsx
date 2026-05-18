@@ -19,6 +19,7 @@ import {
   useFinanceRealtime,
   useUpsertBudget,
   useUpdateBudgetById,
+  useDeleteBudgetById,
   useCarryForwardBudgets,
   useFinanceTransactions,
   CATEGORY_LABELS,
