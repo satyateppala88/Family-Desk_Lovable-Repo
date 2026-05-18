@@ -1005,12 +1005,32 @@ export const useCarryForwardBudgets = (householdId: string | null) => {
       if (existingErr) throw existingErr;
       if (existing && existing.length > 0) return { cloned: 0, sourceMonth: null, insertedIds: [] };
 
-      // Find the most recent prior month with budgets.
+      // Find recurring/annual budgets that already cover categories for `month` —
+      // these don't need physical clones, the resolver handles them.
+      const { data: recurringRows, error: recErr } = await supabase
+        .from("finance_budgets")
+        .select("category,month,budget_type")
+        .eq("household_id", householdId)
+        .eq("is_recurring", true)
+        .lte("month", month);
+      if (recErr) throw recErr;
+      const yearOfMonth = month.slice(0, 4);
+      const coveredByRecurring = new Set<string>();
+      (recurringRows || []).forEach((r: any) => {
+        if (r.budget_type === "annual") {
+          if (String(r.month).slice(0, 4) === yearOfMonth) coveredByRecurring.add(r.category);
+        } else {
+          coveredByRecurring.add(r.category);
+        }
+      });
+
+      // Find the most recent prior month with NON-recurring budgets to clone.
       const { data: prior, error: priorErr } = await supabase
         .from("finance_budgets")
         .select("month")
         .eq("household_id", householdId)
         .lt("month", month)
+        .eq("is_recurring", false)
         .order("month", { ascending: false })
         .limit(1);
       if (priorErr) throw priorErr;
@@ -1019,19 +1039,22 @@ export const useCarryForwardBudgets = (householdId: string | null) => {
 
       const { data: rows, error: rowsErr } = await supabase
         .from("finance_budgets")
-        .select("category,planned_amount")
+        .select("category,planned_amount,is_recurring")
         .eq("household_id", householdId)
         .eq("month", sourceMonth);
       if (rowsErr) throw rowsErr;
       if (!rows || rows.length === 0) return { cloned: 0, sourceMonth, insertedIds: [] };
 
-      const payload = rows.map((r) => ({
-        household_id: householdId,
-        created_by: user!.id,
-        month,
-        category: r.category,
-        planned_amount: r.planned_amount,
-      }));
+      const payload = rows
+        .filter((r: any) => !r.is_recurring && !coveredByRecurring.has(r.category))
+        .map((r) => ({
+          household_id: householdId,
+          created_by: user!.id,
+          month,
+          category: r.category,
+          planned_amount: r.planned_amount,
+        }));
+      if (payload.length === 0) return { cloned: 0, sourceMonth, insertedIds: [] };
 
       const { data: inserted, error: insErr } = await supabase
         .from("finance_budgets")
