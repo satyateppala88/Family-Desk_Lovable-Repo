@@ -18,6 +18,7 @@ import {
   useFinanceMonthlySummary,
   useFinanceRealtime,
   useUpsertBudget,
+  useUpdateBudgetById,
   useCarryForwardBudgets,
   useFinanceTransactions,
   CATEGORY_LABELS,
@@ -28,6 +29,7 @@ import { useHouseholdMembers } from "@/hooks/useHouseholdMembers";
 import { formatINR } from "@/lib/formatINR";
 import { PrivateValue } from "@/components/shared/PrivateValue";
 import { BudgetDialog } from "@/components/finance/BudgetDialog";
+import type { BudgetSavePayload } from "@/components/finance/BudgetDialog";
 import { useCustomCategories } from "@/hooks/useCustomCategories";
 import { resolveCategoryLabel } from "@/components/finance/CategorySelect";
 import { format } from "date-fns";
