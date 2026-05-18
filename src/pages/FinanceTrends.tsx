@@ -22,7 +22,6 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { ModuleSetupGate } from "@/components/onboarding/ModuleSetupGate";
 
 const FinanceTrends = () => {
   const { householdId } = useHousehold();
