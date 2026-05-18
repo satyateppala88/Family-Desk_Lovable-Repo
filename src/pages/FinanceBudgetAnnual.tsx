@@ -41,6 +41,7 @@ export default function FinanceBudgetAnnual() {
   const [year, setYear] = useState<number>(initialYear);
   const { data, isLoading } = useFinanceAnnualBudget(householdId, year);
   const { categories: customCats } = useCustomCategories("transaction");
+  const { isPrivate } = usePrivacyMode();
 
   const overallPct =
     data && data.totalPlanned > 0
