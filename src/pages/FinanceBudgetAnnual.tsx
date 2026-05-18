@@ -132,7 +132,9 @@ export default function FinanceBudgetAnnual() {
                       {row.monthlyPlanned.map((p, i) => {
                         const a = row.monthlyActual[i];
                         const monthStr = `${year}-${String(i + 1).padStart(2, "0")}`;
-                        const title = `${MONTH_LABELS[i]} · ${formatINR(a)} / ${formatINR(p)}`;
+                        const title = isPrivate
+                          ? `${MONTH_LABELS[i]} · ₹ •••• / ₹ ••••`
+                          : `${MONTH_LABELS[i]} · ${formatINR(a)} / ${formatINR(p)}`;
                         return (
                           <Link
                             key={i}
