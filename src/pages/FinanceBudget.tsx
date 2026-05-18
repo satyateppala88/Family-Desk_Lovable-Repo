@@ -21,6 +21,8 @@ import {
   useCarryForwardBudgets,
   useFinanceTransactions,
   CATEGORY_LABELS,
+  FINANCE_CATEGORIES,
+  type FinanceBudget as FinanceBudgetType,
 } from "@/hooks/useFinance";
 import { useHouseholdMembers } from "@/hooks/useHouseholdMembers";
 import { formatINR } from "@/lib/formatINR";
@@ -32,6 +34,7 @@ import { cn } from "@/lib/utils";
 import { BudgetSubNav } from "@/components/finance/BudgetSubNav";
 import { supabase } from "@/lib/supabase";
 import { useQueryClient } from "@tanstack/react-query";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 const FinanceBudget = () => {
   const { householdId } = useHousehold();
@@ -53,6 +56,7 @@ const FinanceBudget = () => {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [showAdd, setShowAdd] = useState(false);
+  const [editingBudget, setEditingBudget] = useState<FinanceBudgetType | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editAmount, setEditAmount] = useState<string>("");
   const [expandedBreakdown, setExpandedBreakdown] = useState<Record<string, boolean>>({});
