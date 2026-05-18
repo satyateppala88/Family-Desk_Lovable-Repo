@@ -27,6 +27,7 @@ import { PrivateValue, PrivateText } from "@/components/shared/PrivateValue";
 import { SavingsGoalDialog } from "@/components/finance/SavingsGoalDialog";
 import { format, differenceInDays, addMonths } from "date-fns";
 import { cn } from "@/lib/utils";
+import { formatTimeLeft } from "@/lib/formatTimeLeft";
 
 type Signal =
   | { kind: "reached" }
@@ -269,11 +270,7 @@ const FinanceSavings = () => {
                             "text-[11px] mt-0.5",
                             daysLeft !== null && daysLeft < 0 ? "text-destructive" : "text-muted-foreground"
                           )}>
-                            {daysLeft !== null && daysLeft > 0
-                              ? `${daysLeft} days left`
-                              : daysLeft === 0
-                              ? "Due today"
-                              : "Overdue"}
+                            {formatTimeLeft(daysLeft)}
                             {" · "}{format(new Date(goal.target_date), "dd/MM/yyyy")}
                           </p>
                         )}
