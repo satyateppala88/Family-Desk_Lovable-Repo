@@ -145,11 +145,14 @@ export const useUpdateSubscription = () => {
   return useMutation({
     mutationFn: async (input: Partial<FinanceSubscription> & { id: string }) => {
       const { id, recurrence, ...rest } = input;
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("finance_subscriptions")
         .update({ ...rest, ...(recurrence !== undefined ? { recurrence: recurrence as any } : {}), updated_at: new Date().toISOString() })
-        .eq("id", id);
+        .eq("id", id)
+        .select()
+        .single();
       if (error) throw error;
+      return data as unknown as FinanceSubscription;
     },
     onMutate: async (vars) => {
       await qc.cancelQueries({ queryKey: ["finance-subscriptions"] });
@@ -168,7 +171,14 @@ export const useUpdateSubscription = () => {
       ctx?.snapshots?.forEach(([key, prev]: any) => qc.setQueryData(key, prev));
       toast.error("Failed to update");
     },
-    onSuccess: () => {
+    onSuccess: (row) => {
+      if (row) {
+        qc.getQueriesData<FinanceSubscription[]>({ queryKey: ["finance-subscriptions"] })
+          .forEach(([key, list]) => {
+            if (!Array.isArray(list)) return;
+            qc.setQueryData(key, list.map((s) => (s.id === row.id ? row : s)));
+          });
+      }
       qc.invalidateQueries({ queryKey: ["finance-subscriptions"] });
     },
   });
