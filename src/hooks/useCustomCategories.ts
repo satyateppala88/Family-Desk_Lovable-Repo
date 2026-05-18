@@ -103,6 +103,7 @@ export function useAddCustomCategory() {
     },
     onError: (e: any) => {
       const msg = String(e?.message || "");
+      console.error("[useAddCustomCategory] failed", { householdId, code: e?.code, msg });
       if (msg === "RESERVED_KEY") {
         toast.error("That name matches a built-in category. Pick a different name.");
       } else if (msg.includes("duplicate") || msg.includes("unique")) {
