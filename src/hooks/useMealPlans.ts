@@ -79,7 +79,10 @@ export const useMealPlans = (householdId: string | null, weekStartDate?: string)
         )
         .select()
         .single();
-      if (planError) throw planError;
+      if (planError) {
+        console.error("[createMealPlan] meal_plans upsert failed", planError);
+        throw planError;
+      }
 
       // Step 2: Delete old items — plan row exists so this is safe
       const { error: deleteError } = await (supabase as any)
