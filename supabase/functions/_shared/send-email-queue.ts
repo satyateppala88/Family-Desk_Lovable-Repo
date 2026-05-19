@@ -7,7 +7,11 @@ export interface SendQueueParams {
   subject: string;
   html: string;
   templateName: string; // logical label, e.g. "verification-email"
-  idempotencyKey?: string;
+  // REQUIRED. Must be deterministic for the logical send event so that
+  // double-invocations (e.g. pg_net 5s timeout spawning a second worker)
+  // collapse to a single delivered email. Pattern:
+  //   `${templateName}-${userId-or-eventId}-${dateOrEventKey}`
+  idempotencyKey: string;
 }
 
 export interface SendQueueResult {
@@ -20,8 +24,13 @@ export async function sendViaQueue(
   serviceRoleKey: string,
   params: SendQueueParams,
 ): Promise<SendQueueResult> {
-  const idempotencyKey =
-    params.idempotencyKey ?? `${params.templateName}-${crypto.randomUUID()}`;
+  if (!params.idempotencyKey) {
+    return {
+      error:
+        "sendViaQueue: idempotencyKey is required (must be deterministic per logical send event to prevent duplicate emails)",
+    };
+  }
+  const idempotencyKey = params.idempotencyKey;
 
   // Use the anon/publishable key for the Authorization header. The
   // send-transactional-email function only requires *a valid JWT* at the

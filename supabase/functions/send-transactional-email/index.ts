@@ -59,8 +59,12 @@ Deno.serve(async (req) => {
     const body = await req.json()
     templateName = body.templateName || body.template_name
     recipientEmail = body.recipientEmail || body.recipient_email
-    messageId = crypto.randomUUID()
-    idempotencyKey = body.idempotencyKey || body.idempotency_key || messageId
+    // Derive messageId from idempotencyKey so that retries / double-invocations
+    // (e.g. pg_net 5s timeout spawning a second worker) produce the same
+    // message_id and the dispatcher's "already sent" guard can drop the dup.
+    idempotencyKey =
+      body.idempotencyKey || body.idempotency_key || crypto.randomUUID()
+    messageId = idempotencyKey
     if (body.templateData && typeof body.templateData === 'object') {
       templateData = body.templateData
     }
@@ -119,6 +123,34 @@ Deno.serve(async (req) => {
 
   // Create Supabase client with service role (bypasses RLS)
   const supabase = createClient(supabaseUrl, supabaseServiceKey)
+
+  // 1a. Upstream idempotency guard: if any row in email_send_log already
+  // references this message_id (which is now deterministic from
+  // idempotencyKey), short-circuit. This collapses double-invocations
+  // BEFORE we enqueue a second pgmq message, so the dispatcher never
+  // sees a duplicate at all.
+  const { data: existingLog } = await supabase
+    .from('email_send_log')
+    .select('id, status')
+    .eq('message_id', messageId)
+    .limit(1)
+    .maybeSingle()
+
+  if (existingLog) {
+    console.log('Duplicate send suppressed by idempotency guard', {
+      templateName,
+      recipientEmail,
+      messageId,
+      existingStatus: existingLog.status,
+    })
+    return new Response(
+      JSON.stringify({ success: true, deduplicated: true }),
+      {
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      }
+    )
+  }
 
   // 2. Check suppression list (fail-closed: if we can't verify, don't send)
   const { data: suppressed, error: suppressionError } = await supabase

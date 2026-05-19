@@ -110,6 +110,7 @@ serve(async (req: Request): Promise<Response> => {
       subject: `Welcome to ${householdName} - Family Desk`,
       html: htmlContent,
       templateName: "send-household-member-welcome",
+      idempotencyKey: `household-welcome-${householdId}-${user.id}`,
     });
 
     if (emailError) {

@@ -107,6 +107,7 @@ serve(async (req: Request): Promise<Response> => {
       subject: "Verify your email address - Family Desk",
       html: emailHtml,
       templateName: "send-verification-email",
+      idempotencyKey: `verification-${token}`,
     });
 
     if (emailError) {

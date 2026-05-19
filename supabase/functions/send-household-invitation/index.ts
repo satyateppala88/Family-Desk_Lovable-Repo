@@ -106,6 +106,7 @@ const handler = async (req: Request): Promise<Response> => {
       subject: `You're invited to join ${householdName} - Family Desk`,
       html: htmlContent,
       templateName: "send-household-invitation",
+      idempotencyKey: `household-invitation-${householdId}-${inviteeEmail}`,
     });
 
     if (emailError) {

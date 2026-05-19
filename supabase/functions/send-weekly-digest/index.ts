@@ -43,6 +43,13 @@ const handler = async (req: Request): Promise<Response> => {
     weekAgo.setDate(weekAgo.getDate() - 7);
     const weekAhead = new Date(now);
     weekAhead.setDate(weekAhead.getDate() + 7);
+    // Week-start key in IST (Mon-anchored ISO week): YYYY-MM-DD of the Monday
+    // for the current week, used to make the digest idempotent per user per week.
+    const istNow = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+    const dayIdx = (istNow.getDay() + 6) % 7; // 0 = Monday
+    const weekStart = new Date(istNow);
+    weekStart.setDate(istNow.getDate() - dayIdx);
+    const weekStartKey = weekStart.toISOString().slice(0, 10);
 
     const emailsSent: string[] = [];
     const errors: string[] = [];
@@ -125,6 +132,7 @@ const handler = async (req: Request): Promise<Response> => {
       subject: "Your Weekly Family Desk Summary 📊",
       html: getEmailWrapper(emailContent),
       templateName: "send-weekly-digest",
+      idempotencyKey: `weekly-digest-${member.user_id}-${weekStartKey}`,
     });
 
         console.log(`Weekly digest sent to ${userData.user.email}:`, emailResponse);

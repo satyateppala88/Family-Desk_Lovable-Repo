@@ -121,6 +121,7 @@ const handler = async (req: Request): Promise<Response> => {
       subject: "Family Desk",
       html: htmlContent,
       templateName: "send-invitation-response",
+      idempotencyKey: `invitation-response-${invitedByUserId}-${authUser.id}-${action}`,
     });
 
     if (emailError) {

@@ -117,6 +117,7 @@ const handler = async (req: Request): Promise<Response> => {
       subject: `🥫 ${items.length} item${items.length > 1 ? "s" : ""} expiring soon!`,
       html: getEmailWrapper(emailContent),
       templateName: "send-pantry-alerts",
+      idempotencyKey: `pantry-alert-${member.user_id}-${todayStr}`,
     });
 
               console.log(`Pantry alert email sent to ${userData.user.email}:`, emailResponse);

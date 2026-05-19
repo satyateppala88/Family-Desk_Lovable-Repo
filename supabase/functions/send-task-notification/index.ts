@@ -115,6 +115,7 @@ const handler = async (req: Request): Promise<Response> => {
       subject: `New Task Assigned: ${taskTitle}`,
       html: getEmailWrapper(emailContent),
       templateName: "send-task-notification",
+      idempotencyKey: `task-notification-${taskId}-${assigneeId}`,
     });
 
     console.log("Task notification email sent:", emailResponse);
