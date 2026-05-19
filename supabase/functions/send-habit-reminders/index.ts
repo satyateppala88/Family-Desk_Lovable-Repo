@@ -160,6 +160,7 @@ const handler = async (req: Request): Promise<Response> => {
       subject: `⚠️ Your ${highestStreak.streak}-day streak is at risk!`,
       html: getEmailWrapper(warningContent),
       templateName: "send-habit-reminders",
+      idempotencyKey: `streak-warning-${userId}-${today}`,
     });
         } else {
           // Send regular habit reminder
@@ -173,6 +174,7 @@ const handler = async (req: Request): Promise<Response> => {
       subject: "🌟 Don't forget your habits today!",
       html: getEmailWrapper(emailContent),
       templateName: "send-habit-reminders",
+      idempotencyKey: `habit-reminder-${userId}-${today}`,
     });
         }
 
