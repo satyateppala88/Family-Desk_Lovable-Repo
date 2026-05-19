@@ -119,6 +119,7 @@ serve(async (req: Request): Promise<Response> => {
       subject: "Welcome to Family Desk! 🎉",
       html: welcomeHtml,
       templateName: "verify-email-token",
+      idempotencyKey: `welcome-${tokenData.user_id}`,
     });
       console.log("Welcome email sent to:", tokenData.email);
     } catch (emailError) {
