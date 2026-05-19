@@ -949,17 +949,11 @@ export const useDeleteSavingsGoal = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      // .select() so RLS-filtered deletes surface as an explicit error instead
-      // of silently no-op'ing while the UI toasts "deleted".
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from("finance_savings_goals")
         .delete()
-        .eq("id", id)
-        .select("id");
+        .eq("id", id);
       if (error) throw error;
-      if (!data || data.length === 0) {
-        throw new Error("This goal couldn't be deleted — you may not have access.");
-      }
       return id;
     },
     onMutate: async (id) => {
