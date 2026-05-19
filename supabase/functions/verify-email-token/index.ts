@@ -64,17 +64,10 @@ serve(async (req: Request): Promise<Response> => {
       );
     }
 
-    // Mark token as used
-    const { error: updateTokenError } = await supabaseAdmin
-      .from("email_verification_tokens")
-      .update({ used_at: new Date().toISOString() })
-      .eq("id", tokenData.id);
-
-    if (updateTokenError) {
-      console.error("Error marking token as used:", updateTokenError);
-    }
-
-    // Update user's email_confirmed_at via Admin API
+    // Update user's email_confirmed_at via Admin API FIRST.
+    // Only mark the token as used after this succeeds — otherwise a transient
+    // failure here would permanently lock the user out of the link (token
+    // shows as "already used" but auth.users.email_confirmed_at is still null).
     const { data: userData, error: updateUserError } = await supabaseAdmin.auth.admin.updateUserById(
       tokenData.user_id,
       { email_confirm: true }
@@ -86,6 +79,16 @@ serve(async (req: Request): Promise<Response> => {
         JSON.stringify({ error: "Failed to verify email. Please try again." }),
         { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
+    }
+
+    // Now safe to mark the token as used.
+    const { error: updateTokenError } = await supabaseAdmin
+      .from("email_verification_tokens")
+      .update({ used_at: new Date().toISOString() })
+      .eq("id", tokenData.id);
+
+    if (updateTokenError) {
+      console.error("Error marking token as used:", updateTokenError);
     }
 
     // Mark profile as verified — this is the source of truth for sign-in gating
