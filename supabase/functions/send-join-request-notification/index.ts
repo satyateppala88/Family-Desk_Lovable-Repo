@@ -129,6 +129,7 @@ const handler = async (req: Request): Promise<Response> => {
       subject: `New Join Request for ${householdName} - Family Desk`,
       html: htmlContent,
       templateName: "send-join-request-notification",
+      idempotencyKey: `join-request-${householdId}-${requesterEmail}-${admin.user_id}`,
     });
 
       if (emailError) {
