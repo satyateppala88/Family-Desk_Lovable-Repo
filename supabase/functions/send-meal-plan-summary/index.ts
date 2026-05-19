@@ -143,6 +143,7 @@ const handler = async (req: Request): Promise<Response> => {
       subject: `🍽️ Your Meal Plan for the Week of ${weekStart}`,
       html: getEmailWrapper(emailContent),
       templateName: "send-meal-plan-summary",
+      idempotencyKey: `meal-plan-summary-${member.user_id}-${mealPlan.week_start_date}`,
     });
 
         console.log(`Meal plan summary sent to ${userData.user.email}:`, emailResponse);
