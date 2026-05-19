@@ -6,7 +6,7 @@ import {
 } from "../_shared/email-templates.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
 import { sendPush } from "../_shared/push.ts";
-import { nextISTMidnightUTC } from "../_shared/time.ts";
+import { nextISTMidnightUTC, todayIST } from "../_shared/time.ts";
 
 import { sendViaQueue } from "../_shared/send-email-queue.ts";
 const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -28,6 +28,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Get tomorrow's date range, anchored to IST midnight.
     const tomorrow = nextISTMidnightUTC();
     const dayAfterTomorrow = new Date(tomorrow.getTime() + 86_400_000);
+    const today = todayIST();
 
     // Get tasks due tomorrow that aren't completed
     const { data: tasks, error: tasksError } = await supabaseAdmin
@@ -119,6 +120,7 @@ const handler = async (req: Request): Promise<Response> => {
       subject: `Reminder: ${userTasks.length} task${userTasks.length > 1 ? "s" : ""} due tomorrow`,
       html: getEmailWrapper(emailContent),
       templateName: "send-task-reminders",
+      idempotencyKey: `task-reminder-${userId}-${today}`,
     });
 
         console.log(`Task reminder sent to ${userData.user.email}:`, emailResponse);
