@@ -42,6 +42,14 @@ export const SubscriptionDialog = ({ open, onOpenChange, onSave, initialData }: 
 
   useEffect(() => {
     if (initialData) {
+      if (import.meta.env.DEV) {
+        // B7 diagnostic: confirm the edit form receives is_active correctly
+        console.log("[SubscriptionDialog edit init]", {
+          id: initialData.id,
+          is_active: initialData.is_active,
+          status_present: "is_active" in initialData,
+        });
+      }
       setName(initialData.name);
       setAmount(String(initialData.amount));
       setFrequency(initialData.frequency);
@@ -49,7 +57,9 @@ export const SubscriptionDialog = ({ open, onOpenChange, onSave, initialData }: 
       setNextDueDate(initialData.next_due_date ? new Date(initialData.next_due_date) : undefined);
       setStartDate(new Date(initialData.start_date));
       setEndDate(initialData.end_date ? new Date(initialData.end_date) : undefined);
-      setIsActive(initialData.is_active);
+      // Defensive fallback: if is_active is missing/undefined on the row,
+      // never silently flip the toggle to Paused on a no-op edit.
+      setIsActive(initialData.is_active ?? true);
       setNotes(initialData.notes || "");
       setTags(initialData.tags?.join(", ") || "");
       setRecurrence(initialData.recurrence ?? null);
