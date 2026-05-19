@@ -927,13 +927,20 @@ export const useUpdateSavingsGoal = () => {
       toast.error(e.message);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["finance-savings-goals"] });
-      queryClient.invalidateQueries({ queryKey: ["finance-dashboard"] });
       toast.success("Goal updated");
+      // B5: defer invalidation so the edit dialog has fully unmounted before
+      // queries refetch — otherwise the still-mounted form leaks stale state
+      // into the card behind it.
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ["finance-savings-goals"] });
+        queryClient.invalidateQueries({ queryKey: ["finance-dashboard"] });
+      }, 50);
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["finance-savings-goals"] });
-      queryClient.invalidateQueries({ queryKey: ["finance-dashboard"] });
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ["finance-savings-goals"] });
+        queryClient.invalidateQueries({ queryKey: ["finance-dashboard"] });
+      }, 50);
     },
   });
 };
