@@ -39,7 +39,7 @@ const TaskmasterProjectDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { householdId, isLoading: loadingHousehold } = useHousehold();
-  const { projects, isLoading: loadingProjects } = useProjects(householdId);
+  const { projects, isLoading: loadingProjects, isFetching: fetchingProjects } = useProjects(householdId);
   const { tasks, createTask, updateTask, deleteTask, markTaskDone, startTask } = useTaskmaster(householdId);
 
   useRealtimeSubscription([
@@ -135,6 +135,22 @@ const TaskmasterProjectDetail = () => {
           </div>
         </main>
         
+      </div>
+    );
+  }
+
+  if (!project && fetchingProjects) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <main className="container px-4 py-6 pb-20">
+          <Skeleton className="h-8 w-48 mb-6" />
+          <Skeleton className="h-40 mb-6" />
+          <div className="space-y-4">
+            <Skeleton className="h-24" />
+            <Skeleton className="h-24" />
+          </div>
+        </main>
       </div>
     );
   }
