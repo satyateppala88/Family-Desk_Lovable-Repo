@@ -7,7 +7,7 @@ export const useProjects = (householdId: string | null) => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  const { data: projects, isLoading } = useQuery({
+  const { data: projects, isLoading, isFetching } = useQuery({
     queryKey: ["projects", householdId],
     queryFn: async () => {
       if (!householdId) return [];
@@ -108,6 +108,7 @@ export const useProjects = (householdId: string | null) => {
   return {
     projects: projects || [],
     isLoading,
+    isFetching,
     createProject,
     updateProject,
     deleteProject,

@@ -1,60 +1,60 @@
-## Goal
-Apply Pass 2 defensive hardening + diagnostics to the five finance bugs. Most of the structural fixes from Pass 1 are already in place; this pass is about adding the missing telemetry (so we can confirm root causes) and patching the two real remaining gaps (B5 close-before-invalidate, B7 form prefill verification).
+## BUG-FIX-C58 — Root cause confirmed
 
-## Current state per bug (verified)
+`src/lib/meals/assignRecipeToSlot.ts` and `src/hooks/useMealPlans.ts` both call:
 
-- **B2 — savings goal delete**: `useDeleteSavingsGoal` already uses `.delete().eq("id", id).select("id")` and throws when no row returns. RLS policy `Members can delete savings goals` exists and is correct. **No code change needed** — the existing throw is the equivalent of `count === 0`. Action: ask user to reproduce and share the toast/console error so we can confirm whether they hit RLS or another path.
-- **B3 — inverted bar chart**: only one width-percent chart exists (`ReportCard.tsx`) and `maxValue = Math.max(...amounts)`, `widthPercent = amount/maxValue*100`. Math is correct. Add a one-time `console.log` so we can capture what the user actually sees.
-- **B4 — custom category insert**: `useAddCustomCategory` already uses `.insert(...).select().single()`, which throws if no row. RLS `Members can insert household custom categories` exists. **No code change needed** — ask user to share the console error logged in `onError` (which already includes `householdId` + Postgres `code`).
-- **B5 — savings goal edit stale**: dialog already calls `onOpenChange(false)` before mutation resolves, but `useUpdateSavingsGoal.onSuccess` invalidates immediately and the parent card may still be mounted reading optimistic data. Add a small delayed invalidate.
-- **B7 — subscription edit flips to Paused**: `SubscriptionDialog` reads `setIsActive(initialData.is_active)`. If `initialData.is_active` is `undefined` (e.g. column not selected), this becomes `setIsActive(undefined)` and Switch renders as off → save sends `is_active: false`. Add diagnostic + a defensive `?? true` fallback for the edit path.
-
-## Changes
-
-### 1. `src/components/finance/ReportCard.tsx` (B3 diagnostic)
-Add a dev-only log right after computing `maxValue`:
 ```ts
-if (import.meta.env.DEV) {
-  console.log("[ReportCard bars]", { maxValue, categories: report.topCategories });
-}
+.upsert(
+  { household_id, week_start_date, created_by },
+  { onConflict: "household_id,week_start_date" }
+)
 ```
 
-### 2. `src/hooks/useFinance.ts` — `useUpdateSavingsGoal` (B5)
-In `onSuccess`, replace the immediate invalidate with a deferred one so the dialog has unmounted by the time queries refetch:
-```ts
-onSuccess: () => {
-  toast.success("Goal updated");
-  setTimeout(() => {
-    queryClient.invalidateQueries({ queryKey: ["finance-savings-goals"] });
-    queryClient.invalidateQueries({ queryKey: ["finance-dashboard"] });
-  }, 50);
-},
-```
-Keep `onSettled` as the safety-net invalidator (also wrapped in the same 50 ms timeout).
+But `meal_plans` has **no unique constraint** on `(household_id, week_start_date)` — only the PK on `id`. Postgres rejects this with HTTP 400: *"there is no unique or exclusion constraint matching the ON CONFLICT specification"*. This explains why "Use this" on an AI suggestion (and any first-time meal plan save for that week) returns 400. The diagnostic steps from the brief (date format, missing field, AI shape) are not the cause here.
 
-### 3. `src/components/finance/SubscriptionDialog.tsx` (B7)
-- Add diagnostic log inside the `useEffect` that hydrates from `initialData`:
-  ```ts
-  if (initialData && import.meta.env.DEV) {
-    console.log("[SubscriptionDialog edit init]", {
-      id: initialData.id,
-      is_active: initialData.is_active,
-      status_present: "is_active" in initialData,
-    });
-  }
-  ```
-- Harden the prefill so an undefined value never silently flips the toggle:
-  ```ts
-  setIsActive(initialData.is_active ?? true);
-  ```
+### Fix
 
-## Out of scope
-- No RLS migrations (existing policies are correct for B2/B4).
-- No changes to mutation structure for B2/B4 (already defensively coded in Pass 1).
-- No chart math changes (B3) until diagnostic confirms the actual values.
+1. **Migration** — add the missing unique constraint after de-duping any existing rows:
+   ```sql
+   -- Keep the oldest row per (household, week); delete the rest
+   DELETE FROM public.meal_plans a
+   USING public.meal_plans b
+   WHERE a.household_id = b.household_id
+     AND a.week_start_date = b.week_start_date
+     AND a.ctid > b.ctid;
+
+   ALTER TABLE public.meal_plans
+     ADD CONSTRAINT meal_plans_household_week_unique
+     UNIQUE (household_id, week_start_date);
+   ```
+   Note: dependent `meal_plan_items` for deleted plan rows cascade-delete via existing FK, which is acceptable since duplicates shouldn't exist in healthy data.
+
+2. **Defensive logging** — add `console.error("[meal-plan upsert]", error)` in `assignRecipeToSlot` and `useMealPlans.createMealPlan` so any future Supabase error surfaces full `message/details/hint` instead of a generic toast.
+
+No code changes to payload shape are needed — current fields (`household_id`, `week_start_date` ISO, `created_by`) already match the schema.
+
+## BUG-FIX-C33 — Project not found after template
+
+`TaskmasterTemplates.handleConfirm` awaits `bulkCreateFromTemplate.mutateAsync` and then `navigate("/taskmaster/projects/:id")`. The destination page `TaskmasterProjectDetail` reads `projects` from `useProjects` (list query). The invalidation fired in `onSuccess` is asynchronous; on first render `projects.find(p => p.id === id)` is `undefined` while the refetch is in flight, so the "Project not found" empty state shows.
+
+### Fix
+
+In `src/pages/TaskmasterProjectDetail.tsx`, treat the project as "still loading" while the projects query is fetching, even after `isLoading` is false:
+
+- Pull `isFetching` from `useProjects` (return it from the hook).
+- Show the skeleton block when `loadingProjects || isFetching` and `!project`.
+- Only render the "Project not found" card when the query has settled (`!isFetching`) and `project` is still missing.
+
+Smallest change: expose `isFetching` from `useProjects` alongside `isLoading`, and gate the not-found branch on `!isFetching`.
+
+## Files
+
+- New migration adding unique constraint on `meal_plans(household_id, week_start_date)` (with dedupe).
+- `src/lib/meals/assignRecipeToSlot.ts` — add error logging.
+- `src/hooks/useMealPlans.ts` — add error logging in createMealPlan.
+- `src/hooks/useProjects.ts` — expose `isFetching`.
+- `src/pages/TaskmasterProjectDetail.tsx` — gate not-found state on `!isFetching`.
 
 ## Verification
-1. B3: open Monthly Review, check console for `[ReportCard bars]` and share the array.
-2. B5: edit a savings goal, save, confirm the card updates without manual reload.
-3. B7: edit an Active subscription without changes, save, confirm it stays Active; also check console log shows `is_active: true`.
-4. B2/B4: attempt the failing action; share the resulting `toast.error` text + `[useAddCustomCategory] failed` / `[useDeleteSavingsGoal] failed` console payload so we can finalize.
+
+- C58: tap AI suggestion → "Use this" on an empty week → meal appears, no 400 in network tab.
+- C33: apply a template → lands on project detail page showing the new project and its tasks, no "Project not found" flash.
