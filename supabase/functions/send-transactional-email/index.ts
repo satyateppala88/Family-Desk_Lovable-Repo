@@ -59,8 +59,12 @@ Deno.serve(async (req) => {
     const body = await req.json()
     templateName = body.templateName || body.template_name
     recipientEmail = body.recipientEmail || body.recipient_email
-    messageId = crypto.randomUUID()
-    idempotencyKey = body.idempotencyKey || body.idempotency_key || messageId
+    // Derive messageId from idempotencyKey so that retries / double-invocations
+    // (e.g. pg_net 5s timeout spawning a second worker) produce the same
+    // message_id and the dispatcher's "already sent" guard can drop the dup.
+    idempotencyKey =
+      body.idempotencyKey || body.idempotency_key || crypto.randomUUID()
+    messageId = idempotencyKey
     if (body.templateData && typeof body.templateData === 'object') {
       templateData = body.templateData
     }
