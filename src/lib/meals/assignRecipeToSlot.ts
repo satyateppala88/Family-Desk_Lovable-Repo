@@ -22,7 +22,10 @@ export async function assignRecipeToSlot(params: {
     )
     .select()
     .single();
-  if (planError) throw planError;
+  if (planError) {
+    console.error("[assignRecipeToSlot] meal_plans upsert failed", planError);
+    throw planError;
+  }
 
   // Remove any existing item in that slot
   await (supabase as any)
