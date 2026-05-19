@@ -53,6 +53,7 @@ const handler = async (req: Request): Promise<Response> => {
       subject: "Access Request Received - Family Desk",
       html: htmlContent,
       templateName: "send-access-request-confirmation",
+      idempotencyKey: `access-request-confirm-${email}`,
     });
 
     if (emailError) {
