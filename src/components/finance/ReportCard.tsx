@@ -33,6 +33,10 @@ const formatAmountCompact = (amount: number): string => {
 
 export const ReportCard = forwardRef<HTMLDivElement, ReportCardProps>(({ report, tagline }, ref) => {
   const maxValue = Math.max(...report.topCategories.map((c) => c.amount), 0);
+  if (import.meta.env.DEV) {
+    // B3 diagnostic: confirm bar widths align with category amounts
+    console.log("[ReportCard bars]", { maxValue, categories: report.topCategories });
+  }
   const { isPrivate } = usePrivacyMode();
   const money = (n: number) => (isPrivate ? "₹ ••••" : formatINR(n));
   const moneyAmount = (n: number) => (isPrivate ? "₹ ••••" : formatAmount(n));
