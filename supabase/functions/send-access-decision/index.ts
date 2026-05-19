@@ -121,6 +121,7 @@ const handler = async (req: Request): Promise<Response> => {
       subject: "Family Desk",
       html: htmlContent,
       templateName: "send-access-decision",
+      idempotencyKey: `access-decision-${email}-${decision}`,
     });
 
     if (emailError) {
