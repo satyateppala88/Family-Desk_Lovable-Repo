@@ -8,6 +8,8 @@ import { CalendarEventDialog } from "@/components/calendar/CalendarEventDialog";
 import { ConnectCalendarDialog } from "@/components/calendar/ConnectCalendarDialog";
 import { CreateEventDialog } from "@/components/calendar/CreateEventDialog";
 import { ManageCalendarsSheet } from "@/components/calendar/ManageCalendarsSheet";
+import { RecurrenceEditScopeDialog } from "@/components/calendar/RecurrenceEditScopeDialog";
+import type { RecurringEditScope } from "@/hooks/useManualCalendarEvents";
 import { useCalendarEvents, type CalendarEvent } from "@/hooks/useCalendarEvents";
 import { useCalendarConnections } from "@/hooks/useCalendarConnections";
 import { useHousehold } from "@/hooks/useHousehold";
@@ -27,6 +29,8 @@ const Calendar = () => {
   const [showManageSheet, setShowManageSheet] = useState(false);
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
   const [dayDetailOpen, setDayDetailOpen] = useState(false);
+  const [pendingRecurringEdit, setPendingRecurringEdit] = useState<CalendarEvent | null>(null);
+  const [recurrenceScope, setRecurrenceScope] = useState<RecurringEditScope | undefined>(undefined);
 
   const openDayDetail = (date: Date) => {
     setSelectedDate(date);
@@ -169,7 +173,27 @@ const Calendar = () => {
         onOpenChange={(open) => !open && setSelectedEvent(null)}
         onEdit={(ev) => {
           setSelectedEvent(null);
-          setEditingEvent(ev);
+          if (ev.recurrence) {
+            setPendingRecurringEdit(ev);
+          } else {
+            setRecurrenceScope(undefined);
+            setEditingEvent(ev);
+          }
+        }}
+      />
+
+      <RecurrenceEditScopeDialog
+        open={!!pendingRecurringEdit}
+        onOpenChange={(open) => {
+          if (!open) setPendingRecurringEdit(null);
+        }}
+        onSelect={(scope) => {
+          const ev = pendingRecurringEdit;
+          setPendingRecurringEdit(null);
+          if (ev) {
+            setRecurrenceScope(scope);
+            setEditingEvent(ev);
+          }
         }}
       />
 
@@ -193,12 +217,14 @@ const Calendar = () => {
           if (!open) {
             setShowCreateDialog(false);
             setEditingEvent(null);
+            setRecurrenceScope(undefined);
           } else {
             setShowCreateDialog(true);
           }
         }}
         defaultDate={currentDate}
         eventToEdit={editingEvent}
+        recurrenceScope={recurrenceScope}
       />
 
       <DayDetailSheet
