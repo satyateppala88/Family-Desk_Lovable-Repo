@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useHousehold } from "./useHousehold";
 import { startOfMonth, endOfMonth, format, addDays, startOfWeek, endOfWeek } from "date-fns";
+import type { RecurrenceSpec } from "@/types/recurrence";
 
 export interface CalendarEvent {
   id: string;
@@ -16,6 +17,11 @@ export interface CalendarEvent {
   calendarId: string;
   location?: string;
   description?: string;
+  recurrence?: RecurrenceSpec | null;
+  memberIds?: string[];
+  exceptionDates?: string[];
+  parentEventId?: string | null;
+  occurrenceDate?: string;
 }
 
 export const useCalendarEvents = (
