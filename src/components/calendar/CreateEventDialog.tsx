@@ -8,7 +8,12 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { DatePicker } from "@/components/ui/date-picker";
-import { useCreateManualEvent, useUpdateManualEvent } from "@/hooks/useManualCalendarEvents";
+import {
+  useCreateManualEvent,
+  useUpdateManualEvent,
+  useUpdateRecurringEvent,
+  type RecurringEditScope,
+} from "@/hooks/useManualCalendarEvents";
 import { useToast } from "@/hooks/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useHousehold } from "@/hooks/useHousehold";
@@ -22,12 +27,14 @@ interface CreateEventDialogProps {
   onOpenChange: (open: boolean) => void;
   defaultDate?: Date;
   eventToEdit?: CalendarEvent | null;
+  recurrenceScope?: RecurringEditScope;
 }
 
-export const CreateEventDialog = ({ open, onOpenChange, defaultDate, eventToEdit }: CreateEventDialogProps) => {
+export const CreateEventDialog = ({ open, onOpenChange, defaultDate, eventToEdit, recurrenceScope }: CreateEventDialogProps) => {
   const { toast } = useToast();
   const createEvent = useCreateManualEvent();
   const updateEvent = useUpdateManualEvent();
+  const updateRecurringEvent = useUpdateRecurringEvent();
   const { householdId } = useHousehold();
   const { data: members = [] } = useHouseholdMembers(householdId);
   const isEdit = !!eventToEdit?.manualEventId;
@@ -53,8 +60,12 @@ export const CreateEventDialog = ({ open, onOpenChange, defaultDate, eventToEdit
       setTime(eventToEdit.allDay ? "" : format(start, "HH:mm"));
       setDescription(eventToEdit.description || "");
       setAllDay(eventToEdit.allDay);
-      setRecurrence((eventToEdit as any).recurrence ?? null);
-      setSelectedMembers(members.map((m) => m.userId));
+      setRecurrence(eventToEdit.recurrence ?? null);
+      setSelectedMembers(
+        eventToEdit.memberIds && eventToEdit.memberIds.length > 0
+          ? eventToEdit.memberIds
+          : members.map((m) => m.userId),
+      );
     } else {
       setTitle("");
       setDate(defaultDate ?? new Date());
@@ -102,7 +113,18 @@ export const CreateEventDialog = ({ open, onOpenChange, defaultDate, eventToEdit
         memberIds: selectedMembers,
       };
       if (isEdit && eventToEdit?.manualEventId) {
-        await updateEvent.mutateAsync({ id: eventToEdit.manualEventId, ...payload });
+        if (recurrenceScope && eventToEdit.recurrence) {
+          const occurrenceDate =
+            eventToEdit.occurrenceDate ?? format(parseISO(eventToEdit.start), "yyyy-MM-dd");
+          await updateRecurringEvent.mutateAsync({
+            id: eventToEdit.manualEventId,
+            scope: recurrenceScope,
+            occurrenceDate,
+            ...payload,
+          });
+        } else {
+          await updateEvent.mutateAsync({ id: eventToEdit.manualEventId, ...payload });
+        }
         toast({ title: "Event updated", description: "Your changes have been saved." });
       } else {
         await createEvent.mutateAsync(payload);
@@ -114,7 +136,7 @@ export const CreateEventDialog = ({ open, onOpenChange, defaultDate, eventToEdit
     }
   };
 
-  const pending = createEvent.isPending || updateEvent.isPending;
+  const pending = createEvent.isPending || updateEvent.isPending || updateRecurringEvent.isPending;
 
   return (
     <BottomSheet
