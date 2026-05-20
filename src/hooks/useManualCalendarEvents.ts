@@ -126,3 +126,139 @@ export const useDeleteManualEvent = () => {
     },
   });
 };
+
+export type RecurringEditScope = "this" | "future" | "all";
+
+interface UpdateRecurringEventInput extends CreateManualEventInput {
+  id: string;
+  scope: RecurringEditScope;
+  /** yyyy-MM-dd of the tapped occurrence */
+  occurrenceDate: string;
+}
+
+/** Subtract one day from a yyyy-MM-dd string. */
+function prevDay(dateStr: string): string {
+  const d = new Date(`${dateStr}T00:00:00`);
+  d.setDate(d.getDate() - 1);
+  return format(d, "yyyy-MM-dd");
+}
+
+export const useUpdateRecurringEvent = () => {
+  const queryClient = useQueryClient();
+  const { householdId } = useHousehold();
+  const { user } = useAuth();
+
+  return useMutation({
+    mutationFn: async (input: UpdateRecurringEventInput) => {
+      if (!householdId) throw new Error("No household selected");
+      if (!user) throw new Error("Not signed in");
+
+      const { startAt, endAt, isAllDay } = deriveTimes(input.date, input.time, input.allDay);
+
+      if (input.scope === "all") {
+        const { data, error } = await (supabase as any)
+          .from("manual_calendar_events")
+          .update({
+            title: input.title,
+            description: input.description ?? null,
+            start_at: startAt,
+            end_at: endAt,
+            all_day: isAllDay,
+            repeat_type: deriveRepeatType(input.recurrence),
+            recurrence: input.recurrence ?? null,
+            ...(input.memberIds ? { member_ids: input.memberIds } : {}),
+          })
+          .eq("id", input.id)
+          .select()
+          .single();
+        if (error) throw error;
+        return data;
+      }
+
+      if (input.scope === "this") {
+        // 1) Append the occurrence date to the parent's exception_dates.
+        const { data: parent, error: parentErr } = await (supabase as any)
+          .from("manual_calendar_events")
+          .select("exception_dates")
+          .eq("id", input.id)
+          .single();
+        if (parentErr) throw parentErr;
+        const nextExceptions = Array.from(
+          new Set([...(parent?.exception_dates ?? []), input.occurrenceDate]),
+        );
+        const { error: updErr } = await (supabase as any)
+          .from("manual_calendar_events")
+          .update({ exception_dates: nextExceptions })
+          .eq("id", input.id);
+        if (updErr) throw updErr;
+
+        // 2) Insert a single-occurrence override child.
+        const { data, error } = await (supabase as any)
+          .from("manual_calendar_events")
+          .insert({
+            household_id: householdId,
+            created_by: user.id,
+            title: input.title,
+            description: input.description ?? null,
+            start_at: startAt,
+            end_at: endAt,
+            all_day: isAllDay,
+            repeat_type: "none",
+            recurrence: null,
+            member_ids: input.memberIds ?? [],
+            parent_event_id: input.id,
+          })
+          .select()
+          .single();
+        if (error) throw error;
+        return data;
+      }
+
+      // scope === "future"
+      // 1) End the parent the day before this occurrence.
+      const { data: parent, error: parentErr } = await (supabase as any)
+        .from("manual_calendar_events")
+        .select("recurrence")
+        .eq("id", input.id)
+        .single();
+      if (parentErr) throw parentErr;
+      const existingRec = (parent?.recurrence ?? null) as RecurrenceSpec | null;
+      if (existingRec) {
+        const updatedRec: RecurrenceSpec = {
+          ...existingRec,
+          end: { type: "on_date", date: prevDay(input.occurrenceDate) },
+        };
+        const { error: updErr } = await (supabase as any)
+          .from("manual_calendar_events")
+          .update({ recurrence: updatedRec })
+          .eq("id", input.id);
+        if (updErr) throw updErr;
+      }
+
+      // 2) Insert a new recurring event starting at this occurrence.
+      const { data, error } = await (supabase as any)
+        .from("manual_calendar_events")
+        .insert({
+          household_id: householdId,
+          created_by: user.id,
+          title: input.title,
+          description: input.description ?? null,
+          start_at: startAt,
+          end_at: endAt,
+          all_day: isAllDay,
+          repeat_type: deriveRepeatType(input.recurrence),
+          recurrence: input.recurrence ?? null,
+          member_ids: input.memberIds ?? [],
+        })
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["calendar-events"] });
+      queryClient.invalidateQueries({ queryKey: ["today-events"] });
+      queryClient.invalidateQueries({ queryKey: ["calendar-events-today"] });
+    },
+  });
+};
