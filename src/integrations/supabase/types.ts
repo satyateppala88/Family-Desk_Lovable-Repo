@@ -1815,11 +1815,13 @@ export type Database = {
           created_by: string
           description: string | null
           end_at: string
+          exception_dates: string[]
           household_id: string
           id: string
           is_system_generated: boolean
           location: string | null
           member_ids: string[]
+          parent_event_id: string | null
           recurrence: Json | null
           repeat_type: string
           start_at: string
@@ -1832,11 +1834,13 @@ export type Database = {
           created_by: string
           description?: string | null
           end_at: string
+          exception_dates?: string[]
           household_id: string
           id?: string
           is_system_generated?: boolean
           location?: string | null
           member_ids?: string[]
+          parent_event_id?: string | null
           recurrence?: Json | null
           repeat_type?: string
           start_at: string
@@ -1849,11 +1853,13 @@ export type Database = {
           created_by?: string
           description?: string | null
           end_at?: string
+          exception_dates?: string[]
           household_id?: string
           id?: string
           is_system_generated?: boolean
           location?: string | null
           member_ids?: string[]
+          parent_event_id?: string | null
           recurrence?: Json | null
           repeat_type?: string
           start_at?: string
@@ -1866,6 +1872,13 @@ export type Database = {
             columns: ["household_id"]
             isOneToOne: false
             referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "manual_calendar_events_parent_event_id_fkey"
+            columns: ["parent_event_id"]
+            isOneToOne: false
+            referencedRelation: "manual_calendar_events"
             referencedColumns: ["id"]
           },
         ]
