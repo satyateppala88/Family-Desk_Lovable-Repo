@@ -316,8 +316,9 @@ serve(async (req) => {
         for (const ev of manualEvents as any[]) {
           const occurrences = expandRecurrence(ev, windowStart, windowEnd);
           for (const occ of occurrences) {
+            const occDate = occ.start.toISOString().slice(0, 10);
             allEvents.push({
-              id: `manual-${ev.id}-${occ.start.toISOString().slice(0,10)}`,
+              id: `manual-${ev.id}-${occDate}`,
               manualEventId: ev.id,
               title: ev.title,
               start: occ.start.toISOString(),
@@ -329,6 +330,11 @@ serve(async (req) => {
               calendarId: "manual",
               location: ev.location ?? undefined,
               description: ev.description ?? undefined,
+              recurrence: ev.recurrence ?? null,
+              memberIds: ev.member_ids ?? [],
+              exceptionDates: (ev.exception_dates ?? []).map((d: string) => String(d).slice(0, 10)),
+              parentEventId: ev.parent_event_id ?? null,
+              occurrenceDate: occDate,
             });
           }
         }
