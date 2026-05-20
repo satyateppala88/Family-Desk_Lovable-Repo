@@ -110,7 +110,7 @@ function expandRecurrence(
     while (i++ < MAX_ITER) {
       const occ = new Date(y, month, day, baseStart.getHours(), baseStart.getMinutes(), baseStart.getSeconds());
       if (occ >= windowEnd) break;
-      if (occ >= baseStart && occ >= windowStart) {
+      if (occ >= baseStart && occ >= windowStart && !isExcepted(occ)) {
         out.push({ start: occ, end: new Date(occ.getTime() + duration) });
       }
       y++;
