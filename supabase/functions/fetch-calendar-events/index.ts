@@ -32,19 +32,27 @@ interface CalendarEvent {
   calendarId: string;
   location?: string;
   description?: string;
+  recurrence?: any;
+  memberIds?: string[];
+  exceptionDates?: string[];
+  parentEventId?: string | null;
+  occurrenceDate?: string;
 }
 
 // Expand a manual event into all occurrences within [windowStart, windowEnd)
 // based on its repeat_type.
 function expandRecurrence(
-  ev: { start_at: string; end_at: string; repeat_type?: string | null },
+  ev: { start_at: string; end_at: string; repeat_type?: string | null; exception_dates?: string[] | null; parent_event_id?: string | null },
   windowStart: Date,
   windowEnd: Date,
 ): { start: Date; end: Date }[] {
   const baseStart = new Date(ev.start_at);
   const baseEnd = new Date(ev.end_at);
   const duration = baseEnd.getTime() - baseStart.getTime();
-  const repeat = (ev.repeat_type || "none").toLowerCase();
+  // Override children always render as single instances regardless of legacy repeat_type.
+  const repeat = ev.parent_event_id ? "none" : (ev.repeat_type || "none").toLowerCase();
+  const exceptions = new Set((ev.exception_dates ?? []).map((d) => String(d).slice(0, 10)));
+  const isExcepted = (d: Date) => exceptions.has(d.toISOString().slice(0, 10));
 
   if (repeat === "none") {
     if (baseStart >= windowStart && baseStart < windowEnd) {
@@ -64,7 +72,7 @@ function expandRecurrence(
     if (cur < windowStart) cur = new Date(cur.getTime() + 86400000);
     let i = 0;
     while (cur < windowEnd && i++ < MAX_ITER) {
-      if (cur >= baseStart) out.push({ start: new Date(cur), end: new Date(cur.getTime() + duration) });
+      if (cur >= baseStart && !isExcepted(cur)) out.push({ start: new Date(cur), end: new Date(cur.getTime() + duration) });
       cur = new Date(cur.getTime() + 86400000);
     }
   } else if (repeat === "weekly") {
@@ -74,7 +82,7 @@ function expandRecurrence(
     }
     let i = 0;
     while (cur < windowEnd && i++ < MAX_ITER) {
-      if (cur >= baseStart) out.push({ start: new Date(cur), end: new Date(cur.getTime() + duration) });
+      if (cur >= baseStart && !isExcepted(cur)) out.push({ start: new Date(cur), end: new Date(cur.getTime() + duration) });
       cur = new Date(cur.getTime() + 7 * 86400000);
     }
   } else if (repeat === "monthly") {
@@ -88,7 +96,7 @@ function expandRecurrence(
       const d = Math.min(day, lastDay);
       const occ = new Date(y, m, d, baseStart.getHours(), baseStart.getMinutes(), baseStart.getSeconds());
       if (occ >= windowEnd) break;
-      if (occ >= baseStart && occ >= windowStart) {
+      if (occ >= baseStart && occ >= windowStart && !isExcepted(occ)) {
         out.push({ start: occ, end: new Date(occ.getTime() + duration) });
       }
       m++;
