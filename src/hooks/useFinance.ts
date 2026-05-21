@@ -404,6 +404,7 @@ export const useFinanceSavingsGoals = (householdId: string | null) => {
     },
     enabled: !!householdId,
     staleTime: 1000 * 60 * 5,
+    refetchOnMount: "always",
     placeholderData: keepPreviousData,
   });
 };
