@@ -386,6 +386,7 @@ export const useFinanceBudgets = (householdId: string | null, month?: string) =>
     },
     enabled: !!householdId,
     staleTime: 1000 * 60 * 5,
+    refetchOnMount: "always",
     placeholderData: keepPreviousData,
   });
 };
@@ -404,6 +405,7 @@ export const useFinanceSavingsGoals = (householdId: string | null) => {
     },
     enabled: !!householdId,
     staleTime: 1000 * 60 * 5,
+    refetchOnMount: "always",
     placeholderData: keepPreviousData,
   });
 };

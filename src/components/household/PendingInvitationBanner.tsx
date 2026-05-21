@@ -14,7 +14,7 @@ export const PendingInvitationBanner = () => {
   const normalizedEmail = user?.email?.trim().toLowerCase() ?? null;
 
   const { data: invitations, isLoading } = useQuery({
-    queryKey: ["my-pending-invitations", normalizedEmail],
+    queryKey: ["my-pending-invitations", normalizedEmail, user?.id],
     queryFn: async () => {
       if (!normalizedEmail) return [];
 
@@ -29,13 +29,45 @@ export const PendingInvitationBanner = () => {
         console.warn("Failed to fetch invitations:", error.message);
         return [];
       }
-      return data || [];
+
+      // E1: Hide invitations for households the user is already a member of.
+      // The DB unique constraint would reject the join anyway; pre-filtering
+      // avoids surfacing a stale banner the user can never act on.
+      if (!user?.id || !data || data.length === 0) return data || [];
+      const { data: memberships } = await supabase
+        .from("household_members")
+        .select("household_id")
+        .eq("user_id", user.id);
+      const joinedIds = new Set((memberships || []).map((m: any) => m.household_id));
+      return data.filter((inv: any) => !joinedIds.has(inv.household_id));
     },
     enabled: !!user?.email,
   });
 
   const acceptMutation = useMutation({
     mutationFn: async (invitation: any) => {
+      // E2 guard: if the user is already a member (e.g. they joined via
+      // another path while this banner was visible), don't attempt the
+      // duplicate insert — just mark the invitation accepted.
+      const { data: existingMember } = await supabase
+        .from("household_members")
+        .select("id")
+        .eq("household_id", invitation.household_id)
+        .eq("user_id", user!.id)
+        .maybeSingle();
+
+      if (existingMember) {
+        await supabase
+          .from("household_invitations")
+          .update({
+            status: "accepted",
+            invitee_user_id: user!.id,
+            reviewed_at: new Date().toISOString(),
+          })
+          .eq("id", invitation.id);
+        return { alreadyMember: true } as const;
+      }
+
       // Add user to household members
       const { error: memberError } = await supabase
         .from("household_members")
@@ -123,15 +155,35 @@ export const PendingInvitationBanner = () => {
           }
         }
       }
+      return { alreadyMember: false } as const;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries();
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ["my-pending-invitations"] });
+      queryClient.invalidateQueries({ queryKey: ["household-members"] });
+      queryClient.invalidateQueries({ queryKey: ["household"] });
+      if (result?.alreadyMember) {
+        toast("You're already a member of this household.");
+        return;
+      }
       toast.success("You've joined the household!");
       // Hard reload onto the dashboard so the new household context fully loads
       window.location.replace("/dashboard");
     },
     onError: (error: any) => {
-      toast.error("Failed to accept: " + error.message);
+      // Duplicate-member constraint — treat as a soft success, clear banner.
+      const code = error?.code || error?.details || "";
+      const msg = (error?.message || "") as string;
+      if (
+        code === "23505" ||
+        msg.includes("household_members_household_id_user_id_key") ||
+        msg.includes("duplicate key")
+      ) {
+        queryClient.invalidateQueries({ queryKey: ["my-pending-invitations"] });
+        queryClient.invalidateQueries({ queryKey: ["household-members"] });
+        toast("You're already a member of this household.");
+        return;
+      }
+      toast.error("Could not accept invitation. Please try again.");
     },
   });
 
