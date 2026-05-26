@@ -175,7 +175,8 @@ export type Database = {
       }
       calendar_connections: {
         Row: {
-          access_token: string
+          access_token: string | null
+          access_token_enc: string | null
           color: string
           created_at: string | null
           display_name: string
@@ -183,13 +184,15 @@ export type Database = {
           household_id: string
           id: string
           is_visible: boolean | null
-          refresh_token: string
+          refresh_token: string | null
+          refresh_token_enc: string | null
           token_expires_at: string
           updated_at: string | null
           user_id: string
         }
         Insert: {
-          access_token: string
+          access_token?: string | null
+          access_token_enc?: string | null
           color?: string
           created_at?: string | null
           display_name: string
@@ -197,13 +200,15 @@ export type Database = {
           household_id: string
           id?: string
           is_visible?: boolean | null
-          refresh_token: string
+          refresh_token?: string | null
+          refresh_token_enc?: string | null
           token_expires_at: string
           updated_at?: string | null
           user_id: string
         }
         Update: {
-          access_token?: string
+          access_token?: string | null
+          access_token_enc?: string | null
           color?: string
           created_at?: string | null
           display_name?: string
@@ -211,7 +216,8 @@ export type Database = {
           household_id?: string
           id?: string
           is_visible?: boolean | null
-          refresh_token?: string
+          refresh_token?: string | null
+          refresh_token_enc?: string | null
           token_expires_at?: string
           updated_at?: string | null
           user_id?: string
@@ -3102,6 +3108,13 @@ export type Database = {
         Returns: number
       }
       generate_invite_code: { Args: never; Returns: string }
+      get_calendar_tokens: {
+        Args: { _connection_id: string; _key: string }
+        Returns: {
+          access_token: string
+          refresh_token: string
+        }[]
+      }
       get_household_member_emails: {
         Args: { _household_id: string }
         Returns: {
@@ -3116,6 +3129,20 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      insert_calendar_connection: {
+        Args: {
+          _access_token: string
+          _color: string
+          _display_name: string
+          _email: string
+          _expires_at: string
+          _household_id: string
+          _key: string
+          _refresh_token: string
+          _user_id: string
+        }
+        Returns: string
       }
       is_email_approved: { Args: { user_email: string }; Returns: boolean }
       is_household_member: {
@@ -3144,6 +3171,16 @@ export type Database = {
         }[]
       }
       update_completed_tour: { Args: { _key: string }; Returns: undefined }
+      upsert_calendar_tokens: {
+        Args: {
+          _access_token: string
+          _connection_id: string
+          _expires_at: string
+          _key: string
+          _refresh_token: string
+        }
+        Returns: undefined
+      }
       vault_upsert_push_key: { Args: { _key: string }; Returns: undefined }
     }
     Enums: {
