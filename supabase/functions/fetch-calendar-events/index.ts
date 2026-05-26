@@ -399,7 +399,19 @@ serve(async (req) => {
       console.log(`Token expires at: ${calConnection.token_expires_at}`);
       
       try {
-        let accessToken = calConnection.access_token;
+        // Pull decrypted tokens from the database (falls back to the legacy
+        // plaintext columns for any row not yet re-saved).
+        const { data: tokenRows, error: tokenErr } = await supabase.rpc(
+          "get_calendar_tokens",
+          { _connection_id: calConnection.id, _key: CALENDAR_ENCRYPTION_KEY },
+        );
+        if (tokenErr || !tokenRows || tokenRows.length === 0) {
+          console.error("Failed to load tokens for connection", calConnection.id, tokenErr);
+          continue;
+        }
+        const tokenRow = tokenRows[0] as { access_token: string; refresh_token: string };
+        let accessToken = tokenRow.access_token;
+        const refreshToken = tokenRow.refresh_token;
 
         // Check if token needs refresh
         const expiresAt = new Date(calConnection.token_expires_at);
@@ -408,7 +420,7 @@ serve(async (req) => {
         
         if (expiresAt <= new Date(Date.now() + 60000)) { // 1 minute buffer
           console.log("Token expired or expiring soon, refreshing...");
-          accessToken = await refreshAccessToken(calConnection, supabase);
+          accessToken = await refreshAccessToken(calConnection, refreshToken, supabase);
           console.log("Token refreshed successfully");
         }
 
