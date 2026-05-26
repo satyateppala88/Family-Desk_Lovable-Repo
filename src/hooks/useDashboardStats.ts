@@ -12,7 +12,7 @@ export const useDashboardStats = (householdId: string | null) => {
       const todayFormatted = format(today, "yyyy-MM-dd");
 
       const [tasksRes, countRes, mealRes, pantryRes] = await Promise.all([
-        supabase.from("tasks").select("*")
+        supabase.from("tasks").select("id, title, due_date, task_status, priority_level, assigned_to")
           .eq("household_id", householdId).neq("task_status", "done")
           .order("due_date", { ascending: true, nullsFirst: false }).limit(3),
         supabase.from("tasks").select("*", { count: "exact", head: true })
