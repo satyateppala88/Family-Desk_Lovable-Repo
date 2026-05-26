@@ -44,11 +44,12 @@ registerRoute(
     request.method === "GET" &&
     url.hostname.endsWith(".supabase.co") &&
     url.pathname.startsWith("/rest/v1/"),
-  new StaleWhileRevalidate({
+  new NetworkFirst({
     cacheName: "supabase-rest-get",
+    networkTimeoutSeconds: 3,
     plugins: [
       new CacheableResponsePlugin({ statuses: [0, 200] }),
-      new ExpirationPlugin({ maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 }),
+      new ExpirationPlugin({ maxEntries: 200, maxAgeSeconds: 60 * 5 }),
     ],
   })
 );
