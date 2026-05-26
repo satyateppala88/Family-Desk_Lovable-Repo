@@ -21,7 +21,14 @@ const LazyAIChatWidget = () => {
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
     if (mounted) return;
-    const onOpen = () => setMounted(true);
+    const onOpen = () => {
+      setMounted(true);
+      // Re-dispatch on the next tick so the freshly mounted widget's own
+      // listener can catch it and actually open the sheet.
+      setTimeout(() => {
+        window.dispatchEvent(new Event("familydesk:open-ai"));
+      }, 0);
+    };
     window.addEventListener("familydesk:open-ai", onOpen);
     return () => window.removeEventListener("familydesk:open-ai", onOpen);
   }, [mounted]);
