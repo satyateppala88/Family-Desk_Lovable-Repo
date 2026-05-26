@@ -2955,6 +2955,44 @@ export type Database = {
           },
         ]
       }
+      user_ai_memory: {
+        Row: {
+          content: string
+          created_at: string
+          expires_at: string | null
+          household_id: string
+          id: string
+          memory_type: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          expires_at?: string | null
+          household_id: string
+          id?: string
+          memory_type: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          expires_at?: string | null
+          household_id?: string
+          id?: string
+          memory_type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_ai_memory_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_email_preferences: {
         Row: {
           access_updates: boolean | null
