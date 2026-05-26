@@ -9,6 +9,7 @@ export type AIContextModule =
   | "tasks"
   | "calendar"
   | "meals"
+  | "grocery"
   | "general";
 
 export interface AIContextOptions {
@@ -505,6 +506,69 @@ async function buildMealsBlock(
   return lines.join("\n");
 }
 
+async function buildGroceryBlock(
+  supabase: any,
+  householdId: string,
+  now: Date,
+  limitItems = 15,
+): Promise<string> {
+  const todayStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+  const in7Days = new Date(now);
+  in7Days.setDate(in7Days.getDate() + 7);
+  const in7Str = `${in7Days.getFullYear()}-${pad(in7Days.getMonth() + 1)}-${pad(in7Days.getDate())}`;
+
+  const [pantry, expiring, lists] = await Promise.all([
+    supabase.from("pantry_items")
+      .select("name, quantity, unit, category, expiry_date")
+      .eq("household_id", householdId)
+      .order("category").limit(100),
+    supabase.from("pantry_items")
+      .select("name, quantity, unit, expiry_date")
+      .eq("household_id", householdId)
+      .lte("expiry_date", in7Str).gte("expiry_date", todayStr)
+      .order("expiry_date"),
+    supabase.from("shopping_lists")
+      .select("name, shopping_list_items(name, quantity, is_checked)")
+      .eq("household_id", householdId)
+      .eq("status", "active").limit(3),
+  ]);
+
+  const lines: string[] = ["GROCERY & PANTRY"];
+  if (expiring.data?.length) {
+    lines.push("");
+    lines.push(`EXPIRING SOON (${expiring.data.length} items)`);
+    for (const i of expiring.data) {
+      lines.push(`${i.name}${i.quantity ? ` (${i.quantity}${i.unit || ""})` : ""} — expires ${fmtDate(i.expiry_date)}`);
+    }
+  }
+  if (pantry.data?.length) {
+    lines.push("");
+    lines.push(`PANTRY (${pantry.data.length} items)`);
+    const byCat: Record<string, string[]> = {};
+    for (const i of pantry.data.slice(0, limitItems)) {
+      const cat = i.category || "Other";
+      if (!byCat[cat]) byCat[cat] = [];
+      byCat[cat].push(`${i.name}${i.quantity ? ` ×${i.quantity}${i.unit || ""}` : ""}`);
+    }
+    for (const [cat, items] of Object.entries(byCat)) {
+      lines.push(`${cat}: ${items.join(", ")}`);
+    }
+  }
+  if (lists.data?.length) {
+    lines.push("");
+    lines.push("SHOPPING LISTS");
+    for (const list of lists.data) {
+      const items = list.shopping_list_items || [];
+      const pending = items.filter((i: any) => !i.is_checked);
+      lines.push(`${list.name}: ${pending.length} items pending`);
+      for (const i of pending.slice(0, 5)) {
+        lines.push(`  • ${i.name}${i.quantity ? ` (${i.quantity})` : ""}`);
+      }
+    }
+  }
+  return lines.join("\n");
+}
+
 export async function buildHouseholdContext(opts: AIContextOptions): Promise<string> {
   const now = opts.now || new Date();
   const { supabase, module, householdId } = opts;
@@ -523,7 +587,7 @@ export async function buildHouseholdContext(opts: AIContextOptions): Promise<str
 
   const wanted: AIContextModule[] =
     module === "general"
-      ? ["finance", "habits", "tasks", "calendar", "meals"]
+      ? ["finance", "habits", "tasks", "calendar", "meals", "grocery"]
       : [module];
 
   const results = await Promise.allSettled(
@@ -539,6 +603,8 @@ export async function buildHouseholdContext(opts: AIContextOptions): Promise<str
           return buildCalendarBlock(supabase, householdId, now, nameById, cap);
         case "meals":
           return buildMealsBlock(supabase, householdId, now, cap);
+        case "grocery":
+          return buildGroceryBlock(supabase, householdId, now, cap);
         default:
           return Promise.resolve("");
       }
