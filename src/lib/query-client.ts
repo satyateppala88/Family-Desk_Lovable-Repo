@@ -2,6 +2,7 @@ import { MutationCache, QueryClient } from "@tanstack/react-query";
 import { persistQueryClient } from "@tanstack/react-query-persist-client";
 import { get, set, del, createStore, type UseStore } from "idb-keyval";
 import { toast } from "sonner";
+import { Capacitor } from "@capacitor/core";
 import { APP_VERSION } from "@/lib/versioning";
 
 // ---------------------------------------------------------------------------
@@ -67,7 +68,7 @@ export function createPersistedQueryClient(): QueryClient {
         gcTime: MAX_AGE_MS,
         refetchOnReconnect: true,
         refetchOnMount: true,
-        refetchOnWindowFocus: true,
+        refetchOnWindowFocus: !Capacitor.isNativePlatform(),
         retry: 2,
       },
     },
