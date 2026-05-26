@@ -562,7 +562,6 @@ export const useCreateTransaction = (householdId: string | null) => {
         });
       queryClient.invalidateQueries({ queryKey: ["finance-monthly-summary", householdId] });
       queryClient.invalidateQueries({ queryKey: ["finance-snapshot", householdId] });
-      queryClient.invalidateQueries({ queryKey: ["finance-dashboard", householdId] });
       queryClient.invalidateQueries({ queryKey: ["finance-annual-budget", householdId] });
       queryClient.invalidateQueries({ queryKey: ["finance-budgets", householdId] });
       queryClient.invalidateQueries({ queryKey: ["finance-savings-goals", householdId] });
@@ -612,7 +611,6 @@ export const useUpdateTransaction = () => {
       queryClient.invalidateQueries({ queryKey: ["finance-transactions"] });
       queryClient.invalidateQueries({ queryKey: ["finance-monthly-summary"] });
       queryClient.invalidateQueries({ queryKey: ["finance-snapshot"] });
-      queryClient.invalidateQueries({ queryKey: ["finance-dashboard"] });
       queryClient.invalidateQueries({ queryKey: ["finance-annual-budget"] });
       queryClient.invalidateQueries({ queryKey: ["finance-budgets"] });
       queryClient.invalidateQueries({ queryKey: ["finance-savings-goals"] });
@@ -635,7 +633,6 @@ export const useBulkUpdateTransactionCategory = (householdId: string | null) => 
       toast.success(`Moved ${vars.ids.length} transaction${vars.ids.length === 1 ? "" : "s"}`);
       queryClient.invalidateQueries({ queryKey: ["finance-transactions", householdId] });
       queryClient.invalidateQueries({ queryKey: ["finance-monthly-summary", householdId] });
-      queryClient.invalidateQueries({ queryKey: ["finance-dashboard", householdId] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -674,7 +671,6 @@ export const useDeleteTransaction = () => {
       queryClient.invalidateQueries({ queryKey: ["finance-transactions"] });
       queryClient.invalidateQueries({ queryKey: ["finance-monthly-summary"] });
       queryClient.invalidateQueries({ queryKey: ["finance-snapshot"] });
-      queryClient.invalidateQueries({ queryKey: ["finance-dashboard"] });
       queryClient.invalidateQueries({ queryKey: ["finance-annual-budget"] });
       queryClient.invalidateQueries({ queryKey: ["finance-budgets"] });
       queryClient.invalidateQueries({ queryKey: ["finance-savings-goals"] });
@@ -760,12 +756,10 @@ export const useUpsertBudget = (householdId: string | null) => {
         });
       queryClient.invalidateQueries({ queryKey: ["finance-budgets", householdId] });
       queryClient.invalidateQueries({ queryKey: ["finance-annual-budget", householdId] });
-      queryClient.invalidateQueries({ queryKey: ["finance-dashboard", householdId] });
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["finance-budgets", householdId] });
       queryClient.invalidateQueries({ queryKey: ["finance-annual-budget", householdId] });
-      queryClient.invalidateQueries({ queryKey: ["finance-dashboard", householdId] });
     },
   });
 };
@@ -801,7 +795,6 @@ export const useUpdateBudgetById = (householdId: string | null) => {
       toast.success("Budget updated");
       queryClient.invalidateQueries({ queryKey: ["finance-budgets", householdId] });
       queryClient.invalidateQueries({ queryKey: ["finance-annual-budget", householdId] });
-      queryClient.invalidateQueries({ queryKey: ["finance-dashboard", householdId] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -826,7 +819,6 @@ export const useDeleteBudgetById = (householdId: string | null) => {
       toast.success("Budget deleted");
       queryClient.invalidateQueries({ queryKey: ["finance-budgets", householdId] });
       queryClient.invalidateQueries({ queryKey: ["finance-annual-budget", householdId] });
-      queryClient.invalidateQueries({ queryKey: ["finance-dashboard", householdId] });
     },
     onError: (e: Error) => toast.error(e.message || "Failed to delete budget"),
   });
@@ -888,12 +880,11 @@ export const useCreateSavingsGoal = (householdId: string | null) => {
           );
         });
       queryClient.invalidateQueries({ queryKey: ["finance-savings-goals", householdId] });
-      queryClient.invalidateQueries({ queryKey: ["finance-dashboard", householdId] });
       toast.success("Savings goal created");
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["finance-savings-goals", householdId] });
-      queryClient.invalidateQueries({ queryKey: ["finance-dashboard", householdId] });
+      
     },
   });
 };
@@ -938,13 +929,11 @@ export const useUpdateSavingsGoal = () => {
       // into the card behind it.
       setTimeout(() => {
         queryClient.invalidateQueries({ queryKey: ["finance-savings-goals"] });
-        queryClient.invalidateQueries({ queryKey: ["finance-dashboard"] });
       }, 50);
     },
     onSettled: () => {
       setTimeout(() => {
         queryClient.invalidateQueries({ queryKey: ["finance-savings-goals"] });
-        queryClient.invalidateQueries({ queryKey: ["finance-dashboard"] });
       }, 50);
     },
   });
@@ -984,7 +973,7 @@ export const useDeleteSavingsGoal = () => {
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["finance-savings-goals"] });
-      queryClient.invalidateQueries({ queryKey: ["finance-dashboard"] });
+      
     },
   });
 };
@@ -1005,7 +994,7 @@ export const useFinanceRealtime = (householdId: string | null) => {
       queryKeys: [
         ["finance-transactions", householdId],
         ["finance-monthly-summary", householdId],
-        ["finance-dashboard", householdId],
+        
         ["finance-snapshot", householdId],
       ],
     },

@@ -55,7 +55,7 @@ function buildKeyMap(householdId: string): Record<string, (string | undefined)[]
     finance_transactions: [
       ["finance-transactions", householdId],
       ["finance-monthly-summary", householdId],
-      ["finance-dashboard", householdId],
+      
       ["finance-snapshot", householdId],
     ],
     finance_budgets: [["finance-budgets", householdId]],
