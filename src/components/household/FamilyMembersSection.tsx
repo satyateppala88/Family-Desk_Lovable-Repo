@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { AvatarUploader } from "@/components/avatar/AvatarUploader";
 import { Plus, Trash2, UserPlus } from "lucide-react";
 import { toast } from "sonner";
@@ -30,6 +31,7 @@ export const FamilyMembersSection = ({ householdId }: Props) => {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [relationship, setRelationship] = useState("");
+  const [memberToRemove, setMemberToRemove] = useState<{ id: string; name: string } | null>(null);
 
   const { data: members = [], isLoading } = useQuery({
     queryKey: ["household-family-members", householdId],
@@ -175,7 +177,7 @@ export const FamilyMembersSection = ({ householdId }: Props) => {
                   <Button
                     size="icon"
                     variant="ghost"
-                    onClick={() => removeMember.mutate(m.id)}
+                    onClick={() => setMemberToRemove({ id: m.id, name: m.name })}
                     disabled={removeMember.isPending}
                     className="text-destructive hover:text-destructive"
                     aria-label="Remove"
@@ -188,6 +190,26 @@ export const FamilyMembersSection = ({ householdId }: Props) => {
           </div>
         )}
       </CardContent>
+      <AlertDialog open={!!memberToRemove} onOpenChange={() => setMemberToRemove(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove {memberToRemove?.name}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              They will lose access to this household and all shared data.
+              This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => { removeMember.mutate(memberToRemove!.id); setMemberToRemove(null); }}
+            >
+              Remove Member
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 };
