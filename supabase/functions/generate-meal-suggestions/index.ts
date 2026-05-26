@@ -101,23 +101,32 @@ Deno.serve(async (req) => {
     // Use the authenticated supabase client (service role) for data fetching
     const supabase = auth.supabase;
 
-    const { data: householdPrefs } = await supabase
-      .from("household_preferences")
-      .select("*")
-      .eq("household_id", householdId)
-      .maybeSingle();
-    
-    const { data: hiddenRecipes } = await supabase
-      .from("recipes")
-      .select("title")
-      .eq("household_id", householdId)
-      .eq("hidden", true);
+    const [
+      { data: householdPrefs },
+      { data: hiddenRecipes },
+      { data: pantryItems },
+      { data: recentMeals },
+      { data: topRatedRecipes },
+    ] = await Promise.all([
+      supabase.from("household_preferences").select("*").eq("household_id", householdId).maybeSingle(),
+      supabase.from("recipes").select("title").eq("household_id", householdId).eq("hidden", true),
+      supabase.from("pantry_items").select("name, quantity, unit, category, expiry_date")
+        .eq("household_id", householdId).order("category", { ascending: true }),
 
-    const { data: pantryItems } = await supabase
-      .from("pantry_items")
-      .select("name, quantity, unit, category, expiry_date")
-      .eq("household_id", householdId)
-      .order("category", { ascending: true });
+      // NEW: recipes planned/cooked in last 14 days
+      supabase.from("meal_plan_items")
+        .select("recipes!inner(title), scheduled_date")
+        .gte("scheduled_date", new Date(Date.now() - 14 * 86400000).toISOString().slice(0, 10))
+        .not("recipes", "is", null),
+
+      // NEW: top-rated recipes
+      supabase.from("recipe_ratings")
+        .select("rating, recipes!inner(title, household_id)")
+        .eq("recipes.household_id", householdId)
+        .gte("rating", 4)
+        .order("rating", { ascending: false })
+        .limit(15),
+    ]);
 
     // Build enhanced context from household preferences
     let familyContext = "Family of 2 adults";
@@ -167,9 +176,22 @@ Deno.serve(async (req) => {
       }
     }
     
-    const hiddenRecipeNames = hiddenRecipes?.map(r => r.title) || [];
-    const hiddenRecipeText = hiddenRecipeNames.length > 0 
+    const hiddenRecipeNames = hiddenRecipes?.map((r: any) => r.title) || [];
+    const hiddenRecipeText = hiddenRecipeNames.length > 0
       ? `NEVER suggest these recipes (user has hidden them): ${hiddenRecipeNames.join(", ")}`
+      : "";
+
+    const recentTitles = [...new Set(
+      (recentMeals || []).map((m: any) => m.recipes?.title).filter(Boolean)
+    )];
+    const recentText = recentTitles.length
+      ? `\nRECENTLY COOKED (avoid suggesting these — cooked in last 14 days): ${recentTitles.join(", ")}`
+      : "";
+
+    const topRatedTitles = (topRatedRecipes || [])
+      .map((r: any) => `${r.recipes?.title} (${r.rating}★)`).filter(Boolean);
+    const ratedText = topRatedTitles.length
+      ? `\nFAMILY FAVOURITES (prefer suggesting these when appropriate): ${topRatedTitles.join(", ")}`
       : "";
 
     // Build pantry inventory context
@@ -236,8 +258,10 @@ HOUSEHOLD PROFILE:
 - ${skillContext}
 - ${timeContext}
 - ${budgetContext}
-${hiddenRecipeText ? `\n${hiddenRecipeText}` : ""}
-${pantryContext}
+    ${hiddenRecipeText ? `\n${hiddenRecipeText}` : ""}
+    ${recentText}
+    ${ratedText}
+    ${pantryContext}
 
 Regional Context for India:
 - Focus exclusively on Indian recipes and cooking styles
