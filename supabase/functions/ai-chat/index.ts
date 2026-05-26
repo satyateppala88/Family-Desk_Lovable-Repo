@@ -90,6 +90,106 @@ const tools = [
       parameters: { type: "object", properties: {} },
     },
   },
+  // GROCERY
+  {
+    type: "function",
+    function: {
+      name: "add_pantry_item",
+      description: "Add an item to the household pantry inventory",
+      parameters: {
+        type: "object",
+        required: ["name"],
+        properties: {
+          name: { type: "string" },
+          quantity: { type: "number" },
+          unit: { type: "string", enum: ["kg","g","L","ml","pcs","packets","bottles","dozen"] },
+          category: { type: "string", description: "e.g. Vegetables, Dairy, Grains" },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "add_shopping_item",
+      description: "Add an item to the active shopping list",
+      parameters: {
+        type: "object",
+        required: ["item_name"],
+        properties: {
+          item_name: { type: "string" },
+          quantity: { type: "string", description: "e.g. 2 kg, 1 packet" },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_pantry_status",
+      description: "Check pantry inventory and items expiring soon",
+      parameters: { type: "object", properties: {} },
+    },
+  },
+  // FINANCE
+  {
+    type: "function",
+    function: {
+      name: "add_transaction",
+      description: "Add a financial transaction (expense, income, or savings)",
+      parameters: {
+        type: "object",
+        required: ["amount", "type", "category"],
+        properties: {
+          amount: { type: "number", description: "Amount in INR" },
+          type: { type: "string", enum: ["expense", "income", "savings"] },
+          category: { type: "string", description: "e.g. Groceries, Dining, Transport, Salary" },
+          description: { type: "string" },
+          transaction_date: { type: "string", description: "YYYY-MM-DD, defaults to today" },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_finance_summary",
+      description: "Get this month spending, income, and budget status",
+      parameters: { type: "object", properties: {} },
+    },
+  },
+  // HABITS
+  {
+    type: "function",
+    function: {
+      name: "log_habit",
+      description: "Mark a habit as completed for today",
+      parameters: {
+        type: "object",
+        required: ["habit_name"],
+        properties: {
+          habit_name: { type: "string", description: "Name or partial name of the habit" },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_habit_status",
+      description: "Get today habit completion and current streaks",
+      parameters: { type: "object", properties: {} },
+    },
+  },
+  // HOUSEHOLD
+  {
+    type: "function",
+    function: {
+      name: "get_expiring_items",
+      description: "Get pantry items expiring in the next 7 days",
+      parameters: { type: "object", properties: {} },
+    },
+  },
 ];
 
 async function executeToolCall(
@@ -141,6 +241,108 @@ async function executeToolCall(
           .eq('household_id', householdId),
       ]);
       return JSON.stringify({ open_tasks: tasks.count, pantry_items: pantry.count });
+    }
+    case 'add_pantry_item': {
+      const { data, error } = await supabase.from('pantry_items').insert({
+        name: args.name,
+        quantity: args.quantity ?? 1,
+        unit: args.unit || 'pcs',
+        category: args.category || 'Other',
+        household_id: householdId,
+        added_by: userId,
+      }).select('id, name').single();
+      if (error) throw new Error(error.message);
+      return `Added '${data.name}' to pantry`;
+    }
+    case 'add_shopping_item': {
+      // Find or create the active shopping list
+      let { data: list } = await supabase.from('shopping_lists')
+        .select('id').eq('household_id', householdId).eq('status', 'active')
+        .order('created_at', { ascending: false }).limit(1).maybeSingle();
+      if (!list) {
+        const { data: newList, error: newListErr } = await supabase.from('shopping_lists')
+          .insert({ name: 'Shopping List', household_id: householdId, created_by: userId, status: 'active' })
+          .select('id').single();
+        if (newListErr) throw new Error(newListErr.message);
+        list = newList;
+      }
+      // Parse "2 kg" into numeric quantity + unit
+      let qty: number | null = null;
+      let unit: string | null = null;
+      if (args.quantity) {
+        const m = String(args.quantity).trim().match(/^([\d.]+)\s*(.*)$/);
+        if (m) {
+          qty = Number(m[1]) || null;
+          unit = m[2]?.trim() || null;
+        }
+      }
+      const { error } = await supabase.from('shopping_list_items').insert({
+        name: args.item_name,
+        quantity: qty ?? 1,
+        unit,
+        list_id: list.id,
+        is_checked: false,
+      });
+      if (error) throw new Error(error.message);
+      return `Added '${args.item_name}' to shopping list`;
+    }
+    case 'add_transaction': {
+      const today = new Date().toISOString().slice(0, 10);
+      const { data, error } = await supabase.from('finance_transactions').insert({
+        amount: args.amount,
+        type: args.type,
+        category: args.category,
+        description: args.description || args.category,
+        transaction_date: args.transaction_date || today,
+        household_id: householdId,
+        created_by: userId,
+      }).select('id').single();
+      if (error) throw new Error(error.message);
+      return `Transaction added: ₹${args.amount} ${args.type} — ${args.category}`;
+    }
+    case 'log_habit': {
+      const { data: habits } = await supabase.from('habits')
+        .select('id, name').eq('household_id', householdId).eq('is_active', true);
+      const match = habits?.find((h: any) =>
+        h.name.toLowerCase().includes(String(args.habit_name).toLowerCase()));
+      if (!match) return `No habit found matching '${args.habit_name}'`;
+      const today = new Date().toISOString().slice(0, 10);
+      const { error } = await supabase.from('habit_logs').upsert({
+        habit_id: match.id, user_id: userId, log_date: today, completed: true,
+      }, { onConflict: 'habit_id,log_date,user_id' });
+      if (error) throw new Error(error.message);
+      return `Logged habit: '${match.name}' ✓`;
+    }
+    case 'get_pantry_status':
+    case 'get_expiring_items': {
+      const { data } = await supabase.from('pantry_items')
+        .select('name, quantity, unit, expiry_date')
+        .eq('household_id', householdId)
+        .order('expiry_date', { ascending: true }).limit(20);
+      return JSON.stringify(data || []);
+    }
+    case 'get_finance_summary': {
+      const now = new Date();
+      const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      const { data: tx } = await supabase.from('finance_transactions')
+        .select('amount, type, category')
+        .eq('household_id', householdId)
+        .gte('transaction_date', `${ym}-01`);
+      const income = tx?.filter((t: any) => t.type === 'income').reduce((s: number, t: any) => s + Number(t.amount), 0) || 0;
+      const spent = tx?.filter((t: any) => t.type === 'expense').reduce((s: number, t: any) => s + Number(t.amount), 0) || 0;
+      return JSON.stringify({ month: ym, income, spent, net: income - spent });
+    }
+    case 'get_habit_status': {
+      const today = new Date().toISOString().slice(0, 10);
+      const { data: habits } = await supabase.from('habits')
+        .select('id, name').eq('household_id', householdId).eq('is_active', true);
+      const habitIds = habits?.map((h: any) => h.id) || [];
+      const { data: logs } = habitIds.length
+        ? await supabase.from('habit_logs').select('habit_id, completed')
+            .in('habit_id', habitIds).eq('log_date', today).eq('user_id', userId)
+        : { data: [] };
+      const doneIds = new Set((logs || []).filter((l: any) => l.completed).map((l: any) => l.habit_id));
+      return JSON.stringify((habits || []).map((h: any) => ({ name: h.name, done: doneIds.has(h.id) })));
     }
     default:
       return `Tool '${fn}' not yet implemented`;
