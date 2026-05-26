@@ -47,6 +47,7 @@ const handler = async (req: Request): Promise<Response> => {
       page++;
     }
     const members = allMembers;
+    if (!members || members.length === 0) {
       return new Response(
         JSON.stringify({ success: true, message: "No members to send digest to" }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
