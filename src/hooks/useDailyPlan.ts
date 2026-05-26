@@ -4,6 +4,7 @@ import { DailyPlan, DailyPlanItem, DailyPlanWithItems } from "@/types/taskmaster
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { format } from "date-fns";
+import { STALE } from "@/lib/query-constants";
 
 export const useDailyPlan = (householdId: string | null, date?: Date) => {
   const queryClient = useQueryClient();
@@ -50,6 +51,7 @@ export const useDailyPlan = (householdId: string | null, date?: Date) => {
       } as DailyPlanWithItems;
     },
     enabled: !!householdId && !!user?.id,
+    staleTime: STALE.SHORT,
   });
 
   const extractCalendarTasks = useMutation({

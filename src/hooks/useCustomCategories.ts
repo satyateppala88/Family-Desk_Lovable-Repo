@@ -4,6 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useHousehold } from "@/hooks/useHousehold";
 import { toast } from "sonner";
 import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
+import { STALE } from "@/lib/query-constants";
 
 export type CategoryScope = "transaction" | "subscription" | "all";
 
@@ -42,6 +43,7 @@ export function useCustomCategories(scope: CategoryScope = "all") {
   const query = useQuery({
     queryKey: ["finance-custom-categories", householdId],
     enabled: !!householdId,
+    staleTime: STALE.LONG,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("finance_custom_categories")

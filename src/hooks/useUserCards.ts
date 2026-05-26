@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { STALE } from "@/lib/query-constants";
 
 export interface UserCard {
   id: string;
@@ -18,6 +19,7 @@ export function useUserCards(householdId: string | undefined) {
   return useQuery({
     queryKey: ["user-cards", householdId],
     enabled: !!householdId,
+    staleTime: STALE.MEDIUM,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("finance_user_cards")

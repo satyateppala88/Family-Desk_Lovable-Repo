@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { STALE } from "@/lib/query-constants";
 
 export interface PantryCategory {
   id: string;
@@ -44,6 +45,7 @@ export const usePantryCategories = (householdId: string | null) => {
       return data as PantryCategory[];
     },
     enabled: !!householdId,
+    staleTime: STALE.LONG,
   });
 
   const initializeDefaultCategories = useMutation({

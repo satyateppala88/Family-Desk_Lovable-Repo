@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { STALE } from "@/lib/query-constants";
 
 interface HouseholdMember {
   userId: string;
@@ -46,5 +47,6 @@ export const useHouseholdMembers = (householdId: string | null) => {
       });
     },
     enabled: !!householdId,
+    staleTime: STALE.LONG,
   });
 };

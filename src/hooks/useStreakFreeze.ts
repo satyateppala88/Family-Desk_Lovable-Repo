@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format, subDays } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { STALE } from "@/lib/query-constants";
 
 const currentPeriod = () => format(new Date(), "yyyy-MM");
 
@@ -11,6 +12,7 @@ export const useStreakFreeze = () => {
 
   const profileQuery = useQuery({
     queryKey: ["streak-freeze-profile"],
+    staleTime: STALE.MEDIUM,
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return null;

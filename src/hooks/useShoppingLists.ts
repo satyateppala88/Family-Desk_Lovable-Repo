@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { STALE } from "@/lib/query-constants";
 
 export interface ShoppingListItem {
   id: string;
@@ -52,6 +53,7 @@ export const useShoppingLists = (householdId: string | null) => {
       return data as ShoppingList[];
     },
     enabled: !!householdId,
+    staleTime: STALE.SHORT,
   });
 
   const createShoppingList = useMutation({

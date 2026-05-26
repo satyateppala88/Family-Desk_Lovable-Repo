@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { startOfWeek, startOfMonth, endOfWeek, endOfMonth, format } from "date-fns";
 import { LeaderboardEntry } from "@/types/habits";
+import { STALE } from "@/lib/query-constants";
 
 export const useHabitLeaderboard = (householdId: string | null) => {
   const today = new Date();
@@ -96,5 +97,6 @@ export const useHabitLeaderboard = (householdId: string | null) => {
       return entries;
     },
     enabled: !!householdId,
+    staleTime: STALE.MEDIUM,
   });
 };
