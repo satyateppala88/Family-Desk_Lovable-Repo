@@ -64,6 +64,10 @@ try {
 // imported — otherwise it boots with an empty session and signs the user
 // out. On web this resolves immediately. We then dynamically import App
 // so that the supabase client module is evaluated only after rehydration.
-await rehydrateAuthStorage();
-const { default: App } = await import("./App.tsx");
-createRoot(document.getElementById("root")!).render(<App />);
+// Wrapped in an async IIFE to avoid top-level await, which esbuild cannot
+// lower when combined with Vite's preload helper in the production build.
+void (async () => {
+  await rehydrateAuthStorage();
+  const { default: App } = await import("./App.tsx");
+  createRoot(document.getElementById("root")!).render(<App />);
+})();
