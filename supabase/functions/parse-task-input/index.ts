@@ -1,4 +1,3 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { z } from "https://deno.land/x/zod@v3.23.8/mod.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
 import { authenticateRequest } from "../_shared/auth.ts";
@@ -14,7 +13,7 @@ const ParseTaskInputSchema = z.object({
     .max(MAX_INPUT_LENGTH, `Input must be less than ${MAX_INPUT_LENGTH} characters`),
 });
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   const log = new Logger("parse-task-input");
   const corsHeaders = getCorsHeaders(req.headers.get("origin"));
   
