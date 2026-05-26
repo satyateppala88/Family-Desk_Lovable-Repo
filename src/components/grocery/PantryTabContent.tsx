@@ -1,3 +1,4 @@
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Package, Sparkles } from "lucide-react";
@@ -5,48 +6,74 @@ import { RunningLowChips } from "./RunningLowChips";
 import { PantryCategoryGrid } from "./PantryCategoryGrid";
 import { PantryCategoryDetail } from "./PantryCategoryDetail";
 import { FloatingCartButton } from "./FloatingCartButton";
-import type { PantryItem } from "@/hooks/usePantryItems";
-import type { PantryCategory } from "@/hooks/usePantryCategories";
+import { usePantryItems } from "@/hooks/usePantryItems";
+import { usePantryCategories } from "@/hooks/usePantryCategories";
 
 interface PantryTabContentProps {
-  isLoading: boolean;
-  pantryItems: PantryItem[];
-  categories: PantryCategory[];
-  lowStockItems: PantryItem[];
-  selectedCategoryDetail: string | null;
-  categoryItems: PantryItem[];
+  householdId: string | null;
   cartItemCount: number;
   isAddingLowStock: boolean;
-  onAddLowStockItem: (item: PantryItem) => void;
-  onShowAddDialog: () => void;
-  onShowQuickAdd: () => void;
-  onSelectCategory: (name: string) => void;
-  onBackToCategories: () => void;
-  onUpdateQuantity: (id: string, quantity: number) => void;
+  onAddLowStockItem: (item: any) => void;
   onAddToCart: (ids: string[]) => Promise<void> | void;
   onViewCart: () => void;
+  onShowAddDialog: () => void;
+  onShowQuickAdd: () => void;
   onOpenAI: () => void;
 }
 
 export const PantryTabContent = ({
-  isLoading,
-  pantryItems,
-  categories,
-  lowStockItems,
-  selectedCategoryDetail,
-  categoryItems,
+  householdId,
   cartItemCount,
   isAddingLowStock,
   onAddLowStockItem,
-  onShowAddDialog,
-  onShowQuickAdd,
-  onSelectCategory,
-  onBackToCategories,
-  onUpdateQuantity,
   onAddToCart,
   onViewCart,
+  onShowAddDialog,
+  onShowQuickAdd,
   onOpenAI,
 }: PantryTabContentProps) => {
+  const { pantryItems, isLoading, updatePantryItem } =
+    usePantryItems(householdId);
+  const { categories, isLoading: categoriesLoading, initializeDefaultCategories } =
+    usePantryCategories(householdId);
+
+  const [selectedCategoryDetail, setSelectedCategoryDetail] = useState<
+    string | null
+  >(null);
+
+  useEffect(() => {
+    if (householdId && categories.length === 0 && !categoriesLoading) {
+      initializeDefaultCategories.mutate(householdId);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [householdId, categories.length, categoriesLoading]);
+
+  const lowStockItems = useMemo(
+    () =>
+      pantryItems.filter((item) => {
+        const qty = item.quantity || 0;
+        const minQty = item.minimum_quantity || 0;
+        return minQty > 0 && qty <= minQty;
+      }),
+    [pantryItems],
+  );
+
+  const categoryItems = useMemo(() => {
+    if (!selectedCategoryDetail) return [];
+    return pantryItems.filter(
+      (item) =>
+        item.category === selectedCategoryDetail ||
+        (selectedCategoryDetail === "Other" && !item.category),
+    );
+  }, [selectedCategoryDetail, pantryItems]);
+
+  const handleUpdateQuantity = useCallback(
+    (id: string, quantity: number) => {
+      updatePantryItem.mutate({ id, updates: { quantity } });
+    },
+    [updatePantryItem],
+  );
+
   return (
     <>
       {lowStockItems.length > 0 && (
@@ -72,8 +99,8 @@ export const PantryTabContent = ({
           categoryName={selectedCategoryDetail}
           categoryIcon={categories.find((c) => c.name === selectedCategoryDetail)?.icon || undefined}
           items={categoryItems}
-          onBack={onBackToCategories}
-          onQuantityChange={onUpdateQuantity}
+          onBack={() => setSelectedCategoryDetail(null)}
+          onQuantityChange={handleUpdateQuantity}
           onAddToCart={onAddToCart}
         />
       ) : (
@@ -81,7 +108,7 @@ export const PantryTabContent = ({
           <PantryCategoryGrid
             categories={categories}
             items={pantryItems}
-            onSelectCategory={onSelectCategory}
+            onSelectCategory={setSelectedCategoryDetail}
           />
         </div>
       )}

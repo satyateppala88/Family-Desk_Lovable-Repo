@@ -1,5 +1,4 @@
-import { useState, useEffect, useMemo, useCallback, useRef } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Header } from "@/components/layout/Header";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -7,507 +6,98 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ModuleNudgeBanner } from "@/components/discovery/ModuleNudgeBanner";
-import { Plus, ListChecks, Package, Sparkles, ShoppingCart, ScanLine, Settings } from "lucide-react";
+import {
+  Plus,
+  ListChecks,
+  Package,
+  Sparkles,
+  ShoppingCart,
+  ScanLine,
+  Settings,
+} from "lucide-react";
 import { AddPantryItemDialog } from "@/components/grocery/AddPantryItemDialog";
 import { QuickAddChecklist } from "@/components/grocery/QuickAddChecklist";
 import { CreateShoppingListDialog } from "@/components/grocery/CreateShoppingListDialog";
-import { PantryEducationBanner } from "@/components/grocery/PantryEducationBanner";
-import { ExpiringItemsAlert } from "@/components/grocery/ExpiringItemsAlert";
-import { LowStockAlert } from "@/components/grocery/LowStockAlert";
 import { PantrySettingsSheet } from "@/components/grocery/PantrySettingsSheet";
-import { PantryAnalytics } from "@/components/grocery/PantryAnalytics";
 import { PantryTabContent } from "@/components/grocery/PantryTabContent";
 import { ShoppingTabContent } from "@/components/grocery/ShoppingTabContent";
-import { BillScanFlow, type BillScanFlowHandle } from "@/components/grocery/BillScanFlow";
-import { usePantryItems } from "@/hooks/usePantryItems";
+import { GroceryInsightsTab } from "@/components/grocery/GroceryInsightsTab";
+import {
+  BillScanFlow,
+  type BillScanFlowHandle,
+} from "@/components/grocery/BillScanFlow";
+import { usePantryItems, type PantryItem } from "@/hooks/usePantryItems";
 import { usePantryCategories } from "@/hooks/usePantryCategories";
-import { usePantryStats } from "@/hooks/usePantryStats";
 import { useShoppingLists } from "@/hooks/useShoppingLists";
+import { useGroceryActions } from "@/hooks/useGroceryActions";
 import { useHousehold } from "@/hooks/useHousehold";
 import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
-import type { PantryItem } from "@/hooks/usePantryItems";
-import { decodeIngredientsParam } from "@/lib/meals/shoppingListBridge";
 import { AIActionSheet } from "@/components/ai/AIActionSheet";
 
 const Grocery = () => {
   const { user } = useAuth();
-  const { toast } = useToast();
   const { householdId } = useHousehold();
-  useRealtimeSubscription([
-    { table: "shopping_lists", filter: householdId ? `household_id=eq.${householdId}` : undefined, enabled: !!householdId, queryKeys: [["shopping-lists", householdId]] },
-    { table: "shopping_list_items", enabled: !!householdId, queryKeys: [["shopping-lists", householdId]] },
-    { table: "pantry_items", filter: householdId ? `household_id=eq.${householdId}` : undefined, enabled: !!householdId, queryKeys: [["pantry-items", householdId], ["pantry-stats", householdId]] },
-  ], householdId);
-  const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { pantryItems, isLoading, addPantryItem, updatePantryItem, deletePantryItem, bulkAddItems } = usePantryItems(householdId);
-  const { categories, isLoading: categoriesLoading, initializeDefaultCategories } = usePantryCategories(householdId);
-  const { stats } = usePantryStats(householdId);
-  const { shoppingLists, createShoppingList, completeShoppingList, deleteShoppingList, toggleItemChecked, deleteItem } = useShoppingLists(householdId);
-  
+
+  useRealtimeSubscription(
+    [
+      {
+        table: "shopping_lists",
+        filter: householdId ? `household_id=eq.${householdId}` : undefined,
+        enabled: !!householdId,
+        queryKeys: [["shopping-lists", householdId]],
+      },
+      {
+        table: "shopping_list_items",
+        enabled: !!householdId,
+        queryKeys: [["shopping-lists", householdId]],
+      },
+      {
+        table: "pantry_items",
+        filter: householdId ? `household_id=eq.${householdId}` : undefined,
+        enabled: !!householdId,
+        queryKeys: [
+          ["pantry-items", householdId],
+          ["pantry-stats", householdId],
+        ],
+      },
+    ],
+    householdId,
+  );
+
+  const actions = useGroceryActions(householdId, user?.id);
+  const { pantryItems, addPantryItem, updatePantryItem, deletePantryItem, bulkAddItems } =
+    usePantryItems(householdId);
+  const { categories } = usePantryCategories(householdId);
+  const { createShoppingList, deleteShoppingList } = useShoppingLists(householdId);
+
+  // Local UI state (dialogs, edit target, active tab)
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [showCreateList, setShowCreateList] = useState(false);
+  const [showPantrySettings, setShowPantrySettings] = useState(false);
   const [editItem, setEditItem] = useState<PantryItem | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("all");
-  const [selectedStatus, setSelectedStatus] = useState("all");
-  const [isGeneratingList, setIsGeneratingList] = useState(false);
   const [deleteItemId, setDeleteItemId] = useState<string | null>(null);
   const [deleteListId, setDeleteListId] = useState<string | null>(null);
-
-  const [selectedCategoryDetail, setSelectedCategoryDetail] = useState<string | null>(null);
-  const [cartItemCount, setCartItemCount] = useState(0);
-  const [activeTab, setActiveTab] = useState<string>(() => searchParams.get("tab") || "pantry");
-  const [showPantrySettings, setShowPantrySettings] = useState(false);
-  const [isAddingLowStock, setIsAddingLowStock] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<string>(
+    () => searchParams.get("tab") || "pantry",
+  );
   const billScanRef = useRef<BillScanFlowHandle>(null);
 
-  // Handle inbound link from Meals: ?tab=shopping&newList=...&items=...
+  // Sync tab + handle ?add=1 quick action
   useEffect(() => {
     const tab = searchParams.get("tab");
     if (tab) setActiveTab(tab);
-    // Open Add Item sheet when navigated with ?add=1 (e.g. dashboard quick action)
     if (searchParams.get("add") === "1") {
       setShowAddDialog(true);
       const next = new URLSearchParams(searchParams);
       next.delete("add");
       setSearchParams(next, { replace: true });
     }
-    const newList = searchParams.get("newList");
-    const items = searchParams.get("items");
-    if (!newList || !householdId || !user?.id) return;
-
-    let cancelled = false;
-    (async () => {
-      try {
-        const { data: list, error } = await supabase
-          .from("shopping_lists")
-          .insert([{ household_id: householdId, name: newList, created_by: user.id, status: "active" }])
-          .select()
-          .single();
-        if (error || !list) throw error;
-
-        const ingredients = decodeIngredientsParam(items);
-        if (ingredients.length > 0) {
-          const rows = ingredients.map((ing) => ({
-            list_id: (list as any).id,
-            name: ing.name,
-            quantity: ing.quantity ? Number(String(ing.quantity).replace(/[^0-9.]/g, "")) || null : null,
-            unit: ing.unit || null,
-            category: null,
-            is_checked: false,
-            pantry_item_id: null,
-            recipe_source: newList,
-          }));
-          await supabase.from("shopping_list_items").insert(rows);
-        }
-        if (cancelled) return;
-        queryClient.invalidateQueries({ queryKey: ["shopping-lists", householdId] });
-        toast({ title: "Shopping list created", description: newList });
-        // Clear the params so a refresh doesn't recreate
-        const next = new URLSearchParams(searchParams);
-        next.delete("newList");
-        next.delete("items");
-        next.set("tab", "shopping");
-        next.set("list", (list as any).id);
-        setSearchParams(next, { replace: true });
-        setActiveTab("shopping");
-      } catch (e: any) {
-        toast({ title: "Couldn't create list", description: "Please try again.", variant: "destructive" });
-      }
-    })();
-    return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [householdId, user?.id]);
-
-  useEffect(() => {
-    if (householdId && categories.length === 0 && !categoriesLoading) {
-      initializeDefaultCategories.mutate(householdId);
-    }
-  }, [householdId, categories.length, categoriesLoading]);
-
-  const handleAddItem = (item: Partial<PantryItem>) => {
-    if (!householdId || !user?.id) return;
-    
-    if (editItem) {
-      updatePantryItem.mutate({ id: editItem.id, updates: item });
-      setEditItem(null);
-    } else {
-      addPantryItem.mutate({ ...item, household_id: householdId, added_by: user.id });
-    }
-  };
-
-  const handleEditItem = useCallback((item: PantryItem) => {
-    setEditItem(item);
-    setShowAddDialog(true);
-  }, []);
-
-  const handleDeleteItem = useCallback((id: string) => {
-    setDeleteItemId(id);
-  }, []);
-
-  const confirmDeleteItem = () => {
-    if (deleteItemId) {
-      deletePantryItem.mutate(deleteItemId);
-      setDeleteItemId(null);
-    }
-  };
-
-  const handleUpdateQuantity = useCallback((id: string, quantity: number) => {
-    updatePantryItem.mutate({ id, updates: { quantity } });
-  }, [updatePantryItem]);
-
-  const handleBulkAdd = (items: Partial<PantryItem>[]) => {
-    if (!householdId || !user?.id) return;
-    const itemsWithRequired = items.map(item => ({
-      ...item,
-      household_id: householdId,
-      added_by: user.id,
-    }));
-    bulkAddItems.mutate(itemsWithRequired, {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ["pantry-items", householdId] });
-        queryClient.invalidateQueries({ queryKey: ["pantry-stats", householdId] });
-      },
-    });
-  };
-
-  const handleAIImport = (items: Partial<PantryItem>[]) => {
-    if (!householdId || !user?.id) return;
-    const itemsWithRequired = items.map(item => ({
-      ...item,
-      household_id: item.household_id || householdId,
-      added_by: item.added_by || user.id,
-    }));
-    bulkAddItems.mutate(itemsWithRequired);
-  };
-
-  const handleSaveScannedBill = async ({
-    inserts,
-    merges,
-  }: {
-    inserts: Array<Partial<PantryItem>>;
-    merges: Array<{ id: string; quantity: number }>;
-    billDate: string | null;
-  }) => {
-    if (!householdId || !user?.id) return;
-    try {
-      if (inserts.length > 0) {
-        const enriched = inserts.map(i => ({
-          ...i,
-          household_id: householdId,
-          added_by: user.id,
-        }));
-        await bulkAddItems.mutateAsync(enriched);
-      }
-      for (const m of merges) {
-        await updatePantryItem.mutateAsync({
-          id: m.id,
-          updates: { quantity: m.quantity, last_purchased_at: new Date().toISOString() },
-        });
-      }
-      toast({
-        title: "Pantry updated",
-        description: `${inserts.length} added, ${merges.length} merged.`,
-      });
-    } catch (err: any) {
-      toast({
-        title: "Could not save",
-        description: "Please try again.",
-        variant: "destructive",
-      });
-      throw err;
-    }
-  };
-
-  const handleCreateList = (name: string) => {
-    if (!householdId || !user?.id) return;
-    createShoppingList.mutate({
-      household_id: householdId,
-      name,
-      created_by: user.id,
-    });
-  };
-
-  const handleGenerateFromMealPlan = async () => {
-    if (!householdId || !user?.id) return;
-    
-    setIsGeneratingList(true);
-    try {
-      const today = new Date();
-      const sunday = new Date(today);
-      sunday.setDate(today.getDate() - today.getDay());
-      const weekStartDate = sunday.toISOString().split('T')[0];
-
-      const { data: mealPlans } = await supabase
-        .from("meal_plans")
-        .select("id")
-        .eq("household_id", householdId)
-        .eq("week_start_date", weekStartDate)
-        .maybeSingle();
-
-      if (!mealPlans) {
-        toast({
-          title: "No meal plan found",
-          description: "Generate a meal plan for this week first, then we can create a shopping list from it.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      const { data, error } = await supabase.functions.invoke("generate-shopping-list", {
-        body: {
-          householdId,
-          mealPlanId: mealPlans.id,
-          userId: user.id,
-        },
-      });
-
-      if (error) throw error;
-
-      queryClient.invalidateQueries({ queryKey: ["shopping-lists", householdId] });
-      
-      toast({
-        title: "Shopping list ready! 🛒",
-        description: `${data.itemCount} items added based on this week's meals.`,
-      });
-    } catch (error: any) {
-      console.error("Error generating shopping list:", error);
-      toast({
-        title: "Something went wrong",
-        description: "We couldn't generate the shopping list. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsGeneratingList(false);
-    }
-  };
-
-  const handleCompleteList = useCallback((listId: string) => {
-    completeShoppingList.mutate(listId);
-  }, [completeShoppingList]);
-
-  const handleDeleteList = useCallback((listId: string) => {
-    setDeleteListId(listId);
-  }, []);
-
-  const confirmDeleteList = () => {
-    if (deleteListId) {
-      deleteShoppingList.mutate(deleteListId);
-      setDeleteListId(null);
-    }
-  };
-
-  const filteredItems = pantryItems.filter((item) => {
-    if (searchQuery && !item.name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
-    if (selectedCategory !== "all" && item.category !== selectedCategory) return false;
-    if (selectedStatus === "staples" && !item.is_staple) return false;
-    if (selectedStatus === "low-stock") {
-      const qty = item.quantity || 0;
-      const minQty = item.minimum_quantity || 0;
-      if (minQty === 0 || qty > minQty) return false;
-    }
-    if (selectedStatus === "expiring") {
-      if (!item.expiry_date) return false;
-      const now = new Date();
-      const expiryDate = new Date(item.expiry_date);
-      const diffDays = Math.ceil((expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-      if (diffDays > 7) return false;
-    }
-    return true;
-  });
-
-  const expiringItems = pantryItems.filter(item => {
-    if (!item.expiry_date) return false;
-    const expiryDate = new Date(item.expiry_date);
-    const now = new Date();
-    const diffDays = Math.ceil((expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-    return diffDays <= 3 && diffDays >= 0;
-  });
-
-  const lowStockItems = pantryItems.filter(item => {
-    const qty = item.quantity || 0;
-    const minQty = item.minimum_quantity || 0;
-    return minQty > 0 && qty <= minQty;
-  });
-
-  const handleAddLowStockItem = async (item: PantryItem) => {
-    if (!householdId || !user?.id) return;
-    setIsAddingLowStock(true);
-    try {
-      let activeList = shoppingLists.find((l) => l.status === "active");
-      if (!activeList) {
-        const { data, error } = await supabase
-          .from("shopping_lists")
-          .insert([
-            {
-              household_id: householdId,
-              name: `Shopping List — ${new Date().toLocaleDateString()}`,
-              created_by: user.id,
-              status: "active",
-            },
-          ])
-          .select()
-          .single();
-        if (error || !data) throw error;
-        activeList = data as any;
-      }
-
-      // Avoid duplicates: same pantry item, not yet checked
-      const existing = activeList!.items?.find(
-        (i) => i.pantry_item_id === item.id && !i.is_checked
-      );
-      if (existing) {
-        toast({ title: "Already on your list", description: item.name });
-        return;
-      }
-
-      const need = Math.max(
-        1,
-        Math.ceil((item.minimum_quantity || 1) - (item.quantity || 0))
-      );
-      const { error: insertError } = await supabase
-        .from("shopping_list_items")
-        .insert([
-          {
-            list_id: activeList!.id,
-            name: item.name,
-            quantity: need,
-            unit: item.unit,
-            category: item.category,
-            is_checked: false,
-            pantry_item_id: item.id,
-            recipe_source: null,
-          },
-        ]);
-      if (insertError) throw insertError;
-
-      queryClient.invalidateQueries({ queryKey: ["shopping-lists", householdId] });
-      setCartItemCount((c) => c + 1);
-      toast({ title: `${item.name} added to shopping list` });
-    } catch (e: any) {
-      toast({
-        title: "Couldn't add item",
-        description: "Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsAddingLowStock(false);
-    }
-  };
-
-  const groupedItems = useMemo(() => {
-    const groups: Record<string, PantryItem[]> = {};
-    filteredItems.forEach((item) => {
-      const category = item.category || "Other";
-      if (!groups[category]) groups[category] = [];
-      groups[category].push(item);
-    });
-    return groups;
-  }, [filteredItems]);
-
-  const sortedCategories = useMemo(() => {
-    return categories
-      .filter((cat) => groupedItems[cat.name])
-      .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
-  }, [categories, groupedItems]);
-
-  const selectedListId = searchParams.get("list");
-  const selectedList = shoppingLists.find((list) => list.id === selectedListId);
-
-  const handleToggleItem = (itemId: string, isChecked: boolean) => {
-    if (!user?.id) return;
-    toggleItemChecked.mutate({ id: itemId, is_checked: isChecked, user_id: user.id });
-  };
-
-  const handleBackToLists = () => {
-    setSearchParams({});
-  };
-
-  const handleSelectCategory = (categoryName: string) => {
-    setSelectedCategoryDetail(categoryName);
-  };
-
-  const handleBackToCategories = () => {
-    setSelectedCategoryDetail(null);
-  };
-
-  const handleAddToCart = async (itemIds: string[]) => {
-    if (!householdId || !user?.id) return;
-    
-    let activeList = shoppingLists.find(list => list.status === "active");
-    
-    if (!activeList) {
-      const { data, error } = await supabase
-        .from("shopping_lists")
-        .insert([{
-          household_id: householdId,
-          name: `Shopping List — ${new Date().toLocaleDateString()}`,
-          created_by: user.id,
-          status: "active",
-        }])
-        .select()
-        .single();
-      
-      if (error) {
-        toast({ title: "Something went wrong", description: "Couldn't create a shopping list.", variant: "destructive" });
-        return;
-      }
-      
-      activeList = data as any;
-      queryClient.invalidateQueries({ queryKey: ["shopping-lists", householdId] });
-    }
-    
-    const itemsToAdd = pantryItems.filter(item => itemIds.includes(item.id));
-    
-    const shoppingItems = itemsToAdd.map(item => ({
-      list_id: activeList!.id,
-      name: item.name,
-      quantity: item.minimum_quantity || 1,
-      unit: item.unit,
-      category: item.category,
-      is_checked: false,
-      pantry_item_id: item.id,
-      recipe_source: null,
-    }));
-    
-    const { error: itemsError } = await supabase
-      .from("shopping_list_items")
-      .insert(shoppingItems);
-    
-    if (itemsError) {
-      toast({ title: "Something went wrong", description: "Couldn't add items to the list.", variant: "destructive" });
-      return;
-    }
-    
-    queryClient.invalidateQueries({ queryKey: ["shopping-lists", householdId] });
-    setCartItemCount(prev => prev + itemsToAdd.length);
-    
-    toast({
-      title: "Added to shopping list",
-      description: `${itemsToAdd.length} item${itemsToAdd.length !== 1 ? 's' : ''} ready to buy.`,
-    });
-  };
-
-  const handleViewCart = () => {
-    const activeList = shoppingLists.find(list => list.status === "active");
-    if (activeList) {
-      setSearchParams({ list: activeList.id });
-    }
-  };
-
-  const categoryItems = useMemo(() => {
-    if (!selectedCategoryDetail) return [];
-    return pantryItems.filter(item => 
-      item.category === selectedCategoryDetail || 
-      (selectedCategoryDetail === "Other" && !item.category)
-    );
-  }, [selectedCategoryDetail, pantryItems]);
+  }, [searchParams]);
 
   if (!user || !householdId) {
     return (
@@ -524,6 +114,21 @@ const Grocery = () => {
     );
   }
 
+  const handleAddItem = (item: Partial<PantryItem>) => {
+    if (editItem) {
+      updatePantryItem.mutate({ id: editItem.id, updates: item });
+      setEditItem(null);
+    } else {
+      addPantryItem.mutate({ ...item, household_id: householdId, added_by: user.id });
+    }
+  };
+
+  const handleBulkAdd = (items: Partial<PantryItem>[]) => {
+    bulkAddItems.mutate(
+      items.map((item) => ({ ...item, household_id: householdId, added_by: user.id })),
+    );
+  };
+
   return (
     <div className="page-container">
       <Header />
@@ -536,7 +141,9 @@ const Grocery = () => {
           <div>
             <h1 className="page-heading">Grocery</h1>
             <p className="text-sm text-muted-foreground mt-0.5">
-              {pantryItems.length > 0 ? `${pantryItems.length} items in your pantry` : "Start building your pantry inventory"}
+              {pantryItems.length > 0
+                ? `${pantryItems.length} items in your pantry`
+                : "Start building your pantry inventory"}
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -601,67 +208,39 @@ const Grocery = () => {
               <ShoppingCart className="h-4 w-4" aria-hidden="true" />
               Shopping
             </TabsTrigger>
-            <TabsTrigger value="insights" className="gap-2">
-              Insights
-            </TabsTrigger>
+            <TabsTrigger value="insights" className="gap-2">Insights</TabsTrigger>
           </TabsList>
 
           <TabsContent value="pantry" className="space-y-6">
             <PantryTabContent
-              isLoading={isLoading}
-              pantryItems={pantryItems}
-              categories={categories}
-              lowStockItems={lowStockItems}
-              selectedCategoryDetail={selectedCategoryDetail}
-              categoryItems={categoryItems}
-              cartItemCount={cartItemCount}
-              isAddingLowStock={isAddingLowStock}
-              onAddLowStockItem={handleAddLowStockItem}
+              householdId={householdId}
+              cartItemCount={actions.cartItemCount}
+              isAddingLowStock={actions.isAddingLowStock}
+              onAddLowStockItem={actions.handleAddLowStockItem}
+              onAddToCart={actions.handleAddToCart}
+              onViewCart={actions.handleViewCart}
               onShowAddDialog={() => setShowAddDialog(true)}
               onShowQuickAdd={() => setShowQuickAdd(true)}
-              onSelectCategory={handleSelectCategory}
-              onBackToCategories={handleBackToCategories}
-              onUpdateQuantity={handleUpdateQuantity}
-              onAddToCart={handleAddToCart}
-              onViewCart={handleViewCart}
               onOpenAI={() => setAiOpen(true)}
             />
           </TabsContent>
 
           <TabsContent value="shopping" className="space-y-6">
             <ShoppingTabContent
-              shoppingLists={shoppingLists}
-              selectedList={selectedList}
-              userId={user?.id || ""}
-              onBackToLists={handleBackToLists}
-              onToggleItem={handleToggleItem}
-              onDeleteItem={(itemId) => deleteItem.mutate(itemId)}
+              householdId={householdId}
+              userId={user.id}
               onShowCreateList={() => setShowCreateList(true)}
-              onCompleteList={handleCompleteList}
-              onDeleteList={handleDeleteList}
-              onGenerateFromMealPlan={handleGenerateFromMealPlan}
+              onDeleteList={(listId) => setDeleteListId(listId)}
+              onGenerateFromMealPlan={actions.handleGenerateFromMealPlan}
             />
           </TabsContent>
 
           <TabsContent value="insights" className="space-y-6">
-            <PantryEducationBanner />
-            
-            {expiringItems.length > 0 && (
-              <ExpiringItemsAlert items={expiringItems} />
-            )}
-
-            {lowStockItems.length > 0 && (
-              <LowStockAlert items={lowStockItems} />
-            )}
-
-            <PantryAnalytics
-              pantryItems={pantryItems}
-              shoppingLists={shoppingLists}
-            />
+            <GroceryInsightsTab householdId={householdId} />
           </TabsContent>
         </Tabs>
       </main>
-      
+
       <AddPantryItemDialog
         open={showAddDialog}
         onOpenChange={(open) => {
@@ -688,15 +267,21 @@ const Grocery = () => {
         householdId={householdId}
         userId={user.id}
         pantryItems={pantryItems}
-        onAIImport={handleAIImport}
-        onSaveScannedBill={handleSaveScannedBill}
+        onAIImport={actions.handleAIImport}
+        onSaveScannedBill={actions.handleSaveScannedBill}
       />
 
       <CreateShoppingListDialog
         open={showCreateList}
         onOpenChange={setShowCreateList}
-        onSubmit={handleCreateList}
-        onGenerateFromMealPlan={handleGenerateFromMealPlan}
+        onSubmit={(name) =>
+          createShoppingList.mutate({
+            household_id: householdId,
+            name,
+            created_by: user.id,
+          })
+        }
+        onGenerateFromMealPlan={actions.handleGenerateFromMealPlan}
       />
 
       <ConfirmDialog
@@ -706,7 +291,12 @@ const Grocery = () => {
         description="It will be removed from your pantry inventory."
         confirmLabel="Remove"
         variant="destructive"
-        onConfirm={confirmDeleteItem}
+        onConfirm={() => {
+          if (deleteItemId) {
+            deletePantryItem.mutate(deleteItemId);
+            setDeleteItemId(null);
+          }
+        }}
       />
 
       <ConfirmDialog
@@ -716,10 +306,18 @@ const Grocery = () => {
         description="The list and all its items will be permanently removed."
         confirmLabel="Delete List"
         variant="destructive"
-        onConfirm={confirmDeleteList}
+        onConfirm={() => {
+          if (deleteListId) {
+            deleteShoppingList.mutate(deleteListId);
+            setDeleteListId(null);
+          }
+        }}
       />
 
-      <PantrySettingsSheet open={showPantrySettings} onOpenChange={setShowPantrySettings} />
+      <PantrySettingsSheet
+        open={showPantrySettings}
+        onOpenChange={setShowPantrySettings}
+      />
 
       <AIActionSheet
         isOpen={aiOpen}
