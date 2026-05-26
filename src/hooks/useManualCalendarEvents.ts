@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { useHousehold } from "./useHousehold";
 import type { RecurrenceSpec } from "@/types/recurrence";
@@ -67,9 +68,13 @@ export const useCreateManualEvent = () => {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["calendar-events"] });
-      queryClient.invalidateQueries({ queryKey: ["today-events"] });
-      queryClient.invalidateQueries({ queryKey: ["calendar-events-today"] });
+      queryClient.invalidateQueries({ queryKey: ["calendar-events", householdId] });
+    },
+    onError: (error: any) => {
+      toast.error("Calendar update failed", {
+        description: "Your change could not be saved. Please try again.",
+      });
+      console.error("[useManualCalendarEvents]", error.message);
     },
   });
 };
@@ -80,6 +85,7 @@ interface UpdateManualEventInput extends CreateManualEventInput {
 
 export const useUpdateManualEvent = () => {
   const queryClient = useQueryClient();
+  const { householdId } = useHousehold();
   return useMutation({
     mutationFn: async (input: UpdateManualEventInput) => {
       const { startAt, endAt, isAllDay } = deriveTimes(input.date, input.time, input.allDay);
@@ -102,15 +108,20 @@ export const useUpdateManualEvent = () => {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["calendar-events"] });
-      queryClient.invalidateQueries({ queryKey: ["today-events"] });
-      queryClient.invalidateQueries({ queryKey: ["calendar-events-today"] });
+      queryClient.invalidateQueries({ queryKey: ["calendar-events", householdId] });
+    },
+    onError: (error: any) => {
+      toast.error("Calendar update failed", {
+        description: "Your change could not be saved. Please try again.",
+      });
+      console.error("[useManualCalendarEvents]", error.message);
     },
   });
 };
 
 export const useDeleteManualEvent = () => {
   const queryClient = useQueryClient();
+  const { householdId } = useHousehold();
   return useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase
@@ -120,9 +131,13 @@ export const useDeleteManualEvent = () => {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["calendar-events"] });
-      queryClient.invalidateQueries({ queryKey: ["today-events"] });
-      queryClient.invalidateQueries({ queryKey: ["calendar-events-today"] });
+      queryClient.invalidateQueries({ queryKey: ["calendar-events", householdId] });
+    },
+    onError: (error: any) => {
+      toast.error("Calendar update failed", {
+        description: "Your change could not be saved. Please try again.",
+      });
+      console.error("[useManualCalendarEvents]", error.message);
     },
   });
 };
@@ -256,9 +271,13 @@ export const useUpdateRecurringEvent = () => {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["calendar-events"] });
-      queryClient.invalidateQueries({ queryKey: ["today-events"] });
-      queryClient.invalidateQueries({ queryKey: ["calendar-events-today"] });
+      queryClient.invalidateQueries({ queryKey: ["calendar-events", householdId] });
+    },
+    onError: (error: any) => {
+      toast.error("Calendar update failed", {
+        description: "Your change could not be saved. Please try again.",
+      });
+      console.error("[useManualCalendarEvents]", error.message);
     },
   });
 };
