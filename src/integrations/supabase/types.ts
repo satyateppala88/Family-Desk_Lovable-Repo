@@ -2199,6 +2199,7 @@ export type Database = {
         Row: {
           created_at: string | null
           expires_at: string
+          failed_attempts: number
           id: string
           phone_number: string
           token: string
@@ -2208,6 +2209,7 @@ export type Database = {
         Insert: {
           created_at?: string | null
           expires_at?: string
+          failed_attempts?: number
           id?: string
           phone_number: string
           token: string
@@ -2217,6 +2219,7 @@ export type Database = {
         Update: {
           created_at?: string | null
           expires_at?: string
+          failed_attempts?: number
           id?: string
           phone_number?: string
           token?: string
