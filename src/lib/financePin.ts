@@ -72,10 +72,31 @@ export const isPinEnabled = (): boolean => !!getStoredHash();
 export const verifyPin = async (pin: string): Promise<boolean> => {
   const stored = getStoredHash();
   if (!stored) return false;
-  // Legacy unsalted SHA-256 hashes can no longer be verified — force a re-set.
-  if (!stored.startsWith(HASH_PREFIX)) return false;
-  const candidate = await hashPin(pin);
-  return candidate === stored;
+  if (stored.startsWith(HASH_PREFIX)) {
+    const candidate = await hashPin(pin);
+    return candidate === stored;
+  }
+  // Legacy unsalted SHA-256 hash — verify against the old format, then
+  // transparently upgrade to PBKDF2 so future verifications use the
+  // stronger algorithm.
+  const legacy = await legacySha256Hex(pin);
+  if (legacy !== stored) return false;
+  try {
+    const upgraded = await hashPin(pin);
+    setStoredHash(upgraded);
+  } catch {
+    /* keep legacy hash if upgrade fails */
+  }
+  return true;
+};
+
+/** Old unsalted SHA-256 hex digest, kept only to verify pre-PBKDF2 PINs. */
+const legacySha256Hex = async (pin: string): Promise<string> => {
+  const enc = new TextEncoder();
+  const digest = await crypto.subtle.digest("SHA-256", enc.encode(pin));
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
 };
 
 export const markUnlocked = () => {
