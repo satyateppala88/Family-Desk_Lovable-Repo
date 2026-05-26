@@ -83,7 +83,9 @@ export const AIChatWidget = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [placeholderIdx, setPlaceholderIdx] = useState(0);
   const [voiceReplyEnabled, setVoiceReplyEnabled] = useState(false);
+  const [feedbackGiven, setFeedbackGiven] = useState<Record<number, 'up'|'down'>>({});
   const scrollRef = useRef<HTMLDivElement>(null);
+
 
   const { speak, stop: stopSpeaking, isSpeaking, isSupported: ttsSupported } =
     useSpeechSynthesis({ language: "en-IN" });
@@ -118,6 +120,29 @@ export const AIChatWidget = () => {
 
   const routeCategory = getRouteCategory(location.pathname);
   const promptChips = PROMPT_CHIPS[routeCategory] || PROMPT_CHIPS.default;
+
+  const aiModule = useMemo(() => {
+    const moduleMap: Record<string, string> = {
+      finance: 'finance',
+      tasks: 'tasks',
+      meals: 'meals',
+      habits: 'habits',
+      grocery: 'grocery',
+      default: 'general',
+    };
+    return moduleMap[routeCategory] || 'general';
+  }, [routeCategory]);
+
+  const handleFeedback = useCallback(async (messageIndex: number, vote: 'up'|'down') => {
+    if (!user || !householdId) return;
+    setFeedbackGiven(prev => ({ ...prev, [messageIndex]: vote }));
+    await (supabase as any).from('ai_feedback').insert({
+      user_id: user.id,
+      household_id: householdId,
+      module: aiModule,
+      vote,
+    });
+  }, [user, householdId, aiModule]);
 
   const displayName = useMemo(() => {
     return user?.user_metadata?.display_name || user?.email?.split("@")[0] || "there";
@@ -157,17 +182,6 @@ export const AIChatWidget = () => {
       const { data: sessionData } = await supabase.auth.getSession();
       const accessToken = sessionData.session?.access_token;
       if (!accessToken) throw new Error("Not authenticated");
-
-      // Map route category to AI module
-      const moduleMap: Record<string, string> = {
-        finance: 'finance',
-        tasks: 'tasks',
-        meals: 'meals',
-        habits: 'habits',
-        grocery: 'grocery',
-        default: 'general',
-      };
-      const aiModule = moduleMap[routeCategory] || 'general';
 
       const response = await fetch(CHAT_URL, {
         method: "POST",
@@ -347,13 +361,36 @@ export const AIChatWidget = () => {
                 </div>
               )}
               <div className={cn(
-                "rounded-2xl px-4 py-2.5 max-w-[85%]",
-                msg.role === "user" ? "bg-primary text-primary-foreground rounded-br-sm" : "bg-muted rounded-bl-sm"
+                "flex flex-col",
+                msg.role === "user" ? "max-w-[85%]" : "max-w-[85%]"
               )}>
-                <p className="text-sm whitespace-pre-wrap leading-relaxed">{msg.content}</p>
-                {msg.toolResult && (
-                  <div className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-primary/10 border border-primary/20 px-3 py-1 text-xs font-medium text-primary">
-                    {msg.toolResult}
+                <div className={cn(
+                  "rounded-2xl px-4 py-2.5",
+                  msg.role === "user" ? "bg-primary text-primary-foreground rounded-br-sm" : "bg-muted rounded-bl-sm"
+                )}>
+                  <p className="text-sm whitespace-pre-wrap leading-relaxed">{msg.content}</p>
+                  {msg.toolResult && (
+                    <div className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-primary/10 border border-primary/20 px-3 py-1 text-xs font-medium text-primary">
+                      {msg.toolResult}
+                    </div>
+                  )}
+                </div>
+                {msg.role === 'assistant' && !isLoading && idx === messages.length - 1 && (
+                  <div className='flex gap-1 mt-1 opacity-60 hover:opacity-100 transition-opacity'>
+                    <button
+                      onClick={() => handleFeedback(idx, 'up')}
+                      className={cn('text-xs p-1 rounded hover:bg-primary/10',
+                        feedbackGiven[idx] === 'up' && 'text-primary opacity-100')}
+                      aria-label='Helpful'>
+                      👍
+                    </button>
+                    <button
+                      onClick={() => handleFeedback(idx, 'down')}
+                      className={cn('text-xs p-1 rounded hover:bg-destructive/10',
+                        feedbackGiven[idx] === 'down' && 'text-destructive opacity-100')}
+                      aria-label='Not helpful'>
+                      👎
+                    </button>
                   </div>
                 )}
               </div>

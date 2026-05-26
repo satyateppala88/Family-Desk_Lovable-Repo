@@ -94,6 +94,33 @@ export type Database = {
           },
         ]
       }
+      ai_feedback: {
+        Row: {
+          created_at: string | null
+          household_id: string
+          id: string
+          module: string
+          user_id: string
+          vote: string
+        }
+        Insert: {
+          created_at?: string | null
+          household_id: string
+          id?: string
+          module: string
+          user_id: string
+          vote: string
+        }
+        Update: {
+          created_at?: string | null
+          household_id?: string
+          id?: string
+          module?: string
+          user_id?: string
+          vote?: string
+        }
+        Relationships: []
+      }
       ai_messages: {
         Row: {
           content: string
