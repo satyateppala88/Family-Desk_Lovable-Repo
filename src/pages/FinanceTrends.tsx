@@ -4,7 +4,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { PageLoading } from "@/components/ui/page-loading";
 import { Badge } from "@/components/ui/badge";
 import { useHousehold } from "@/hooks/useHousehold";
-import { useFinanceRealtime, CATEGORY_LABELS } from "@/hooks/useFinance";
+import { useFinanceRealtime, CATEGORY_LABELS } from "@/hooks/finance";
 import { useFinanceTrends } from "@/hooks/useFinanceTrends";
 import { useCustomCategories } from "@/hooks/useCustomCategories";
 import { resolveCategoryLabel } from "@/components/finance/CategorySelect";
@@ -40,7 +40,7 @@ const FinanceTrends = () => {
   const totalsByCategory: Record<string, number> = {};
   trends?.forEach((m) => {
     Object.entries(m.byCategory).forEach(([k, v]) => {
-      totalsByCategory[k] = (totalsByCategory[k] || 0) + v;
+      totalsByCategory[k] = (totalsByCategory[k] || 0) + (v as number);
     });
   });
   const topCats = Object.entries(totalsByCategory)

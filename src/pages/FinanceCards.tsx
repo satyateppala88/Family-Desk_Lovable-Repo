@@ -9,7 +9,7 @@ import { QuickActionButton } from "@/components/ui/quick-action-button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Plus, CreditCard, Trash2, Sparkles, Award, Gift } from "lucide-react";
 import { useHousehold } from "@/hooks/useHousehold";
-import { useFinanceRealtime } from "@/hooks/useFinance";
+import { useFinanceRealtime } from "@/hooks/finance";
 import { useUserCards, useAddUserCard, useRemoveUserCard } from "@/hooks/useUserCards";
 import { useCustomCards, useRemoveCustomCard } from "@/hooks/useCustomCards";
 import { CREDIT_CARD_CATALOG } from "@/data/creditCardCatalog";

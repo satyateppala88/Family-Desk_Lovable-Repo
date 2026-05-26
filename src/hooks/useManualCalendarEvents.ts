@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { useHousehold } from "./useHousehold";
 import type { RecurrenceSpec } from "@/types/recurrence";
@@ -57,9 +58,9 @@ export const useCreateManualEvent = () => {
           end_at: endAt,
           all_day: isAllDay,
           repeat_type: deriveRepeatType(input.recurrence),
-          recurrence: input.recurrence ?? null,
+          recurrence: (input.recurrence ?? null) as any,
           member_ids: input.memberIds ?? [],
-        })
+        } as any)
         .select()
         .single();
 
@@ -67,9 +68,13 @@ export const useCreateManualEvent = () => {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["calendar-events"] });
-      queryClient.invalidateQueries({ queryKey: ["today-events"] });
-      queryClient.invalidateQueries({ queryKey: ["calendar-events-today"] });
+      queryClient.invalidateQueries({ queryKey: ["calendar-events", householdId] });
+    },
+    onError: (error: any) => {
+      toast.error("Calendar update failed", {
+        description: "Your change could not be saved. Please try again.",
+      });
+      console.error("[useManualCalendarEvents]", error.message);
     },
   });
 };
@@ -80,6 +85,7 @@ interface UpdateManualEventInput extends CreateManualEventInput {
 
 export const useUpdateManualEvent = () => {
   const queryClient = useQueryClient();
+  const { householdId } = useHousehold();
   return useMutation({
     mutationFn: async (input: UpdateManualEventInput) => {
       const { startAt, endAt, isAllDay } = deriveTimes(input.date, input.time, input.allDay);
@@ -92,7 +98,7 @@ export const useUpdateManualEvent = () => {
           end_at: endAt,
           all_day: isAllDay,
           repeat_type: deriveRepeatType(input.recurrence),
-          recurrence: input.recurrence ?? null,
+          recurrence: (input.recurrence ?? null) as any,
           ...(input.memberIds ? { member_ids: input.memberIds } : {}),
         })
         .eq("id", input.id)
@@ -102,15 +108,20 @@ export const useUpdateManualEvent = () => {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["calendar-events"] });
-      queryClient.invalidateQueries({ queryKey: ["today-events"] });
-      queryClient.invalidateQueries({ queryKey: ["calendar-events-today"] });
+      queryClient.invalidateQueries({ queryKey: ["calendar-events", householdId] });
+    },
+    onError: (error: any) => {
+      toast.error("Calendar update failed", {
+        description: "Your change could not be saved. Please try again.",
+      });
+      console.error("[useManualCalendarEvents]", error.message);
     },
   });
 };
 
 export const useDeleteManualEvent = () => {
   const queryClient = useQueryClient();
+  const { householdId } = useHousehold();
   return useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase
@@ -120,9 +131,13 @@ export const useDeleteManualEvent = () => {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["calendar-events"] });
-      queryClient.invalidateQueries({ queryKey: ["today-events"] });
-      queryClient.invalidateQueries({ queryKey: ["calendar-events-today"] });
+      queryClient.invalidateQueries({ queryKey: ["calendar-events", householdId] });
+    },
+    onError: (error: any) => {
+      toast.error("Calendar update failed", {
+        description: "Your change could not be saved. Please try again.",
+      });
+      console.error("[useManualCalendarEvents]", error.message);
     },
   });
 };
@@ -165,7 +180,7 @@ export const useUpdateRecurringEvent = () => {
             end_at: endAt,
             all_day: isAllDay,
             repeat_type: deriveRepeatType(input.recurrence),
-            recurrence: input.recurrence ?? null,
+            recurrence: (input.recurrence ?? null) as any,
             ...(input.memberIds ? { member_ids: input.memberIds } : {}),
           })
           .eq("id", input.id)
@@ -207,7 +222,7 @@ export const useUpdateRecurringEvent = () => {
             recurrence: null,
             member_ids: input.memberIds ?? [],
             parent_event_id: input.id,
-          })
+          } as any)
           .select()
           .single();
         if (error) throw error;
@@ -222,7 +237,7 @@ export const useUpdateRecurringEvent = () => {
         .eq("id", input.id)
         .single();
       if (parentErr) throw parentErr;
-      const existingRec = (parent?.recurrence ?? null) as RecurrenceSpec | null;
+      const existingRec = (parent?.recurrence ?? null) as unknown as RecurrenceSpec | null;
       if (existingRec) {
         const updatedRec: RecurrenceSpec = {
           ...existingRec,
@@ -230,7 +245,7 @@ export const useUpdateRecurringEvent = () => {
         };
         const { error: updErr } = await supabase
           .from("manual_calendar_events")
-          .update({ recurrence: updatedRec })
+          .update({ recurrence: updatedRec as any })
           .eq("id", input.id);
         if (updErr) throw updErr;
       }
@@ -247,18 +262,22 @@ export const useUpdateRecurringEvent = () => {
           end_at: endAt,
           all_day: isAllDay,
           repeat_type: deriveRepeatType(input.recurrence),
-          recurrence: input.recurrence ?? null,
+          recurrence: (input.recurrence ?? null) as any,
           member_ids: input.memberIds ?? [],
-        })
+        } as any)
         .select()
         .single();
       if (error) throw error;
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["calendar-events"] });
-      queryClient.invalidateQueries({ queryKey: ["today-events"] });
-      queryClient.invalidateQueries({ queryKey: ["calendar-events-today"] });
+      queryClient.invalidateQueries({ queryKey: ["calendar-events", householdId] });
+    },
+    onError: (error: any) => {
+      toast.error("Calendar update failed", {
+        description: "Your change could not be saved. Please try again.",
+      });
+      console.error("[useManualCalendarEvents]", error.message);
     },
   });
 };

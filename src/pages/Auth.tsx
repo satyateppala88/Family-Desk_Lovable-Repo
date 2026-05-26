@@ -243,10 +243,10 @@ const Auth = () => {
         description: "You've successfully signed in.",
       });
       navigate("/dashboard");
-    } catch (error: any) {
+    } catch {
       toast({
         title: "Error",
-        description: error.message,
+        description: "Incorrect email or password. Please try again.",
         variant: "destructive",
       });
     } finally {

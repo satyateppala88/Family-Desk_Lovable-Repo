@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import type { RecurrenceSpec } from "@/types/recurrence";
+import { STALE } from "@/lib/query-constants";
 
 export interface FinanceSubscription {
   id: string;
@@ -84,6 +85,7 @@ export const useSubscriptions = (householdId: string | null) => {
       return data as unknown as FinanceSubscription[];
     },
     enabled: !!householdId,
+    staleTime: STALE.MEDIUM,
   });
 };
 

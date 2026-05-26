@@ -16,7 +16,7 @@ import {
   SAVINGS_CATEGORY_LABELS,
   FinanceTransaction,
   useFinanceSavingsGoals,
-} from "@/hooks/useFinance";
+} from "@/hooks/finance";
 import { CategorySelect } from "@/components/finance/CategorySelect";
 import { recommendBestCard, CREDIT_CARD_CATALOG } from "@/data/creditCardCatalog";
 import { formatINR } from "@/lib/formatINR";

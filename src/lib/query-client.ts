@@ -3,7 +3,7 @@ import { persistQueryClient } from "@tanstack/react-query-persist-client";
 import { get, set, del, createStore, type UseStore } from "idb-keyval";
 import { toast } from "sonner";
 import { Capacitor } from "@capacitor/core";
-import { APP_VERSION } from "@/lib/versioning";
+
 
 // ---------------------------------------------------------------------------
 // Persisted React Query client
@@ -17,7 +17,12 @@ import { APP_VERSION } from "@/lib/versioning";
 // can never interfere with the editor experience.
 
 const CACHE_KEY = "familydesk-rq-cache";
-const CACHE_VERSION = `v1-${APP_VERSION}`;
+// Cache version is independent of app version.
+// Only bump this manually when the cached data SHAPE changes
+// (e.g. a new required field, a renamed query key).
+// Code-only changes (bug fixes, UI tweaks) should NOT bump this.
+const CACHE_SCHEMA_VERSION = 'v2';
+const CACHE_VERSION = CACHE_SCHEMA_VERSION;
 const MAX_AGE_MS = 1000 * 60 * 60 * 24 * 7; // 7 days
 
 function isPreviewOrIframe(): boolean {

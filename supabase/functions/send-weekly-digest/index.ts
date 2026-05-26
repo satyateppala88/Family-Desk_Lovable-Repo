@@ -1,4 +1,3 @@
-import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.78.0";
 import { 
   getEmailWrapper, 
@@ -71,91 +70,86 @@ const handler = async (req: Request): Promise<Response> => {
     const emailsSent: string[] = [];
     const errors: string[] = [];
 
-    // Process each unique user
-    const processedUsers = new Set<string>();
+    // Step 1: Collect unique user IDs and household IDs
+    const uniqueUserIds = [...new Set(members.map(m => m.user_id))];
+    const uniqueHouseholdIds = [...new Set(members.map(m => m.household_id))];
 
+    // Step 2: Fetch ALL data in parallel — 6 queries total, not N×6
+    const [allProfiles, allPrefs, allCompletedTasks, allUpcomingTasks,
+           allStreaks, allMealItems] = await Promise.all([
+      supabaseAdmin.from('profiles')
+        .select('id, display_name, email')
+        .in('id', uniqueUserIds),
+      supabaseAdmin.from('user_email_preferences')
+        .select('user_id, weekly_digest')
+        .in('user_id', uniqueUserIds),
+      supabaseAdmin.from('tasks')
+        .select('id, household_id')
+        .in('household_id', uniqueHouseholdIds)
+        .eq('task_status', 'done')
+        .gte('completed_at', weekAgo.toISOString()),
+      supabaseAdmin.from('tasks')
+        .select('id, household_id')
+        .in('household_id', uniqueHouseholdIds)
+        .neq('task_status', 'done')
+        .lte('due_date', weekAhead.toISOString())
+        .gte('due_date', now.toISOString()),
+      supabaseAdmin.from('habit_streaks')
+        .select('user_id, current_streak')
+        .in('user_id', uniqueUserIds)
+        .order('current_streak', { ascending: false }),
+      supabaseAdmin.from('meal_plan_items')
+        .select('id, meal_plans!inner(household_id)')
+        .in('meal_plans.household_id', uniqueHouseholdIds),
+    ]);
+
+    // Build lookup maps for O(1) access in the loop
+    const profileMap = new Map(
+      (allProfiles.data ?? []).map((p: any) => [p.id, p])
+    );
+    const prefMap = new Map(
+      (allPrefs.data ?? []).map((p: any) => [p.user_id, p])
+    );
+    const streakMap = new Map<string, number>();
+    (allStreaks.data ?? []).forEach((s: any) => {
+      if (!streakMap.has(s.user_id)) streakMap.set(s.user_id, s.current_streak);
+    });
+
+    // Step 3: Loop with ZERO DB calls inside
+    const processedUsers = new Set<string>();
     for (const member of members) {
       if (processedUsers.has(member.user_id)) continue;
       processedUsers.add(member.user_id);
 
       try {
-        // Check user email preferences
-        const { data: prefs } = await supabaseAdmin
-          .from("user_email_preferences")
-          .select("weekly_digest")
-          .eq("user_id", member.user_id)
-          .maybeSingle();
+        const pref: any = prefMap.get(member.user_id);
+        if (pref?.weekly_digest === false) continue;
 
-        if (prefs?.weekly_digest === false) {
-          console.log(`User ${member.user_id} has opted out of weekly digest`);
-          continue;
-        }
-
-        // Get user info
-        const { data: userData } = await supabaseAdmin.auth.admin.getUserById(member.user_id);
-        if (!userData?.user?.email) continue;
-
-        const { data: profile } = await supabaseAdmin
-          .from("profiles")
-          .select("display_name")
-          .eq("id", member.user_id)
-          .maybeSingle();
-
-        // Get tasks completed this week
-        const { data: completedTasks } = await supabaseAdmin
-          .from("tasks")
-          .select("id")
-          .eq("household_id", member.household_id)
-          .eq("task_status", "done")
-          .gte("completed_at", weekAgo.toISOString());
-
-        // Get upcoming tasks
-        const { data: upcomingTasks } = await supabaseAdmin
-          .from("tasks")
-          .select("id")
-          .eq("household_id", member.household_id)
-          .neq("task_status", "done")
-          .lte("due_date", weekAhead.toISOString())
-          .gte("due_date", now.toISOString());
-
-        // Get habit streak
-        const { data: habitStreaks } = await supabaseAdmin
-          .from("habit_streaks")
-          .select("current_streak")
-          .eq("user_id", member.user_id)
-          .order("current_streak", { ascending: false })
-          .limit(1);
-
-        // Get meals planned this week
-        const { data: mealPlans } = await supabaseAdmin
-          .from("meal_plan_items")
-          .select("id, meal_plans!inner(household_id)")
-          .eq("meal_plans.household_id", member.household_id);
+        const profile: any = profileMap.get(member.user_id);
+        // If no email in profiles yet, skip (depends on profiles.email column)
+        if (!profile?.email) continue;
 
         const stats = {
-          tasksCompleted: completedTasks?.length || 0,
-          tasksUpcoming: upcomingTasks?.length || 0,
-          habitStreak: habitStreaks?.[0]?.current_streak || 0,
-          mealsPlanned: mealPlans?.length || 0,
+          tasksCompleted: (allCompletedTasks.data ?? [])
+            .filter((t: any) => t.household_id === member.household_id).length,
+          tasksUpcoming: (allUpcomingTasks.data ?? [])
+            .filter((t: any) => t.household_id === member.household_id).length,
+          habitStreak: streakMap.get(member.user_id) ?? 0,
+          mealsPlanned: (allMealItems.data ?? [])
+            .filter((i: any) => i.meal_plans?.household_id === member.household_id).length,
         };
 
-        const emailContent = getWeeklyDigestContent(
-          stats,
-          "https://familydesk.in/dashboard"
-        );
-
-        const emailResponse = await sendViaQueue(supabaseUrl, supabaseServiceKey, {
-      to: userData.user.email,
-      subject: "Your Weekly Family Desk Summary 📊",
-      html: getEmailWrapper(emailContent),
-      templateName: "send-weekly-digest",
-      idempotencyKey: `weekly-digest-${member.user_id}-${weekStartKey}`,
-    });
-
-        console.log(`Weekly digest sent to ${userData.user.email}:`, emailResponse);
-        emailsSent.push(userData.user.email);
+        const emailContent = getWeeklyDigestContent(stats, 'https://familydesk.in/dashboard');
+        await sendViaQueue(supabaseUrl, supabaseServiceKey, {
+          to: profile.email,
+          subject: 'Your Weekly Family Desk Summary 📊',
+          html: getEmailWrapper(emailContent),
+          templateName: 'send-weekly-digest',
+          idempotencyKey: `weekly-digest-${member.user_id}-${weekStartKey}`,
+        });
+        emailsSent.push(profile.email);
       } catch (error: any) {
-        console.error(`Error sending digest to user ${member.user_id}:`, error);
+        console.error(`[send-weekly-digest] user ${member.user_id}:`, error.message);
         errors.push(`User ${member.user_id}: ${error.message}`);
       }
     }
@@ -178,4 +172,4 @@ const handler = async (req: Request): Promise<Response> => {
   }
 };
 
-serve(handler);
+Deno.serve(handler);

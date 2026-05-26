@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { STALE } from "@/lib/query-constants";
 
 interface OnboardingProgressData {
   productsSelected: boolean;
@@ -71,5 +72,6 @@ export const useOnboardingProgress = (householdId: string | null) => {
       return { percentage, data: progressData };
     },
     enabled: !!householdId,
+    staleTime: STALE.MEDIUM,
   });
 };

@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { ArrowLeft, Check, Pencil, Plus, Tag, Trash2, X } from "lucide-react";
 import { Link } from "react-router-dom";
-import { FINANCE_CATEGORIES, CATEGORY_LABELS } from "@/hooks/useFinance";
+import { FINANCE_CATEGORIES, CATEGORY_LABELS } from "@/hooks/finance";
 import {
   CategoryScope,
   CustomCategory,

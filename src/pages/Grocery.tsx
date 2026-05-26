@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import { Header } from "@/components/layout/Header";
@@ -8,27 +8,17 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ModuleNudgeBanner } from "@/components/discovery/ModuleNudgeBanner";
 import { Plus, ListChecks, Package, Sparkles, ShoppingCart, ScanLine, Settings } from "lucide-react";
-import { PantryItemCard } from "@/components/grocery/PantryItemCard";
 import { AddPantryItemDialog } from "@/components/grocery/AddPantryItemDialog";
 import { QuickAddChecklist } from "@/components/grocery/QuickAddChecklist";
-import { PantryFilters } from "@/components/grocery/PantryFilters";
-import { AIPantryImportDialog } from "@/components/grocery/AIPantryImportDialog";
-import { ScanBillDialog, type ScannedBill } from "@/components/grocery/ScanBillDialog";
-import { BillReviewDialog } from "@/components/grocery/BillReviewDialog";
-import { ShoppingListCard } from "@/components/grocery/ShoppingListCard";
 import { CreateShoppingListDialog } from "@/components/grocery/CreateShoppingListDialog";
 import { PantryEducationBanner } from "@/components/grocery/PantryEducationBanner";
 import { ExpiringItemsAlert } from "@/components/grocery/ExpiringItemsAlert";
 import { LowStockAlert } from "@/components/grocery/LowStockAlert";
-import { RunningLowChips } from "@/components/grocery/RunningLowChips";
 import { PantrySettingsSheet } from "@/components/grocery/PantrySettingsSheet";
-import { ShareOnWhatsAppButton } from "@/components/grocery/ShareOnWhatsAppButton";
-import { PantryCategorySection } from "@/components/grocery/PantryCategorySection";
-import { ShoppingListDetailView } from "@/components/grocery/ShoppingListDetailView";
 import { PantryAnalytics } from "@/components/grocery/PantryAnalytics";
-import { PantryCategoryGrid } from "@/components/grocery/PantryCategoryGrid";
-import { PantryCategoryDetail } from "@/components/grocery/PantryCategoryDetail";
-import { FloatingCartButton } from "@/components/grocery/FloatingCartButton";
+import { PantryTabContent } from "@/components/grocery/PantryTabContent";
+import { ShoppingTabContent } from "@/components/grocery/ShoppingTabContent";
+import { BillScanFlow, type BillScanFlowHandle } from "@/components/grocery/BillScanFlow";
 import { usePantryItems } from "@/hooks/usePantryItems";
 import { usePantryCategories } from "@/hooks/usePantryCategories";
 import { usePantryStats } from "@/hooks/usePantryStats";
@@ -60,10 +50,6 @@ const Grocery = () => {
   
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showQuickAdd, setShowQuickAdd] = useState(false);
-  const [showAIImport, setShowAIImport] = useState(false);
-  const [showScanBill, setShowScanBill] = useState(false);
-  const [scannedBill, setScannedBill] = useState<ScannedBill | null>(null);
-  const [isSavingBill, setIsSavingBill] = useState(false);
   const [showCreateList, setShowCreateList] = useState(false);
   const [editItem, setEditItem] = useState<PantryItem | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -72,13 +58,14 @@ const Grocery = () => {
   const [isGeneratingList, setIsGeneratingList] = useState(false);
   const [deleteItemId, setDeleteItemId] = useState<string | null>(null);
   const [deleteListId, setDeleteListId] = useState<string | null>(null);
-  
+
   const [selectedCategoryDetail, setSelectedCategoryDetail] = useState<string | null>(null);
   const [cartItemCount, setCartItemCount] = useState(0);
   const [activeTab, setActiveTab] = useState<string>(() => searchParams.get("tab") || "pantry");
   const [showPantrySettings, setShowPantrySettings] = useState(false);
   const [isAddingLowStock, setIsAddingLowStock] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
+  const billScanRef = useRef<BillScanFlowHandle>(null);
 
   // Handle inbound link from Meals: ?tab=shopping&newList=...&items=...
   useEffect(() => {
@@ -155,14 +142,14 @@ const Grocery = () => {
     }
   };
 
-  const handleEditItem = (item: PantryItem) => {
+  const handleEditItem = useCallback((item: PantryItem) => {
     setEditItem(item);
     setShowAddDialog(true);
-  };
+  }, []);
 
-  const handleDeleteItem = (id: string) => {
+  const handleDeleteItem = useCallback((id: string) => {
     setDeleteItemId(id);
-  };
+  }, []);
 
   const confirmDeleteItem = () => {
     if (deleteItemId) {
@@ -171,9 +158,9 @@ const Grocery = () => {
     }
   };
 
-  const handleUpdateQuantity = (id: string, quantity: number) => {
+  const handleUpdateQuantity = useCallback((id: string, quantity: number) => {
     updatePantryItem.mutate({ id, updates: { quantity } });
-  };
+  }, [updatePantryItem]);
 
   const handleBulkAdd = (items: Partial<PantryItem>[]) => {
     if (!householdId || !user?.id) return;
@@ -209,7 +196,6 @@ const Grocery = () => {
     billDate: string | null;
   }) => {
     if (!householdId || !user?.id) return;
-    setIsSavingBill(true);
     try {
       if (inserts.length > 0) {
         const enriched = inserts.map(i => ({
@@ -229,15 +215,13 @@ const Grocery = () => {
         title: "Pantry updated",
         description: `${inserts.length} added, ${merges.length} merged.`,
       });
-      setScannedBill(null);
     } catch (err: any) {
       toast({
         title: "Could not save",
         description: "Please try again.",
         variant: "destructive",
       });
-    } finally {
-      setIsSavingBill(false);
+      throw err;
     }
   };
 
@@ -304,13 +288,13 @@ const Grocery = () => {
     }
   };
 
-  const handleCompleteList = (listId: string) => {
+  const handleCompleteList = useCallback((listId: string) => {
     completeShoppingList.mutate(listId);
-  };
+  }, [completeShoppingList]);
 
-  const handleDeleteList = (listId: string) => {
+  const handleDeleteList = useCallback((listId: string) => {
     setDeleteListId(listId);
-  };
+  }, []);
 
   const confirmDeleteList = () => {
     if (deleteListId) {
@@ -558,7 +542,7 @@ const Grocery = () => {
           <div className="flex flex-wrap gap-2">
             <Button
               variant="outline"
-              onClick={() => setShowAIImport(true)}
+              onClick={() => billScanRef.current?.openAIImport()}
               className="gap-2 h-9"
               size="sm"
               data-tour="ai-import"
@@ -569,7 +553,7 @@ const Grocery = () => {
             </Button>
             <Button
               variant="outline"
-              onClick={() => setShowScanBill(true)}
+              onClick={() => billScanRef.current?.openScan()}
               className="gap-2 h-9"
               size="sm"
               data-tour="scan-bill"
@@ -623,115 +607,40 @@ const Grocery = () => {
           </TabsList>
 
           <TabsContent value="pantry" className="space-y-6">
-            {lowStockItems.length > 0 && (
-              <RunningLowChips
-                items={lowStockItems}
-                onAddItem={handleAddLowStockItem}
-                isAdding={isAddingLowStock}
-              />
-            )}
-            {isLoading ? (
-              <EmptyState icon={Package} title="Loading your pantry..." />
-            ) : pantryItems.length === 0 ? (
-              <EmptyState
-                icon={Package}
-                title="Your pantry is a blank slate"
-                description="Add staples your household always keeps at home. When stock runs low, FamilyDesk will flag it and add items to your shopping list automatically."
-                encouragement="Try AI Import to add everything at once!"
-                action={{ label: "Add Item", onClick: () => setShowAddDialog(true) }}
-                secondaryAction={{ label: "Quick Add Staples", onClick: () => setShowQuickAdd(true) }}
-              />
-            ) : selectedCategoryDetail ? (
-              <PantryCategoryDetail
-                categoryName={selectedCategoryDetail}
-                categoryIcon={categories.find(c => c.name === selectedCategoryDetail)?.icon || undefined}
-                items={categoryItems}
-                onBack={handleBackToCategories}
-                onQuantityChange={handleUpdateQuantity}
-                onAddToCart={handleAddToCart}
-              />
-            ) : (
-              <div data-tour="category-grid">
-                <PantryCategoryGrid
-                  categories={categories}
-                  items={pantryItems}
-                  onSelectCategory={handleSelectCategory}
-                />
-              </div>
-            )}
-
-            {pantryItems.length > 0 && !selectedCategoryDetail && (
-              <Button
-                variant="outline"
-                onClick={() => setAiOpen(true)}
-                className="w-full gap-2"
-              >
-                <Sparkles className="w-4 h-4" />
-                What am I running low on?
-              </Button>
-            )}
-
-            <FloatingCartButton
-              itemCount={cartItemCount}
-              onClick={handleViewCart}
+            <PantryTabContent
+              isLoading={isLoading}
+              pantryItems={pantryItems}
+              categories={categories}
+              lowStockItems={lowStockItems}
+              selectedCategoryDetail={selectedCategoryDetail}
+              categoryItems={categoryItems}
+              cartItemCount={cartItemCount}
+              isAddingLowStock={isAddingLowStock}
+              onAddLowStockItem={handleAddLowStockItem}
+              onShowAddDialog={() => setShowAddDialog(true)}
+              onShowQuickAdd={() => setShowQuickAdd(true)}
+              onSelectCategory={handleSelectCategory}
+              onBackToCategories={handleBackToCategories}
+              onUpdateQuantity={handleUpdateQuantity}
+              onAddToCart={handleAddToCart}
+              onViewCart={handleViewCart}
+              onOpenAI={() => setAiOpen(true)}
             />
           </TabsContent>
 
           <TabsContent value="shopping" className="space-y-6">
-            {selectedList ? (
-              <ShoppingListDetailView
-                list={selectedList}
-                onBack={handleBackToLists}
-                onToggleItem={handleToggleItem}
-                onDeleteItem={(itemId) => deleteItem.mutate(itemId)}
-                userId={user?.id || ""}
-              />
-            ) : (
-              <>
-                <div className="flex items-center justify-between">
-                  <p className="text-sm text-muted-foreground">
-                    Create lists manually or generate them from your meal plan.
-                  </p>
-                  <div className="flex gap-2">
-                    {shoppingLists.length > 0 && (
-                      <ShareOnWhatsAppButton
-                        list={
-                          shoppingLists.find((l) => l.status === "active") ||
-                          shoppingLists[0]
-                        }
-                        size="sm"
-                        label="Share"
-                      />
-                    )}
-                    <Button onClick={() => setShowCreateList(true)} className="gap-2">
-                      <ShoppingCart className="h-4 w-4" aria-hidden="true" />
-                      Create List
-                    </Button>
-                  </div>
-                </div>
-
-                {shoppingLists.length === 0 ? (
-                  <EmptyState
-                    icon={ShoppingCart}
-                    title="No shopping lists yet"
-                    description="Create a list for your next grocery run, or generate one from your meal plan."
-                    action={{ label: "Create List", onClick: () => setShowCreateList(true) }}
-                    secondaryAction={{ label: "From Meal Plan", onClick: handleGenerateFromMealPlan }}
-                  />
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {shoppingLists.map((list) => (
-                      <ShoppingListCard
-                        key={list.id}
-                        list={list}
-                        onDelete={handleDeleteList}
-                        onComplete={handleCompleteList}
-                      />
-                    ))}
-                  </div>
-                )}
-              </>
-            )}
+            <ShoppingTabContent
+              shoppingLists={shoppingLists}
+              selectedList={selectedList}
+              userId={user?.id || ""}
+              onBackToLists={handleBackToLists}
+              onToggleItem={handleToggleItem}
+              onDeleteItem={(itemId) => deleteItem.mutate(itemId)}
+              onShowCreateList={() => setShowCreateList(true)}
+              onCompleteList={handleCompleteList}
+              onDeleteList={handleDeleteList}
+              onGenerateFromMealPlan={handleGenerateFromMealPlan}
+            />
           </TabsContent>
 
           <TabsContent value="insights" className="space-y-6">
@@ -774,30 +683,13 @@ const Grocery = () => {
         userId={user.id}
       />
 
-      <AIPantryImportDialog
-        open={showAIImport}
-        onOpenChange={setShowAIImport}
-        onItemsExtracted={handleAIImport}
+      <BillScanFlow
+        ref={billScanRef}
         householdId={householdId}
         userId={user.id}
-      />
-
-      {householdId && (
-        <ScanBillDialog
-          open={showScanBill}
-          onOpenChange={setShowScanBill}
-          householdId={householdId}
-          onScanned={(bill) => setScannedBill(bill)}
-        />
-      )}
-
-      <BillReviewDialog
-        open={!!scannedBill}
-        onOpenChange={(o) => { if (!o) setScannedBill(null); }}
-        bill={scannedBill}
         pantryItems={pantryItems}
-        onConfirm={handleSaveScannedBill}
-        isSaving={isSavingBill}
+        onAIImport={handleAIImport}
+        onSaveScannedBill={handleSaveScannedBill}
       />
 
       <CreateShoppingListDialog

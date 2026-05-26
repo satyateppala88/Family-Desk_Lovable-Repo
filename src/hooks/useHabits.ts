@@ -6,6 +6,7 @@ import { markSelfWrite } from "@/hooks/useRealtimeSubscription";
 import { Habit, HabitLog, HabitStreak, HabitWithStreak, HabitAssignmentType, HabitFrequencyType } from "@/types/habits";
 import { format, subDays } from "date-fns";
 import type { RecurrenceSpec } from "@/types/recurrence";
+import { STALE } from "@/lib/query-constants";
 
 // Scoring constants
 const POINTS_PER_COMPLETION = 10;
@@ -53,6 +54,7 @@ export const useHabits = (householdId: string | null, userId?: string) => {
       return habitsData as Habit[];
     },
     enabled: !!householdId,
+    staleTime: STALE.SHORT,
   });
 
   // Fetch habit assignees for multiple-assignment habits
@@ -85,7 +87,7 @@ export const useHabits = (householdId: string | null, userId?: string) => {
 
       const { data, error } = await supabase
         .from("habit_logs")
-        .select("*")
+        .select("id, habit_id, user_id, log_date, completed, actual_value, logged_at")
         .eq("user_id", targetUserId)
         .eq("log_date", today);
 

@@ -2023,6 +2023,36 @@ export type Database = {
         }
         Relationships: []
       }
+      oauth_states: {
+        Row: {
+          created_at: string
+          expires_at: string
+          household_id: string | null
+          provider: string
+          redirect_uri: string
+          state: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string
+          household_id?: string | null
+          provider?: string
+          redirect_uri: string
+          state: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          household_id?: string | null
+          provider?: string
+          redirect_uri?: string
+          state?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       pantry_categories: {
         Row: {
           created_at: string
@@ -2199,6 +2229,7 @@ export type Database = {
         Row: {
           created_at: string | null
           expires_at: string
+          failed_attempts: number
           id: string
           phone_number: string
           token: string
@@ -2208,6 +2239,7 @@ export type Database = {
         Insert: {
           created_at?: string | null
           expires_at?: string
+          failed_attempts?: number
           id?: string
           phone_number: string
           token: string
@@ -2217,6 +2249,7 @@ export type Database = {
         Update: {
           created_at?: string | null
           expires_at?: string
+          failed_attempts?: number
           id?: string
           phone_number?: string
           token?: string
@@ -2267,6 +2300,7 @@ export type Database = {
           completed_tours: Json | null
           created_at: string
           display_name: string | null
+          email: string | null
           email_verified_at: string | null
           id: string
           last_freeze_used_at: string | null
@@ -2287,6 +2321,7 @@ export type Database = {
           completed_tours?: Json | null
           created_at?: string
           display_name?: string | null
+          email?: string | null
           email_verified_at?: string | null
           id: string
           last_freeze_used_at?: string | null
@@ -2307,6 +2342,7 @@ export type Database = {
           completed_tours?: Json | null
           created_at?: string
           display_name?: string | null
+          email?: string | null
           email_verified_at?: string | null
           id?: string
           last_freeze_used_at?: string | null
@@ -2419,6 +2455,30 @@ export type Database = {
           p256dh?: string
           user_agent?: string | null
           user_id?: string
+        }
+        Relationships: []
+      }
+      rate_limit_log: {
+        Row: {
+          function_name: string
+          id: string
+          request_count: number
+          user_id: string
+          window_start: string
+        }
+        Insert: {
+          function_name: string
+          id?: string
+          request_count?: number
+          user_id: string
+          window_start?: string
+        }
+        Update: {
+          function_name?: string
+          id?: string
+          request_count?: number
+          user_id?: string
+          window_start?: string
         }
         Relationships: []
       }
@@ -3129,6 +3189,15 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      increment_rate_limit: {
+        Args: {
+          p_function_name: string
+          p_max_requests: number
+          p_user_id: string
+          p_window_start: string
+        }
+        Returns: Json
       }
       insert_calendar_connection: {
         Args: {

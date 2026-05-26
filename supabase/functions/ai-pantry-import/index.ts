@@ -1,4 +1,3 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { z } from "https://deno.land/x/zod@v3.23.8/mod.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
 import { authenticateRequest, verifyHouseholdMembership } from "../_shared/auth.ts";
@@ -15,7 +14,7 @@ const PantryImportSchema = z.object({
   householdId: z.string().uuid("Invalid household ID").optional(),
 });
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   const log = new Logger("ai-pantry-import");
   const corsHeaders = getCorsHeaders(req.headers.get("origin"));
   
@@ -182,7 +181,7 @@ Guidelines:
     log.error("Error in ai-pantry-import", error);
     const corsHeaders = getCorsHeaders(req.headers.get("origin"));
     return new Response(
-      JSON.stringify({ error: error.message || "Failed to process pantry import" }),
+      JSON.stringify({ error: 'An internal error occurred.' }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }

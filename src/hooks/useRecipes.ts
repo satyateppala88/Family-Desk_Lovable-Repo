@@ -39,7 +39,7 @@ export const useRecipes = (householdId: string | null, pagination?: PaginationPa
     mutationFn: async (newRecipe: Partial<Recipe>) => {
       const { data, error } = await supabase
         .from("recipes")
-        .insert(newRecipe)
+        .insert(newRecipe as any)
         .select()
         .single();
 

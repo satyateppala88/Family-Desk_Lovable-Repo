@@ -26,7 +26,7 @@ import {
   useCustomCategories,
   useAddCustomCategory,
 } from "@/hooks/useCustomCategories";
-import { CATEGORY_GROUPS, CATEGORY_ALIASES } from "@/hooks/useFinance";
+import { CATEGORY_GROUPS, CATEGORY_ALIASES } from "@/hooks/finance";
 
 interface CategorySelectProps {
   value: string;

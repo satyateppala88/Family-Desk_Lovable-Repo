@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { STALE } from "@/lib/query-constants";
 
 export interface MealPlanItem {
   id: string;
@@ -31,6 +32,7 @@ export const useMealPlans = (householdId: string | null, weekStartDate?: string)
 
   const { data: mealPlans, isLoading } = useQuery({
     queryKey: ["meal-plans", householdId, weekStartDate],
+    staleTime: STALE.MEDIUM,
     queryFn: async () => {
       if (!householdId) return [];
 

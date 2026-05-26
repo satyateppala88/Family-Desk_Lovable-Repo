@@ -1,4 +1,3 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { z } from "https://deno.land/x/zod@v3.23.8/mod.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
 import { authenticateRequest } from "../_shared/auth.ts";
@@ -10,7 +9,7 @@ const InputSchema = z.object({
   bank: z.string().min(1).max(80),
 });
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   const log = new Logger("lookup-credit-card");
   const corsHeaders = getCorsHeaders(req.headers.get("origin"));
 

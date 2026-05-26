@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format, subDays, startOfWeek, endOfWeek } from "date-fns";
 import { HouseholdHabitStats, MemberHabitStats } from "@/types/habits";
+import { STALE } from "@/lib/query-constants";
 
 export const useHouseholdHabitStats = (householdId: string | null) => {
   const today = format(new Date(), "yyyy-MM-dd");
@@ -22,66 +23,30 @@ export const useHouseholdHabitStats = (householdId: string | null) => {
         };
       }
 
-      // Get all household members with profiles
-      const { data: members, error: membersError } = await supabase
-        .from("household_members")
-        .select("user_id")
-        .eq("household_id", householdId);
+      // All 6 queries run in parallel — replaces 14 sequential awaits
+      const [membersRes, habitsRes, assigneesRes, todayLogsRes, streaksRes, weekLogsRes] =
+        await Promise.all([
+          supabase.from("household_members").select("user_id").eq("household_id", householdId),
+          supabase.from("habits").select("*").eq("household_id", householdId).eq("is_active", true),
+          supabase.from("habit_assignees").select("habit_id, user_id"),
+          supabase.from("habit_logs").select("habit_id, user_id, completed").eq("log_date", today),
+          supabase.from("habit_streaks").select("*"),
+          supabase.from("habit_logs").select("habit_id, user_id, completed, log_date").gte("log_date", weekStart).lte("log_date", weekEnd),
+        ]);
 
-      if (membersError) throw membersError;
+      const memberIds = (membersRes.data ?? []).map((m: any) => m.user_id);
 
-      const memberIds = members.map((m) => m.user_id);
-
-      // Get profiles for display names
+      // Fetch profiles for all members in one call
       const { data: profiles } = await supabase
         .from("profiles")
         .select("id, display_name, avatar_url")
         .in("id", memberIds);
 
-      // Get all active habits for the household
-      const { data: habits, error: habitsError } = await supabase
-        .from("habits")
-        .select("*")
-        .eq("household_id", householdId)
-        .eq("is_active", true);
-
-      if (habitsError) throw habitsError;
-
-      // Get assignees for "multiple" assignment habits
-      const habitIds = (habits || []).map((h) => h.id);
-      const { data: assignees, error: assigneesError } = habitIds.length
-        ? await supabase
-            .from("habit_assignees")
-            .select("habit_id, user_id")
-            .in("habit_id", habitIds)
-        : { data: [], error: null };
-
-      if (assigneesError) throw assigneesError;
-
-      // Get today's logs
-      const { data: todaysLogs, error: logsError } = await supabase
-        .from("habit_logs")
-        .select("*")
-        .in("user_id", memberIds)
-        .eq("log_date", today);
-
-      if (logsError) throw logsError;
-
-      // Get streaks
-      const { data: streaks, error: streaksError } = await supabase
-        .from("habit_streaks")
-        .select("*")
-        .in("user_id", memberIds);
-
-      if (streaksError) throw streaksError;
-
-      // Get week's logs for weekly rate
-      const { data: weekLogs } = await supabase
-        .from("habit_logs")
-        .select("*")
-        .in("user_id", memberIds)
-        .gte("log_date", weekStart)
-        .lte("log_date", weekEnd);
+      const habits = habitsRes.data ?? [];
+      const assignees = assigneesRes.data ?? [];
+      const todaysLogs = (todayLogsRes.data ?? []).filter((l: any) => memberIds.includes(l.user_id));
+      const streaks = (streaksRes.data ?? []).filter((s: any) => memberIds.includes(s.user_id));
+      const weekLogs = (weekLogsRes.data ?? []).filter((l: any) => memberIds.includes(l.user_id));
 
       // Calculate household stats
       const totalHabits = habits?.length || 0;
@@ -181,5 +146,6 @@ export const useHouseholdHabitStats = (householdId: string | null) => {
       };
     },
     enabled: !!householdId,
+    staleTime: STALE.SHORT,
   });
 };

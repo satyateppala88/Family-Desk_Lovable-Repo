@@ -1,4 +1,3 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.78.0";
 import { getCorsHeaders } from "../_shared/cors.ts";
 
@@ -14,7 +13,7 @@ const SCOPES = [
   "https://www.googleapis.com/auth/userinfo.email",
 ].join(" ");
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   const corsHeaders = getCorsHeaders(req.headers.get("origin"));
   
   if (req.method === "OPTIONS") {
@@ -61,8 +60,34 @@ serve(async (req) => {
       // Generate OAuth URL
       const { redirectUri, householdId } = body;
 
-      // Store state with user info for callback
-      const state = btoa(JSON.stringify({ userId, householdId, redirectUri }));
+      if (!userId) {
+        return new Response(JSON.stringify({ error: "Unauthorized" }), {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // CSRF protection: generate a random, single-use state nonce and persist
+      // it server-side. The callback will look it up to recover user context,
+      // ensuring an attacker cannot forge or replay a state value.
+      const state = crypto.randomUUID() + crypto.randomUUID().replace(/-/g, "");
+      const { error: stateInsertError } = await supabase
+        .from("oauth_states")
+        .insert({
+          state,
+          user_id: userId,
+          household_id: householdId ?? null,
+          redirect_uri: redirectUri,
+          provider: "google_calendar",
+        });
+
+      if (stateInsertError) {
+        console.error("Failed to persist oauth state:", stateInsertError);
+        return new Response(JSON.stringify({ error: "Failed to initiate sign-in" }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
 
       const authUrl = new URL("https://accounts.google.com/o/oauth2/v2/auth");
       authUrl.searchParams.set("client_id", GOOGLE_CLIENT_ID);
@@ -82,18 +107,51 @@ serve(async (req) => {
       // Exchange auth code for tokens
       const { code, redirectUri, state } = body;
 
-      // Decode state
-      let stateData;
-      try {
-        stateData = JSON.parse(atob(state));
-      } catch {
+      // CSRF protection: look up the state we issued during `init`. Reject if
+      // it doesn't exist, has expired, or has already been consumed.
+      if (!state || typeof state !== "string") {
         return new Response(JSON.stringify({ error: "Invalid state" }), {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
-      const { userId: stateUserId, householdId } = stateData;
+      const { data: stateRow, error: stateLookupError } = await supabase
+        .from("oauth_states")
+        .select("user_id, household_id, redirect_uri, expires_at")
+        .eq("state", state)
+        .maybeSingle();
+
+      if (stateLookupError || !stateRow) {
+        return new Response(JSON.stringify({ error: "Invalid or expired state" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      if (new Date(stateRow.expires_at).getTime() < Date.now()) {
+        await supabase.from("oauth_states").delete().eq("state", state);
+        return new Response(JSON.stringify({ error: "Invalid or expired state" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Validate that the redirect URI from the callback matches the one we
+      // recorded when the flow was initiated.
+      if (redirectUri !== stateRow.redirect_uri) {
+        await supabase.from("oauth_states").delete().eq("state", state);
+        return new Response(JSON.stringify({ error: "Redirect URI mismatch" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const stateUserId = stateRow.user_id as string;
+      const householdId = stateRow.household_id as string | null;
+
+      // Single-use: consume the state immediately so it can't be replayed.
+      await supabase.from("oauth_states").delete().eq("state", state);
 
       // Exchange code for tokens
       const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {

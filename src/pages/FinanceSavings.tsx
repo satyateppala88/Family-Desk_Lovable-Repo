@@ -17,7 +17,7 @@ import {
   useDeleteSavingsGoal,
   useCreateTransaction,
   type FinanceSavingsGoal,
-} from "@/hooks/useFinance";
+} from "@/hooks/finance";
 import { useSavingsContributions } from "@/hooks/useSavingsContributions";
 import { useHouseholdMembers } from "@/hooks/useHouseholdMembers";
 import { useAuth } from "@/contexts/AuthContext";

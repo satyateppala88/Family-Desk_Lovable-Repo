@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { Separator } from "@/components/ui/separator";
-import { User, Lock, Globe, ArrowLeft, Bell } from "lucide-react";
+import { User, Lock, Globe, ArrowLeft, Bell, Download } from "lucide-react";
 
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
@@ -25,6 +25,8 @@ const AccountSettings = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   
   // Profile state
   const [displayName, setDisplayName] = useState("");
@@ -134,6 +136,27 @@ const AccountSettings = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleExportData = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/export-my-data`, {
+        headers: { Authorization: `Bearer ${session?.access_token}` }
+      });
+      if (!res.ok) throw new Error('Export failed');
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url;
+      a.download = `familydesk-export-${new Date().toISOString().slice(0,10)}.json`;
+      a.click(); URL.revokeObjectURL(url);
+    } catch (e: any) {
+      toast({
+        title: 'Export failed',
+        description: e?.message ?? 'Please try again.',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -287,13 +310,66 @@ const AccountSettings = () => {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
+                <h3 className="text-sm font-medium">Download My Data</h3>
+                <p className="text-sm text-muted-foreground">
+                  Export a JSON copy of your personal data, including profile, tasks, habits, and transactions.
+                </p>
+                <Button variant="outline" onClick={handleExportData}>
+                  <Download className="w-4 h-4 mr-2" />
+                  Download My Data
+                </Button>
+              </div>
+              <Separator />
+              <div className="space-y-2">
                 <h3 className="text-sm font-medium">Delete Account</h3>
                 <p className="text-sm text-muted-foreground">
                   Permanently delete your account and all associated data. This action cannot be undone.
                 </p>
-                <Button variant="destructive" disabled>
-                  Delete Account (Coming Soon)
-                </Button>
+                {!showDeleteConfirm ? (
+                  <Button variant="destructive" onClick={() => setShowDeleteConfirm(true)}>
+                    Delete Account
+                  </Button>
+                ) : (
+                  <div className="space-y-3 rounded-md border border-destructive/40 bg-destructive/5 p-3">
+                    <p className="text-sm text-destructive">
+                      This permanently deletes your account and all data. Cannot be undone.
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        variant="destructive"
+                        disabled={deleting}
+                        onClick={async () => {
+                          setDeleting(true);
+                          try {
+                            const { data: { session } } = await supabase.auth.getSession();
+                            const res = await supabase.functions.invoke('delete-account', {
+                              headers: { Authorization: `Bearer ${session?.access_token}` },
+                            });
+                            if (res.error) throw res.error;
+                            await supabase.auth.signOut();
+                            window.location.href = '/';
+                          } catch (e: any) {
+                            toast({
+                              title: 'Deletion failed',
+                              description: e?.message ?? 'Please try again or contact support.',
+                              variant: 'destructive',
+                            });
+                            setDeleting(false);
+                          }
+                        }}
+                      >
+                        {deleting ? 'Deleting...' : 'Yes, delete my account'}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        disabled={deleting}
+                        onClick={() => setShowDeleteConfirm(false)}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
               
             </CardContent>

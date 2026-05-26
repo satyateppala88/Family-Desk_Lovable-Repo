@@ -37,9 +37,9 @@ const EMAIL_TEMPLATES: Record<string, React.ComponentType<any>> = {
 
 // Configuration
 const SITE_NAME = "familydesk"
-const SENDER_DOMAIN = "notify.familydesk.in"
-const ROOT_DOMAIN = "familydesk.in"
-const FROM_DOMAIN = "familydesk.in" // Domain shown in From address (may be root or sender subdomain)
+const SENDER_DOMAIN = Deno.env.get('SENDER_DOMAIN') ?? 'notify.familydesk.in';
+const ROOT_DOMAIN = Deno.env.get('ROOT_DOMAIN') ?? 'familydesk.in';
+const FROM_DOMAIN = Deno.env.get('FROM_DOMAIN') ?? 'familydesk.in';
 
 // Sample data for preview mode ONLY (not used in actual email sending).
 // URLs are baked in at scaffold time from the project's real data.

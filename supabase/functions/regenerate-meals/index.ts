@@ -1,4 +1,3 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.78.0";
 import { z } from "https://deno.land/x/zod@v3.23.8/mod.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
@@ -13,7 +12,7 @@ const RegenerateMealsSchema = z.object({
   mealType: z.enum(["breakfast", "lunch", "dinner"]).optional()
 });
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   const log = new Logger("regenerate-meals");
   const corsHeaders = getCorsHeaders(req.headers.get("origin"));
 
@@ -320,7 +319,7 @@ Generate creative, varied meals that are different from what the user might alre
 
   } catch (error: any) {
     console.error("Error in regenerate-meals:", error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    return new Response(JSON.stringify({ error: 'An internal error occurred.' }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

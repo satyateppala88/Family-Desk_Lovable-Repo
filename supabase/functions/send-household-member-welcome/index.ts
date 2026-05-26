@@ -1,4 +1,3 @@
-import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.78.0";
 import { getCorsHeaders } from "../_shared/cors.ts";
 import { sendViaQueue } from "../_shared/send-email-queue.ts";
@@ -26,7 +25,7 @@ const jsonResponse = (
     headers: { "Content-Type": "application/json", ...corsHeaders },
   });
 
-serve(async (req: Request): Promise<Response> => {
+Deno.serve(async (req: Request): Promise<Response> => {
   const originHeader = req.headers.get("origin");
   const corsHeaders = getCorsHeaders(originHeader);
 

@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { STALE } from "@/lib/query-constants";
 
 export const usePantryStats = (householdId: string | null) => {
   const { data: stats, isLoading } = useQuery({
@@ -46,6 +47,7 @@ export const usePantryStats = (householdId: string | null) => {
       };
     },
     enabled: !!householdId,
+    staleTime: STALE.SHORT,
   });
 
   return {

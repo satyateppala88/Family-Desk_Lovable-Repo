@@ -117,13 +117,13 @@ const Habits = () => {
   const householdCompletedToday = householdStats?.completedToday ?? 0;
   const householdTotalHabits = householdStats?.totalHabits ?? 0;
 
-  const handleToggleHabit = (habitId: string, completed: boolean) => {
+  const handleToggleHabit = useCallback((habitId: string, completed: boolean) => {
     logHabit.mutate({ habitId, completed });
-  };
+  }, [logHabit]);
 
-  const handleUpdateValue = (habitId: string, value: number) => {
+  const handleUpdateValue = useCallback((habitId: string, value: number) => {
     logHabit.mutate({ habitId, completed: false, actualValue: value });
-  };
+  }, [logHabit]);
 
   const handleCreateHabit = (data: {
     name: string;

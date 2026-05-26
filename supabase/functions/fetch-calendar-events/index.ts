@@ -1,4 +1,3 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.78.0";
 import { getCorsHeaders } from "../_shared/cors.ts";
 
@@ -240,7 +239,7 @@ async function fetchEventsFromGoogle(
   return allEvents;
 }
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   const corsHeaders = getCorsHeaders(req.headers.get("origin"));
   
   if (req.method === "OPTIONS") {
@@ -396,7 +395,7 @@ serve(async (req) => {
     for (const conn of connections) {
       const calConnection = conn as unknown as CalendarConnection;
       console.log(`Processing connection for: ${calConnection.google_account_email}`);
-      console.log(`Token expires at: ${calConnection.token_expires_at}`);
+      // Token expiry handled internally
       
       try {
         // Pull decrypted tokens from the database (falls back to the legacy

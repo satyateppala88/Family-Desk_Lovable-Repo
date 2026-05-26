@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { Challenge, ChallengeParticipant, ChallengeLog, ChallengeWithDetails } from "@/types/habits";
 import type { ChallengeTemplate } from "@/data/challengeCatalog";
+import { STALE } from "@/lib/query-constants";
 
 /** Idempotently create a personal habit linked to a challenge for the current user. */
 async function ensureChallengeHabit(args: {
@@ -58,6 +59,7 @@ export const useChallenges = (householdId: string | null) => {
 
   const challengesQuery = useQuery({
     queryKey: ["challenges", householdId],
+    staleTime: STALE.MEDIUM,
     queryFn: async (): Promise<ChallengeWithDetails[]> => {
       if (!householdId) return [];
       const { data: challenges, error } = await supabase

@@ -3,7 +3,7 @@ import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { FINANCE_CATEGORIES, CATEGORY_LABELS } from "@/hooks/useFinance";
+import { FINANCE_CATEGORIES, CATEGORY_LABELS } from "@/hooks/finance";
 import { CategorySelect, resolveCategoryLabel } from "@/components/finance/CategorySelect";
 import { useCustomCategories } from "@/hooks/useCustomCategories";
 import { cn } from "@/lib/utils";

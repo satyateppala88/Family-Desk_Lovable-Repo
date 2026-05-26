@@ -6,7 +6,7 @@ import { PendingInvitationBanner } from "@/components/household/PendingInvitatio
 import { useHousehold } from "@/hooks/useHousehold";
 import { useOnboardingProgress } from "@/hooks/useOnboardingProgress";
 import { useAuth } from "@/contexts/AuthContext";
-import { useDashboardStats } from "@/hooks/useDashboardStats";
+
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { PageLoadingGrid } from "@/components/ui/page-loading";
@@ -57,8 +57,7 @@ const Index = () => {
   const queryClient = useQueryClient();
   const { data: enabledProducts } = useEnabledProducts(householdId);
   const { data: progressData } = useOnboardingProgress(householdId);
-  const { data: dashStats } = useDashboardStats(householdId);
-  const { moduleSubtitles } = useDashboardSnapshot(householdId);
+  const { moduleSubtitles, dashStats } = useDashboardSnapshot(householdId);
   const { preferences, isLoading: preferencesLoading } = useHouseholdPreferences(householdId);
   // Banner progress is driven by which enabled modules have been set up,
   // so the percentage and the hide-when-complete logic agree.

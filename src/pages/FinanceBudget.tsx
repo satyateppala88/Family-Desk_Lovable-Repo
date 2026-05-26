@@ -25,7 +25,7 @@ import {
   CATEGORY_LABELS,
   FINANCE_CATEGORIES,
   type FinanceBudget as FinanceBudgetType,
-} from "@/hooks/useFinance";
+} from "@/hooks/finance";
 import { useHouseholdMembers } from "@/hooks/useHouseholdMembers";
 import { formatINR } from "@/lib/formatINR";
 import { PrivateValue } from "@/components/shared/PrivateValue";
