@@ -122,30 +122,34 @@ const handler = async (req: Request): Promise<Response> => {
     const emailsSent: string[] = [];
     const errors: string[] = [];
 
+    // Batch fetch all profiles and email preferences to avoid per-user DB calls
+    const allUserIds = Object.keys(userHabits);
+    const [allProfiles, allPrefs] = await Promise.all([
+      supabaseAdmin
+        .from("profiles")
+        .select("id, display_name, email, phone_number, phone_verified, whatsapp_opted_in")
+        .in("id", allUserIds),
+      supabaseAdmin
+        .from("user_email_preferences")
+        .select("user_id, habit_reminders, habit_reminders_whatsapp")
+        .in("user_id", allUserIds),
+    ]);
+
+    const profileMap = new Map((allProfiles.data ?? []).map((p: any) => [p.id, p]));
+    const prefMap = new Map((allPrefs.data ?? []).map((p: any) => [p.user_id, p]));
+
     // Send reminder emails
     for (const [userId, habitsToRemind] of Object.entries(userHabits)) {
       try {
-        // Check user email preferences
-        const { data: prefs } = await supabaseAdmin
-          .from("user_email_preferences")
-          .select("habit_reminders")
-          .eq("user_id", userId)
-          .maybeSingle();
+        const pref = prefMap.get(userId);
+        const profile = profileMap.get(userId);
 
-        if (prefs?.habit_reminders === false) {
+        if (pref?.habit_reminders === false) {
           console.log(`User ${userId} has opted out of habit reminders`);
           continue;
         }
 
-        // Get user info
-        const { data: userData } = await supabaseAdmin.auth.admin.getUserById(userId);
-        if (!userData?.user?.email) continue;
-
-        const { data: profile } = await supabaseAdmin
-          .from("profiles")
-          .select("display_name")
-          .eq("id", userId)
-          .maybeSingle();
+        if (!profile?.email) continue;
 
         // Check if there are streak warnings for this user
         const userStreakWarnings = streakWarnings[userId];
@@ -163,7 +167,7 @@ const handler = async (req: Request): Promise<Response> => {
           );
 
           await sendViaQueue(supabaseUrl, supabaseServiceKey, {
-      to: userData.user.email,
+      to: profile.email,
       subject: `⚠️ Your ${highestStreak.streak}-day streak is at risk!`,
       html: getEmailWrapper(warningContent),
       templateName: "send-habit-reminders",
@@ -177,7 +181,7 @@ const handler = async (req: Request): Promise<Response> => {
           );
 
           await sendViaQueue(supabaseUrl, supabaseServiceKey, {
-      to: userData.user.email,
+      to: profile.email,
       subject: "🌟 Don't forget your habits today!",
       html: getEmailWrapper(emailContent),
       templateName: "send-habit-reminders",
@@ -185,8 +189,8 @@ const handler = async (req: Request): Promise<Response> => {
     });
         }
 
-        console.log(`Habit reminder sent to ${userData.user.email}`);
-        emailsSent.push(userData.user.email);
+        console.log(`Habit reminder sent to ${profile.email}`);
+        emailsSent.push(profile.email);
       } catch (error: any) {
         console.error(`Error sending habit reminder to user ${userId}:`, error);
         errors.push(`User ${userId}: ${error.message}`);
