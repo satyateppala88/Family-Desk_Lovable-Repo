@@ -310,6 +310,17 @@ const AccountSettings = () => {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
+                <h3 className="text-sm font-medium">Download My Data</h3>
+                <p className="text-sm text-muted-foreground">
+                  Export a JSON copy of your personal data, including profile, tasks, habits, and transactions.
+                </p>
+                <Button variant="outline" onClick={handleExportData}>
+                  <Download className="w-4 h-4 mr-2" />
+                  Download My Data
+                </Button>
+              </div>
+              <Separator />
+              <div className="space-y-2">
                 <h3 className="text-sm font-medium">Delete Account</h3>
                 <p className="text-sm text-muted-foreground">
                   Permanently delete your account and all associated data. This action cannot be undone.
