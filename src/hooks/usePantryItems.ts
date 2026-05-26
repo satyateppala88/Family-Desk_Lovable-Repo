@@ -56,20 +56,32 @@ export const usePantryItems = (householdId: string | null) => {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["pantry-items", householdId] });
-      queryClient.invalidateQueries({ queryKey: ["pantry-stats", householdId] });
-      queryClient.invalidateQueries({ queryKey: ["dashboard-stats", householdId] });
-      toast({
-        title: "Item added",
-        description: "Pantry item has been added successfully.",
-      });
+    onMutate: async (item) => {
+      await queryClient.cancelQueries({ queryKey: ['pantry-items', householdId] });
+      const previous = queryClient.getQueryData(['pantry-items', householdId]);
+      queryClient.setQueryData(['pantry-items', householdId], (old: any[]) => [
+        ...(old || []),
+        { ...item, id: `temp-${Date.now()}`, created_at: new Date().toISOString() },
+      ]);
+      return { previous };
     },
-    onError: (error: Error) => {
+    onError: (_err, _vars, context) => {
+      queryClient.setQueryData(['pantry-items', householdId], context?.previous);
       toast({
         title: "Something went wrong",
         description: "Please try again.",
         variant: "destructive",
+      });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['pantry-items', householdId] });
+      queryClient.invalidateQueries({ queryKey: ["pantry-stats", householdId] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats", householdId] });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Item added",
+        description: "Pantry item has been added successfully.",
       });
     },
   });
@@ -113,20 +125,31 @@ export const usePantryItems = (householdId: string | null) => {
 
       if (error) throw error;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["pantry-items", householdId] });
-      queryClient.invalidateQueries({ queryKey: ["pantry-stats", householdId] });
-      queryClient.invalidateQueries({ queryKey: ["dashboard-stats", householdId] });
-      toast({
-        title: "Item deleted",
-        description: "Pantry item has been removed.",
-      });
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: ['pantry-items', householdId] });
+      const previous = queryClient.getQueryData(['pantry-items', householdId]);
+      queryClient.setQueryData(['pantry-items', householdId], (old: any[]) =>
+        (old || []).filter((item) => item.id !== id)
+      );
+      return { previous };
     },
-    onError: (error: Error) => {
+    onError: (_err, _vars, context) => {
+      queryClient.setQueryData(['pantry-items', householdId], context?.previous);
       toast({
         title: "Something went wrong",
         description: "Please try again.",
         variant: "destructive",
+      });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['pantry-items', householdId] });
+      queryClient.invalidateQueries({ queryKey: ["pantry-stats", householdId] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats", householdId] });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Item deleted",
+        description: "Pantry item has been removed.",
       });
     },
   });
