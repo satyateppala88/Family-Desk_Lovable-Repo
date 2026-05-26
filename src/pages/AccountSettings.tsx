@@ -139,6 +139,27 @@ const AccountSettings = () => {
     }
   };
 
+  const handleExportData = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/export-my-data`, {
+        headers: { Authorization: `Bearer ${session?.access_token}` }
+      });
+      if (!res.ok) throw new Error('Export failed');
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url;
+      a.download = `familydesk-export-${new Date().toISOString().slice(0,10)}.json`;
+      a.click(); URL.revokeObjectURL(url);
+    } catch (e: any) {
+      toast({
+        title: 'Export failed',
+        description: e?.message ?? 'Please try again.',
+        variant: 'destructive',
+      });
+    }
+  };
+
   return (
     <>
       <Header />
