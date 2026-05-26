@@ -13,6 +13,7 @@ import type { RecurringEditScope } from "@/hooks/useManualCalendarEvents";
 import { useCalendarEvents, type CalendarEvent } from "@/hooks/useCalendarEvents";
 import { useCalendarConnections } from "@/hooks/useCalendarConnections";
 import { useHousehold } from "@/hooks/useHousehold";
+import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ModuleNudgeBanner } from "@/components/discovery/ModuleNudgeBanner";
@@ -38,6 +39,14 @@ const Calendar = () => {
   };
 
   const { householdId } = useHousehold();
+  useRealtimeSubscription([
+    {
+      table: "calendar_events",
+      filter: householdId ? `household_id=eq.${householdId}` : undefined,
+      enabled: !!householdId,
+      queryKeys: [["calendar-events", householdId], ["calendar-events-today", householdId]],
+    },
+  ], householdId);
   const { data: events, isLoading } = useCalendarEvents(currentDate, "month");
   const { handleOAuthCallback } = useCalendarConnections();
 
