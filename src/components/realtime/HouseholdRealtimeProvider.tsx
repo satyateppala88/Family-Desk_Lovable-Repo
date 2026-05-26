@@ -16,10 +16,6 @@ import { useHousehold } from "@/hooks/useHousehold";
 const isDev =
   typeof import.meta !== "undefined" && (import.meta as any).env?.DEV === true;
 
-// Wipe any channels left behind by a previous session (HMR, hard refresh
-// of a tab that held a websocket open, etc.). Runs exactly once per page
-// load before this provider opens its own channel.
-let didInitialChannelPurge = false;
 
 /**
  * Map of shared tables → React Query keys to invalidate when any row changes
@@ -123,11 +119,6 @@ export const HouseholdRealtimeProvider = () => {
 
   useEffect(() => {
     if (!user || !householdId) return;
-
-    if (!didInitialChannelPurge) {
-      didInitialChannelPurge = true;
-      supabase.removeAllChannels();
-    }
 
     const keyMap = buildKeyMap(householdId);
     const tables = Object.keys(keyMap);
