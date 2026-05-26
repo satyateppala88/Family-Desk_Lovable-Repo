@@ -22,9 +22,10 @@
 import { Capacitor } from "@capacitor/core";
 import { Preferences } from "@capacitor/preferences";
 
-const SB_PREFIX = "sb-";
+const MIRROR_PREFIXES = ['sb-', 'familydesk_finance_'];
 
-const isMirroredKey = (key: string) => key.startsWith(SB_PREFIX);
+const isMirroredKey = (key: string): boolean =>
+  MIRROR_PREFIXES.some(prefix => key.startsWith(prefix));
 
 let installed = false;
 
