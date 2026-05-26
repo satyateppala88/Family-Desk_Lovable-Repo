@@ -1,4 +1,4 @@
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 
 // NOTE: The previous VAPID-in-bundle guard was removed because the new
 // pushNotifications.ts spec reads VITE_VAPID_PUBLIC_KEY from the client.

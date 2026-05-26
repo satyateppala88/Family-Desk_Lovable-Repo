@@ -2,7 +2,7 @@ import { useRef, useState } from "react";
 import { Camera, Loader2, Trash2, Upload } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { usePermissionPrimer } from "@/hooks/usePermissionPrimer";

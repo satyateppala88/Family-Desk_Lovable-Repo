@@ -1,4 +1,4 @@
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 
 /**
  * Insert or replace the meal_plan_item for a given household + week + day + meal_type.

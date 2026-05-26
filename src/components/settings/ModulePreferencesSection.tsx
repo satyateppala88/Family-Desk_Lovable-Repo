@@ -6,7 +6,7 @@ import {
   RotateCcw, UtensilsCrossed, ShoppingCart, Wallet,
   Sparkles, Calendar, ListChecks,
 } from "lucide-react";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useEnabledProducts, type ProductName } from "@/hooks/useEnabledProducts";
 import { useHousehold } from "@/hooks/useHousehold";

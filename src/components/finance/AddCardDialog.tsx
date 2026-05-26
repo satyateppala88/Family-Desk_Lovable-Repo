@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Search, CreditCard, Plus, Check, Loader2, Sparkles, ArrowLeft } from "lucide-react";
 import { CREDIT_CARD_CATALOG, getUniqueBanks, type CreditCard as CreditCardType } from "@/data/creditCardCatalog";
 import { cn } from "@/lib/utils";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useAddCustomCard } from "@/hooks/useCustomCards";
 

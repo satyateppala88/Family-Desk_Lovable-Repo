@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Sparkles, Send, Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useHousehold } from "@/hooks/useHousehold";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
