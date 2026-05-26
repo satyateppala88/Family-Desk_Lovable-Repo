@@ -2023,6 +2023,36 @@ export type Database = {
         }
         Relationships: []
       }
+      oauth_states: {
+        Row: {
+          created_at: string
+          expires_at: string
+          household_id: string | null
+          provider: string
+          redirect_uri: string
+          state: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string
+          household_id?: string | null
+          provider?: string
+          redirect_uri: string
+          state: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          household_id?: string | null
+          provider?: string
+          redirect_uri?: string
+          state?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       pantry_categories: {
         Row: {
           created_at: string

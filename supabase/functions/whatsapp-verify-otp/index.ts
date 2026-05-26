@@ -66,8 +66,6 @@ const handler = async (req: Request): Promise<Response> => {
 
     const formattedPhone = formatPhoneNumber(phoneNumber);
 
-    const formattedPhone = formatPhoneNumber(phoneNumber);
-
     const { data: activeTokens } = await supabaseAdmin
       .from('phone_verification_tokens')
       .select('id, token, failed_attempts')
