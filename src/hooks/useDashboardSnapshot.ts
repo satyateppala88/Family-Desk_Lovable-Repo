@@ -4,7 +4,7 @@ import { useDashboardStats } from "@/hooks/useDashboardStats";
 import { useTaskmaster } from "@/hooks/useTaskmaster";
 import { useHabits } from "@/hooks/useHabits";
 import { useShoppingLists } from "@/hooks/useShoppingLists";
-import { useFinanceMonthlySummary, useFinanceBudgets } from "@/hooks/useFinance";
+import { useFinanceMonthlySummary, useFinanceBudgets } from "@/hooks/finance";
 import { useTodayEvents, useCalendarEvents } from "@/hooks/useCalendarEvents";
 import { useTodayTaskCount } from "@/hooks/useTodayTaskCount";
 import { formatINR } from "@/lib/formatINR";

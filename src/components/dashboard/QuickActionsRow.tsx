@@ -7,7 +7,7 @@ import { TransactionDialog } from "@/components/finance/TransactionDialog";
 import { HabitCreateDialog } from "@/components/habits/HabitCreateDialog";
 import { useTaskmaster } from "@/hooks/useTaskmaster";
 import { useProjects } from "@/hooks/useProjects";
-import { useCreateTransaction } from "@/hooks/useFinance";
+import { useCreateTransaction } from "@/hooks/finance";
 import { useHabits } from "@/hooks/useHabits";
 import { useHouseholdMembers } from "@/hooks/useHouseholdMembers";
 import { useEnabledProducts, isProductEnabled, ProductName } from "@/hooks/useEnabledProducts";

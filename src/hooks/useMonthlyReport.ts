@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useHousehold } from "@/hooks/useHousehold";
-import { useFinanceMonthlySummary, CATEGORY_LABELS, CATEGORY_ALIASES } from "@/hooks/useFinance";
+import { useFinanceMonthlySummary, CATEGORY_LABELS, CATEGORY_ALIASES } from "@/hooks/finance";
 import { format, parse, addMonths, startOfMonth, endOfMonth, getDay, eachDayOfInterval } from "date-fns";
 
 export interface MonthlyReportData {

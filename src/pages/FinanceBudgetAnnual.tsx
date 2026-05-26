@@ -12,7 +12,7 @@ import {
   CATEGORY_LABELS,
   useFinanceAnnualBudget,
   useFinanceRealtime,
-} from "@/hooks/useFinance";
+} from "@/hooks/finance";
 import { useCustomCategories } from "@/hooks/useCustomCategories";
 import { resolveCategoryLabel } from "@/components/finance/CategorySelect";
 import { formatINR } from "@/lib/formatINR";

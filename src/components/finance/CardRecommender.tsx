@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sparkles, CreditCard, TrendingUp, Award } from "lucide-react";
-import { FINANCE_CATEGORIES, CATEGORY_LABELS } from "@/hooks/useFinance";
+import { FINANCE_CATEGORIES, CATEGORY_LABELS } from "@/hooks/finance";
 import { recommendBestCard, CREDIT_CARD_CATALOG } from "@/data/creditCardCatalog";
 import { formatINR } from "@/lib/formatINR";
 import { cn } from "@/lib/utils";
