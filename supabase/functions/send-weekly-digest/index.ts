@@ -31,13 +31,22 @@ const handler = async (req: Request): Promise<Response> => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Get all household members
-    const { data: members, error: membersError } = await supabaseAdmin
-      .from("household_members")
-      .select("user_id, household_id");
-
-    if (membersError) throw membersError;
-
+    // Get all household members (paginated to avoid response size limits)
+    const PAGE_SIZE = 200;
+    let allMembers: { user_id: string; household_id: string }[] = [];
+    let page = 0;
+    while (true) {
+      const { data, error } = await supabaseAdmin
+        .from("household_members")
+        .select("user_id, household_id")
+        .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
+      if (error) throw error;
+      if (!data || data.length === 0) break;
+      allMembers = [...allMembers, ...data];
+      if (data.length < PAGE_SIZE) break;
+      page++;
+    }
+    const members = allMembers;
     if (!members || members.length === 0) {
       return new Response(
         JSON.stringify({ success: true, message: "No members to send digest to" }),
