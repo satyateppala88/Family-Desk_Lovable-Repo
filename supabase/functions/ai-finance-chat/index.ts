@@ -3,7 +3,7 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.78.0";
 import { z } from "https://deno.land/x/zod@v3.23.8/mod.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
-import { checkRateLimit, AI_RATE_LIMIT } from "../_shared/rate-limit.ts";
+import { checkRateLimitDb, AI_RATE_LIMIT } from "../_shared/rate-limit.ts";
 import { Logger } from "../_shared/logger.ts";
 import { buildHouseholdContext, DEGRADED_CONTEXT } from "../_shared/aiContext.ts";
 import { renderSystemPrompt } from "../_shared/aiSystemPrompts.ts";
@@ -71,13 +71,19 @@ serve(async (req) => {
 
     log.setContext({ userId: user.id, householdId });
 
-    // Rate limiting
-    const rateCheck = checkRateLimit(user.id, "ai-finance-chat", AI_RATE_LIMIT);
+    // Rate limiting (DB-backed; survives cold starts)
+    const rateCheck = await checkRateLimitDb(
+      supabase,
+      user.id,
+      "ai-finance-chat",
+      AI_RATE_LIMIT.maxRequests,
+      Math.floor(AI_RATE_LIMIT.windowMs / 1000)
+    );
     if (!rateCheck.allowed) {
       log.warn("Rate limit exceeded");
       return new Response(JSON.stringify({ error: "Too many requests. Please try again later." }), {
         status: 429,
-        headers: { ...corsHeaders, "Content-Type": "application/json", "Retry-After": String(Math.ceil((rateCheck.resetAt - Date.now()) / 1000)) },
+        headers: { ...corsHeaders, "Content-Type": "application/json", "Retry-After": String(Math.ceil(AI_RATE_LIMIT.windowMs / 1000)) },
       });
     }
 
