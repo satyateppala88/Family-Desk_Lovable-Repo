@@ -149,6 +149,9 @@ export const AIChatWidget = () => {
       const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-chat`;
       const allMessages = [...messages, userMessage];
 
+      // Cap client-side before sending — edge function also trims to 20
+      const cappedMessages = allMessages.length > 30 ? allMessages.slice(-30) : allMessages;
+
       // Get the user's actual JWT token for authentication
       const { data: sessionData } = await supabase.auth.getSession();
       const accessToken = sessionData.session?.access_token;
@@ -157,7 +160,7 @@ export const AIChatWidget = () => {
       const response = await fetch(CHAT_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
-        body: JSON.stringify({ messages: allMessages.map(m => ({ role: m.role, content: m.content })), householdId, userId: user.id, module: "general" }),
+        body: JSON.stringify({ messages: cappedMessages.map(m => ({ role: m.role, content: m.content })), householdId, userId: user.id, module: "general" }),
       });
 
       if (!response.ok) throw new Error(await response.text());
