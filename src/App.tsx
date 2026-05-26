@@ -163,11 +163,6 @@ const App = () => (
                     <Index />
                   </ProtectedRoute>
                 } />
-                <Route path="/tasks" element={
-                  <ProtectedRoute>
-                    <TaskmasterToday />
-                  </ProtectedRoute>
-                } />
                 <Route path="/tasks/all" element={
                   <ProtectedRoute>
                     <Navigate to="/taskmaster/tasks" replace />
