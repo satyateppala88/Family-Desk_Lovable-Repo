@@ -70,12 +70,12 @@ function buildKeyMap(householdId: string): Record<string, (string | undefined)[]
     habits: [["habits", householdId], ["habit-assignees", householdId]],
     habit_assignees: [["habit-assignees", householdId], ["habits", householdId]],
     habit_logs: [
-      ["habit-logs-today"],
-      ["household-habit-stats"],
-      ["habit-leaderboard"],
-      ["habit-scores"],
+      ["habit-logs-today", householdId],
+      ["household-habit-stats", householdId],
+      ["habit-leaderboard", householdId],
+      ["habit-scores", householdId],
     ],
-    habit_streaks: [["habit-streaks"]],
+    habit_streaks: [["habit-streaks", householdId]],
     habit_scores: [["habit-leaderboard"], ["habit-scores"]],
     household_habit_goals: [["household-habit-goals", householdId]],
 
