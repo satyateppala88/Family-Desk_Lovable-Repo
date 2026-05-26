@@ -1,6 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.95.0";
 import { sendPush } from "../_shared/push.ts";
 import { todayIST, istDateOffset } from "../_shared/time.ts";
+import { validateCronSecret } from "../_shared/cron-auth.ts";
 
 /**
  * Daily cron: warns household members about recurring subscriptions / bills
@@ -16,6 +17,13 @@ const corsHeaders = {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
+  }
+
+  if (!validateCronSecret(req)) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 
   const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
