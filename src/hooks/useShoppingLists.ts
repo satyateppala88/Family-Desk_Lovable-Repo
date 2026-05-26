@@ -146,15 +146,32 @@ export const useShoppingLists = (householdId: string | null) => {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["shopping-lists", householdId] });
+    onMutate: async ({ id, is_checked }) => {
+      await queryClient.cancelQueries({ queryKey: ['shopping-lists', householdId] });
+      const previous = queryClient.getQueryData(['shopping-lists', householdId]);
+      queryClient.setQueryData(['shopping-lists', householdId], (old: any[]) =>
+        (old || []).map(list => ({
+          ...list,
+          items: (list.items || []).map((item: any) =>
+            item.id === id ? { ...item, is_checked } : item
+          ),
+        }))
+      );
+      return { previous };
     },
-    onError: (error: Error) => {
+    onError: (_err, _vars, context) => {
+      queryClient.setQueryData(['shopping-lists', householdId], context?.previous);
       toast({
         title: "Something went wrong",
         description: "Please try again.",
         variant: "destructive",
       });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['shopping-lists', householdId] });
+    },
+    onSuccess: () => {
+      // No toast for toggle — keeps it lightweight during shopping
     },
   });
 
