@@ -484,6 +484,9 @@ export const useCreateTransaction = (householdId: string | null) => {
 
   return useMutation({
     mutationFn: async (data: Partial<FinanceTransaction>) => {
+      if (!data.amount || data.amount <= 0) throw new Error('Amount must be greater than zero');
+      if (!data.category) throw new Error('Category is required');
+
       const { data: inserted, error } = await supabase
         .from("finance_transactions")
         .insert({

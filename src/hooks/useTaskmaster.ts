@@ -39,6 +39,9 @@ export const useTaskmaster = (
 
   const createTask = useMutation({
     mutationFn: async (newTask: Partial<TaskmasterTask> & { assignee_ids?: string[] }) => {
+      if (!newTask.title?.trim()) throw new Error('Task title cannot be empty');
+      if (newTask.title.trim().length > 200) throw new Error('Task title must be under 200 characters');
+
       const {
         assignee_ids,
         assignees: _ignoredAssignees,

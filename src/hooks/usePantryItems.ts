@@ -43,6 +43,10 @@ export const usePantryItems = (householdId: string | null) => {
 
   const addPantryItem = useMutation({
     mutationFn: async (item: Omit<Partial<PantryItem>, "id" | "created_at" | "updated_at"> & { household_id: string; added_by: string }) => {
+      if (!item.name?.trim()) throw new Error('Item name cannot be empty');
+      if (item.quantity !== undefined && item.quantity !== null && item.quantity < 0)
+        throw new Error('Quantity cannot be negative');
+
       const { data, error } = await supabase
         .from("pantry_items")
         .insert([item as any])
