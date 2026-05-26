@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { useHousehold } from "@/hooks/useHousehold";
 import { useIsHouseholdAdmin } from "@/hooks/useIsHouseholdAdmin";
 import { usePendingInvitations, getInvitationTypeLabel } from "@/hooks/usePendingInvitations";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Check, X, UserPlus, Mail, ArrowLeft } from "lucide-react";

@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
 export const useRecipeRating = (householdId: string | null) => {
@@ -15,7 +15,7 @@ export const useRecipeRating = (householdId: string | null) => {
       rating: number 
     }) => {
       // Get current recipe data
-      const { data: recipe, error: fetchError } = await (supabase as any)
+      const { data: recipe, error: fetchError } = await supabase
         .from("recipes")
         .select("rating, rating_count")
         .eq("id", recipeId)
@@ -30,7 +30,7 @@ export const useRecipeRating = (householdId: string | null) => {
       const newRating = ((currentRating * currentCount) + rating) / newCount;
 
       // Update recipe
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from("recipes")
         .update({
           rating: newRating,
@@ -63,7 +63,7 @@ export const useRecipeRating = (householdId: string | null) => {
 
   const hideRecipe = useMutation({
     mutationFn: async (recipeId: string) => {
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from("recipes")
         .update({ hidden: true })
         .eq("id", recipeId)
@@ -91,7 +91,7 @@ export const useRecipeRating = (householdId: string | null) => {
 
   const unhideRecipe = useMutation({
     mutationFn: async (recipeId: string) => {
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from("recipes")
         .update({ hidden: false })
         .eq("id", recipeId)

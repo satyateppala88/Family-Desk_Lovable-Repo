@@ -46,7 +46,7 @@ export const useCreateManualEvent = () => {
 
       const { startAt, endAt, isAllDay } = deriveTimes(input.date, input.time, input.allDay);
 
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from("manual_calendar_events")
         .insert({
           household_id: householdId,
@@ -83,7 +83,7 @@ export const useUpdateManualEvent = () => {
   return useMutation({
     mutationFn: async (input: UpdateManualEventInput) => {
       const { startAt, endAt, isAllDay } = deriveTimes(input.date, input.time, input.allDay);
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from("manual_calendar_events")
         .update({
           title: input.title,
@@ -113,7 +113,7 @@ export const useDeleteManualEvent = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await (supabase as any)
+      const { error } = await supabase
         .from("manual_calendar_events")
         .delete()
         .eq("id", id);
@@ -156,7 +156,7 @@ export const useUpdateRecurringEvent = () => {
       const { startAt, endAt, isAllDay } = deriveTimes(input.date, input.time, input.allDay);
 
       if (input.scope === "all") {
-        const { data, error } = await (supabase as any)
+        const { data, error } = await supabase
           .from("manual_calendar_events")
           .update({
             title: input.title,
@@ -177,7 +177,7 @@ export const useUpdateRecurringEvent = () => {
 
       if (input.scope === "this") {
         // 1) Append the occurrence date to the parent's exception_dates.
-        const { data: parent, error: parentErr } = await (supabase as any)
+        const { data: parent, error: parentErr } = await supabase
           .from("manual_calendar_events")
           .select("exception_dates")
           .eq("id", input.id)
@@ -186,14 +186,14 @@ export const useUpdateRecurringEvent = () => {
         const nextExceptions = Array.from(
           new Set([...(parent?.exception_dates ?? []), input.occurrenceDate]),
         );
-        const { error: updErr } = await (supabase as any)
+        const { error: updErr } = await supabase
           .from("manual_calendar_events")
           .update({ exception_dates: nextExceptions })
           .eq("id", input.id);
         if (updErr) throw updErr;
 
         // 2) Insert a single-occurrence override child.
-        const { data, error } = await (supabase as any)
+        const { data, error } = await supabase
           .from("manual_calendar_events")
           .insert({
             household_id: householdId,
@@ -216,7 +216,7 @@ export const useUpdateRecurringEvent = () => {
 
       // scope === "future"
       // 1) End the parent the day before this occurrence.
-      const { data: parent, error: parentErr } = await (supabase as any)
+      const { data: parent, error: parentErr } = await supabase
         .from("manual_calendar_events")
         .select("recurrence")
         .eq("id", input.id)
@@ -228,7 +228,7 @@ export const useUpdateRecurringEvent = () => {
           ...existingRec,
           end: { type: "on_date", date: prevDay(input.occurrenceDate) },
         };
-        const { error: updErr } = await (supabase as any)
+        const { error: updErr } = await supabase
           .from("manual_calendar_events")
           .update({ recurrence: updatedRec })
           .eq("id", input.id);
@@ -236,7 +236,7 @@ export const useUpdateRecurringEvent = () => {
       }
 
       // 2) Insert a new recurring event starting at this occurrence.
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from("manual_calendar_events")
         .insert({
           household_id: householdId,

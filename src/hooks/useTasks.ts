@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 import { Task } from "@/types/database";
 import { useToast } from "@/hooks/use-toast";
 
@@ -53,7 +53,7 @@ export const useTasks = (householdId: string | null, pagination?: PaginationPara
     queryFn: async () => {
       if (!householdId) return { tasks: [], totalCount: 0 };
 
-      const { data, error, count } = await (supabase as any)
+      const { data, error, count } = await supabase
         .from("tasks")
         .select("*", { count: "exact" })
         .eq("household_id", householdId)
@@ -69,7 +69,7 @@ export const useTasks = (householdId: string | null, pagination?: PaginationPara
 
   const createTask = useMutation({
     mutationFn: async (newTask: Partial<Task>) => {
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from("tasks")
         .insert(newTask)
         .select()
@@ -117,7 +117,7 @@ export const useTasks = (householdId: string | null, pagination?: PaginationPara
 
   const updateTask = useMutation({
     mutationFn: async ({ id, updates, previousAssignee }: { id: string; updates: Partial<Task>; previousAssignee?: string | null }) => {
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from("tasks")
         .update(updates)
         .eq("id", id)
@@ -167,7 +167,7 @@ export const useTasks = (householdId: string | null, pagination?: PaginationPara
 
   const deleteTask = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await (supabase as any)
+      const { error } = await supabase
         .from("tasks")
         .delete()
         .eq("id", id);

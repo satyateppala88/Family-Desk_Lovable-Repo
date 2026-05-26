@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -34,7 +34,7 @@ export const useMealPlans = (householdId: string | null, weekStartDate?: string)
     queryFn: async () => {
       if (!householdId) return [];
 
-      let query = (supabase as any)
+      let query = supabase
         .from("meal_plans")
         .select(`
           *,
@@ -71,7 +71,7 @@ export const useMealPlans = (householdId: string | null, weekStartDate?: string)
       if (!user?.id) throw new Error("Not authenticated");
 
       // Step 1: Upsert plan header — safe even if it already exists
-      const { data: mealPlan, error: planError } = await (supabase as any)
+      const { data: mealPlan, error: planError } = await supabase
         .from("meal_plans")
         .upsert(
           { household_id: householdId, week_start_date: weekStartDate, created_by: user.id },
@@ -85,7 +85,7 @@ export const useMealPlans = (householdId: string | null, weekStartDate?: string)
       }
 
       // Step 2: Delete old items — plan row exists so this is safe
-      const { error: deleteError } = await (supabase as any)
+      const { error: deleteError } = await supabase
         .from("meal_plan_items")
         .delete()
         .eq("meal_plan_id", mealPlan.id);
@@ -97,7 +97,7 @@ export const useMealPlans = (householdId: string | null, weekStartDate?: string)
           ...item,
           meal_plan_id: mealPlan.id,
         }));
-        const { error: itemsError } = await (supabase as any)
+        const { error: itemsError } = await supabase
           .from("meal_plan_items")
           .insert(itemsWithPlanId);
         if (itemsError) throw itemsError;
@@ -142,7 +142,7 @@ export const useMealPlans = (householdId: string | null, weekStartDate?: string)
       itemId: string; 
       updates: Partial<MealPlanItem> 
     }) => {
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from("meal_plan_items")
         .update(updates)
         .eq("id", itemId)
@@ -167,7 +167,7 @@ export const useMealPlans = (householdId: string | null, weekStartDate?: string)
 
   const deleteMealPlanItem = useMutation({
     mutationFn: async (itemId: string) => {
-      const { error } = await (supabase as any)
+      const { error } = await supabase
         .from("meal_plan_items")
         .delete()
         .eq("id", itemId);
@@ -193,7 +193,7 @@ export const useMealPlans = (householdId: string | null, weekStartDate?: string)
 
   const deleteMealPlan = useMutation({
     mutationFn: async (planId: string) => {
-      const { error } = await (supabase as any)
+      const { error } = await supabase
         .from("meal_plans")
         .delete()
         .eq("id", planId);

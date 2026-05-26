@@ -17,7 +17,7 @@ export const useUpcomingFestival = () => {
       const startStr = format(today, "yyyy-MM-dd");
       const endStr = format(addDays(today, 14), "yyyy-MM-dd");
 
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from("system_calendar_events")
         .select("id, name, event_date, kind")
         .eq("kind", "festival")

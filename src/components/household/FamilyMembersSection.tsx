@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -34,7 +34,7 @@ export const FamilyMembersSection = ({ householdId }: Props) => {
   const { data: members = [], isLoading } = useQuery({
     queryKey: ["household-family-members", householdId],
     queryFn: async () => {
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from("household_family_members")
         .select("*")
         .eq("household_id", householdId)
@@ -51,7 +51,7 @@ export const FamilyMembersSection = ({ householdId }: Props) => {
   const createMember = useMutation({
     mutationFn: async () => {
       if (!name.trim()) throw new Error("Name is required");
-      const { error } = await (supabase as any).from("household_family_members").insert({
+      const { error } = await supabase.from("household_family_members").insert({
         household_id: householdId,
         name: name.trim(),
         relationship: relationship.trim() || null,
@@ -70,7 +70,7 @@ export const FamilyMembersSection = ({ householdId }: Props) => {
   });
 
   const updateAvatar = async (memberId: string, url: string | null) => {
-    const { error } = await (supabase as any)
+    const { error } = await supabase
       .from("household_family_members")
       .update({ avatar_url: url })
       .eq("id", memberId);
@@ -80,7 +80,7 @@ export const FamilyMembersSection = ({ householdId }: Props) => {
 
   const removeMember = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await (supabase as any)
+      const { error } = await supabase
         .from("household_family_members")
         .delete()
         .eq("id", id);

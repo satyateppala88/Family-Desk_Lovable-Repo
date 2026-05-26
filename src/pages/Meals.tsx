@@ -29,7 +29,7 @@ import { Sparkles, Calendar, LayoutGrid, UtensilsCrossed, Search, ChevronDown, C
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQueryClient } from "@tanstack/react-query";
 import { getWeekStartDate, getRemainingDaysOfWeek, getWeekDays, getShortDayName } from "@/lib/weekUtils";

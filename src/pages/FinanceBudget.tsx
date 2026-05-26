@@ -36,7 +36,7 @@ import { resolveCategoryLabel } from "@/components/finance/CategorySelect";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { BudgetSubNav } from "@/components/finance/BudgetSubNav";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 

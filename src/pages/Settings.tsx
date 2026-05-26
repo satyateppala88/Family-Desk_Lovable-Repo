@@ -16,7 +16,7 @@ import { useQuery } from "@tanstack/react-query";
 import { InviteMemberDialog } from "@/components/household/InviteMemberDialog";
 import { useHouseholdPreferences } from "@/hooks/useHouseholdPreferences";
 import { EditHouseholdBasicsDialog } from "@/components/settings/EditHouseholdBasicsDialog";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 import { TermsSection, PrivacySection } from "@/components/settings/LegalDocsSection";
 import { PrivacySecuritySection } from "@/components/settings/PrivacySecuritySection";
 import { ModulePreferencesSection } from "@/components/settings/ModulePreferencesSection";
