@@ -396,7 +396,7 @@ serve(async (req) => {
     for (const conn of connections) {
       const calConnection = conn as unknown as CalendarConnection;
       console.log(`Processing connection for: ${calConnection.google_account_email}`);
-      console.log(`Token expires at: ${calConnection.token_expires_at}`);
+      // Token expiry handled internally
       
       try {
         // Pull decrypted tokens from the database (falls back to the legacy
