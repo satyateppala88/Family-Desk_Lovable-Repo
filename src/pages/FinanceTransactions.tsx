@@ -105,6 +105,14 @@ const FinanceTransactions = () => {
     clearSelection();
   };
 
+  const handleEditTx = useCallback((tx: FinanceTransaction) => {
+    setEditTx(tx);
+  }, []);
+
+  const handleDeleteTx = useCallback((tx: FinanceTransaction) => {
+    setDeleteTx(tx);
+  }, []);
+
   return (
     <div className="page-container">
       <Header />
