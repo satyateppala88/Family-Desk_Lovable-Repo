@@ -542,7 +542,7 @@ const Grocery = () => {
           <div className="flex flex-wrap gap-2">
             <Button
               variant="outline"
-              onClick={() => setShowAIImport(true)}
+              onClick={() => billScanRef.current?.openAIImport()}
               className="gap-2 h-9"
               size="sm"
               data-tour="ai-import"
@@ -553,7 +553,7 @@ const Grocery = () => {
             </Button>
             <Button
               variant="outline"
-              onClick={() => setShowScanBill(true)}
+              onClick={() => billScanRef.current?.openScan()}
               className="gap-2 h-9"
               size="sm"
               data-tour="scan-bill"
@@ -607,115 +607,40 @@ const Grocery = () => {
           </TabsList>
 
           <TabsContent value="pantry" className="space-y-6">
-            {lowStockItems.length > 0 && (
-              <RunningLowChips
-                items={lowStockItems}
-                onAddItem={handleAddLowStockItem}
-                isAdding={isAddingLowStock}
-              />
-            )}
-            {isLoading ? (
-              <EmptyState icon={Package} title="Loading your pantry..." />
-            ) : pantryItems.length === 0 ? (
-              <EmptyState
-                icon={Package}
-                title="Your pantry is a blank slate"
-                description="Add staples your household always keeps at home. When stock runs low, FamilyDesk will flag it and add items to your shopping list automatically."
-                encouragement="Try AI Import to add everything at once!"
-                action={{ label: "Add Item", onClick: () => setShowAddDialog(true) }}
-                secondaryAction={{ label: "Quick Add Staples", onClick: () => setShowQuickAdd(true) }}
-              />
-            ) : selectedCategoryDetail ? (
-              <PantryCategoryDetail
-                categoryName={selectedCategoryDetail}
-                categoryIcon={categories.find(c => c.name === selectedCategoryDetail)?.icon || undefined}
-                items={categoryItems}
-                onBack={handleBackToCategories}
-                onQuantityChange={handleUpdateQuantity}
-                onAddToCart={handleAddToCart}
-              />
-            ) : (
-              <div data-tour="category-grid">
-                <PantryCategoryGrid
-                  categories={categories}
-                  items={pantryItems}
-                  onSelectCategory={handleSelectCategory}
-                />
-              </div>
-            )}
-
-            {pantryItems.length > 0 && !selectedCategoryDetail && (
-              <Button
-                variant="outline"
-                onClick={() => setAiOpen(true)}
-                className="w-full gap-2"
-              >
-                <Sparkles className="w-4 h-4" />
-                What am I running low on?
-              </Button>
-            )}
-
-            <FloatingCartButton
-              itemCount={cartItemCount}
-              onClick={handleViewCart}
+            <PantryTabContent
+              isLoading={isLoading}
+              pantryItems={pantryItems}
+              categories={categories}
+              lowStockItems={lowStockItems}
+              selectedCategoryDetail={selectedCategoryDetail}
+              categoryItems={categoryItems}
+              cartItemCount={cartItemCount}
+              isAddingLowStock={isAddingLowStock}
+              onAddLowStockItem={handleAddLowStockItem}
+              onShowAddDialog={() => setShowAddDialog(true)}
+              onShowQuickAdd={() => setShowQuickAdd(true)}
+              onSelectCategory={handleSelectCategory}
+              onBackToCategories={handleBackToCategories}
+              onUpdateQuantity={handleUpdateQuantity}
+              onAddToCart={handleAddToCart}
+              onViewCart={handleViewCart}
+              onOpenAI={() => setAiOpen(true)}
             />
           </TabsContent>
 
           <TabsContent value="shopping" className="space-y-6">
-            {selectedList ? (
-              <ShoppingListDetailView
-                list={selectedList}
-                onBack={handleBackToLists}
-                onToggleItem={handleToggleItem}
-                onDeleteItem={(itemId) => deleteItem.mutate(itemId)}
-                userId={user?.id || ""}
-              />
-            ) : (
-              <>
-                <div className="flex items-center justify-between">
-                  <p className="text-sm text-muted-foreground">
-                    Create lists manually or generate them from your meal plan.
-                  </p>
-                  <div className="flex gap-2">
-                    {shoppingLists.length > 0 && (
-                      <ShareOnWhatsAppButton
-                        list={
-                          shoppingLists.find((l) => l.status === "active") ||
-                          shoppingLists[0]
-                        }
-                        size="sm"
-                        label="Share"
-                      />
-                    )}
-                    <Button onClick={() => setShowCreateList(true)} className="gap-2">
-                      <ShoppingCart className="h-4 w-4" aria-hidden="true" />
-                      Create List
-                    </Button>
-                  </div>
-                </div>
-
-                {shoppingLists.length === 0 ? (
-                  <EmptyState
-                    icon={ShoppingCart}
-                    title="No shopping lists yet"
-                    description="Create a list for your next grocery run, or generate one from your meal plan."
-                    action={{ label: "Create List", onClick: () => setShowCreateList(true) }}
-                    secondaryAction={{ label: "From Meal Plan", onClick: handleGenerateFromMealPlan }}
-                  />
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {shoppingLists.map((list) => (
-                      <ShoppingListCard
-                        key={list.id}
-                        list={list}
-                        onDelete={handleDeleteList}
-                        onComplete={handleCompleteList}
-                      />
-                    ))}
-                  </div>
-                )}
-              </>
-            )}
+            <ShoppingTabContent
+              shoppingLists={shoppingLists}
+              selectedList={selectedList}
+              userId={user?.id || ""}
+              onBackToLists={handleBackToLists}
+              onToggleItem={handleToggleItem}
+              onDeleteItem={(itemId) => deleteItem.mutate(itemId)}
+              onShowCreateList={() => setShowCreateList(true)}
+              onCompleteList={handleCompleteList}
+              onDeleteList={handleDeleteList}
+              onGenerateFromMealPlan={handleGenerateFromMealPlan}
+            />
           </TabsContent>
 
           <TabsContent value="insights" className="space-y-6">
@@ -758,30 +683,13 @@ const Grocery = () => {
         userId={user.id}
       />
 
-      <AIPantryImportDialog
-        open={showAIImport}
-        onOpenChange={setShowAIImport}
-        onItemsExtracted={handleAIImport}
+      <BillScanFlow
+        ref={billScanRef}
         householdId={householdId}
         userId={user.id}
-      />
-
-      {householdId && (
-        <ScanBillDialog
-          open={showScanBill}
-          onOpenChange={setShowScanBill}
-          householdId={householdId}
-          onScanned={(bill) => setScannedBill(bill)}
-        />
-      )}
-
-      <BillReviewDialog
-        open={!!scannedBill}
-        onOpenChange={(o) => { if (!o) setScannedBill(null); }}
-        bill={scannedBill}
         pantryItems={pantryItems}
-        onConfirm={handleSaveScannedBill}
-        isSaving={isSavingBill}
+        onAIImport={handleAIImport}
+        onSaveScannedBill={handleSaveScannedBill}
       />
 
       <CreateShoppingListDialog
