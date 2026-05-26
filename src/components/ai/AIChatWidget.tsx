@@ -121,6 +121,29 @@ export const AIChatWidget = () => {
   const routeCategory = getRouteCategory(location.pathname);
   const promptChips = PROMPT_CHIPS[routeCategory] || PROMPT_CHIPS.default;
 
+  const aiModule = useMemo(() => {
+    const moduleMap: Record<string, string> = {
+      finance: 'finance',
+      tasks: 'tasks',
+      meals: 'meals',
+      habits: 'habits',
+      grocery: 'grocery',
+      default: 'general',
+    };
+    return moduleMap[routeCategory] || 'general';
+  }, [routeCategory]);
+
+  const handleFeedback = useCallback(async (messageIndex: number, vote: 'up'|'down') => {
+    if (!user || !householdId) return;
+    setFeedbackGiven(prev => ({ ...prev, [messageIndex]: vote }));
+    await (supabase as any).from('ai_feedback').insert({
+      user_id: user.id,
+      household_id: householdId,
+      module: aiModule,
+      vote,
+    });
+  }, [user, householdId, aiModule]);
+
   const displayName = useMemo(() => {
     return user?.user_metadata?.display_name || user?.email?.split("@")[0] || "there";
   }, [user]);
