@@ -157,9 +157,6 @@ export const AIChatWidget = () => {
       const accessToken = sessionData.session?.access_token;
       if (!accessToken) throw new Error("Not authenticated");
 
-      const response = await fetch(CHAT_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
       // Map route category to AI module
       const moduleMap: Record<string, string> = {
         finance: 'finance',
@@ -180,7 +177,6 @@ export const AIChatWidget = () => {
           userId: user.id,
           module: aiModule,
         }),
-      });
       });
 
       if (!response.ok) throw new Error(await response.text());
