@@ -127,15 +127,15 @@ const handler = async (req: Request): Promise<Response> => {
         );
 
         const emailResponse = await sendViaQueue(supabaseUrl, supabaseServiceKey, {
-      to: userData.user.email,
-      subject: `Reminder: ${userTasks.length} task${userTasks.length > 1 ? "s" : ""} due tomorrow`,
-      html: getEmailWrapper(emailContent),
-      templateName: "send-task-reminders",
-      idempotencyKey: `task-reminder-${userId}-${today}`,
-    });
+          to: profile.email,
+          subject: `Reminder: ${userTasks.length} task${userTasks.length > 1 ? "s" : ""} due tomorrow`,
+          html: getEmailWrapper(emailContent),
+          templateName: "send-task-reminders",
+          idempotencyKey: `task-reminder-${userId}-${today}`,
+        });
 
-        console.log(`Task reminder sent to ${userData.user.email}:`, emailResponse);
-        emailsSent.push(userData.user.email);
+        console.log(`Task reminder sent to ${profile.email}:`, emailResponse);
+        emailsSent.push(profile.email);
         // Queue this user for a Web Push fan-out below (filtered by
         // notification_preferences.tasks inside send-push).
         pushUserIds.push(userId);
