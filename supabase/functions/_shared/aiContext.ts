@@ -384,6 +384,12 @@ async function buildTasksBlock(
     }
   }
 
+  const festival = await getUpcomingFestival(supabase, now).catch(() => null);
+  if (festival) {
+    lines.push("");
+    lines.push(`UPCOMING FESTIVAL: ${festival.name} in ${festival.daysAway} days — suggest prep tasks if relevant`);
+  }
+
   return lines.join("\n");
 }
 
@@ -503,6 +509,13 @@ async function buildMealsBlock(
   lines.push("");
   lines.push(`Cooked at home (last 7d): ${cookedThisWeek}`);
   lines.push(`Grocery list pending items: ${pendingCount}`);
+
+  const festival = await getUpcomingFestival(supabase, now).catch(() => null);
+  if (festival) {
+    lines.push("");
+    lines.push(`UPCOMING FESTIVAL: ${festival.name} in ${festival.daysAway} days — consider traditional dishes`);
+  }
+
   return lines.join("\n");
 }
 
@@ -639,11 +652,16 @@ export async function buildHouseholdContext(opts: AIContextOptions): Promise<str
   );
 
   const urgencyAlerts = await buildUrgencyAlerts(supabase, householdId, opts.userId, now).catch(() => "");
+  const upcomingFestival = await getUpcomingFestival(supabase, now).catch(() => null);
+
+  const festivalLine = upcomingFestival
+    ? ` | 🎉 ${upcomingFestival.name} in ${upcomingFestival.daysAway} day${upcomingFestival.daysAway === 1 ? "" : "s"}`
+    : "";
 
   const header =
     `HOUSEHOLD CONTEXT\n=================\n` +
     `Household: ${householdName} | Members: ${memberNames.join(", ") || "—"} | ` +
-    `Date: ${WEEKDAYS[now.getDay()]}, ${pad(now.getDate())} ${FULL_MONTHS[now.getMonth()]} ${now.getFullYear()}`;
+    `Date: ${WEEKDAYS[now.getDay()]}, ${pad(now.getDate())} ${FULL_MONTHS[now.getMonth()]} ${now.getFullYear()}${festivalLine}`;
 
   const blocks: string[] = [header];
   if (urgencyAlerts) blocks.push("", urgencyAlerts);
