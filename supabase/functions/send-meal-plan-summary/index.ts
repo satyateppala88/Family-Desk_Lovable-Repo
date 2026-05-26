@@ -108,45 +108,48 @@ const handler = async (req: Request): Promise<Response> => {
     const emailsSent: string[] = [];
     const errors: string[] = [];
 
+    const memberIds = (members ?? []).map(m => m.user_id);
+
+    const [allProfiles, allPrefs] = await Promise.all([
+      supabaseAdmin
+        .from("profiles")
+        .select("id, display_name, email")
+        .in("id", memberIds),
+      supabaseAdmin
+        .from("user_email_preferences")
+        .select("user_id, meal_summaries")
+        .in("user_id", memberIds),
+    ]);
+
+    const profileMap = new Map((allProfiles.data ?? []).map((p: any) => [p.id, p]));
+    const prefMap = new Map((allPrefs.data ?? []).map((p: any) => [p.user_id, p]));
+
+    const weekStart = new Date(mealPlan.week_start_date).toLocaleDateString("en-US", {
+      month: "long",
+      day: "numeric",
+    });
+
     for (const member of members) {
       try {
-        // Check user email preferences
-        const { data: prefs } = await supabaseAdmin
-          .from("user_email_preferences")
-          .select("meal_summaries")
-          .eq("user_id", member.user_id)
-          .maybeSingle();
-
-        if (prefs?.meal_summaries === false) {
+        const pref = prefMap.get(member.user_id);
+        if (pref?.meal_summaries === false) {
           console.log(`User ${member.user_id} has opted out of meal summaries`);
           continue;
         }
 
-        // Get user info
-        const { data: userData } = await supabaseAdmin.auth.admin.getUserById(member.user_id);
-        if (!userData?.user?.email) continue;
-
-        const { data: profile } = await supabaseAdmin
-          .from("profiles")
-          .select("display_name")
-          .eq("id", member.user_id)
-          .maybeSingle();
-
-        const weekStart = new Date(mealPlan.week_start_date).toLocaleDateString("en-US", {
-          month: "long",
-          day: "numeric",
-        });
+        const profile = profileMap.get(member.user_id);
+        if (!profile?.email) continue;
 
         const emailResponse = await sendViaQueue(supabaseUrl, supabaseServiceKey, {
-      to: userData.user.email,
-      subject: `🍽️ Your Meal Plan for the Week of ${weekStart}`,
-      html: getEmailWrapper(emailContent),
-      templateName: "send-meal-plan-summary",
-      idempotencyKey: `meal-plan-summary-${member.user_id}-${mealPlan.week_start_date}`,
-    });
+          to: profile.email,
+          subject: `🍽️ Your Meal Plan for the Week of ${weekStart}`,
+          html: getEmailWrapper(emailContent),
+          templateName: "send-meal-plan-summary",
+          idempotencyKey: `meal-plan-summary-${member.user_id}-${mealPlan.week_start_date}`,
+        });
 
-        console.log(`Meal plan summary sent to ${userData.user.email}:`, emailResponse);
-        emailsSent.push(userData.user.email);
+        console.log(`Meal plan summary sent to ${profile.email}:`, emailResponse);
+        emailsSent.push(profile.email);
       } catch (error: any) {
         console.error(`Error sending to member ${member.user_id}:`, error);
         errors.push(`Member ${member.user_id}: ${error.message}`);
