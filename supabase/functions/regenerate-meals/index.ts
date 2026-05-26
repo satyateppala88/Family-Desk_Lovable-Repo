@@ -320,7 +320,7 @@ Generate creative, varied meals that are different from what the user might alre
 
   } catch (error: any) {
     console.error("Error in regenerate-meals:", error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    return new Response(JSON.stringify({ error: 'An internal error occurred.' }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
