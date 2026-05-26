@@ -86,28 +86,6 @@ export const AIChatWidget = () => {
   const [feedbackGiven, setFeedbackGiven] = useState<Record<number, 'up'|'down'>>({});
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const aiModule = useMemo(() => {
-    const moduleMap: Record<string, string> = {
-      finance: 'finance',
-      tasks: 'tasks',
-      meals: 'meals',
-      habits: 'habits',
-      grocery: 'grocery',
-      default: 'general',
-    };
-    return moduleMap[routeCategory] || 'general';
-  }, [routeCategory]);
-
-  const handleFeedback = useCallback(async (messageIndex: number, vote: 'up'|'down') => {
-    if (!user || !householdId) return;
-    setFeedbackGiven(prev => ({ ...prev, [messageIndex]: vote }));
-    await supabase.from('ai_feedback').insert({
-      user_id: user.id,
-      household_id: householdId,
-      module: aiModule,
-      vote,
-    });
-  }, [user, householdId, aiModule]);
 
   const { speak, stop: stopSpeaking, isSpeaking, isSupported: ttsSupported } =
     useSpeechSynthesis({ language: "en-IN" });
