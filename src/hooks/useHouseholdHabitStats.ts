@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { format, subDays, startOfWeek, endOfWeek } from "date-fns";
 import { HouseholdHabitStats, MemberHabitStats } from "@/types/habits";
+import { STALE } from "@/lib/query-constants";
 
 export const useHouseholdHabitStats = (householdId: string | null) => {
   const today = format(new Date(), "yyyy-MM-dd");
@@ -145,5 +146,6 @@ export const useHouseholdHabitStats = (householdId: string | null) => {
       };
     },
     enabled: !!householdId,
+    staleTime: STALE.SHORT,
   });
 };

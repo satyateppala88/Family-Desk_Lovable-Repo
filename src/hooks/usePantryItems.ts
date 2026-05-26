@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { STALE } from "@/lib/query-constants";
 
 export interface PantryItem {
   id: string;
@@ -39,6 +40,7 @@ export const usePantryItems = (householdId: string | null) => {
       return data as PantryItem[];
     },
     enabled: !!householdId,
+    staleTime: STALE.SHORT,
   });
 
   const addPantryItem = useMutation({

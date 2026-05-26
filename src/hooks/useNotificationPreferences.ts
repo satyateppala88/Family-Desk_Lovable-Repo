@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { STALE } from "@/lib/query-constants";
 
 export type NotificationChannel =
   | "tasks"
@@ -51,6 +52,7 @@ export function useNotificationPreferences() {
   const query = useQuery({
     queryKey: ["notification-preferences", userId],
     enabled: !!userId,
+    staleTime: STALE.LONG,
     queryFn: async (): Promise<NotificationPreferences | null> => {
       if (!userId) return null;
       const { data, error } = await supabase

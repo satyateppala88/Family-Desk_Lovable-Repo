@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import type { CardBenefit, MilestoneBenefit } from "@/data/creditCardCatalog";
+import { STALE } from "@/lib/query-constants";
 
 export interface CustomCard {
   id: string;
@@ -25,6 +26,7 @@ export function useCustomCards(householdId: string | undefined) {
   return useQuery({
     queryKey: ["custom-cards", householdId],
     enabled: !!householdId,
+    staleTime: STALE.LONG,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("finance_custom_cards")
