@@ -40,7 +40,7 @@ const FinanceTrends = () => {
   const totalsByCategory: Record<string, number> = {};
   trends?.forEach((m) => {
     Object.entries(m.byCategory).forEach(([k, v]) => {
-      totalsByCategory[k] = (totalsByCategory[k] || 0) + v;
+      totalsByCategory[k] = (totalsByCategory[k] || 0) + (v as number);
     });
   });
   const topCats = Object.entries(totalsByCategory)
