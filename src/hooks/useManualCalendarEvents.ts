@@ -57,9 +57,9 @@ export const useCreateManualEvent = () => {
           end_at: endAt,
           all_day: isAllDay,
           repeat_type: deriveRepeatType(input.recurrence),
-          recurrence: input.recurrence ?? null,
+          recurrence: (input.recurrence ?? null) as any,
           member_ids: input.memberIds ?? [],
-        })
+        } as any)
         .select()
         .single();
 
@@ -92,7 +92,7 @@ export const useUpdateManualEvent = () => {
           end_at: endAt,
           all_day: isAllDay,
           repeat_type: deriveRepeatType(input.recurrence),
-          recurrence: input.recurrence ?? null,
+          recurrence: (input.recurrence ?? null) as any,
           ...(input.memberIds ? { member_ids: input.memberIds } : {}),
         })
         .eq("id", input.id)
@@ -165,7 +165,7 @@ export const useUpdateRecurringEvent = () => {
             end_at: endAt,
             all_day: isAllDay,
             repeat_type: deriveRepeatType(input.recurrence),
-            recurrence: input.recurrence ?? null,
+            recurrence: (input.recurrence ?? null) as any,
             ...(input.memberIds ? { member_ids: input.memberIds } : {}),
           })
           .eq("id", input.id)
@@ -207,7 +207,7 @@ export const useUpdateRecurringEvent = () => {
             recurrence: null,
             member_ids: input.memberIds ?? [],
             parent_event_id: input.id,
-          })
+          } as any)
           .select()
           .single();
         if (error) throw error;
@@ -222,7 +222,7 @@ export const useUpdateRecurringEvent = () => {
         .eq("id", input.id)
         .single();
       if (parentErr) throw parentErr;
-      const existingRec = (parent?.recurrence ?? null) as RecurrenceSpec | null;
+      const existingRec = (parent?.recurrence ?? null) as unknown as RecurrenceSpec | null;
       if (existingRec) {
         const updatedRec: RecurrenceSpec = {
           ...existingRec,
@@ -230,7 +230,7 @@ export const useUpdateRecurringEvent = () => {
         };
         const { error: updErr } = await supabase
           .from("manual_calendar_events")
-          .update({ recurrence: updatedRec })
+          .update({ recurrence: updatedRec as any })
           .eq("id", input.id);
         if (updErr) throw updErr;
       }
@@ -247,9 +247,9 @@ export const useUpdateRecurringEvent = () => {
           end_at: endAt,
           all_day: isAllDay,
           repeat_type: deriveRepeatType(input.recurrence),
-          recurrence: input.recurrence ?? null,
+          recurrence: (input.recurrence ?? null) as any,
           member_ids: input.memberIds ?? [],
-        })
+        } as any)
         .select()
         .single();
       if (error) throw error;

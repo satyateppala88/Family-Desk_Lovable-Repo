@@ -71,7 +71,7 @@ export const useTasks = (householdId: string | null, pagination?: PaginationPara
     mutationFn: async (newTask: Partial<Task>) => {
       const { data, error } = await supabase
         .from("tasks")
-        .insert(newTask)
+        .insert(newTask as any)
         .select()
         .single();
 

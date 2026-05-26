@@ -88,6 +88,9 @@ export const usePantryItems = (householdId: string | null) => {
 
   const updatePantryItem = useMutation({
     mutationFn: async ({ id, updates }: { id: string; updates: Partial<PantryItem> }) => {
+      if (updates.quantity !== undefined && updates.quantity !== null && updates.quantity < 0)
+        throw new Error('Quantity cannot be negative');
+
       const { data, error } = await supabase
         .from("pantry_items")
         .update(updates)
@@ -156,6 +159,12 @@ export const usePantryItems = (householdId: string | null) => {
 
   const bulkAddItems = useMutation({
     mutationFn: async (items: (Omit<Partial<PantryItem>, "id" | "created_at" | "updated_at"> & { household_id: string; added_by: string })[]) => {
+      for (const item of items) {
+        if (!item.name?.trim()) throw new Error('Item name cannot be empty');
+        if (item.quantity !== undefined && item.quantity !== null && item.quantity < 0)
+          throw new Error('Quantity cannot be negative');
+      }
+
       const { data, error } = await supabase
         .from("pantry_items")
         .insert(items as any[])
