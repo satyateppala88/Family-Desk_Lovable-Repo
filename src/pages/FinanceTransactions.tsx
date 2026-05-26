@@ -354,11 +354,11 @@ const FinanceTransactions = () => {
                     {tx.type === "income" ? "+" : tx.type === "savings" ? "→" : "−"}<PrivateValue value={Number(tx.amount)} />
                   </span>
                   <div className="flex gap-0.5 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity shrink-0">
-                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditTx(tx)} style={{ minHeight: "28px" }}>
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleEditTx(tx)} style={{ minHeight: "28px" }}>
                       <Pencil className="w-3 h-3" />
                     </Button>
                     <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                      onClick={() => setDeleteTx(tx)} style={{ minHeight: "28px" }}>
+                      onClick={() => handleDeleteTx(tx)} style={{ minHeight: "28px" }}>
                       <Trash2 className="w-3 h-3" />
                     </Button>
                   </div>
