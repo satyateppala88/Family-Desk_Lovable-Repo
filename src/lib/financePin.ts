@@ -1,12 +1,45 @@
 const PIN_HASH_KEY = "familydesk_finance_pin_hash";
 const UNLOCK_KEY = "finance_unlocked_at";
+const SALT_KEY = "familydesk_pin_salt";
+const HASH_PREFIX = "pbkdf2$";
+
+// Get or create a device-specific salt (stored separately from the hash)
+const getOrCreateSalt = (): string => {
+  let salt = localStorage.getItem(SALT_KEY);
+  if (!salt) {
+    salt = Array.from(crypto.getRandomValues(new Uint8Array(16)))
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+    localStorage.setItem(SALT_KEY, salt);
+  }
+  return salt;
+};
 
 export const hashPin = async (pin: string): Promise<string> => {
-  const enc = new TextEncoder().encode(pin);
-  const digest = await crypto.subtle.digest("SHA-256", enc);
-  return Array.from(new Uint8Array(digest))
+  const salt = getOrCreateSalt();
+  const enc = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey(
+    "raw",
+    enc.encode(pin),
+    "PBKDF2",
+    false,
+    ["deriveBits"],
+  );
+  const bits = await crypto.subtle.deriveBits(
+    { name: "PBKDF2", salt: enc.encode(salt), iterations: 100_000, hash: "SHA-256" },
+    keyMaterial,
+    256,
+  );
+  const hex = Array.from(new Uint8Array(bits))
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
+  return HASH_PREFIX + hex;
+};
+
+/** True when a stored hash exists but uses the old unsalted SHA-256 format. */
+export const isLegacyPinHash = (): boolean => {
+  const stored = getStoredHash();
+  return !!stored && !stored.startsWith(HASH_PREFIX);
 };
 
 export const getStoredHash = (): string | null => {
@@ -39,6 +72,8 @@ export const isPinEnabled = (): boolean => !!getStoredHash();
 export const verifyPin = async (pin: string): Promise<boolean> => {
   const stored = getStoredHash();
   if (!stored) return false;
+  // Legacy unsalted SHA-256 hashes can no longer be verified — force a re-set.
+  if (!stored.startsWith(HASH_PREFIX)) return false;
   const candidate = await hashPin(pin);
   return candidate === stored;
 };
