@@ -568,6 +568,67 @@ async function buildGroceryBlock(
   }
   return lines.join("\n");
 }
+async function buildUrgencyAlerts(
+  supabase: any, householdId: string, userId: string, now: Date
+): Promise<string> {
+  const todayStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+  const in3Days = new Date(now); in3Days.setDate(in3Days.getDate() + 3);
+  const in3Str = `${in3Days.getFullYear()}-${pad(in3Days.getMonth() + 1)}-${pad(in3Days.getDate())}`;
+  const monthYm = `${now.getFullYear()}-${pad(now.getMonth() + 1)}`;
+
+  const [overdueTasks, expiringItems, budgets, txThisMonth, atRiskStreaks] = await Promise.all([
+    supabase.from("tasks").select("title", { count: "exact" })
+      .eq("household_id", householdId).lt("due_date", todayStr).neq("task_status", "done").limit(3),
+    supabase.from("pantry_items").select("name, expiry_date")
+      .eq("household_id", householdId).lte("expiry_date", in3Str).gte("expiry_date", todayStr),
+    supabase.from("finance_budgets").select("category, planned_amount")
+      .eq("household_id", householdId).eq("month", monthYm),
+    supabase.from("finance_transactions").select("amount, category")
+      .eq("household_id", householdId).gte("transaction_date", `${monthYm}-01`).eq("type", "expense"),
+    supabase.from("habit_streaks").select("habit_id, current_streak, habits!inner(name, household_id)")
+      .eq("habits.household_id", householdId).eq("user_id", userId).gte("current_streak", 3)
+      .limit(5),
+  ]);
+
+  const alerts: string[] = [];
+
+  if (overdueTasks.count && overdueTasks.count > 0) {
+    const names = overdueTasks.data?.map((t: any) => t.title).slice(0, 2).join(", ");
+    alerts.push(`🔴 ${overdueTasks.count} OVERDUE TASK${overdueTasks.count > 1 ? "S" : ""}: ${names}${overdueTasks.count > 2 ? " +more" : ""}`);
+  }
+
+  if (expiringItems.data?.length) {
+    const names = expiringItems.data.map((i: any) => i.name).join(", ");
+    alerts.push(`⚠️ EXPIRING IN 3 DAYS: ${names}`);
+  }
+
+  // Check over-budget categories
+  const catSpend: Record<string, number> = {};
+  for (const t of txThisMonth.data || []) {
+    catSpend[t.category] = (catSpend[t.category] || 0) + Number(t.amount);
+  }
+  for (const b of budgets.data || []) {
+    const spent = catSpend[b.category] || 0;
+    if (spent > Number(b.planned_amount)) {
+      alerts.push(`💸 OVER BUDGET: ${b.category} ${fmtINR(spent)} vs ${fmtINR(Number(b.planned_amount))} limit`);
+    }
+  }
+
+  // Check for streaks at risk (has streak but hasn't logged today)
+  if (atRiskStreaks.data?.length) {
+    const { data: todayLogs } = await supabase.from("habit_logs")
+      .select("habit_id").eq("user_id", userId).eq("log_date", todayStr).eq("completed", true);
+    const loggedIds = new Set(todayLogs?.map((l: any) => l.habit_id));
+    const atRisk = atRiskStreaks.data.filter((s: any) => !loggedIds.has(s.habit_id));
+    if (atRisk.length) {
+      const names = atRisk.map((s: any) => `${s.habits?.name} (${s.current_streak}🔥)`).join(", ");
+      alerts.push(`🔥 STREAK AT RISK: ${names}`);
+    }
+  }
+
+  if (!alerts.length) return "";
+  return "⚡ ALERTS — MENTION THESE PROACTIVELY IF RELEVANT\n" + alerts.join("\n") + "\n";
+}
 
 export async function buildHouseholdContext(opts: AIContextOptions): Promise<string> {
   const now = opts.now || new Date();
@@ -577,12 +638,15 @@ export async function buildHouseholdContext(opts: AIContextOptions): Promise<str
     householdId,
   );
 
+  const urgencyAlerts = await buildUrgencyAlerts(supabase, householdId, opts.userId, now).catch(() => "");
+
   const header =
     `HOUSEHOLD CONTEXT\n=================\n` +
     `Household: ${householdName} | Members: ${memberNames.join(", ") || "—"} | ` +
     `Date: ${WEEKDAYS[now.getDay()]}, ${pad(now.getDate())} ${FULL_MONTHS[now.getMonth()]} ${now.getFullYear()}`;
 
   const blocks: string[] = [header];
+  if (urgencyAlerts) blocks.push("", urgencyAlerts);
   const cap = module === "general" ? 5 : 10;
 
   const wanted: AIContextModule[] =
