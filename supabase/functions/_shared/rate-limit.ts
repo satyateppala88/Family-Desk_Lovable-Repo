@@ -98,3 +98,34 @@ export const STANDARD_RATE_LIMIT: RateLimitConfig = {
   maxRequests: 30,
   windowMs: 60_000, // 30 requests per minute
 };
+
+/**
+ * Database-backed rate limit check. Survives edge function cold starts by
+ * persisting the counter in Postgres. Requires a service-role supabase client
+ * and the `public.increment_rate_limit` RPC.
+ *
+ * Fails OPEN on database errors so a transient DB issue cannot lock users out.
+ */
+export async function checkRateLimitDb(
+  supabaseAdmin: any,
+  userId: string,
+  functionName: string,
+  maxRequests: number,
+  windowSeconds: number
+): Promise<{ allowed: boolean; remaining: number }> {
+  const windowStart = new Date(
+    Math.floor(Date.now() / (windowSeconds * 1000)) * windowSeconds * 1000
+  ).toISOString();
+
+  const { data, error } = await supabaseAdmin.rpc('increment_rate_limit', {
+    p_user_id: userId,
+    p_function_name: functionName,
+    p_window_start: windowStart,
+    p_max_requests: maxRequests,
+  });
+
+  if (error || !data) {
+    return { allowed: true, remaining: maxRequests }; // fail open
+  }
+  return { allowed: !!data.allowed, remaining: Number(data.remaining ?? 0) };
+}
