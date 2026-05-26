@@ -3282,6 +3282,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      vault_upsert_cron_secret: {
+        Args: { _secret: string }
+        Returns: undefined
+      }
       vault_upsert_push_key: { Args: { _key: string }; Returns: undefined }
     }
     Enums: {
