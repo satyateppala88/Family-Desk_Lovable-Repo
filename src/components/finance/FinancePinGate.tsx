@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { FamilyDeskLogo } from "@/components/brand/FamilyDeskLogo";
 import { PinKeypad } from "./PinKeypad";
-import { isPinEnabled, isUnlocked, markUnlocked, verifyPin } from "@/lib/financePin";
+import { isLegacyPinHash, isPinEnabled, isUnlocked, markUnlocked, verifyPin } from "@/lib/financePin";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 
@@ -12,11 +12,13 @@ export const FinancePinGate = ({ children }: { children: React.ReactNode }) => {
   const [resetSignal, setResetSignal] = useState(0);
   const [shake, setShake] = useState(false);
   const [forgotOpen, setForgotOpen] = useState(false);
+  const [legacy, setLegacy] = useState<boolean>(() => isLegacyPinHash());
 
   // Re-evaluate whenever the route children change (e.g. after idle auto-lock)
   useEffect(() => {
     const tick = () => setUnlocked(!isPinEnabled() || isUnlocked());
     tick();
+    setLegacy(isLegacyPinHash());
     const onVis = () => tick();
     window.addEventListener("focus", onVis);
     document.addEventListener("visibilitychange", onVis);
@@ -51,6 +53,11 @@ export const FinancePinGate = ({ children }: { children: React.ReactNode }) => {
       </div>
       <h1 className="text-xl font-semibold text-foreground mb-2">Enter PIN to access Finance</h1>
       <p className="text-sm text-muted-foreground mb-8">Your financial data is locked on this device.</p>
+      {legacy && (
+        <div className="mb-6 max-w-sm rounded-md border border-border bg-muted/50 px-4 py-3 text-sm text-foreground">
+          For security reasons, please re-enter and save your PIN in Settings → Privacy & Security.
+        </div>
+      )}
       <PinKeypad onComplete={onComplete} resetSignal={resetSignal} shake={shake} />
       <div className="h-6 mt-4 text-sm text-destructive" aria-live="polite">{error}</div>
       <button
