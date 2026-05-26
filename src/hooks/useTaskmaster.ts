@@ -22,10 +22,7 @@ export const useTaskmaster = (
 
       let query = supabase
         .from("tasks")
-        .select(`
-          *,
-          project:projects(*)
-        `)
+        .select("*, project:projects(*), assignees:task_assignees(*)")
         .eq("household_id", householdId);
       if (excludeDone) {
         query = query.neq("task_status", "done");
@@ -34,22 +31,7 @@ export const useTaskmaster = (
 
       if (error) throw error;
 
-      // Fetch assignees for all tasks
-      const taskIds = data.map((t: any) => t.id);
-      let assignees: any[] = [];
-      if (taskIds.length > 0) {
-        const { data: assigneeData } = await supabase
-          .from("task_assignees")
-          .select("*")
-          .in("task_id", taskIds);
-        assignees = assigneeData || [];
-      }
-
-      // Map assignees to tasks
-      return data.map((task: any) => ({
-        ...task,
-        assignees: assignees?.filter((a: any) => a.task_id === task.id) || [],
-      })) as TaskmasterTask[];
+      return data as TaskmasterTask[];
     },
     enabled: !!householdId,
     staleTime: 30 * 1000,
