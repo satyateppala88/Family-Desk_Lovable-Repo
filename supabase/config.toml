@@ -85,3 +85,5 @@ project_id = "oohjebftkvlhpaljvijn"
     verify_jwt = false
   [functions.whatsapp-verify-otp]
     verify_jwt = false
+  [functions.whatsapp-ai-command]
+    verify_jwt = false
