@@ -54,14 +54,14 @@ const FinanceChat = () => {
       if (!token) throw new Error("Not authenticated");
 
       const resp = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-finance-chat`,
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-chat`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify({ messages: newMessages, householdId }),
+          body: JSON.stringify({ messages: newMessages, householdId, module: 'finance' }),
         }
       );
 
