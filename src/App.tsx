@@ -185,73 +185,95 @@ const App = () => (
                 } />
                 <Route path="/taskmaster/today" element={
                   <ProtectedRoute>
-                    <TaskmasterToday />
+                    <ErrorBoundary>
+                      <TaskmasterToday />
+                    </ErrorBoundary>
                   </ProtectedRoute>
                 } />
                 <Route path="/taskmaster/tasks" element={
                   <ProtectedRoute>
-                    <TaskmasterTasks />
+                    <ErrorBoundary>
+                      <TaskmasterTasks />
+                    </ErrorBoundary>
                   </ProtectedRoute>
                 } />
                 <Route path="/taskmaster/projects" element={
                   <ProtectedRoute>
-                    <TaskmasterProjects />
+                    <ErrorBoundary>
+                      <TaskmasterProjects />
+                    </ErrorBoundary>
                   </ProtectedRoute>
                 } />
                 <Route path="/taskmaster/projects/:id" element={
                   <ProtectedRoute>
-                    <TaskmasterProjectDetail />
+                    <ErrorBoundary>
+                      <TaskmasterProjectDetail />
+                    </ErrorBoundary>
                   </ProtectedRoute>
                 } />
                 <Route path="/taskmaster/my-tasks" element={
                   <ProtectedRoute>
-                    <TaskmasterMyTasks />
+                    <ErrorBoundary>
+                      <TaskmasterMyTasks />
+                    </ErrorBoundary>
                   </ProtectedRoute>
                 } />
                 <Route path="/taskmaster/dashboard" element={
                   <ProtectedRoute>
-                    <TaskmasterDashboard />
+                    <ErrorBoundary>
+                      <TaskmasterDashboard />
+                    </ErrorBoundary>
                   </ProtectedRoute>
                 } />
                 <Route path="/taskmaster/templates" element={
                   <ProtectedRoute>
-                    <TaskmasterTemplates />
+                    <ErrorBoundary>
+                      <TaskmasterTemplates />
+                    </ErrorBoundary>
                   </ProtectedRoute>
                 } />
                 <Route path="/meals" element={
                   <ProtectedRoute>
-                    <Meals />
+                    <ErrorBoundary>
+                      <Meals />
+                    </ErrorBoundary>
                   </ProtectedRoute>
                 } />
                 <Route path="/grocery" element={
                   <ProtectedRoute>
-                    <Grocery />
+                    <ErrorBoundary>
+                      <Grocery />
+                    </ErrorBoundary>
                   </ProtectedRoute>
                 } />
                 <Route path="/calendar" element={
                   <ProtectedRoute>
-                    <Calendar />
+                    <ErrorBoundary>
+                      <Calendar />
+                    </ErrorBoundary>
                   </ProtectedRoute>
                 } />
                 <Route path="/habits" element={
                   <ProtectedRoute>
-                    <Habits />
+                    <ErrorBoundary>
+                      <Habits />
+                    </ErrorBoundary>
                   </ProtectedRoute>
                 } />
-                <Route path="/finance" element={<ProtectedRoute><FinancePinGate><Finance /></FinancePinGate></ProtectedRoute>} />
+                <Route path="/finance" element={<ProtectedRoute><ErrorBoundary><FinancePinGate><Finance /></FinancePinGate></ErrorBoundary></ProtectedRoute>} />
                 <Route path="/ai" element={<ProtectedRoute><AskAi /></ProtectedRoute>} />
-                <Route path="/finance/transactions" element={<ProtectedRoute><FinancePinGate><FinanceTransactions /></FinancePinGate></ProtectedRoute>} />
-                <Route path="/finance/subscriptions" element={<ProtectedRoute><FinancePinGate><FinanceSubscriptions /></FinancePinGate></ProtectedRoute>} />
-                <Route path="/finance/budget" element={<ProtectedRoute><FinancePinGate><FinanceBudget /></FinancePinGate></ProtectedRoute>} />
-                <Route path="/finance/budget/annual" element={<ProtectedRoute><FinancePinGate><FinanceBudgetAnnual /></FinancePinGate></ProtectedRoute>} />
-                <Route path="/finance/budget/categories" element={<ProtectedRoute><FinancePinGate><FinanceBudgetCategories /></FinancePinGate></ProtectedRoute>} />
-                <Route path="/finance/savings" element={<ProtectedRoute><FinancePinGate><FinanceSavings /></FinancePinGate></ProtectedRoute>} />
-                <Route path="/finance/chat" element={<ProtectedRoute><FinancePinGate><FinanceChat /></FinancePinGate></ProtectedRoute>} />
+                <Route path="/finance/transactions" element={<ProtectedRoute><ErrorBoundary><FinancePinGate><FinanceTransactions /></FinancePinGate></ErrorBoundary></ProtectedRoute>} />
+                <Route path="/finance/subscriptions" element={<ProtectedRoute><ErrorBoundary><FinancePinGate><FinanceSubscriptions /></FinancePinGate></ErrorBoundary></ProtectedRoute>} />
+                <Route path="/finance/budget" element={<ProtectedRoute><ErrorBoundary><FinancePinGate><FinanceBudget /></FinancePinGate></ErrorBoundary></ProtectedRoute>} />
+                <Route path="/finance/budget/annual" element={<ProtectedRoute><ErrorBoundary><FinancePinGate><FinanceBudgetAnnual /></FinancePinGate></ErrorBoundary></ProtectedRoute>} />
+                <Route path="/finance/budget/categories" element={<ProtectedRoute><ErrorBoundary><FinancePinGate><FinanceBudgetCategories /></FinancePinGate></ErrorBoundary></ProtectedRoute>} />
+                <Route path="/finance/savings" element={<ProtectedRoute><ErrorBoundary><FinancePinGate><FinanceSavings /></FinancePinGate></ErrorBoundary></ProtectedRoute>} />
+                <Route path="/finance/chat" element={<ProtectedRoute><ErrorBoundary><FinancePinGate><FinanceChat /></FinancePinGate></ErrorBoundary></ProtectedRoute>} />
                 <Route path="/finance/ai-advisor" element={<ProtectedRoute><Navigate to="/finance/chat" replace /></ProtectedRoute>} />
-                <Route path="/finance/review" element={<ProtectedRoute><FinancePinGate><FinanceMonthlyReview /></FinancePinGate></ProtectedRoute>} />
-                <Route path="/finance/cards" element={<ProtectedRoute><FinancePinGate><FinanceCards /></FinancePinGate></ProtectedRoute>} />
-                <Route path="/finance/trends" element={<ProtectedRoute><FinancePinGate><FinanceTrends /></FinancePinGate></ProtectedRoute>} />
-                <Route path="/finance/report" element={<ProtectedRoute><FinancePinGate><FinanceReport /></FinancePinGate></ProtectedRoute>} />
+                <Route path="/finance/review" element={<ProtectedRoute><ErrorBoundary><FinancePinGate><FinanceMonthlyReview /></FinancePinGate></ErrorBoundary></ProtectedRoute>} />
+                <Route path="/finance/cards" element={<ProtectedRoute><ErrorBoundary><FinancePinGate><FinanceCards /></FinancePinGate></ErrorBoundary></ProtectedRoute>} />
+                <Route path="/finance/trends" element={<ProtectedRoute><ErrorBoundary><FinancePinGate><FinanceTrends /></FinancePinGate></ErrorBoundary></ProtectedRoute>} />
+                <Route path="/finance/report" element={<ProtectedRoute><ErrorBoundary><FinancePinGate><FinanceReport /></FinancePinGate></ErrorBoundary></ProtectedRoute>} />
                 <Route path="/terms" element={<TermsOfService />} />
                 <Route path="/privacy" element={<PrivacyPolicy />} />
                 <Route path="/install" element={<Install />} />
