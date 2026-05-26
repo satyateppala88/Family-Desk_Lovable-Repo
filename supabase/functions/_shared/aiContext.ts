@@ -581,6 +581,28 @@ async function buildGroceryBlock(
   }
   return lines.join("\n");
 }
+
+async function getUpcomingFestival(
+  supabase: any, now: Date
+): Promise<{ name: string; daysAway: number } | null> {
+  const todayStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+  const in14 = new Date(now); in14.setDate(in14.getDate() + 14);
+  const in14Str = `${in14.getFullYear()}-${pad(in14.getMonth() + 1)}-${pad(in14.getDate())}`;
+
+  const { data } = await supabase.from("system_calendar_events")
+    .select("name, event_date")
+    .eq("kind", "festival")
+    .gte("event_date", todayStr)
+    .lte("event_date", in14Str)
+    .order("event_date").limit(1).maybeSingle();
+
+  if (!data) return null;
+  const diff = Math.round(
+    (new Date(data.event_date).getTime() - new Date(todayStr).getTime()) / 86400000
+  );
+  return { name: data.name, daysAway: diff };
+}
+
 async function buildUrgencyAlerts(
   supabase: any, householdId: string, userId: string, now: Date
 ): Promise<string> {
