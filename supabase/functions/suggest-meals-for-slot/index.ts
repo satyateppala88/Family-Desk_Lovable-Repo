@@ -184,6 +184,9 @@ Return exactly ${count} distinct ${mealType} suggestions. Each suggestion should
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e: any) {
+    if ((e as any)?.name === "AbortError") {
+      return new Response(JSON.stringify({ error: "AI service timed out. Please try again." }), { status: 408, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
     log.error("suggest-meals-for-slot failed", e);
     const corsHeaders = getCorsHeaders(req.headers.get("origin"));
     return new Response(JSON.stringify({ error: e.message || "Failed to suggest meals" }), {

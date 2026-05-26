@@ -117,6 +117,9 @@ Write the closing line now.`;
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
+    if ((e as any)?.name === "AbortError") {
+      return new Response(JSON.stringify({ error: "AI service timed out. Please try again." }), { status: 408, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
     log.error("tagline error", { error: e instanceof Error ? e.message : String(e) });
     return new Response(JSON.stringify({ error: "Internal error" }), {
       status: 500,

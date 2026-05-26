@@ -313,6 +313,9 @@ Return ONLY the events that are actionable tasks the user needs to complete. Ski
     );
 
   } catch (err) {
+    if ((e as any)?.name === "AbortError") {
+      return new Response(JSON.stringify({ error: "AI service timed out. Please try again." }), { status: 408, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
     console.error('extract-calendar-tasks error:', err);
     const corsHeaders = getCorsHeaders(req.headers.get("origin"));
     return new Response(
