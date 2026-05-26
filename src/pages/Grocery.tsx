@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import { Header } from "@/components/layout/Header";
@@ -155,14 +155,14 @@ const Grocery = () => {
     }
   };
 
-  const handleEditItem = (item: PantryItem) => {
+  const handleEditItem = useCallback((item: PantryItem) => {
     setEditItem(item);
     setShowAddDialog(true);
-  };
+  }, []);
 
-  const handleDeleteItem = (id: string) => {
+  const handleDeleteItem = useCallback((id: string) => {
     setDeleteItemId(id);
-  };
+  }, []);
 
   const confirmDeleteItem = () => {
     if (deleteItemId) {
@@ -171,9 +171,9 @@ const Grocery = () => {
     }
   };
 
-  const handleUpdateQuantity = (id: string, quantity: number) => {
+  const handleUpdateQuantity = useCallback((id: string, quantity: number) => {
     updatePantryItem.mutate({ id, updates: { quantity } });
-  };
+  }, [updatePantryItem]);
 
   const handleBulkAdd = (items: Partial<PantryItem>[]) => {
     if (!householdId || !user?.id) return;
@@ -304,13 +304,13 @@ const Grocery = () => {
     }
   };
 
-  const handleCompleteList = (listId: string) => {
+  const handleCompleteList = useCallback((listId: string) => {
     completeShoppingList.mutate(listId);
-  };
+  }, [completeShoppingList]);
 
-  const handleDeleteList = (listId: string) => {
+  const handleDeleteList = useCallback((listId: string) => {
     setDeleteListId(listId);
-  };
+  }, []);
 
   const confirmDeleteList = () => {
     if (deleteListId) {
