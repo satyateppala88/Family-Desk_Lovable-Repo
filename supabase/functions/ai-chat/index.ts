@@ -190,6 +190,27 @@ const tools = [
       parameters: { type: "object", properties: {} },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "remember_user_goal",
+      description: "Save an important goal or preference the user mentioned so it is remembered in future conversations",
+      parameters: {
+        type: "object",
+        required: ["content", "memory_type"],
+        properties: {
+          content: {
+            type: "string",
+            description: "The goal or preference to remember, e.g. saving for Goa trip by December",
+          },
+          memory_type: {
+            type: "string",
+            enum: ["goal", "preference", "context"],
+          },
+        },
+      },
+    },
+  },
 ];
 
 async function executeToolCall(
@@ -343,6 +364,15 @@ async function executeToolCall(
         : { data: [] };
       const doneIds = new Set((logs || []).filter((l: any) => l.completed).map((l: any) => l.habit_id));
       return JSON.stringify((habits || []).map((h: any) => ({ name: h.name, done: doneIds.has(h.id) })));
+    }
+    case 'remember_user_goal': {
+      await supabase.from('user_ai_memory').insert({
+        user_id: userId,
+        household_id: householdId,
+        memory_type: args.memory_type,
+        content: args.content,
+      });
+      return `Remembered: '${args.content}'`;
     }
     default:
       return `Tool '${fn}' not yet implemented`;
