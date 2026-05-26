@@ -157,10 +157,26 @@ export const AIChatWidget = () => {
       const accessToken = sessionData.session?.access_token;
       if (!accessToken) throw new Error("Not authenticated");
 
+      // Map route category to AI module
+      const moduleMap: Record<string, string> = {
+        finance: 'finance',
+        tasks: 'tasks',
+        meals: 'meals',
+        habits: 'habits',
+        grocery: 'grocery',
+        default: 'general',
+      };
+      const aiModule = moduleMap[routeCategory] || 'general';
+
       const response = await fetch(CHAT_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
-        body: JSON.stringify({ messages: cappedMessages.map(m => ({ role: m.role, content: m.content })), householdId, userId: user.id, module: "general" }),
+        body: JSON.stringify({
+          messages: cappedMessages.map(m => ({ role: m.role, content: m.content })),
+          householdId,
+          userId: user.id,
+          module: aiModule,
+        }),
       });
 
       if (!response.ok) throw new Error(await response.text());
