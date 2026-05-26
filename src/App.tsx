@@ -1,4 +1,4 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -8,7 +8,30 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/layout/ProtectedRoute";
 import { AdminRoute } from "@/components/layout/AdminRoute";
 import { ErrorBoundary } from "@/components/layout/ErrorBoundary";
-import { AIChatWidget } from "./components/ai/AIChatWidget";
+const AIChatWidget = lazy(() =>
+  import("./components/ai/AIChatWidget").then((m) => ({ default: m.AIChatWidget }))
+);
+
+/**
+ * Defers mounting AIChatWidget (and its useHousehold queries) until the user
+ * first triggers the chat via the `familydesk:open-ai` event. After the first
+ * trigger the widget stays mounted so session state and listeners persist.
+ */
+const LazyAIChatWidget = () => {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    if (mounted) return;
+    const onOpen = () => setMounted(true);
+    window.addEventListener("familydesk:open-ai", onOpen);
+    return () => window.removeEventListener("familydesk:open-ai", onOpen);
+  }, [mounted]);
+  if (!mounted) return null;
+  return (
+    <Suspense fallback={null}>
+      <AIChatWidget />
+    </Suspense>
+  );
+};
 import ScrollToTop from "./components/ScrollToTop";
 import { OfflineBanner } from "@/components/layout/OfflineBanner";
 import { SyncingIndicator } from "@/components/layout/SyncingIndicator";
@@ -302,7 +325,7 @@ const App = () => (
                 <Route path="*" element={<NotFound />} />
               </Routes>
               </Suspense>
-              <AIChatWidget />
+              <LazyAIChatWidget />
               <NotificationPermissionPrompt />
               <InstallPrompt />
             </PrivacyModeProvider>
