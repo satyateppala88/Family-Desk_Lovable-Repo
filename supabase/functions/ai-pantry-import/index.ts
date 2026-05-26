@@ -1,4 +1,3 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { z } from "https://deno.land/x/zod@v3.23.8/mod.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
 import { authenticateRequest, verifyHouseholdMembership } from "../_shared/auth.ts";
@@ -15,7 +14,7 @@ const PantryImportSchema = z.object({
   householdId: z.string().uuid("Invalid household ID").optional(),
 });
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   const log = new Logger("ai-pantry-import");
   const corsHeaders = getCorsHeaders(req.headers.get("origin"));
   

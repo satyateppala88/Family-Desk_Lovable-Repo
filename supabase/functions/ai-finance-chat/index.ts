@@ -1,4 +1,3 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.78.0";
 import { z } from "https://deno.land/x/zod@v3.23.8/mod.ts";
@@ -21,7 +20,7 @@ const RequestSchema = z.object({
   householdId: z.string().uuid(),
 });
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   const log = new Logger("ai-finance-chat");
   const corsHeaders = getCorsHeaders(req.headers.get("origin"));
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });

@@ -1,4 +1,3 @@
-import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.78.0";
 import { getEmailWrapper, getWelcomeEmailContent } from "../_shared/email-templates.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
@@ -11,7 +10,7 @@ interface VerifyTokenRequest {
   origin: string;
 }
 
-serve(async (req: Request): Promise<Response> => {
+Deno.serve(async (req: Request): Promise<Response> => {
   const corsHeaders = getCorsHeaders(req.headers.get("origin"));
 
   if (req.method === "OPTIONS") {
