@@ -6,13 +6,12 @@ const GOOGLE_CLIENT_ID = Deno.env.get("GOOGLE_CLIENT_ID")!;
 const GOOGLE_CLIENT_SECRET = Deno.env.get("GOOGLE_CLIENT_SECRET")!;
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const CALENDAR_ENCRYPTION_KEY = Deno.env.get("CALENDAR_ENCRYPTION_KEY");
 
 interface CalendarConnection {
   id: string;
   user_id: string;
   google_account_email: string;
-  access_token: string;
-  refresh_token: string;
   token_expires_at: string;
   display_name: string;
   color: string;
@@ -123,6 +122,7 @@ function expandRecurrence(
 // deno-lint-ignore no-explicit-any
 async function refreshAccessToken(
   connection: CalendarConnection,
+  refreshToken: string,
   supabaseClient: any
 ): Promise<string> {
   const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
@@ -131,7 +131,7 @@ async function refreshAccessToken(
     body: new URLSearchParams({
       client_id: GOOGLE_CLIENT_ID,
       client_secret: GOOGLE_CLIENT_SECRET,
-      refresh_token: connection.refresh_token,
+      refresh_token: refreshToken,
       grant_type: "refresh_token",
     }),
   });
@@ -143,15 +143,15 @@ async function refreshAccessToken(
     throw new Error(`Failed to refresh token: ${tokenData.error}`);
   }
 
-  // Update token in database
+  // Update token in database (encrypted server-side)
   const expiresAt = new Date(Date.now() + tokenData.expires_in * 1000);
-  await supabaseClient
-    .from("calendar_connections")
-    .update({
-      access_token: tokenData.access_token,
-      token_expires_at: expiresAt.toISOString(),
-    })
-    .eq("id", connection.id);
+  await supabaseClient.rpc("upsert_calendar_tokens", {
+    _connection_id: connection.id,
+    _access_token: tokenData.access_token,
+    _refresh_token: tokenData.refresh_token ?? null,
+    _expires_at: expiresAt.toISOString(),
+    _key: CALENDAR_ENCRYPTION_KEY,
+  });
 
   return tokenData.access_token;
 }
@@ -258,6 +258,14 @@ serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
+    if (!CALENDAR_ENCRYPTION_KEY) {
+      console.error("CALENDAR_ENCRYPTION_KEY is not configured");
+      return new Response(JSON.stringify({ error: "Server misconfiguration" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // Verify user
     const token = authHeader.replace("Bearer ", "");
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
@@ -278,10 +286,11 @@ serve(async (req) => {
       });
     }
 
-    // Get all visible calendar connections for the household
+    // Get all visible calendar connections for the household (no tokens; we
+    // fetch decrypted tokens per-connection via get_calendar_tokens below).
     const { data: connections, error: connectionsError } = await supabase
       .from("calendar_connections")
-      .select("*")
+      .select("id, user_id, google_account_email, token_expires_at, display_name, color, is_visible")
       .eq("household_id", householdId)
       .eq("is_visible", true);
 
@@ -390,7 +399,19 @@ serve(async (req) => {
       console.log(`Token expires at: ${calConnection.token_expires_at}`);
       
       try {
-        let accessToken = calConnection.access_token;
+        // Pull decrypted tokens from the database (falls back to the legacy
+        // plaintext columns for any row not yet re-saved).
+        const { data: tokenRows, error: tokenErr } = await supabase.rpc(
+          "get_calendar_tokens",
+          { _connection_id: calConnection.id, _key: CALENDAR_ENCRYPTION_KEY },
+        );
+        if (tokenErr || !tokenRows || tokenRows.length === 0) {
+          console.error("Failed to load tokens for connection", calConnection.id, tokenErr);
+          continue;
+        }
+        const tokenRow = tokenRows[0] as { access_token: string; refresh_token: string };
+        let accessToken = tokenRow.access_token;
+        const refreshToken = tokenRow.refresh_token;
 
         // Check if token needs refresh
         const expiresAt = new Date(calConnection.token_expires_at);
@@ -399,7 +420,7 @@ serve(async (req) => {
         
         if (expiresAt <= new Date(Date.now() + 60000)) { // 1 minute buffer
           console.log("Token expired or expiring soon, refreshing...");
-          accessToken = await refreshAccessToken(calConnection, supabase);
+          accessToken = await refreshAccessToken(calConnection, refreshToken, supabase);
           console.log("Token refreshed successfully");
         }
 
