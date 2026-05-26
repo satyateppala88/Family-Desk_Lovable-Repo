@@ -10,7 +10,7 @@ import { QuickActionButton } from "@/components/ui/quick-action-button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Trash2, Pencil, RefreshCw, CalendarClock, Pause, Play } from "lucide-react";
 import { useHousehold } from "@/hooks/useHousehold";
-import { useFinanceRealtime } from "@/hooks/useFinance";
+import { useFinanceRealtime } from "@/hooks/finance";
 import {
   useSubscriptions,
   useCreateSubscription,

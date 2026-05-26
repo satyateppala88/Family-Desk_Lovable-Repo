@@ -13,7 +13,7 @@ import {
   useFinanceBudgets,
   useFinanceSavingsGoals,
   CATEGORY_LABELS,
-} from "@/hooks/useFinance";
+} from "@/hooks/finance";
 import { formatINR } from "@/lib/formatINR";
 import { PrivateValue, PrivateText } from "@/components/shared/PrivateValue";
 import { format } from "date-fns";

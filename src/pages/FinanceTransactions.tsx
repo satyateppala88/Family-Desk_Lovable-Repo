@@ -24,7 +24,7 @@ import {
   CATEGORY_LABELS,
   FINANCE_CATEGORIES,
   FinanceTransaction,
-} from "@/hooks/useFinance";
+} from "@/hooks/finance";
 import { useUserCards } from "@/hooks/useUserCards";
 import { useCustomCategories } from "@/hooks/useCustomCategories";
 import { resolveCategoryLabel } from "@/components/finance/CategorySelect";
