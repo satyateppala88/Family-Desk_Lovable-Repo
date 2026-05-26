@@ -6,6 +6,7 @@ import { checkRateLimitDb, AI_RATE_LIMIT } from "../_shared/rate-limit.ts";
 import { Logger } from "../_shared/logger.ts";
 import { buildHouseholdContext, DEGRADED_CONTEXT } from "../_shared/aiContext.ts";
 import { renderSystemPrompt } from "../_shared/aiSystemPrompts.ts";
+import { fetchWithTimeout } from "../_shared/fetch-with-timeout.ts";
 
 const MAX_MESSAGE_LENGTH = 4000;
 const MAX_MESSAGES = 50;
@@ -120,7 +121,7 @@ Deno.serve(async (req) => {
     const systemPrompt = renderSystemPrompt("finance", contextBlock);
     const trimmedMessages = messages.length > 20 ? messages.slice(-20) : messages;
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const response = await fetchWithTimeout("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${LOVABLE_API_KEY}`,

@@ -2,6 +2,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.78.0";
 import { getCorsHeaders } from "../_shared/cors.ts";
 import { checkRateLimit, AI_RATE_LIMIT } from "../_shared/rate-limit.ts";
 import { Logger } from "../_shared/logger.ts";
+import { fetchWithTimeout } from "../_shared/fetch-with-timeout.ts";
 
 interface TaskWithScore {
   task: any;
@@ -243,7 +244,7 @@ Analyze the provided tasks and select the most important tasks for today. Consid
 
 For each selected task, provide a brief, friendly reasoning (under 12 words) that may reference calendar context when relevant.`;
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const response = await fetchWithTimeout("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${apiKey}`,

@@ -3,6 +3,7 @@ import { getCorsHeaders } from "../_shared/cors.ts";
 import { authenticateRequest } from "../_shared/auth.ts";
 import { checkRateLimit, AI_RATE_LIMIT } from "../_shared/rate-limit.ts";
 import { Logger } from "../_shared/logger.ts";
+import { fetchWithTimeout } from "../_shared/fetch-with-timeout.ts";
 
 const InputSchema = z.object({
   card_name: z.string().min(2).max(120),
@@ -59,7 +60,7 @@ Categories must use these keys: "all", "groceries", "dining_out", "transport", "
 Networks: "Visa", "Mastercard", "RuPay", "Amex", "Diners".
 Color: a hex color matching the bank's brand (e.g. HDFC #1a3a5c, SBI #003d82, ICICI #ff9900, Axis #2874f0).`;
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const response = await fetchWithTimeout("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({

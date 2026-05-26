@@ -3,6 +3,7 @@ import { z } from "https://deno.land/x/zod@v3.23.8/mod.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
 import { checkRateLimit, AI_HEAVY_RATE_LIMIT } from "../_shared/rate-limit.ts";
 import { Logger } from "../_shared/logger.ts";
+import { fetchWithTimeout } from "../_shared/fetch-with-timeout.ts";
 
 // Input validation schema
 const RegenerateMealsSchema = z.object({
@@ -111,7 +112,7 @@ Generate creative, varied meals that are different from what the user might alre
       throw new Error("LOVABLE_API_KEY not configured");
     }
 
-    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const aiResponse = await fetchWithTimeout("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${LOVABLE_API_KEY}`,

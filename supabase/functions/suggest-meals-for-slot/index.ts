@@ -3,6 +3,7 @@ import { getCorsHeaders } from "../_shared/cors.ts";
 import { authenticateRequest, verifyHouseholdMembership } from "../_shared/auth.ts";
 import { checkRateLimit, AI_RATE_LIMIT } from "../_shared/rate-limit.ts";
 import { Logger } from "../_shared/logger.ts";
+import { fetchWithTimeout } from "../_shared/fetch-with-timeout.ts";
 
 const Schema = z.object({
   householdId: z.string().uuid(),
@@ -84,7 +85,7 @@ ${pantryText ? "\n" + pantryText + "\n\nPrioritize recipes that use available pa
 Return exactly ${count} distinct ${mealType} suggestions. Each suggestion should be quick to scan: short title, realistic prep+cook time, and the 4-6 most important ingredients.`;
 
     log.info("Calling AI gateway", { mealType, count });
-    const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const aiResp = await fetchWithTimeout("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
       body: JSON.stringify({
