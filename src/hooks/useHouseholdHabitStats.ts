@@ -28,9 +28,9 @@ export const useHouseholdHabitStats = (householdId: string | null) => {
           supabase.from("household_members").select("user_id").eq("household_id", householdId),
           supabase.from("habits").select("*").eq("household_id", householdId).eq("is_active", true),
           supabase.from("habit_assignees").select("habit_id, user_id"),
-          supabase.from("habit_logs").select("*").eq("log_date", today),
+          supabase.from("habit_logs").select("habit_id, user_id, completed").eq("log_date", today),
           supabase.from("habit_streaks").select("*"),
-          supabase.from("habit_logs").select("*").gte("log_date", weekStart).lte("log_date", weekEnd),
+          supabase.from("habit_logs").select("habit_id, user_id, completed, log_date").gte("log_date", weekStart).lte("log_date", weekEnd),
         ]);
 
       const memberIds = (membersRes.data ?? []).map((m: any) => m.user_id);

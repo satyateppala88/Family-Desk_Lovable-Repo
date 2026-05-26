@@ -85,7 +85,7 @@ export const useHabits = (householdId: string | null, userId?: string) => {
 
       const { data, error } = await supabase
         .from("habit_logs")
-        .select("*")
+        .select("id, habit_id, user_id, log_date, completed, actual_value, logged_at")
         .eq("user_id", targetUserId)
         .eq("log_date", today);
 
