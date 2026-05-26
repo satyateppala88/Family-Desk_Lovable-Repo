@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
-import { format, startOfDay, endOfDay } from "date-fns";
+import { format } from "date-fns";
 
 export const useDashboardStats = (householdId: string | null) => {
   return useQuery({
