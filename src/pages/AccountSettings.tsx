@@ -25,6 +25,8 @@ const AccountSettings = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   
   // Profile state
   const [displayName, setDisplayName] = useState("");
@@ -291,9 +293,51 @@ const AccountSettings = () => {
                 <p className="text-sm text-muted-foreground">
                   Permanently delete your account and all associated data. This action cannot be undone.
                 </p>
-                <Button variant="destructive" disabled>
-                  Delete Account (Coming Soon)
-                </Button>
+                {!showDeleteConfirm ? (
+                  <Button variant="destructive" onClick={() => setShowDeleteConfirm(true)}>
+                    Delete Account
+                  </Button>
+                ) : (
+                  <div className="space-y-3 rounded-md border border-destructive/40 bg-destructive/5 p-3">
+                    <p className="text-sm text-destructive">
+                      This permanently deletes your account and all data. Cannot be undone.
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        variant="destructive"
+                        disabled={deleting}
+                        onClick={async () => {
+                          setDeleting(true);
+                          try {
+                            const { data: { session } } = await supabase.auth.getSession();
+                            const res = await supabase.functions.invoke('delete-account', {
+                              headers: { Authorization: `Bearer ${session?.access_token}` },
+                            });
+                            if (res.error) throw res.error;
+                            await supabase.auth.signOut();
+                            window.location.href = '/';
+                          } catch (e: any) {
+                            toast({
+                              title: 'Deletion failed',
+                              description: e?.message ?? 'Please try again or contact support.',
+                              variant: 'destructive',
+                            });
+                            setDeleting(false);
+                          }
+                        }}
+                      >
+                        {deleting ? 'Deleting...' : 'Yes, delete my account'}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        disabled={deleting}
+                        onClick={() => setShowDeleteConfirm(false)}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
               
             </CardContent>
