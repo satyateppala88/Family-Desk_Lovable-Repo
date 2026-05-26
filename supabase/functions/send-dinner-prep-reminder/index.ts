@@ -1,4 +1,4 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.95.0";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.78.0";
 import { sendPush } from "../_shared/push.ts";
 import { todayIST } from "../_shared/time.ts";
 import { validateCronSecret } from "../_shared/cron-auth.ts";
