@@ -92,6 +92,61 @@ const tools = [
   },
 ];
 
+async function executeToolCall(
+  fn: string, args: any, supabase: any, householdId: string, userId: string
+): Promise<string> {
+  switch (fn) {
+    case 'create_task': {
+      const priorityMap: Record<string, number> = { urgent: 1, high: 2, medium: 3, low: 4 };
+      const { data, error } = await supabase.from('tasks').insert({
+        title: args.title,
+        description: args.description || null,
+        priority_level: priorityMap[args.priority] || 3,
+        due_date: args.due_date || null,
+        household_id: householdId,
+        created_by: userId,
+        task_status: 'pending',
+      }).select('id, title').single();
+      if (error) throw new Error(error.message);
+      return `Task created: '${data.title}' (ID: ${data.id})`;
+    }
+    case 'update_task': {
+      const statusMap: Record<string, string> = { pending: 'pending', in_progress: 'in_progress', completed: 'done' };
+      const { error } = await supabase.from('tasks')
+        .update({ task_status: statusMap[args.status] || args.status })
+        .eq('id', args.task_id).eq('household_id', householdId);
+      if (error) throw new Error(error.message);
+      return `Task ${args.task_id} updated to ${args.status}`;
+    }
+    case 'list_tasks': {
+      const statusFilter = args.status && args.status !== 'all' ? args.status : null;
+      let query = supabase.from('tasks').select('title, task_status, due_date')
+        .eq('household_id', householdId).limit(10);
+      if (statusFilter) query = query.eq('task_status', statusFilter);
+      const { data } = await query;
+      return JSON.stringify(data || []);
+    }
+    case 'get_meal_plan': {
+      const { data } = await supabase.from('meal_plans')
+        .select('week_start_date, meal_plan_items(meal_type, scheduled_date, recipes(name))')
+        .eq('household_id', householdId)
+        .order('week_start_date', { ascending: false }).limit(1).maybeSingle();
+      return JSON.stringify(data || {});
+    }
+    case 'get_household_summary': {
+      const [tasks, pantry] = await Promise.all([
+        supabase.from('tasks').select('id', { count: 'exact', head: true })
+          .eq('household_id', householdId).neq('task_status', 'done'),
+        supabase.from('pantry_items').select('id', { count: 'exact', head: true })
+          .eq('household_id', householdId),
+      ]);
+      return JSON.stringify({ open_tasks: tasks.count, pantry_items: pantry.count });
+    }
+    default:
+      return `Tool '${fn}' not yet implemented`;
+  }
+}
+
 Deno.serve(async (req) => {
   const log = new Logger("ai-chat");
   const corsHeaders = getCorsHeaders(req.headers.get("origin"));
@@ -203,7 +258,8 @@ Deno.serve(async (req) => {
     // Cap conversation history at the most recent 20 messages.
     const trimmedMessages = messages.length > 20 ? messages.slice(-20) : messages;
 
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    // First pass: non-streaming to detect tool calls
+    const firstResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${LOVABLE_API_KEY}`,
@@ -217,32 +273,91 @@ Deno.serve(async (req) => {
         ],
         tools,
         tool_choice: 'auto',
-        stream: true,
+        stream: false,
       }),
     });
 
-    if (!response.ok) {
-      if (response.status === 429) {
+    if (!firstResponse.ok) {
+      if (firstResponse.status === 429) {
         return new Response(JSON.stringify({ error: "Rate limits exceeded. Please try again in a moment." }), {
           status: 429,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
-      if (response.status === 402) {
+      if (firstResponse.status === 402) {
         return new Response(JSON.stringify({ error: "AI credits depleted. Please contact support." }), {
           status: 402,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
-      throw new Error(`AI gateway error: ${response.status}`);
+      throw new Error(`AI gateway error: ${firstResponse.status}`);
     }
 
-    return new Response(response.body, {
+    const firstData = await firstResponse.json();
+    const firstChoice = firstData.choices?.[0];
+    const toolCalls = firstChoice?.message?.tool_calls;
+
+    // If Gemini called tools, execute them and build tool results
+    const toolResultMessages: any[] = [];
+    if (toolCalls?.length) {
+      for (const tc of toolCalls) {
+        const fn = tc.function.name;
+        let args: any = {};
+        try { args = JSON.parse(tc.function.arguments || '{}'); } catch { /* ignore */ }
+        let result = '';
+        try {
+          result = await executeToolCall(fn, args, supabase, householdId, userId);
+        } catch (e: any) {
+          result = `Error: ${e.message}`;
+        }
+        toolResultMessages.push({ role: 'tool', tool_call_id: tc.id, content: result });
+      }
+    }
+
+    // Second pass: stream the final response (with tool results if any)
+    const finalMessages = toolCalls?.length
+      ? [{ role: 'system', content: systemPrompt }, ...trimmedMessages,
+         { role: 'assistant', content: null, tool_calls: toolCalls },
+         ...toolResultMessages]
+      : [{ role: 'system', content: systemPrompt }, ...trimmedMessages];
+
+    const streamResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'google/gemini-2.5-flash',
+        messages: finalMessages,
+        stream: true,
+      }),
+    });
+
+    if (!streamResponse.ok) {
+      if (streamResponse.status === 429) {
+        return new Response(JSON.stringify({ error: "Rate limits exceeded. Please try again in a moment." }), {
+          status: 429,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      if (streamResponse.status === 402) {
+        return new Response(JSON.stringify({ error: "AI credits depleted. Please contact support." }), {
+          status: 402,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      throw new Error(`AI gateway error: ${streamResponse.status}`);
+    }
+
+    const toolsExecuted = toolCalls?.map((tc: any) => tc.function.name).join(',') || '';
+    return new Response(streamResponse.body, {
       headers: {
         ...corsHeaders,
         'Content-Type': 'text/event-stream',
         'x-context-degraded': contextDegraded ? 'true' : 'false',
-        'Access-Control-Expose-Headers': 'x-context-degraded',
+        'x-tools-executed': toolsExecuted,
+        'Access-Control-Expose-Headers': 'x-context-degraded, x-tools-executed',
       },
     });
 
