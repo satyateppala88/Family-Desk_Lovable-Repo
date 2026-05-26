@@ -10,7 +10,6 @@ import {
 
 interface RequestBody {
   requesterName: string;
-  requesterEmail: string;
   householdId: string;
   householdName: string;
 }
@@ -49,20 +48,28 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    const { requesterName, requesterEmail, householdId, householdName }: RequestBody = await req.json();
+    const { requesterName, householdId, householdName }: RequestBody = await req.json();
 
     // Validate required fields
-    if (!requesterName || !requesterEmail || !householdId || !householdName) {
+    if (!requesterName || !householdId || !householdName) {
       return new Response(
         JSON.stringify({ error: "Missing required fields" }),
         { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
 
-    // Get all admin members of the household
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
+    // Fetch requester's email from profile (prevent spoofing)
+    const { data: requesterProfile } = await supabaseAdmin
+      .from("profiles")
+      .select("email, display_name")
+      .eq("id", authUser.id)
+      .maybeSingle();
+    const requesterEmail = requesterProfile?.email ?? "";
+
+    // Get all admin members of the household
     const { data: admins, error: adminsError } = await supabaseAdmin
       .from("household_members")
       .select("user_id")
