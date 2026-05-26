@@ -8,7 +8,7 @@ export const setHasSeenIntro = (): void =>
 
 /* ---------- Welcome Feature Tour (post-install / first-launch) ---------- */
 
-const FEATURE_TOUR_KEY = "familydesk_has_seen_feature_tour_v1";
+const FEATURE_TOUR_KEY = "fd_onboarding_seen";
 
 export const getHasSeenFeatureTour = (): boolean => {
   try {
@@ -34,22 +34,69 @@ export const clearHasSeenFeatureTour = (): void => {
   }
 };
 
-const PERMISSIONS_TUTORIAL_KEY = "familydesk_has_seen_permissions_tutorial";
+/* ---------- Contextual permission tracking (per-capability) ---------- */
 
-export const getHasSeenPermissionsTutorial = (): boolean => {
-  try {
-    return localStorage.getItem(PERMISSIONS_TUTORIAL_KEY) === "true";
-  } catch {
-    return true; // fail-closed: don't nag if storage unavailable
-  }
+import type { PermissionKind } from "@/lib/permissions";
+
+const ASKED_KEYS: Record<PermissionKind, string> = {
+  microphone: "fd_perm_mic_asked",
+  camera: "fd_perm_camera_asked",
+  photos: "fd_perm_photos_asked",
+  notifications: "fd_perm_notif_asked",
 };
 
-export const setHasSeenPermissionsTutorial = (): void => {
-  try {
-    localStorage.setItem(PERMISSIONS_TUTORIAL_KEY, "true");
-  } catch {
-    /* ignore */
-  }
+const REMIND_KEYS: Partial<Record<PermissionKind, string>> = {
+  microphone: "fd_perm_mic_remind",
+  notifications: "fd_perm_notif_remind",
+};
+
+const safeGet = (k: string): string | null => {
+  try { return localStorage.getItem(k); } catch { return null; }
+};
+const safeSet = (k: string, v: string): void => {
+  try { localStorage.setItem(k, v); } catch { /* ignore */ }
+};
+const safeRemove = (k: string): void => {
+  try { localStorage.removeItem(k); } catch { /* ignore */ }
+};
+
+export const hasAskedPermission = (kind: PermissionKind): boolean =>
+  safeGet(ASKED_KEYS[kind]) === "true";
+
+export const markPermissionAsked = (kind: PermissionKind): void =>
+  safeSet(ASKED_KEYS[kind], "true");
+
+export const setPermissionRemindLater = (kind: PermissionKind, days = 7): void => {
+  const key = REMIND_KEYS[kind];
+  if (!key) return;
+  safeSet(key, String(Date.now() + days * 24 * 60 * 60 * 1000));
+};
+
+export const isPermissionRemindActive = (kind: PermissionKind): boolean => {
+  const key = REMIND_KEYS[kind];
+  if (!key) return false;
+  const raw = safeGet(key);
+  if (!raw) return false;
+  const ts = Number(raw);
+  if (!Number.isFinite(ts)) { safeRemove(key); return false; }
+  return Date.now() < ts;
+};
+
+/**
+ * On app launch: for any expired remind timer, clear both the remind key
+ * and the asked key so the contextual sheet can show again on next trigger.
+ */
+export const processExpiredPermissionReminds = (): void => {
+  (Object.keys(REMIND_KEYS) as PermissionKind[]).forEach((kind) => {
+    const key = REMIND_KEYS[kind]!;
+    const raw = safeGet(key);
+    if (!raw) return;
+    const ts = Number(raw);
+    if (!Number.isFinite(ts) || Date.now() >= ts) {
+      safeRemove(key);
+      safeRemove(ASKED_KEYS[kind]);
+    }
+  });
 };
 
 /* ---------- Per-capability snooze ---------- */

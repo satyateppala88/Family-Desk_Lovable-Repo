@@ -3,44 +3,35 @@ import { supabase } from "@/integrations/supabase/client";
 import { TaskmasterTask, TaskAssignee, TaskStatus } from "@/types/taskmaster";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { cloneTaskAsNextOccurrence, type RecurrencePattern } from "@/lib/recurrence";
+import { format } from "date-fns";
 
-export const useTaskmaster = (householdId: string | null) => {
+export const useTaskmaster = (
+  householdId: string | null,
+  options?: { excludeDone?: boolean },
+) => {
+  const excludeDone = options?.excludeDone ?? false;
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { user } = useAuth();
 
   const { data: tasks, isLoading } = useQuery({
-    queryKey: ["taskmaster-tasks", householdId],
+    queryKey: ["taskmaster-tasks", householdId, { excludeDone }],
     queryFn: async () => {
       if (!householdId) return [];
 
-      const { data, error } = await supabase
+      let query = supabase
         .from("tasks")
-        .select(`
-          *,
-          project:projects(*)
-        `)
-        .eq("household_id", householdId)
-        .order("created_at", { ascending: false });
+        .select("*, project:projects(*), assignees:task_assignees(*)")
+        .eq("household_id", householdId);
+      if (excludeDone) {
+        query = query.neq("task_status", "done");
+      }
+      const { data, error } = await query.order("created_at", { ascending: false });
 
       if (error) throw error;
 
-      // Fetch assignees for all tasks
-      const taskIds = data.map((t: any) => t.id);
-      let assignees: any[] = [];
-      if (taskIds.length > 0) {
-        const { data: assigneeData } = await supabase
-          .from("task_assignees")
-          .select("*")
-          .in("task_id", taskIds);
-        assignees = assigneeData || [];
-      }
-
-      // Map assignees to tasks
-      return data.map((task: any) => ({
-        ...task,
-        assignees: assignees?.filter((a: any) => a.task_id === task.id) || [],
-      })) as TaskmasterTask[];
+      return data as TaskmasterTask[];
     },
     enabled: !!householdId,
     staleTime: 30 * 1000,
@@ -48,6 +39,9 @@ export const useTaskmaster = (householdId: string | null) => {
 
   const createTask = useMutation({
     mutationFn: async (newTask: Partial<TaskmasterTask> & { assignee_ids?: string[] }) => {
+      if (!newTask.title?.trim()) throw new Error('Task title cannot be empty');
+      if (newTask.title.trim().length > 200) throw new Error('Task title must be under 200 characters');
+
       const {
         assignee_ids,
         assignees: _ignoredAssignees,
@@ -77,19 +71,41 @@ export const useTaskmaster = (householdId: string | null) => {
 
       return data;
     },
+    onMutate: async (newTask) => {
+      await queryClient.cancelQueries({ queryKey: ["taskmaster-tasks", householdId] });
+      const previous = queryClient.getQueriesData<TaskmasterTask[]>({
+        queryKey: ["taskmaster-tasks", householdId],
+      });
+      const optimistic: any = {
+        ...newTask,
+        id: `temp-${Date.now()}`,
+        created_at: new Date().toISOString(),
+        assignees: [],
+      };
+      queryClient.setQueriesData<TaskmasterTask[]>(
+        { queryKey: ["taskmaster-tasks", householdId] },
+        (old) => [optimistic, ...(old || [])],
+      );
+      return { previous };
+    },
+    onError: (_err, _vars, context: any) => {
+      context?.previous?.forEach(([key, data]: [any, any]) => {
+        queryClient.setQueryData(key, data);
+      });
+      toast({
+        title: "Something went wrong",
+        description: "Please try again.",
+        variant: "destructive",
+      });
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["taskmaster-tasks", householdId] });
       toast({
         title: "Task created",
         description: "Your task has been added successfully.",
       });
     },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["taskmaster-tasks", householdId] });
     },
   });
 
@@ -106,7 +122,7 @@ export const useTaskmaster = (householdId: string | null) => {
 
       const { data, error } = await supabase
         .from("tasks")
-        .update(safeUpdates)
+        .update(safeUpdates as any)
         .eq("id", id)
         .select()
         .single();
@@ -130,20 +146,37 @@ export const useTaskmaster = (householdId: string | null) => {
 
       return data;
     },
+    onMutate: async ({ id, updates }) => {
+      await queryClient.cancelQueries({ queryKey: ["taskmaster-tasks", householdId] });
+      const previous = queryClient.getQueriesData<TaskmasterTask[]>({
+        queryKey: ["taskmaster-tasks", householdId],
+      });
+      queryClient.setQueriesData<TaskmasterTask[]>(
+        { queryKey: ["taskmaster-tasks", householdId] },
+        (old) =>
+          (old || []).map((t) => (t.id === id ? ({ ...t, ...updates } as TaskmasterTask) : t)),
+      );
+      return { previous };
+    },
+    onError: (_err, _vars, context: any) => {
+      context?.previous?.forEach(([key, data]: [any, any]) => {
+        queryClient.setQueryData(key, data);
+      });
+      toast({
+        title: "Something went wrong",
+        description: "Please try again.",
+        variant: "destructive",
+      });
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["taskmaster-tasks", householdId] });
-      queryClient.invalidateQueries({ queryKey: ["daily-plan"] });
       toast({
         title: "Task updated",
         description: "Your changes have been saved.",
       });
     },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["taskmaster-tasks", householdId] });
+      queryClient.invalidateQueries({ queryKey: ["daily-plan"] });
     },
   });
 
@@ -156,20 +189,36 @@ export const useTaskmaster = (householdId: string | null) => {
 
       if (error) throw error;
     },
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: ["taskmaster-tasks", householdId] });
+      const previous = queryClient.getQueriesData<TaskmasterTask[]>({
+        queryKey: ["taskmaster-tasks", householdId],
+      });
+      queryClient.setQueriesData<TaskmasterTask[]>(
+        { queryKey: ["taskmaster-tasks", householdId] },
+        (old) => (old || []).filter((t) => t.id !== id),
+      );
+      return { previous };
+    },
+    onError: (_err, _vars, context: any) => {
+      context?.previous?.forEach(([key, data]: [any, any]) => {
+        queryClient.setQueryData(key, data);
+      });
+      toast({
+        title: "Something went wrong",
+        description: "Please try again.",
+        variant: "destructive",
+      });
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["taskmaster-tasks", householdId] });
-      queryClient.invalidateQueries({ queryKey: ["daily-plan"] });
       toast({
         title: "Task deleted",
         description: "The task has been removed.",
       });
     },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["taskmaster-tasks", householdId] });
+      queryClient.invalidateQueries({ queryKey: ["daily-plan"] });
     },
   });
 
@@ -186,20 +235,131 @@ export const useTaskmaster = (householdId: string | null) => {
         .single();
 
       if (error) throw error;
-      return data;
+
+      // Auto-generate next occurrence if recurring
+      let nextDueLabel: string | null = null;
+      try {
+        const next = cloneTaskAsNextOccurrence(data as any);
+        if (next) {
+          const { data: created } = await supabase
+            .from("tasks")
+            .insert(next as any)
+            .select()
+            .single();
+          if (created?.id) {
+            // Copy assignees
+            const { data: existingAssignees } = await supabase
+              .from("task_assignees")
+              .select("user_id")
+              .eq("task_id", id);
+            if (existingAssignees && existingAssignees.length > 0) {
+              await supabase.from("task_assignees").insert(
+                existingAssignees.map((a: any) => ({
+                  task_id: created.id,
+                  user_id: a.user_id,
+                }))
+              );
+            }
+            if (created.due_date) {
+              nextDueLabel = format(new Date(created.due_date), "PPP");
+            }
+          }
+        }
+      } catch (e) {
+        console.error("Failed to clone recurring task", e);
+      }
+
+      return { ...data, _nextDueLabel: nextDueLabel };
     },
-    onSuccess: () => {
+    onSuccess: (result: any) => {
       queryClient.invalidateQueries({ queryKey: ["taskmaster-tasks", householdId] });
       queryClient.invalidateQueries({ queryKey: ["daily-plan"] });
       toast({
         title: "Task completed",
-        description: "Great job!",
+        description: result?._nextDueLabel
+          ? `Next one scheduled for ${result._nextDueLabel}.`
+          : "Great job!",
       });
     },
     onError: (error: any) => {
       toast({
-        title: "Error",
-        description: error.message,
+        title: "Something went wrong",
+        description: "Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const bulkCreateFromTemplate = useMutation({
+    mutationFn: async ({
+      projectName,
+      items,
+    }: {
+      projectName: string;
+      items: Array<{
+        title: string;
+        task_category?: string;
+        priority_level?: number;
+        due_date?: string | null;
+        recurring?: boolean;
+        recurring_pattern?: RecurrencePattern | null;
+      }>;
+    }) => {
+      if (!householdId) throw new Error("No household");
+
+      const { data: project, error: projErr } = await supabase
+        .from("projects")
+        .insert({
+          name: projectName,
+          household_id: householdId,
+          type: "home",
+          status: "in_progress",
+          created_by: user?.id,
+        } as any)
+        .select()
+        .single();
+      if (projErr) throw projErr;
+
+      const rows = items.map((it) => ({
+        title: it.title,
+        task_category: (it.task_category as any) ?? "other",
+        priority_level: it.priority_level ?? 3,
+        task_status: "backlog" as TaskStatus,
+        due_date: it.due_date ?? null,
+        recurring: !!it.recurring,
+        recurring_pattern: (it.recurring_pattern as any) ?? null,
+        household_id: householdId,
+        project_id: project.id,
+        created_by: user?.id,
+      }));
+
+      const { data: tasksData, error: tasksErr } = await supabase
+        .from("tasks")
+        .insert(rows as any)
+        .select();
+      if (tasksErr) throw tasksErr;
+
+      // Assign to current user
+      if (user?.id && tasksData && tasksData.length > 0) {
+        await supabase.from("task_assignees").insert(
+          tasksData.map((t: any) => ({ task_id: t.id, user_id: user.id }))
+        );
+      }
+
+      return { project, count: tasksData?.length ?? 0 };
+    },
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ["taskmaster-tasks", householdId] });
+      queryClient.invalidateQueries({ queryKey: ["projects", householdId] });
+      toast({
+        title: "Template applied",
+        description: `${result.count} tasks added to ${result.project.name}.`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Something went wrong",
+        description: "Please try again.",
         variant: "destructive",
       });
     },
@@ -230,8 +390,8 @@ export const useTaskmaster = (householdId: string | null) => {
     },
     onError: (error: any) => {
       toast({
-        title: "Error",
-        description: error.message,
+        title: "Something went wrong",
+        description: "Please try again.",
         variant: "destructive",
       });
     },
@@ -245,5 +405,6 @@ export const useTaskmaster = (householdId: string | null) => {
     deleteTask,
     markTaskDone,
     startTask,
+    bulkCreateFromTemplate,
   };
 };

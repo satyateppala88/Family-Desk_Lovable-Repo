@@ -1,26 +1,7 @@
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 
-// Defense-in-depth: this module must never read VAPID material from the bundle.
-// Vite inlines `import.meta.env.VITE_*` strings at build time, so a stray
-// `VITE_VAPID_*` var would end up in the client JS. Fail fast at module load
-// if any such var ever appears — VAPID keys must only live in Supabase secrets
-// and only be read inside edge functions.
-try {
-  const env = (import.meta as { env?: Record<string, unknown> }).env;
-  if (env) {
-    for (const key of Object.keys(env)) {
-      if (/vapid/i.test(key)) {
-        throw new Error(
-          `[security] "${key}" must not be exposed to the client bundle. ` +
-            "Move VAPID material to Supabase secrets and access it only from edge functions."
-        );
-      }
-    }
-  }
-} catch (e) {
-  if (e instanceof Error && e.message.startsWith("[security]")) throw e;
-  // ignore — non-Vite runtime (tests, SSR) where import.meta.env is absent.
-}
+// NOTE: The previous VAPID-in-bundle guard was removed because the new
+// pushNotifications.ts spec reads VITE_VAPID_PUBLIC_KEY from the client.
 
 /**
  * Frontend Web Push subscription manager.

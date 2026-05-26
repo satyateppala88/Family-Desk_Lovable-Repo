@@ -6,6 +6,7 @@ const GOOGLE_CLIENT_ID = Deno.env.get("GOOGLE_CLIENT_ID")!;
 const GOOGLE_CLIENT_SECRET = Deno.env.get("GOOGLE_CLIENT_SECRET")!;
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const CALENDAR_ENCRYPTION_KEY = Deno.env.get("CALENDAR_ENCRYPTION_KEY");
 
 const SCOPES = [
   "https://www.googleapis.com/auth/calendar.readonly",
@@ -34,6 +35,14 @@ serve(async (req) => {
     }
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+    if (!CALENDAR_ENCRYPTION_KEY) {
+      console.error("CALENDAR_ENCRYPTION_KEY is not configured");
+      return new Response(JSON.stringify({ error: "Server misconfiguration" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
     
     let userId: string | null = null;
     if (authHeader) {
@@ -121,23 +130,21 @@ serve(async (req) => {
       // Store in database
       const { data: existingConnection } = await supabase
         .from("calendar_connections")
-        .select("id, refresh_token")
+        .select("id")
         .eq("user_id", stateUserId)
         .eq("google_account_email", userInfo.email)
         .single();
 
       if (existingConnection) {
-        // Update existing connection
-        const existingRefreshToken = (existingConnection as { id: string; refresh_token: string }).refresh_token;
-        const { error: updateError } = await supabase
-          .from("calendar_connections")
-          .update({
-            access_token: tokenData.access_token,
-            refresh_token: tokenData.refresh_token || existingRefreshToken,
-            token_expires_at: expiresAt.toISOString(),
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", existingConnection.id);
+        // Update existing connection (encrypts tokens server-side; preserves
+        // existing refresh_token when Google omits one)
+        const { error: updateError } = await supabase.rpc("upsert_calendar_tokens", {
+          _connection_id: existingConnection.id,
+          _access_token: tokenData.access_token,
+          _refresh_token: tokenData.refresh_token ?? null,
+          _expires_at: expiresAt.toISOString(),
+          _key: CALENDAR_ENCRYPTION_KEY,
+        });
 
         if (updateError) {
           console.error("Update error:", updateError);
@@ -158,19 +165,17 @@ serve(async (req) => {
 
         const colorIndex = (count || 0) % colors.length;
 
-        const { error: insertError } = await supabase
-          .from("calendar_connections")
-          .insert({
-            user_id: stateUserId,
-            household_id: householdId,
-            google_account_email: userInfo.email,
-            access_token: tokenData.access_token,
-            refresh_token: tokenData.refresh_token,
-            token_expires_at: expiresAt.toISOString(),
-            display_name: userInfo.email.split("@")[0],
-            color: colors[colorIndex],
-            is_visible: true,
-          });
+        const { error: insertError } = await supabase.rpc("insert_calendar_connection", {
+          _user_id: stateUserId,
+          _household_id: householdId,
+          _email: userInfo.email,
+          _access_token: tokenData.access_token,
+          _refresh_token: tokenData.refresh_token,
+          _expires_at: expiresAt.toISOString(),
+          _display_name: userInfo.email.split("@")[0],
+          _color: colors[colorIndex],
+          _key: CALENDAR_ENCRYPTION_KEY,
+        });
 
         if (insertError) {
           console.error("Insert error:", insertError);

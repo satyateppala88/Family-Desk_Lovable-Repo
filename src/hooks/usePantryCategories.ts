@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
 export interface PantryCategory {
@@ -86,8 +86,8 @@ export const usePantryCategories = (householdId: string | null) => {
     },
     onError: (error: Error) => {
       toast({
-        title: "Error",
-        description: error.message,
+        title: "Something went wrong",
+        description: "Please try again.",
         variant: "destructive",
       });
     },

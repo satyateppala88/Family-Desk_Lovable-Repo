@@ -175,7 +175,8 @@ export type Database = {
       }
       calendar_connections: {
         Row: {
-          access_token: string
+          access_token: string | null
+          access_token_enc: string | null
           color: string
           created_at: string | null
           display_name: string
@@ -183,13 +184,15 @@ export type Database = {
           household_id: string
           id: string
           is_visible: boolean | null
-          refresh_token: string
+          refresh_token: string | null
+          refresh_token_enc: string | null
           token_expires_at: string
           updated_at: string | null
           user_id: string
         }
         Insert: {
-          access_token: string
+          access_token?: string | null
+          access_token_enc?: string | null
           color?: string
           created_at?: string | null
           display_name: string
@@ -197,13 +200,15 @@ export type Database = {
           household_id: string
           id?: string
           is_visible?: boolean | null
-          refresh_token: string
+          refresh_token?: string | null
+          refresh_token_enc?: string | null
           token_expires_at: string
           updated_at?: string | null
           user_id: string
         }
         Update: {
-          access_token?: string
+          access_token?: string | null
+          access_token_enc?: string | null
           color?: string
           created_at?: string | null
           display_name?: string
@@ -211,7 +216,8 @@ export type Database = {
           household_id?: string
           id?: string
           is_visible?: boolean | null
-          refresh_token?: string
+          refresh_token?: string | null
+          refresh_token_enc?: string | null
           token_expires_at?: string
           updated_at?: string | null
           user_id?: string
@@ -257,6 +263,70 @@ export type Database = {
             columns: ["household_id"]
             isOneToOne: true
             referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      challenge_logs: {
+        Row: {
+          challenge_id: string
+          completed: boolean
+          created_at: string
+          id: string
+          log_date: string
+          user_id: string
+        }
+        Insert: {
+          challenge_id: string
+          completed?: boolean
+          created_at?: string
+          id?: string
+          log_date?: string
+          user_id: string
+        }
+        Update: {
+          challenge_id?: string
+          completed?: boolean
+          created_at?: string
+          id?: string
+          log_date?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "challenge_logs_challenge_id_fkey"
+            columns: ["challenge_id"]
+            isOneToOne: false
+            referencedRelation: "household_challenges"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      challenge_participants: {
+        Row: {
+          challenge_id: string
+          id: string
+          joined_at: string
+          user_id: string
+        }
+        Insert: {
+          challenge_id: string
+          id?: string
+          joined_at?: string
+          user_id: string
+        }
+        Update: {
+          challenge_id?: string
+          id?: string
+          joined_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "challenge_participants_challenge_id_fkey"
+            columns: ["challenge_id"]
+            isOneToOne: false
+            referencedRelation: "household_challenges"
             referencedColumns: ["id"]
           },
         ]
@@ -379,6 +449,93 @@ export type Database = {
           },
         ]
       }
+      email_send_log: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          id: string
+          message_id: string | null
+          metadata: Json | null
+          recipient_email: string
+          status: string
+          template_name: string
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          message_id?: string | null
+          metadata?: Json | null
+          recipient_email: string
+          status: string
+          template_name: string
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          message_id?: string | null
+          metadata?: Json | null
+          recipient_email?: string
+          status?: string
+          template_name?: string
+        }
+        Relationships: []
+      }
+      email_send_state: {
+        Row: {
+          auth_email_ttl_minutes: number
+          batch_size: number
+          id: number
+          retry_after_until: string | null
+          send_delay_ms: number
+          transactional_email_ttl_minutes: number
+          updated_at: string
+        }
+        Insert: {
+          auth_email_ttl_minutes?: number
+          batch_size?: number
+          id?: number
+          retry_after_until?: string | null
+          send_delay_ms?: number
+          transactional_email_ttl_minutes?: number
+          updated_at?: string
+        }
+        Update: {
+          auth_email_ttl_minutes?: number
+          batch_size?: number
+          id?: number
+          retry_after_until?: string | null
+          send_delay_ms?: number
+          transactional_email_ttl_minutes?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      email_unsubscribe_tokens: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          token: string
+          used_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          token: string
+          used_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          token?: string
+          used_at?: string | null
+        }
+        Relationships: []
+      }
       email_verification_tokens: {
         Row: {
           created_at: string | null
@@ -458,31 +615,40 @@ export type Database = {
       }
       finance_budgets: {
         Row: {
+          annual_amount: number | null
+          budget_type: string
           category: string
           created_at: string
           created_by: string
           household_id: string
           id: string
+          is_recurring: boolean
           month: string
           planned_amount: number
           updated_at: string
         }
         Insert: {
+          annual_amount?: number | null
+          budget_type?: string
           category: string
           created_at?: string
           created_by: string
           household_id: string
           id?: string
+          is_recurring?: boolean
           month: string
           planned_amount?: number
           updated_at?: string
         }
         Update: {
+          annual_amount?: number | null
+          budget_type?: string
           category?: string
           created_at?: string
           created_by?: string
           household_id?: string
           id?: string
+          is_recurring?: boolean
           month?: string
           planned_amount?: number
           updated_at?: string
@@ -563,6 +729,90 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      finance_custom_cards: {
+        Row: {
+          added_by: string
+          annual_fee: number
+          bank: string
+          benefits: Json
+          color: string
+          created_at: string
+          household_id: string
+          id: string
+          milestones: Json
+          name: string
+          network: string
+          perks: Json
+          source: string | null
+          updated_at: string
+        }
+        Insert: {
+          added_by: string
+          annual_fee?: number
+          bank: string
+          benefits?: Json
+          color?: string
+          created_at?: string
+          household_id: string
+          id?: string
+          milestones?: Json
+          name: string
+          network?: string
+          perks?: Json
+          source?: string | null
+          updated_at?: string
+        }
+        Update: {
+          added_by?: string
+          annual_fee?: number
+          bank?: string
+          benefits?: Json
+          color?: string
+          created_at?: string
+          household_id?: string
+          id?: string
+          milestones?: Json
+          name?: string
+          network?: string
+          perks?: Json
+          source?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      finance_custom_categories: {
+        Row: {
+          created_at: string
+          created_by: string
+          household_id: string
+          id: string
+          key: string
+          label: string
+          scope: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          household_id: string
+          id?: string
+          key: string
+          label: string
+          scope?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          household_id?: string
+          id?: string
+          key?: string
+          label?: string
+          scope?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       finance_monthly_snapshots: {
         Row: {
@@ -667,6 +917,8 @@ export type Database = {
           name: string
           next_due_date: string | null
           notes: string | null
+          recurrence: Json | null
+          recurrence_end: Json | null
           start_date: string
           tags: string[] | null
           updated_at: string
@@ -685,6 +937,8 @@ export type Database = {
           name: string
           next_due_date?: string | null
           notes?: string | null
+          recurrence?: Json | null
+          recurrence_end?: Json | null
           start_date?: string
           tags?: string[] | null
           updated_at?: string
@@ -703,6 +957,8 @@ export type Database = {
           name?: string
           next_due_date?: string | null
           notes?: string | null
+          recurrence?: Json | null
+          recurrence_end?: Json | null
           start_date?: string
           tags?: string[] | null
           updated_at?: string
@@ -729,7 +985,9 @@ export type Database = {
           id: string
           is_recurring: boolean
           notes: string | null
+          paid_by: string | null
           recurring_pattern: Json | null
+          savings_goal_id: string | null
           tagged_member: string | null
           transaction_date: string
           type: string
@@ -746,7 +1004,9 @@ export type Database = {
           id?: string
           is_recurring?: boolean
           notes?: string | null
+          paid_by?: string | null
           recurring_pattern?: Json | null
+          savings_goal_id?: string | null
           tagged_member?: string | null
           transaction_date?: string
           type?: string
@@ -763,7 +1023,9 @@ export type Database = {
           id?: string
           is_recurring?: boolean
           notes?: string | null
+          paid_by?: string | null
           recurring_pattern?: Json | null
+          savings_goal_id?: string | null
           tagged_member?: string | null
           transaction_date?: string
           type?: string
@@ -782,6 +1044,13 @@ export type Database = {
             columns: ["household_id"]
             isOneToOne: false
             referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finance_transactions_savings_goal_id_fkey"
+            columns: ["savings_goal_id"]
+            isOneToOne: false
+            referencedRelation: "finance_savings_goals"
             referencedColumns: ["id"]
           },
         ]
@@ -937,6 +1206,7 @@ export type Database = {
           created_at: string
           habit_id: string
           id: string
+          is_freeze: boolean
           log_date: string
           logged_at: string
           notes: string | null
@@ -948,6 +1218,7 @@ export type Database = {
           created_at?: string
           habit_id: string
           id?: string
+          is_freeze?: boolean
           log_date: string
           logged_at?: string
           notes?: string | null
@@ -959,6 +1230,7 @@ export type Database = {
           created_at?: string
           habit_id?: string
           id?: string
+          is_freeze?: boolean
           log_date?: string
           logged_at?: string
           notes?: string | null
@@ -1059,6 +1331,7 @@ export type Database = {
       habits: {
         Row: {
           assignment_type: string
+          challenge_id: string | null
           color: string | null
           created_at: string
           description: string | null
@@ -1069,6 +1342,8 @@ export type Database = {
           id: string
           is_active: boolean
           name: string
+          recurrence: Json | null
+          recurrence_end: Json | null
           reminder_time: string | null
           target_unit: string | null
           target_value: number | null
@@ -1077,6 +1352,7 @@ export type Database = {
         }
         Insert: {
           assignment_type?: string
+          challenge_id?: string | null
           color?: string | null
           created_at?: string
           description?: string | null
@@ -1087,6 +1363,8 @@ export type Database = {
           id?: string
           is_active?: boolean
           name: string
+          recurrence?: Json | null
+          recurrence_end?: Json | null
           reminder_time?: string | null
           target_unit?: string | null
           target_value?: number | null
@@ -1095,6 +1373,7 @@ export type Database = {
         }
         Update: {
           assignment_type?: string
+          challenge_id?: string | null
           color?: string | null
           created_at?: string
           description?: string | null
@@ -1105,6 +1384,8 @@ export type Database = {
           id?: string
           is_active?: boolean
           name?: string
+          recurrence?: Json | null
+          recurrence_end?: Json | null
           reminder_time?: string | null
           target_unit?: string | null
           target_value?: number | null
@@ -1120,6 +1401,51 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      household_challenges: {
+        Row: {
+          created_at: string
+          description: string | null
+          duration_days: number
+          emoji: string
+          end_date: string
+          household_id: string
+          id: string
+          name: string
+          start_date: string
+          started_by: string
+          status: string
+          template_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          duration_days: number
+          emoji?: string
+          end_date: string
+          household_id: string
+          id?: string
+          name: string
+          start_date?: string
+          started_by: string
+          status?: string
+          template_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          duration_days?: number
+          emoji?: string
+          end_date?: string
+          household_id?: string
+          id?: string
+          name?: string
+          start_date?: string
+          started_by?: string
+          status?: string
+          template_id?: string
+        }
+        Relationships: []
       }
       household_enabled_products: {
         Row: {
@@ -1243,6 +1569,7 @@ export type Database = {
         Row: {
           created_at: string
           household_id: string
+          household_name: string | null
           id: string
           invitation_type: string
           invited_by: string | null
@@ -1258,6 +1585,7 @@ export type Database = {
         Insert: {
           created_at?: string
           household_id: string
+          household_name?: string | null
           id?: string
           invitation_type?: string
           invited_by?: string | null
@@ -1273,6 +1601,7 @@ export type Database = {
         Update: {
           created_at?: string
           household_id?: string
+          household_name?: string | null
           id?: string
           invitation_type?: string
           invited_by?: string | null
@@ -1330,7 +1659,9 @@ export type Database = {
       household_preferences: {
         Row: {
           budget_consciousness: string | null
+          calendar_setup_complete: boolean
           children_ages: number[] | null
+          completed_module_setups: Json
           cooking_skill_level: string | null
           created_at: string | null
           diet_type: string | null
@@ -1338,11 +1669,15 @@ export type Database = {
           family_size_children: number | null
           family_size_seniors: number | null
           festival_importance: string | null
+          finance_setup_complete: boolean
           food_allergies: string[] | null
+          grocery_setup_complete: boolean
+          habits_setup_complete: boolean
           household_concerns: string[] | null
           household_id: string
           household_type: string | null
           id: string
+          meals_setup_complete: boolean
           monthly_grocery_budget: string | null
           organic_preference: string | null
           pantry_size: string | null
@@ -1360,7 +1695,9 @@ export type Database = {
         }
         Insert: {
           budget_consciousness?: string | null
+          calendar_setup_complete?: boolean
           children_ages?: number[] | null
+          completed_module_setups?: Json
           cooking_skill_level?: string | null
           created_at?: string | null
           diet_type?: string | null
@@ -1368,11 +1705,15 @@ export type Database = {
           family_size_children?: number | null
           family_size_seniors?: number | null
           festival_importance?: string | null
+          finance_setup_complete?: boolean
           food_allergies?: string[] | null
+          grocery_setup_complete?: boolean
+          habits_setup_complete?: boolean
           household_concerns?: string[] | null
           household_id: string
           household_type?: string | null
           id?: string
+          meals_setup_complete?: boolean
           monthly_grocery_budget?: string | null
           organic_preference?: string | null
           pantry_size?: string | null
@@ -1390,7 +1731,9 @@ export type Database = {
         }
         Update: {
           budget_consciousness?: string | null
+          calendar_setup_complete?: boolean
           children_ages?: number[] | null
+          completed_module_setups?: Json
           cooking_skill_level?: string | null
           created_at?: string | null
           diet_type?: string | null
@@ -1398,11 +1741,15 @@ export type Database = {
           family_size_children?: number | null
           family_size_seniors?: number | null
           festival_importance?: string | null
+          finance_setup_complete?: boolean
           food_allergies?: string[] | null
+          grocery_setup_complete?: boolean
+          habits_setup_complete?: boolean
           household_concerns?: string[] | null
           household_id?: string
           household_type?: string | null
           id?: string
+          meals_setup_complete?: boolean
           monthly_grocery_budget?: string | null
           organic_preference?: string | null
           pantry_size?: string | null
@@ -1467,8 +1814,84 @@ export type Database = {
         }
         Relationships: []
       }
+      manual_calendar_events: {
+        Row: {
+          all_day: boolean
+          created_at: string
+          created_by: string
+          description: string | null
+          end_at: string
+          exception_dates: string[]
+          household_id: string
+          id: string
+          is_system_generated: boolean
+          location: string | null
+          member_ids: string[]
+          parent_event_id: string | null
+          recurrence: Json | null
+          repeat_type: string
+          start_at: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          all_day?: boolean
+          created_at?: string
+          created_by: string
+          description?: string | null
+          end_at: string
+          exception_dates?: string[]
+          household_id: string
+          id?: string
+          is_system_generated?: boolean
+          location?: string | null
+          member_ids?: string[]
+          parent_event_id?: string | null
+          recurrence?: Json | null
+          repeat_type?: string
+          start_at: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          all_day?: boolean
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          end_at?: string
+          exception_dates?: string[]
+          household_id?: string
+          id?: string
+          is_system_generated?: boolean
+          location?: string | null
+          member_ids?: string[]
+          parent_event_id?: string | null
+          recurrence?: Json | null
+          repeat_type?: string
+          start_at?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "manual_calendar_events_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "manual_calendar_events_parent_event_id_fkey"
+            columns: ["parent_event_id"]
+            isOneToOne: false
+            referencedRelation: "manual_calendar_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       meal_plan_items: {
         Row: {
+          cooked_at: string | null
           created_at: string
           day_of_week: number
           id: string
@@ -1479,6 +1902,7 @@ export type Database = {
           scheduled_date: string | null
         }
         Insert: {
+          cooked_at?: string | null
           created_at?: string
           day_of_week: number
           id?: string
@@ -1489,6 +1913,7 @@ export type Database = {
           scheduled_date?: string | null
         }
         Update: {
+          cooked_at?: string | null
           created_at?: string
           day_of_week?: number
           id?: string
@@ -1561,6 +1986,7 @@ export type Database = {
           invites: boolean
           meals: boolean
           pantry: boolean
+          pantry_daily_reminder: boolean
           tasks: boolean
           updated_at: string
           user_id: string
@@ -1575,6 +2001,7 @@ export type Database = {
           invites?: boolean
           meals?: boolean
           pantry?: boolean
+          pantry_daily_reminder?: boolean
           tasks?: boolean
           updated_at?: string
           user_id: string
@@ -1589,6 +2016,7 @@ export type Database = {
           invites?: boolean
           meals?: boolean
           pantry?: boolean
+          pantry_daily_reminder?: boolean
           tasks?: boolean
           updated_at?: string
           user_id?: string
@@ -1839,13 +2267,17 @@ export type Database = {
           completed_tours: Json | null
           created_at: string
           display_name: string | null
+          email_verified_at: string | null
           id: string
+          last_freeze_used_at: string | null
           onboarding_completed: boolean | null
           phone_number: string | null
           phone_verified: boolean | null
           phone_verified_at: string | null
           preferred_language: string | null
           region: string | null
+          streak_freeze_period: string | null
+          streak_freezes_remaining: number
           terms_accepted_at: string | null
           updated_at: string
           whatsapp_opted_in: boolean | null
@@ -1855,13 +2287,17 @@ export type Database = {
           completed_tours?: Json | null
           created_at?: string
           display_name?: string | null
+          email_verified_at?: string | null
           id: string
+          last_freeze_used_at?: string | null
           onboarding_completed?: boolean | null
           phone_number?: string | null
           phone_verified?: boolean | null
           phone_verified_at?: string | null
           preferred_language?: string | null
           region?: string | null
+          streak_freeze_period?: string | null
+          streak_freezes_remaining?: number
           terms_accepted_at?: string | null
           updated_at?: string
           whatsapp_opted_in?: boolean | null
@@ -1871,13 +2307,17 @@ export type Database = {
           completed_tours?: Json | null
           created_at?: string
           display_name?: string | null
+          email_verified_at?: string | null
           id?: string
+          last_freeze_used_at?: string | null
           onboarding_completed?: boolean | null
           phone_number?: string | null
           phone_verified?: boolean | null
           phone_verified_at?: string | null
           preferred_language?: string | null
           region?: string | null
+          streak_freeze_period?: string | null
+          streak_freezes_remaining?: number
           terms_accepted_at?: string | null
           updated_at?: string
           whatsapp_opted_in?: boolean | null
@@ -1935,19 +2375,16 @@ export type Database = {
         Row: {
           base_url: string
           id: boolean
-          service_role_key: string
           updated_at: string
         }
         Insert: {
           base_url: string
           id?: boolean
-          service_role_key: string
           updated_at?: string
         }
         Update: {
           base_url?: string
           id?: boolean
-          service_role_key?: string
           updated_at?: string
         }
         Relationships: []
@@ -2182,6 +2619,57 @@ export type Database = {
           },
         ]
       }
+      suppressed_emails: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          metadata: Json | null
+          reason: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          metadata?: Json | null
+          reason: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          metadata?: Json | null
+          reason?: string
+        }
+        Relationships: []
+      }
+      system_calendar_events: {
+        Row: {
+          created_at: string
+          event_date: string
+          id: string
+          is_recurring_annual: boolean
+          kind: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          event_date: string
+          id?: string
+          is_recurring_annual?: boolean
+          kind: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          event_date?: string
+          id?: string
+          is_recurring_annual?: boolean
+          kind?: string
+          name?: string
+        }
+        Relationships: []
+      }
       task_assignees: {
         Row: {
           created_at: string
@@ -2292,6 +2780,7 @@ export type Database = {
           priority: string
           priority_level: number | null
           project_id: string | null
+          recurrence: Json | null
           recurring: boolean | null
           recurring_pattern: Json | null
           source_calendar_event_id: string | null
@@ -2315,6 +2804,7 @@ export type Database = {
           priority?: string
           priority_level?: number | null
           project_id?: string | null
+          recurrence?: Json | null
           recurring?: boolean | null
           recurring_pattern?: Json | null
           source_calendar_event_id?: string | null
@@ -2338,6 +2828,7 @@ export type Database = {
           priority?: string
           priority_level?: number | null
           project_id?: string | null
+          recurrence?: Json | null
           recurring?: boolean | null
           recurring_pattern?: Json | null
           source_calendar_event_id?: string | null
@@ -2596,6 +3087,10 @@ export type Database = {
       }
     }
     Functions: {
+      delete_email: {
+        Args: { message_id: number; queue_name: string }
+        Returns: boolean
+      }
       dispatch_push: {
         Args: {
           _body: string
@@ -2608,7 +3103,25 @@ export type Database = {
         }
         Returns: undefined
       }
+      enqueue_email: {
+        Args: { payload: Json; queue_name: string }
+        Returns: number
+      }
       generate_invite_code: { Args: never; Returns: string }
+      get_calendar_tokens: {
+        Args: { _connection_id: string; _key: string }
+        Returns: {
+          access_token: string
+          refresh_token: string
+        }[]
+      }
+      get_household_member_emails: {
+        Args: { _household_id: string }
+        Returns: {
+          email: string
+          user_id: string
+        }[]
+      }
       has_household_role: {
         Args: {
           _household_id: string
@@ -2617,12 +3130,58 @@ export type Database = {
         }
         Returns: boolean
       }
+      insert_calendar_connection: {
+        Args: {
+          _access_token: string
+          _color: string
+          _display_name: string
+          _email: string
+          _expires_at: string
+          _household_id: string
+          _key: string
+          _refresh_token: string
+          _user_id: string
+        }
+        Returns: string
+      }
       is_email_approved: { Args: { user_email: string }; Returns: boolean }
       is_household_member: {
         Args: { _household_id: string; _user_id: string }
         Returns: boolean
       }
+      log_household_habit: {
+        Args: { _actual_value?: number; _completed: boolean; _habit_id: string }
+        Returns: undefined
+      }
+      move_to_dlq: {
+        Args: {
+          dlq_name: string
+          message_id: number
+          payload: Json
+          source_queue: string
+        }
+        Returns: number
+      }
+      read_email_batch: {
+        Args: { batch_size: number; queue_name: string; vt: number }
+        Returns: {
+          message: Json
+          msg_id: number
+          read_ct: number
+        }[]
+      }
       update_completed_tour: { Args: { _key: string }; Returns: undefined }
+      upsert_calendar_tokens: {
+        Args: {
+          _access_token: string
+          _connection_id: string
+          _expires_at: string
+          _key: string
+          _refresh_token: string
+        }
+        Returns: undefined
+      }
+      vault_upsert_push_key: { Args: { _key: string }; Returns: undefined }
     }
     Enums: {
       app_role: "household_admin" | "member" | "platform_admin"

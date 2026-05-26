@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { ChevronLeft, Home } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,6 +16,8 @@ import { useHousehold } from "@/hooks/useHousehold";
 import { useIsHouseholdAdmin } from "@/hooks/useIsHouseholdAdmin";
 import { usePendingInvitations } from "@/hooks/usePendingInvitations";
 import { useIsPlatformAdmin } from "@/hooks/useIsPlatformAdmin";
+import { FamilyDeskLogo } from "@/components/brand/FamilyDeskLogo";
+import { PrivacyToggle } from "@/components/shared/PrivacyToggle";
 
 interface HeaderProps {
   onStartOnboarding?: () => void;
@@ -38,7 +40,7 @@ export const Header = (_props: HeaderProps) => {
       if (!user) return null;
       const { data } = await supabase
         .from("profiles")
-        .select("avatar_url")
+        .select("avatar_url, display_name")
         .eq("id", user.id)
         .maybeSingle();
       return data;
@@ -47,6 +49,7 @@ export const Header = (_props: HeaderProps) => {
     staleTime: 60 * 1000,
   });
   const avatarUrl = (profile as any)?.avatar_url || null;
+  const profileDisplayName = (profile as any)?.display_name || null;
 
   const isHomePage = location.pathname === "/dashboard" || location.pathname === "/";
 
@@ -100,9 +103,15 @@ export const Header = (_props: HeaderProps) => {
   };
 
   const getInitials = () => {
-    if (!user?.user_metadata?.display_name) return "U";
-    return user.user_metadata.display_name
-      .split(" ")
+    const source =
+      profileDisplayName ||
+      user?.user_metadata?.display_name ||
+      user?.email?.split("@")[0] ||
+      "";
+    if (!source) return "U";
+    return source
+      .split(/[\s._-]+/)
+      .filter(Boolean)
       .map((n: string) => n[0])
       .join("")
       .toUpperCase()
@@ -122,14 +131,17 @@ export const Header = (_props: HeaderProps) => {
     if (path.startsWith("/account-settings")) return "Account";
     if (path.startsWith("/members")) return "Members";
     if (path.startsWith("/invitations")) return "Invitations";
-    if (path.startsWith("/taskmaster")) return "Taskmaster";
+    if (path.startsWith("/taskmaster")) return "Tasks";
     return null;
   };
 
   const pageTitle = getPageTitle();
 
   return (
-    <header className="sticky top-0 z-40 bg-background/90 backdrop-blur-xl border-b border-border/60">
+    <header
+      className="sticky top-0 z-40 bg-background/90 backdrop-blur-xl border-b border-border/60"
+      style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
+    >
       <div
         className="w-full mx-auto flex h-14 items-center justify-between gap-3"
         style={{
@@ -152,17 +164,25 @@ export const Header = (_props: HeaderProps) => {
             </button>
           ) : null}
 
-          <div className="flex items-center gap-2 min-w-0">
-            <span
-              className="text-lg font-semibold text-foreground tracking-tight cursor-pointer truncate"
-              onClick={() => navigate("/dashboard")}
-            >
-              {isHomePage ? "FamilyDesk" : pageTitle || "FamilyDesk"}
-            </span>
-          </div>
+          <button
+            type="button"
+            onClick={() => navigate("/dashboard")}
+            className="flex items-center gap-2 min-w-0"
+            aria-label="FamilyDesk home"
+          >
+            {isHomePage ? (
+              <FamilyDeskLogo size="sm" showTagline={false} />
+            ) : (
+              <span className="text-[18px] font-medium text-fd-ink tracking-tight truncate">
+                {pageTitle || "FamilyDesk"}
+              </span>
+            )}
+          </button>
         </div>
 
-        {/* Right: Avatar / Profile */}
+        {/* Right: Privacy + Avatar / Profile */}
+        <div className="flex items-center gap-1">
+        <PrivacyToggle />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button
@@ -226,6 +246,9 @@ export const Header = (_props: HeaderProps) => {
             <DropdownMenuItem onClick={() => navigate("/how-to-use")}>
               How to use
             </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => navigate("/finance/report")}>
+              Monthly Report
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={() => navigate("/whats-new")}>
               What's new
             </DropdownMenuItem>
@@ -244,6 +267,7 @@ export const Header = (_props: HeaderProps) => {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+        </div>
       </div>
     </header>
   );

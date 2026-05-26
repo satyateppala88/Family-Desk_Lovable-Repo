@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Menu, X } from "lucide-react";
+import { FamilyDeskLogo } from "@/components/brand/FamilyDeskLogo";
 
 export const LandingNav = () => {
   const [scrolled, setScrolled] = useState(false);
@@ -24,8 +25,8 @@ export const LandingNav = () => {
     }`}>
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-14">
-          <Link to="/" className="text-lg font-semibold text-foreground tracking-tight">
-            FamilyDesk
+          <Link to="/" className="flex items-center" aria-label="FamilyDesk home">
+            <FamilyDeskLogo size="sm" showTagline={false} />
           </Link>
 
           <div className="hidden md:flex items-center gap-8">

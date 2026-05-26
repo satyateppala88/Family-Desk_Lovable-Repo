@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
 export type FeatureName = 
@@ -48,7 +48,7 @@ export const useFeatureTour = (featureName: FeatureName) => {
   // Check if this feature tour should be shown
   useEffect(() => {
     if (!isLoading && completedTours !== undefined) {
-      const hasCompletedTour = completedTours[featureName] === true;
+      const hasCompletedTour = Boolean(completedTours[featureName]);
       setShouldShowTour(!hasCompletedTour);
       setTourChecked(true);
     }

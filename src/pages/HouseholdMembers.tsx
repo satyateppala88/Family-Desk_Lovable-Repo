@@ -11,12 +11,13 @@ import { Button } from "@/components/ui/button";
 import { useHousehold } from "@/hooks/useHousehold";
 import { useIsHouseholdAdmin } from "@/hooks/useIsHouseholdAdmin";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Users, ArrowLeft, Mail } from "lucide-react";
 import { InviteMemberDialog } from "@/components/household/InviteMemberDialog";
 import { FamilyMembersSection } from "@/components/household/FamilyMembersSection";
+import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
 
 const HouseholdMembers = () => {
   const navigate = useNavigate();
@@ -30,21 +31,69 @@ const HouseholdMembers = () => {
     queryFn: async () => {
       if (!householdId) return [];
 
-      const { data, error } = await supabase
+      const { data: memberRows, error: memberError } = await supabase
         .from("household_members")
-        .select(`
-          *,
-          profiles:user_id (display_name)
-        `)
+        .select("id, household_id, user_id, role, joined_at")
         .eq("household_id", householdId)
         .not("user_id", "is", null)
         .order("joined_at", { ascending: true });
 
-      if (error) throw error;
-      return (data ?? []).filter((row: any) => !!row.user_id);
+      if (memberError) throw memberError;
+
+      const userIds = (memberRows ?? [])
+        .map((row) => row.user_id)
+        .filter(Boolean);
+
+      if (userIds.length === 0) return [];
+
+      const { data: profileRows, error: profileError } = await supabase
+        .from("profiles")
+        .select("id, display_name")
+        .in("id", userIds);
+
+      if (profileError) throw profileError;
+
+      const profilesById = new Map((profileRows ?? []).map((profile) => [profile.id, profile]));
+
+      return (memberRows ?? []).map((row) => ({
+        ...row,
+        profiles: profilesById.get(row.user_id) ?? null,
+      }));
     },
     enabled: !!householdId,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
   });
+
+  // Member emails (pulled via SECURITY DEFINER RPC, restricted to fellow members)
+  const { data: emailRows } = useQuery({
+    queryKey: ["household-member-emails", householdId],
+    queryFn: async () => {
+      if (!householdId) return [];
+      const { data, error } = await supabase.rpc("get_household_member_emails", {
+        _household_id: householdId,
+      });
+      if (error) throw error;
+      return (data ?? []) as Array<{ user_id: string; email: string }>;
+    },
+    enabled: !!householdId,
+    staleTime: 1000 * 60 * 5,
+  });
+  const emailByUserId = new Map((emailRows ?? []).map((r) => [r.user_id, r.email]));
+
+  // Live-update the members list when anyone is added/removed/role-changed,
+  // including direct DB or admin-side changes.
+  useRealtimeSubscription([
+    {
+      table: "household_members",
+      filter: householdId ? `household_id=eq.${householdId}` : undefined,
+      enabled: !!householdId,
+      queryKeys: [
+        ["household-members", householdId],
+        ["household-member-emails", householdId],
+      ],
+    },
+  ], householdId);
 
   const { data: household } = useQuery({
     queryKey: ["household-info", householdId],
@@ -75,6 +124,8 @@ const HouseholdMembers = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["household-members"] });
+      queryClient.invalidateQueries({ queryKey: ["household-member-emails"] });
+      queryClient.invalidateQueries({ queryKey: ["household"] });
       toast.success("Member role updated");
     },
     onError: (error: any) => {
@@ -172,10 +223,19 @@ const HouseholdMembers = () => {
                           {member.profiles?.display_name || "Member"}
                           {isCurrentUser && " (You)"}
                         </p>
-                        <div className="flex gap-2 items-center">
-                          <p className="text-sm text-muted-foreground">
-                            Joined: {member.joined_at
-                              ? new Date(member.joined_at).toLocaleDateString()
+                        {emailByUserId.get(member.user_id) && (
+                          <p className="text-sm text-muted-foreground break-all">
+                            {emailByUserId.get(member.user_id)}
+                          </p>
+                        )}
+                        <div className="flex gap-2 items-center flex-wrap">
+                          <p className="text-xs text-muted-foreground">
+                            Joined {member.joined_at
+                              ? new Date(member.joined_at).toLocaleDateString(undefined, {
+                                  day: "numeric",
+                                  month: "short",
+                                  year: "numeric",
+                                })
                               : "recently"}
                           </p>
                           {isCreator && (

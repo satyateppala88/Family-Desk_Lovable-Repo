@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Header } from "@/components/layout/Header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,43 +7,174 @@ import { Input } from "@/components/ui/input";
 import { EmptyState } from "@/components/ui/empty-state";
 import { QuickActionButton } from "@/components/ui/quick-action-button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { Plus, Trash2, Target, PartyPopper, Loader2 } from "lucide-react";
+import { Plus, Trash2, Target, PartyPopper, Loader2, AlertCircle, X, Pencil } from "lucide-react";
 import { useHousehold } from "@/hooks/useHousehold";
 import {
   useFinanceSavingsGoals,
+  useFinanceRealtime,
   useCreateSavingsGoal,
   useUpdateSavingsGoal,
   useDeleteSavingsGoal,
+  useCreateTransaction,
+  type FinanceSavingsGoal,
 } from "@/hooks/useFinance";
+import { useSavingsContributions } from "@/hooks/useSavingsContributions";
+import { useHouseholdMembers } from "@/hooks/useHouseholdMembers";
+import { useAuth } from "@/contexts/AuthContext";
+import { useQueryClient } from "@tanstack/react-query";
 import { formatINR } from "@/lib/formatINR";
+import { PrivateValue, PrivateText } from "@/components/shared/PrivateValue";
 import { SavingsGoalDialog } from "@/components/finance/SavingsGoalDialog";
-import { format, differenceInDays } from "date-fns";
+import { format, differenceInDays, addMonths } from "date-fns";
 import { cn } from "@/lib/utils";
+import { formatTimeLeft } from "@/lib/formatTimeLeft";
+
+type Signal =
+  | { kind: "reached" }
+  | { kind: "ontrack"; expectedBy: string }
+  | { kind: "behind"; shortfall: number }
+  | { kind: "review"; shortfall: number }
+  | { kind: "needs_date" }
+  | { kind: "none" };
+
+const initialsOf = (name: string) =>
+  (name || "M").split(/\s+/).filter(Boolean).slice(0, 2).map((s) => s[0]?.toUpperCase()).join("") || "M";
+const firstName = (n: string) => (n || "Member").split(/\s+/)[0];
 
 const FinanceSavings = () => {
   const { householdId } = useHousehold();
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  useFinanceRealtime(householdId);
   const { data: goals, isLoading } = useFinanceSavingsGoals(householdId);
+  const { data: contributions } = useSavingsContributions(householdId);
+  const { data: members } = useHouseholdMembers(householdId);
+  const memberById = new Map((members || []).map((m) => [m.userId, m]));
+  const contribByGoal = new Map<string, typeof contributions>();
+  (contributions || []).forEach((c) => {
+    if (!c.savings_goal_id) return;
+    const arr = contribByGoal.get(c.savings_goal_id) || [];
+    arr.push(c);
+    contribByGoal.set(c.savings_goal_id, arr);
+  });
+  const sumContrib = (goalId: string) =>
+    (contribByGoal.get(goalId) || []).reduce((s, c) => s + Number(c.amount), 0);
   const createGoal = useCreateSavingsGoal(householdId);
   const updateGoal = useUpdateSavingsGoal();
   const deleteGoal = useDeleteSavingsGoal();
+  const createTxn = useCreateTransaction(householdId);
   const [showAdd, setShowAdd] = useState(false);
   const [addAmounts, setAddAmounts] = useState<Record<string, string>>({});
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+  const [editTarget, setEditTarget] = useState<{ goal: FinanceSavingsGoal; focusDate: boolean } | null>(null);
+  const [nudgeDismissed, setNudgeDismissed] = useState<boolean>(() =>
+    typeof window !== "undefined" && sessionStorage.getItem("savings-nudge-dismissed") === "1"
+  );
 
   const activeGoals = (goals || []).filter((g) => g.status === "active");
   const completedGoals = (goals || []).filter((g) => g.status === "completed");
 
-  const handleAddFunds = (goalId: string, currentAmount: number) => {
+  // Inline "Add" on a savings goal card now creates a real
+  // finance_transactions row (type='savings', linked to the goal) instead
+  // of mutating the goal's `current_amount` directly. This keeps the
+  // savings timeline, member contribution breakdown and transaction
+  // history all consistent with a single source of truth: the linked
+  // transaction list. The progress bar reads `linkedSum` below, so the
+  // bar updates as soon as the optimistic transaction lands in cache.
+  const handleAddFunds = (goalId: string, _currentAmount: number) => {
     const addAmount = Number(addAmounts[goalId]);
     if (!addAmount || addAmount <= 0) return;
+    if (!householdId || !user?.id) return;
     const goal = goals?.find((g) => g.id === goalId);
-    const newAmount = currentAmount + addAmount;
-    const updates: any = { id: goalId, current_amount: newAmount };
-    if (goal && newAmount >= Number(goal.target_amount)) {
-      updates.status = "completed";
-    }
-    updateGoal.mutate(updates);
+    createTxn.mutate(
+      {
+        type: "savings",
+        amount: addAmount,
+        category: "sip",
+        savings_goal_id: goalId,
+        paid_by: user.id,
+        description: goal ? `Contribution to ${goal.name}` : "Savings contribution",
+        transaction_date: format(new Date(), "yyyy-MM-dd"),
+      },
+      {
+        onSuccess: () => {
+          // Refresh derived caches so the timeline, member breakdown,
+          // and goal progress all pick up the new row.
+          queryClient.invalidateQueries({ queryKey: ["savings-contributions", householdId] });
+          queryClient.invalidateQueries({ queryKey: ["finance-savings-goals", householdId] });
+          queryClient.invalidateQueries({ queryKey: ["finance-summary", householdId] });
+        },
+      },
+    );
     setAddAmounts((prev) => ({ ...prev, [goalId]: "" }));
+  };
+
+  // Compute on-track signal per goal (Cases A/B/C from F-16).
+  const computeSignal = (goal: FinanceSavingsGoal): Signal => {
+    const linked = contribByGoal.get(goal.id) || [];
+    const linkedTxnCount = linked.length;
+    const totalSaved = linked.reduce((s, c) => s + Number(c.amount), 0);
+    const today = new Date();
+    const ageDays = differenceInDays(today, new Date(goal.created_at));
+
+    // Case C: brand new + barely any data
+    if (ageDays < 30 && linkedTxnCount < 2) return { kind: "none" };
+
+    // Case B: no target date
+    if (!goal.target_date) return { kind: "needs_date" };
+
+    // Case A
+    if (totalSaved >= Number(goal.target_amount)) return { kind: "reached" };
+
+    const goalCreatedAt = new Date(goal.created_at);
+    const monthsActive = Math.max(
+      (today.getFullYear() - goalCreatedAt.getFullYear()) * 12 +
+        (today.getMonth() - goalCreatedAt.getMonth()),
+      1,
+    );
+    const monthlyRate = totalSaved / monthsActive;
+    const remaining = Number(goal.target_amount) - totalSaved;
+    const monthsToGoal = monthlyRate > 0 ? Math.ceil(remaining / monthlyRate) : null;
+
+    const targetDate = new Date(goal.target_date);
+    const monthsRemaining = Math.max(
+      (targetDate.getFullYear() - today.getFullYear()) * 12 +
+        (targetDate.getMonth() - today.getMonth()),
+      0,
+    );
+    const safeMonthsRem = Math.max(monthsRemaining, 1);
+    const shortfall = Math.ceil(remaining / safeMonthsRem - monthlyRate);
+
+    if (monthlyRate === 0 || monthsToGoal === null) {
+      return { kind: "review", shortfall };
+    }
+    if (monthsToGoal <= monthsRemaining) {
+      const expected = addMonths(today, monthsToGoal);
+      return { kind: "ontrack", expectedBy: format(expected, "MMM yyyy") };
+    }
+    if (monthsToGoal <= monthsRemaining * 1.5) {
+      return { kind: "behind", shortfall };
+    }
+    return { kind: "review", shortfall };
+  };
+
+  const signalsByGoal = useMemo(() => {
+    const map = new Map<string, Signal>();
+    for (const g of activeGoals) map.set(g.id, computeSignal(g));
+    return map;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeGoals, contributions]);
+
+  const redGoalIds = activeGoals.filter((g) => signalsByGoal.get(g.id)?.kind === "review").map((g) => g.id);
+  const showNudge = !nudgeDismissed && redGoalIds.length > 0;
+
+  const dismissNudge = () => {
+    sessionStorage.setItem("savings-nudge-dismissed", "1");
+    setNudgeDismissed(true);
+  };
+  const scrollToFirstRed = () => {
+    const id = redGoalIds[0];
+    if (id) document.getElementById(`goal-${id}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
   return (
@@ -56,6 +187,19 @@ const FinanceSavings = () => {
             <Plus className="w-4 h-4 mr-1" /> New Goal
           </Button>
         </div>
+
+        {showNudge && (
+          <Card className="border-destructive/30 bg-destructive/5">
+            <CardContent className="p-3 flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-destructive shrink-0" />
+              <p className="text-sm flex-1">A few goals could use some attention.</p>
+              <Button size="sm" variant="outline" onClick={scrollToFirstRed}>Review</Button>
+              <Button size="icon" variant="ghost" className="h-8 w-8" onClick={dismissNudge} aria-label="Dismiss">
+                <X className="w-4 h-4" />
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
         {isLoading ? (
           <div className="space-y-3">
@@ -72,46 +216,201 @@ const FinanceSavings = () => {
         ) : (
           <div className="space-y-3">
             {activeGoals.map((goal) => {
-              const pct = Number(goal.target_amount) > 0 ? Math.min(100, (Number(goal.current_amount) / Number(goal.target_amount)) * 100) : 0;
+              const linkedSum = sumContrib(goal.id);
+              // Single source of truth for progress: the sum of linked
+              // savings transactions. Direct edits to `current_amount`
+              // (legacy / manual fixes via the goal dialog) are still
+              // honoured as a floor so existing data isn't lost.
+              const effectiveAmount = Math.max(Number(goal.current_amount), linkedSum);
+              const signal = signalsByGoal.get(goal.id) || { kind: "none" };
+              const isReached = signal.kind === "reached";
+              const pct = isReached
+                ? 100
+                : Number(goal.target_amount) > 0
+                  ? Math.min(100, (effectiveAmount / Number(goal.target_amount)) * 100)
+                  : 0;
               const daysLeft = goal.target_date ? differenceInDays(new Date(goal.target_date), new Date()) : null;
+              const allContribs = contribByGoal.get(goal.id) || [];
+
+              // Per-member breakdown for this goal
+              const memberTotals: Record<string, number> = {};
+              for (const c of allContribs) {
+                if (!c.paid_by) continue;
+                memberTotals[c.paid_by] = (memberTotals[c.paid_by] || 0) + Number(c.amount);
+              }
+              const memberRows = Object.entries(memberTotals)
+                .map(([uid, amt]) => ({ uid, amount: amt, member: memberById.get(uid) }))
+                .sort((a, b) => b.amount - a.amount);
+              const totalContribs = memberRows.reduce((s, r) => s + r.amount, 0);
+              const showMemberBreakdown = memberRows.length >= 2;
 
               return (
-                <Card key={goal.id}>
+                <Card key={goal.id} id={`goal-${goal.id}`}>
                   <CardContent className="p-4 space-y-3">
                     <div className="flex justify-between items-start gap-2">
                       <div className="min-w-0">
-                        <p className="text-sm font-semibold">{goal.name}</p>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="text-sm font-semibold"><PrivateText value={goal.name} /></p>
+                          {signal.kind === "reached" && (
+                            <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-[hsl(var(--success))]/10 text-[hsl(var(--success))]">Goal reached 🎉</span>
+                          )}
+                          {signal.kind === "ontrack" && (
+                            <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-[hsl(var(--success))]/10 text-[hsl(var(--success))]">On track · Expected by {signal.expectedBy}</span>
+                          )}
+                          {signal.kind === "behind" && (
+                            <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-warning/10 text-warning">Slightly behind · Consider reviewing contributions</span>
+                          )}
+                          {signal.kind === "review" && (
+                            <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-destructive/10 text-destructive">You might want to review this goal</span>
+                          )}
+                        </div>
                         {goal.target_date && (
                           <p className={cn(
                             "text-[11px] mt-0.5",
                             daysLeft !== null && daysLeft < 0 ? "text-destructive" : "text-muted-foreground"
                           )}>
-                            {daysLeft !== null && daysLeft > 0
-                              ? `${daysLeft} days left`
-                              : daysLeft === 0
-                              ? "Due today"
-                              : "Overdue"}
-                            {" · "}{format(new Date(goal.target_date), "MMM d, yyyy")}
+                            {formatTimeLeft(daysLeft)}
+                            {" · "}{format(new Date(goal.target_date), "dd/MM/yyyy")}
+                          </p>
+                        )}
+                        {(signal.kind === "behind" || signal.kind === "review") && signal.shortfall > 0 && (
+                          <p className="text-[11px] mt-0.5 text-muted-foreground">
+                            Needed to stay on track: <PrivateValue value={signal.shortfall} /> more/month
                           </p>
                         )}
                       </div>
-                      <Button
-                        variant="ghost" size="icon"
-                        className="h-7 w-7 text-muted-foreground hover:text-destructive shrink-0"
-                        onClick={() => setDeleteTarget({ id: goal.id, name: goal.name })}
-                        style={{ minHeight: "28px" }}
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </Button>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <Button
+                          variant="ghost" size="icon"
+                          className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                          onClick={() => setEditTarget({ goal, focusDate: false })}
+                          style={{ minHeight: "28px" }}
+                          aria-label="Edit goal"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost" size="icon"
+                          className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                          onClick={() => setDeleteTarget({ id: goal.id, name: goal.name })}
+                          style={{ minHeight: "28px" }}
+                          aria-label="Delete goal"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
                     </div>
 
                     <div className="space-y-1">
-                      <Progress value={pct} className="h-2" />
+                      <Progress
+                        value={pct}
+                        className={cn("h-2", isReached && "[&>*]:bg-[hsl(var(--success))]")}
+                      />
                       <div className="flex justify-between text-[11px] text-muted-foreground">
-                        <span>{formatINR(Number(goal.current_amount))}</span>
-                        <span className="font-medium">{Math.round(pct)}% of {formatINR(Number(goal.target_amount))}</span>
+                        <span><PrivateValue value={effectiveAmount} /> saved</span>
+                        <span className="font-medium">{Math.round(pct)}% of <PrivateValue value={Number(goal.target_amount)} /></span>
                       </div>
                     </div>
+
+                    {signal.kind === "needs_date" && (
+                      <button
+                        type="button"
+                        onClick={() => setEditTarget({ goal, focusDate: true })}
+                        className="text-[11px] text-primary hover:underline"
+                      >
+                        Set a target date to see if you're on track →
+                      </button>
+                    )}
+
+                    {showMemberBreakdown && (
+                      <div className="border-t pt-2 space-y-1.5">
+                        <p className="text-[11px] font-medium text-muted-foreground">Contributions</p>
+                        {memberRows.map((mr) => {
+                          const name = mr.member ? mr.member.displayName : "Member";
+                          const pctMember = totalContribs > 0 ? (mr.amount / totalContribs) * 100 : 0;
+                          return (
+                            <div key={mr.uid} className="flex items-center gap-2">
+                              <span className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-muted text-[10px] font-semibold shrink-0">
+                                {initialsOf(name)}
+                              </span>
+                              <span className="text-[11px] flex-1 min-w-0 truncate">{firstName(name)}</span>
+                              <span className="text-[11px] font-medium tabular-nums"><PrivateValue value={mr.amount} /></span>
+                              <div className="w-20 h-1.5 rounded-full bg-muted overflow-hidden">
+                                <div className="h-full bg-primary" style={{ width: `${pctMember}%` }} />
+                              </div>
+                              <span className="text-[10px] text-muted-foreground tabular-nums w-8 text-right">{Math.round(pctMember)}%</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {goal.target_date && (() => {
+                      // Build month buckets from goal creation → current month (cap last 12).
+                      const now = new Date();
+                      const created = new Date(goal.created_at);
+                      const totalMonths =
+                        (now.getFullYear() - created.getFullYear()) * 12 +
+                        (now.getMonth() - created.getMonth()) + 1;
+                      const span = Math.max(1, Math.min(12, totalMonths));
+                      const months: { y: number; m: number; key: string; label: string; isCurrent: boolean }[] = [];
+                      for (let i = span - 1; i >= 0; i--) {
+                        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                        months.push({
+                          y: d.getFullYear(),
+                          m: d.getMonth(),
+                          key: `${d.getFullYear()}-${d.getMonth()}`,
+                          label: format(d, "MMM")[0],
+                          isCurrent: i === 0,
+                        });
+                      }
+                      const hitSet = new Set<string>();
+                      for (const c of allContribs) {
+                        const d = new Date(c.transaction_date);
+                        hitSet.add(`${d.getFullYear()}-${d.getMonth()}`);
+                      }
+                      const hits = months.filter((mo) => hitSet.has(mo.key)).length;
+                      // Trailing streak ending at current month
+                      let streak = 0;
+                      for (let i = months.length - 1; i >= 0; i--) {
+                        if (hitSet.has(months[i].key)) streak++;
+                        else break;
+                      }
+                      return (
+                        <div className="border-t pt-2 space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <p className="text-[11px] font-medium text-muted-foreground">Consistency</p>
+                            <p className="text-[11px] text-muted-foreground tabular-nums">
+                              {hits} / {months.length} {months.length === 1 ? "month" : "months"}
+                            </p>
+                          </div>
+                          <div className="flex gap-1">
+                            {months.map((mo) => {
+                              const isHit = hitSet.has(mo.key);
+                              return (
+                                <div
+                                  key={mo.key}
+                                  title={`${format(new Date(mo.y, mo.m, 1), "MMM yyyy")} · ${isHit ? "Contributed" : "No contribution"}`}
+                                  className={cn(
+                                    "flex-1 h-6 rounded-sm flex items-center justify-center text-[9px] font-semibold",
+                                    isHit ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground",
+                                    mo.isCurrent && "ring-1 ring-primary/60",
+                                  )}
+                                >
+                                  {mo.label}
+                                </div>
+                              );
+                            })}
+                          </div>
+                          <p className="text-[11px] text-muted-foreground">
+                            {hits === 0
+                              ? "No contributions yet"
+                              : `Contributed in ${hits} of the last ${months.length} ${months.length === 1 ? "month" : "months"}`}
+                            {streak >= 2 && ` · ${streak}-month streak`}
+                          </p>
+                        </div>
+                      );
+                    })()}
 
                     <div className="flex gap-2">
                       <Input
@@ -143,9 +442,9 @@ const FinanceSavings = () => {
                     <CardContent className="p-3 flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <PartyPopper className="w-4 h-4 text-[hsl(var(--success))]" />
-                        <span className="text-sm line-through text-muted-foreground">{goal.name}</span>
+                        <span className="text-sm line-through text-muted-foreground"><PrivateText value={goal.name} /></span>
                       </div>
-                      <span className="text-xs font-medium text-[hsl(var(--success))]">{formatINR(Number(goal.target_amount))}</span>
+                      <span className="text-xs font-medium text-[hsl(var(--success))]"><PrivateValue value={Number(goal.target_amount)} /></span>
                     </CardContent>
                   </Card>
                 ))}
@@ -164,6 +463,18 @@ const FinanceSavings = () => {
         open={showAdd}
         onOpenChange={setShowAdd}
         onSave={(data) => createGoal.mutate(data)}
+      />
+
+      <SavingsGoalDialog
+        open={!!editTarget}
+        onOpenChange={(o) => !o && setEditTarget(null)}
+        goal={editTarget?.goal ?? null}
+        autoFocusDate={editTarget?.focusDate}
+        onSave={(data) => {
+          if (editTarget) {
+            updateGoal.mutate({ id: editTarget.goal.id, ...data });
+          }
+        }}
       />
 
       <ConfirmDialog

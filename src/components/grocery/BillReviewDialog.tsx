@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -221,7 +221,7 @@ export const BillReviewDialog = ({
                     <div className="col-span-4 sm:col-span-2">
                       <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Expiry days</Label>
                       <Input
-                        type="number"
+                        type="number" inputMode="numeric"
                         min={0}
                         value={r.expiry_days}
                         onChange={(e) => updateRow(r._id, { expiry_days: Number(e.target.value) })}
@@ -285,8 +285,8 @@ export const BillReviewDialog = ({
           </div>
         </ScrollArea>
 
-        <div className="flex items-center justify-between pt-2 border-t">
-          <div className="text-xs text-muted-foreground">
+        <DialogFooter className="sm:justify-between">
+          <div className="text-xs text-muted-foreground self-center">
             {rows.length} item{rows.length === 1 ? "" : "s"} ready to save
           </div>
           <div className="flex gap-2">
@@ -298,7 +298,7 @@ export const BillReviewDialog = ({
               Save to pantry
             </Button>
           </div>
-        </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

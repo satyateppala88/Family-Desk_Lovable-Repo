@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -108,7 +108,7 @@ export const QuickAddChecklist = ({ open, onOpenChange, onSubmit, householdId, u
             household_id: householdId,
             added_by: userId,
             name: item.name,
-            category: categoryGroup.category,
+            category: categoryGroup.category === "Staples" ? "Other" : categoryGroup.category,
             unit: item.unit,
             quantity: 1,
             is_staple: true,
@@ -166,8 +166,8 @@ export const QuickAddChecklist = ({ open, onOpenChange, onSubmit, householdId, u
           </div>
         </ScrollArea>
 
-        <div className="flex items-center justify-between pt-4 border-t">
-          <p className="text-sm text-muted-foreground">
+        <DialogFooter className="sm:justify-between">
+          <p className="text-sm text-muted-foreground self-center">
             {selectedItems.size} item{selectedItems.size !== 1 ? "s" : ""} selected
           </p>
           <div className="flex gap-2">
@@ -178,7 +178,7 @@ export const QuickAddChecklist = ({ open, onOpenChange, onSubmit, householdId, u
               Add Selected Items
             </Button>
           </div>
-        </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

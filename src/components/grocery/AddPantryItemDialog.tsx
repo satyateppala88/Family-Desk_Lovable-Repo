@@ -1,15 +1,12 @@
 import { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon } from "lucide-react";
+import { DatePicker } from "@/components/ui/date-picker";
 import { format } from "date-fns";
-import { cn } from "@/lib/utils";
 import type { PantryItem } from "@/hooks/usePantryItems";
 import type { PantryCategory } from "@/hooks/usePantryCategories";
 
@@ -79,16 +76,23 @@ export const AddPantryItemDialog = ({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>{editItem ? "Edit Pantry Item" : "Add Pantry Item"}</DialogTitle>
-          <DialogDescription>
-            {editItem ? "Update the item details below." : "Add a new item to your pantry inventory."}
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-4 py-4">
+    <BottomSheet
+      isOpen={open}
+      onClose={() => onOpenChange(false)}
+      title={editItem ? "Edit Pantry Item" : "Add Pantry Item"}
+      description={editItem ? "Update the item details below." : "Add a new item to your pantry inventory."}
+      footer={
+        <div className="flex gap-2 justify-end">
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button onClick={handleSubmit} disabled={!name}>
+            {editItem ? "Update" : "Add"} Item
+          </Button>
+        </div>
+      }
+    >
+      <div className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="name">Item Name *</Label>
             <Input
@@ -105,7 +109,7 @@ export const AddPantryItemDialog = ({
               <SelectTrigger id="category">
                 <SelectValue placeholder="Select category" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="z-[60]">
                 {categories.map((cat) => (
                   <SelectItem key={cat.id} value={cat.name}>
                     {cat.icon} {cat.name}
@@ -120,7 +124,7 @@ export const AddPantryItemDialog = ({
               <Label htmlFor="quantity">Quantity</Label>
               <Input
                 id="quantity"
-                type="number"
+                type="number" inputMode="numeric"
                 step="0.1"
                 value={quantity}
                 onChange={(e) => setQuantity(e.target.value)}
@@ -133,7 +137,7 @@ export const AddPantryItemDialog = ({
                 <SelectTrigger id="unit">
                   <SelectValue placeholder="Select unit" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="z-[60]">
                   <SelectItem value="kg">kg</SelectItem>
                   <SelectItem value="g">g</SelectItem>
                   <SelectItem value="L">L</SelectItem>
@@ -148,35 +152,14 @@ export const AddPantryItemDialog = ({
 
           <div className="space-y-2">
             <Label>Expiry Date (Optional)</Label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className={cn(
-                    "w-full justify-start text-left font-normal",
-                    !expiryDate && "text-muted-foreground"
-                  )}
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {expiryDate ? format(expiryDate, "PPP") : "Pick a date"}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={expiryDate}
-                  onSelect={setExpiryDate}
-                  initialFocus
-                />
-              </PopoverContent>
-            </Popover>
+            <DatePicker value={expiryDate} onChange={setExpiryDate} format="PPP" />
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="minQty">Minimum Quantity (for alerts)</Label>
             <Input
               id="minQty"
-              type="number"
+              type="number" inputMode="numeric"
               step="0.1"
               value={minimumQuantity}
               onChange={(e) => setMinimumQuantity(e.target.value)}
@@ -192,17 +175,7 @@ export const AddPantryItemDialog = ({
               onCheckedChange={setIsStaple}
             />
           </div>
-        </div>
-
-        <div className="flex gap-2 justify-end">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
-          <Button onClick={handleSubmit} disabled={!name}>
-            {editItem ? "Update" : "Add"} Item
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </BottomSheet>
   );
 };

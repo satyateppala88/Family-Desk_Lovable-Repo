@@ -1,11 +1,11 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.78.0";
-import { Resend } from "https://esm.sh/resend@2.0.0";
 import { getEmailWrapper, getWelcomeEmailContent } from "../_shared/email-templates.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
 
-const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
-
+import { sendViaQueue } from "../_shared/send-email-queue.ts";
+const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 interface VerifyTokenRequest {
   token: string;
   origin: string;
@@ -64,17 +64,10 @@ serve(async (req: Request): Promise<Response> => {
       );
     }
 
-    // Mark token as used
-    const { error: updateTokenError } = await supabaseAdmin
-      .from("email_verification_tokens")
-      .update({ used_at: new Date().toISOString() })
-      .eq("id", tokenData.id);
-
-    if (updateTokenError) {
-      console.error("Error marking token as used:", updateTokenError);
-    }
-
-    // Update user's email_confirmed_at via Admin API
+    // Update user's email_confirmed_at via Admin API FIRST.
+    // Only mark the token as used after this succeeds — otherwise a transient
+    // failure here would permanently lock the user out of the link (token
+    // shows as "already used" but auth.users.email_confirmed_at is still null).
     const { data: userData, error: updateUserError } = await supabaseAdmin.auth.admin.updateUserById(
       tokenData.user_id,
       { email_confirm: true }
@@ -86,6 +79,26 @@ serve(async (req: Request): Promise<Response> => {
         JSON.stringify({ error: "Failed to verify email. Please try again." }),
         { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
+    }
+
+    // Now safe to mark the token as used.
+    const { error: updateTokenError } = await supabaseAdmin
+      .from("email_verification_tokens")
+      .update({ used_at: new Date().toISOString() })
+      .eq("id", tokenData.id);
+
+    if (updateTokenError) {
+      console.error("Error marking token as used:", updateTokenError);
+    }
+
+    // Mark profile as verified — this is the source of truth for sign-in gating
+    const { error: profileUpdateError } = await supabaseAdmin
+      .from("profiles")
+      .update({ email_verified_at: new Date().toISOString() })
+      .eq("id", tokenData.user_id);
+
+    if (profileUpdateError) {
+      console.error("Error updating profile email_verified_at:", profileUpdateError);
     }
 
     // Get user's display name for welcome email
@@ -104,12 +117,13 @@ serve(async (req: Request): Promise<Response> => {
     });
 
     try {
-      await resend.emails.send({
-        from: "Family Desk <noreply@familydesk.in>",
-        to: [tokenData.email],
-        subject: "Welcome to Family Desk! 🎉",
-        html: welcomeHtml,
-      });
+      await sendViaQueue(supabaseUrl, supabaseServiceKey, {
+      to: tokenData.email,
+      subject: "Welcome to Family Desk! 🎉",
+      html: welcomeHtml,
+      templateName: "verify-email-token",
+      idempotencyKey: `welcome-${tokenData.user_id}`,
+    });
       console.log("Welcome email sent to:", tokenData.email);
     } catch (emailError) {
       console.error("Failed to send welcome email:", emailError);

@@ -9,9 +9,10 @@ import {
 } from "@/lib/permissions";
 import { logPermissionEvent } from "@/lib/permissionAnalytics";
 import {
-  clearPermissionSnooze,
-  getPermissionSnoozeUntil,
-  isPermissionSnoozed,
+  hasAskedPermission,
+  isPermissionRemindActive,
+  markPermissionAsked,
+  setPermissionRemindLater,
 } from "@/lib/launchStorage";
 
 interface PrimerState {
@@ -32,12 +33,15 @@ const DENIED_HINTS: Record<PermissionKind, string> = {
     "Notifications are blocked. Enable them from your browser/site settings to receive reminders.",
 };
 
+/** Surfaces that bypass the per-capability "asked" gate (explicit user retry). */
+const FORCE_SURFACES = new Set(["try-again", "voice-input-retry", "settings"]);
+
 /**
  * Coordinates a "soft prompt → OS prompt" flow.
  *
  * Usage:
  *   const { ensurePermission, primerProps } = usePermissionPrimer();
- *   const ok = await ensurePermission("microphone");
+ *   const ok = await ensurePermission("microphone", "voice-input");
  *   if (ok) startRecording();
  *
  * Then render `<PermissionPrimerDialog {...primerProps} />` once in the tree.
@@ -52,11 +56,9 @@ export const usePermissionPrimer = () => {
 
   const ensurePermission = useCallback(
     async (kind: PermissionKind, surface: string = "unknown"): Promise<boolean> => {
+      const force = FORCE_SURFACES.has(surface);
       const current = await queryPermission(kind);
-      if (current === "granted") {
-        clearPermissionSnooze(kind);
-        return true;
-      }
+      if (current === "granted") return true;
       if (current === "unsupported") return false;
       if (current === "denied") {
         toast.error(DENIED_HINTS[kind]);
@@ -64,19 +66,32 @@ export const usePermissionPrimer = () => {
         return false;
       }
 
-      // "prompt" — show our priming dialog first (unless suppressed).
+      // "prompt" — show our priming sheet first (unless suppressed).
       if (isSuppressed(kind)) {
         void logPermissionEvent(kind, "dismissed", surface, { reason: "suppressed" });
         return false;
       }
 
-      // Respect an active "Remind me later" snooze, except when the
-      // user explicitly retries from a "Try again" affordance.
-      if (surface !== "try-again" && isPermissionSnoozed(kind)) {
-        void logPermissionEvent(kind, "dismissed", surface, {
-          reason: "snoozed",
-          until: getPermissionSnoozeUntil(kind),
-        });
+      // Respect an active "Remind me in 7 days" timer.
+      if (!force && isPermissionRemindActive(kind)) {
+        void logPermissionEvent(kind, "dismissed", surface, { reason: "snoozed" });
+        return false;
+      }
+
+      // If we've already shown the contextual sheet for this capability,
+      // skip the soft prompt and go straight to the OS request.
+      if (!force && hasAskedPermission(kind)) {
+        const result = await requestPermission(kind);
+        if (result === "granted") {
+          void logPermissionEvent(kind, "granted", surface);
+          return true;
+        }
+        if (result === "denied") {
+          toast.error(DENIED_HINTS[kind]);
+          void logPermissionEvent(kind, "denied", surface);
+        } else {
+          void logPermissionEvent(kind, "denied", surface, { result });
+        }
         return false;
       }
 
@@ -90,6 +105,8 @@ export const usePermissionPrimer = () => {
 
   const closeWith = useCallback(
     (granted: boolean) => {
+      // Mark as asked the moment the sheet closes (regardless of choice).
+      if (state.kind) markPermissionAsked(state.kind);
       state.resolve?.(granted);
       setState({ open: false, kind: null, resolve: null, surface: "unknown" });
     },
@@ -103,7 +120,6 @@ export const usePermissionPrimer = () => {
     const result = await requestPermission(kind);
     if (result === "granted") {
       void logPermissionEvent(kind, "granted", surface);
-      clearPermissionSnooze(kind);
       closeWith(true);
       return;
     }
@@ -116,21 +132,41 @@ export const usePermissionPrimer = () => {
     closeWith(false);
   }, [state.kind, state.surface, closeWith]);
 
-  const handleDecline = useCallback(() => {
+  /** Secondary action for camera/photos — just close, no request. */
+  const handleNotNow = useCallback(() => {
     if (state.kind) {
-      suppressForever(state.kind);
-      void logPermissionEvent(state.kind, "dismissed", state.surface, { via: "primer-cancel" });
+      void logPermissionEvent(state.kind, "dismissed", state.surface, { via: "not-now" });
     }
     closeWith(false);
   }, [state.kind, state.surface, closeWith]);
 
+  /** Secondary action for microphone/notifications — set 7-day remind timer. */
+  const handleRemindLater = useCallback(() => {
+    if (state.kind) {
+      setPermissionRemindLater(state.kind, 7);
+      void logPermissionEvent(state.kind, "dismissed", state.surface, {
+        via: "remind-7-days",
+      });
+    }
+    closeWith(false);
+  }, [state.kind, state.surface, closeWith]);
+
+  const currentKind = state.kind ?? ("microphone" as PermissionKind);
+  const usesRemind = currentKind === "microphone" || currentKind === "notifications";
+
   return {
     ensurePermission,
+    /**
+     * Mark the user's preference as "never ask again" for this capability.
+     * Used by the in-app Settings page; not invoked by the contextual sheet.
+     */
+    suppress: (kind: PermissionKind) => suppressForever(kind),
     primerProps: {
       open: state.open,
-      kind: state.kind ?? ("microphone" as PermissionKind),
+      kind: currentKind,
       onAllow: handleAllow,
-      onDecline: handleDecline,
+      onSecondary: usesRemind ? handleRemindLater : handleNotNow,
+      onDismiss: usesRemind ? handleRemindLater : handleNotNow,
     },
   };
 };

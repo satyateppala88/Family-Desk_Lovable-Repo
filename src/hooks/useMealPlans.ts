@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 
 export interface MealPlanItem {
   id: string;
@@ -26,13 +27,14 @@ export interface MealPlan {
 export const useMealPlans = (householdId: string | null, weekStartDate?: string) => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const { data: mealPlans, isLoading } = useQuery({
     queryKey: ["meal-plans", householdId, weekStartDate],
     queryFn: async () => {
       if (!householdId) return [];
 
-      let query = (supabase as any)
+      let query = supabase
         .from("meal_plans")
         .select(`
           *,
@@ -66,49 +68,40 @@ export const useMealPlans = (householdId: string | null, weekStartDate?: string)
       items: Omit<MealPlanItem, "id" | "meal_plan_id">[] 
     }) => {
       if (!householdId) throw new Error("No household ID");
+      if (!user?.id) throw new Error("Not authenticated");
 
-      // Remove existing plans for this week to prevent duplicates
-      const { data: existingPlans } = await (supabase as any)
+      // Step 1: Upsert plan header — safe even if it already exists
+      const { data: mealPlan, error: planError } = await supabase
         .from("meal_plans")
-        .select("id")
-        .eq("household_id", householdId)
-        .eq("week_start_date", weekStartDate);
-
-      if (existingPlans && existingPlans.length > 0) {
-        const existingIds = existingPlans.map((p: any) => p.id);
-        await (supabase as any)
-          .from("meal_plan_items")
-          .delete()
-          .in("meal_plan_id", existingIds);
-        await (supabase as any)
-          .from("meal_plans")
-          .delete()
-          .in("id", existingIds);
-      }
-
-      // Create the meal plan
-      const { data: mealPlan, error: planError } = await (supabase as any)
-        .from("meal_plans")
-        .insert({
-          household_id: householdId,
-          week_start_date: weekStartDate,
-        })
+        .upsert(
+          { household_id: householdId, week_start_date: weekStartDate, created_by: user.id },
+          { onConflict: "household_id,week_start_date" }
+        )
         .select()
         .single();
+      if (planError) {
+        console.error("[createMealPlan] meal_plans upsert failed", planError);
+        throw planError;
+      }
 
-      if (planError) throw planError;
-
-      // Create the meal plan items
-      const itemsWithPlanId = items.map(item => ({
-        ...item,
-        meal_plan_id: mealPlan.id,
-      }));
-
-      const { error: itemsError } = await (supabase as any)
+      // Step 2: Delete old items — plan row exists so this is safe
+      const { error: deleteError } = await supabase
         .from("meal_plan_items")
-        .insert(itemsWithPlanId);
+        .delete()
+        .eq("meal_plan_id", mealPlan.id);
+      if (deleteError) throw deleteError;
 
-      if (itemsError) throw itemsError;
+      // Step 3: Insert new items
+      if (items.length > 0) {
+        const itemsWithPlanId = items.map(item => ({
+          ...item,
+          meal_plan_id: mealPlan.id,
+        }));
+        const { error: itemsError } = await supabase
+          .from("meal_plan_items")
+          .insert(itemsWithPlanId);
+        if (itemsError) throw itemsError;
+      }
 
       return mealPlan;
     },
@@ -132,9 +125,10 @@ export const useMealPlans = (householdId: string | null, weekStartDate?: string)
       }
     },
     onError: (error: any) => {
+      console.error("Create meal plan error:", error);
       toast({
-        title: "Error",
-        description: error.message,
+        title: "Couldn't save meal plan",
+        description: "Please try again.",
         variant: "destructive",
       });
     },
@@ -148,7 +142,7 @@ export const useMealPlans = (householdId: string | null, weekStartDate?: string)
       itemId: string; 
       updates: Partial<MealPlanItem> 
     }) => {
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from("meal_plan_items")
         .update(updates)
         .eq("id", itemId)
@@ -162,9 +156,10 @@ export const useMealPlans = (householdId: string | null, weekStartDate?: string)
       queryClient.invalidateQueries({ queryKey: ["meal-plans", householdId] });
     },
     onError: (error: any) => {
+      console.error("Update meal plan item error:", error);
       toast({
-        title: "Error",
-        description: error.message,
+        title: "Couldn't update this meal",
+        description: "Please try again.",
         variant: "destructive",
       });
     },
@@ -172,7 +167,7 @@ export const useMealPlans = (householdId: string | null, weekStartDate?: string)
 
   const deleteMealPlanItem = useMutation({
     mutationFn: async (itemId: string) => {
-      const { error } = await (supabase as any)
+      const { error } = await supabase
         .from("meal_plan_items")
         .delete()
         .eq("id", itemId);
@@ -187,9 +182,10 @@ export const useMealPlans = (householdId: string | null, weekStartDate?: string)
       });
     },
     onError: (error: any) => {
+      console.error("Delete meal plan item error:", error);
       toast({
-        title: "Error",
-        description: error.message,
+        title: "Couldn't remove this meal",
+        description: "Please try again.",
         variant: "destructive",
       });
     },
@@ -197,7 +193,7 @@ export const useMealPlans = (householdId: string | null, weekStartDate?: string)
 
   const deleteMealPlan = useMutation({
     mutationFn: async (planId: string) => {
-      const { error } = await (supabase as any)
+      const { error } = await supabase
         .from("meal_plans")
         .delete()
         .eq("id", planId);
@@ -212,9 +208,10 @@ export const useMealPlans = (householdId: string | null, weekStartDate?: string)
       });
     },
     onError: (error: any) => {
+      console.error("Delete meal plan error:", error);
       toast({
-        title: "Error",
-        description: error.message,
+        title: "Couldn't delete this plan",
+        description: "Please try again.",
         variant: "destructive",
       });
     },

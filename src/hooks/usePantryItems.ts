@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
 export interface PantryItem {
@@ -43,6 +43,10 @@ export const usePantryItems = (householdId: string | null) => {
 
   const addPantryItem = useMutation({
     mutationFn: async (item: Omit<Partial<PantryItem>, "id" | "created_at" | "updated_at"> & { household_id: string; added_by: string }) => {
+      if (!item.name?.trim()) throw new Error('Item name cannot be empty');
+      if (item.quantity !== undefined && item.quantity !== null && item.quantity < 0)
+        throw new Error('Quantity cannot be negative');
+
       const { data, error } = await supabase
         .from("pantry_items")
         .insert([item as any])
@@ -52,19 +56,32 @@ export const usePantryItems = (householdId: string | null) => {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["pantry-items", householdId] });
+    onMutate: async (item) => {
+      await queryClient.cancelQueries({ queryKey: ['pantry-items', householdId] });
+      const previous = queryClient.getQueryData(['pantry-items', householdId]);
+      queryClient.setQueryData(['pantry-items', householdId], (old: any[]) => [
+        ...(old || []),
+        { ...item, id: `temp-${Date.now()}`, created_at: new Date().toISOString() },
+      ]);
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      queryClient.setQueryData(['pantry-items', householdId], context?.previous);
+      toast({
+        title: "Something went wrong",
+        description: "Please try again.",
+        variant: "destructive",
+      });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['pantry-items', householdId] });
       queryClient.invalidateQueries({ queryKey: ["pantry-stats", householdId] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats", householdId] });
+    },
+    onSuccess: () => {
       toast({
         title: "Item added",
         description: "Pantry item has been added successfully.",
-      });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
       });
     },
   });
@@ -84,6 +101,7 @@ export const usePantryItems = (householdId: string | null) => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["pantry-items", householdId] });
       queryClient.invalidateQueries({ queryKey: ["pantry-stats", householdId] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats", householdId] });
       toast({
         title: "Item updated",
         description: "Pantry item has been updated successfully.",
@@ -91,8 +109,8 @@ export const usePantryItems = (householdId: string | null) => {
     },
     onError: (error: Error) => {
       toast({
-        title: "Error",
-        description: error.message,
+        title: "Something went wrong",
+        description: "Please try again.",
         variant: "destructive",
       });
     },
@@ -107,19 +125,31 @@ export const usePantryItems = (householdId: string | null) => {
 
       if (error) throw error;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["pantry-items", householdId] });
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: ['pantry-items', householdId] });
+      const previous = queryClient.getQueryData(['pantry-items', householdId]);
+      queryClient.setQueryData(['pantry-items', householdId], (old: any[]) =>
+        (old || []).filter((item) => item.id !== id)
+      );
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      queryClient.setQueryData(['pantry-items', householdId], context?.previous);
+      toast({
+        title: "Something went wrong",
+        description: "Please try again.",
+        variant: "destructive",
+      });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['pantry-items', householdId] });
       queryClient.invalidateQueries({ queryKey: ["pantry-stats", householdId] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats", householdId] });
+    },
+    onSuccess: () => {
       toast({
         title: "Item deleted",
         description: "Pantry item has been removed.",
-      });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
       });
     },
   });
@@ -137,6 +167,12 @@ export const usePantryItems = (householdId: string | null) => {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["pantry-items", householdId] });
       queryClient.invalidateQueries({ queryKey: ["pantry-stats", householdId] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats", householdId] });
+      // Broad invalidation safety net — catches any pantry list view that
+      // cached under a different filter / household-less key (e.g. dashboard
+      // snapshot). The count was updating but the list stayed blank because
+      // the consuming query key didn't match the household-scoped key above.
+      queryClient.invalidateQueries({ queryKey: ["pantry-items"] });
       toast({
         title: "Items added",
         description: `${data.length} items have been added to your pantry.`,
@@ -144,8 +180,8 @@ export const usePantryItems = (householdId: string | null) => {
     },
     onError: (error: Error) => {
       toast({
-        title: "Error",
-        description: error.message,
+        title: "Something went wrong",
+        description: "Please try again.",
         variant: "destructive",
       });
     },

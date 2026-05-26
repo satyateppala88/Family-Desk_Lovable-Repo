@@ -9,7 +9,9 @@ import { QuickActionButton } from "@/components/ui/quick-action-button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Plus, CreditCard, Trash2, Sparkles, Award, Gift } from "lucide-react";
 import { useHousehold } from "@/hooks/useHousehold";
+import { useFinanceRealtime } from "@/hooks/useFinance";
 import { useUserCards, useAddUserCard, useRemoveUserCard } from "@/hooks/useUserCards";
+import { useCustomCards, useRemoveCustomCard } from "@/hooks/useCustomCards";
 import { CREDIT_CARD_CATALOG } from "@/data/creditCardCatalog";
 import { AddCardDialog } from "@/components/finance/AddCardDialog";
 import { CardRecommender } from "@/components/finance/CardRecommender";
@@ -18,18 +20,42 @@ import { cn } from "@/lib/utils";
 
 const FinanceCards = () => {
   const { householdId } = useHousehold();
+  useFinanceRealtime(householdId);
   const { data: userCards, isLoading } = useUserCards(householdId);
+  const { data: customCards, isLoading: loadingCustom } = useCustomCards(householdId);
   const addCard = useAddUserCard(householdId);
   const removeCard = useRemoveUserCard(householdId);
+  const removeCustomCard = useRemoveCustomCard(householdId);
   const [showAdd, setShowAdd] = useState(false);
   const [expandedCard, setExpandedCard] = useState<string | null>(null);
-  const [deleteCard, setDeleteCard] = useState<{ id: string; name: string } | null>(null);
+  const [deleteCard, setDeleteCard] = useState<{ id: string; name: string; isCustom?: boolean } | null>(null);
 
   const userCardIds = userCards?.map((c) => c.card_catalog_id) || [];
   const enrichedCards = userCards?.map((uc) => ({
     ...uc,
     catalog: CREDIT_CARD_CATALOG.find((c) => c.id === uc.card_catalog_id),
   })).filter((c) => c.catalog) || [];
+
+  const customEnriched = (customCards || []).map((cc) => ({
+    id: cc.id,
+    isCustom: true as const,
+    catalog: {
+      id: cc.id,
+      name: cc.name,
+      bank: cc.bank,
+      network: cc.network as any,
+      annualFee: Number(cc.annual_fee) || 0,
+      color: cc.color,
+      benefits: cc.benefits || [],
+      milestones: cc.milestones || [],
+      perks: cc.perks || [],
+    },
+  }));
+
+  const allCards: Array<{ id: string; isCustom?: boolean; catalog: any }> = [
+    ...enrichedCards.map((c) => ({ id: c.id, isCustom: false, catalog: c.catalog! })),
+    ...customEnriched,
+  ];
 
   return (
     <div className="page-container">
@@ -51,9 +77,9 @@ const FinanceCards = () => {
           <span className="text-xs text-muted-foreground">{enrichedCards.length} card{enrichedCards.length !== 1 ? "s" : ""}</span>
         </div>
 
-        {isLoading ? (
+        {isLoading || loadingCustom ? (
           <PageLoading cards={3} heading={false} />
-        ) : enrichedCards.length === 0 ? (
+        ) : allCards.length === 0 ? (
           <EmptyState
             icon={CreditCard}
             title="Your wallet is empty"
@@ -63,7 +89,7 @@ const FinanceCards = () => {
           />
         ) : (
           <div className="space-y-2">
-            {enrichedCards.map(({ id, card_catalog_id, catalog }) => {
+            {allCards.map(({ id, isCustom, catalog }) => {
               if (!catalog) return null;
               const isExpanded = expandedCard === id;
               return (
@@ -92,7 +118,12 @@ const FinanceCards = () => {
                         {catalog.network.slice(0, 2).toUpperCase()}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold truncate">{catalog.bank} {catalog.name}</p>
+                        <p className="text-sm font-semibold truncate flex items-center gap-1.5">
+                          {catalog.bank} {catalog.name}
+                          {isCustom && (
+                            <Badge variant="outline" className="text-[9px] px-1 py-0 h-4">Custom</Badge>
+                          )}
+                        </p>
                         <p className="text-xs text-muted-foreground">
                           {catalog.annualFee === 0 ? "Lifetime Free" : `₹${catalog.annualFee}/yr`}
                           {" · "}
@@ -105,7 +136,7 @@ const FinanceCards = () => {
                         className="h-7 w-7 text-muted-foreground hover:text-destructive shrink-0"
                         onClick={(e) => {
                           e.stopPropagation();
-                          setDeleteCard({ id, name: `${catalog.bank} ${catalog.name}` });
+                          setDeleteCard({ id, name: `${catalog.bank} ${catalog.name}`, isCustom });
                         }}
                         style={{ minHeight: "28px" }}
                       >
@@ -121,7 +152,7 @@ const FinanceCards = () => {
                             <Sparkles className="w-3 h-3" /> Benefits
                           </p>
                           <div className="space-y-1">
-                            {catalog.benefits.map((b, i) => (
+                            {catalog.benefits.map((b: any, i: number) => (
                               <div key={i} className="flex items-center justify-between text-xs">
                                 <span className="text-muted-foreground">{b.description}</span>
                                 <Badge variant="outline" className="text-[10px] px-1.5 py-0 shrink-0 ml-2">
@@ -139,7 +170,7 @@ const FinanceCards = () => {
                               <Award className="w-3 h-3" /> Milestones
                             </p>
                             <div className="space-y-1">
-                              {catalog.milestones.map((m, i) => (
+                              {catalog.milestones.map((m: any, i: number) => (
                                 <div key={i} className="text-xs text-muted-foreground">
                                   Spend {formatINR(m.threshold)}/month → {m.reward}
                                 </div>
@@ -155,7 +186,7 @@ const FinanceCards = () => {
                               <Gift className="w-3 h-3" /> Perks
                             </p>
                             <div className="flex flex-wrap gap-1">
-                              {catalog.perks.map((p, i) => (
+                              {catalog.perks.map((p: string, i: number) => (
                                 <Badge key={i} variant="secondary" className="text-[10px]">{p}</Badge>
                               ))}
                             </div>
@@ -192,6 +223,7 @@ const FinanceCards = () => {
         onAdd={(cardId) => addCard.mutate({ card_catalog_id: cardId })}
         existingCardIds={userCardIds}
         isAdding={addCard.isPending}
+        householdId={householdId}
       />
 
       <ConfirmDialog
@@ -202,7 +234,10 @@ const FinanceCards = () => {
         confirmLabel="Remove"
         variant="destructive"
         onConfirm={() => {
-          if (deleteCard) removeCard.mutate(deleteCard.id);
+          if (deleteCard) {
+            if (deleteCard.isCustom) removeCustomCard.mutate(deleteCard.id);
+            else removeCard.mutate(deleteCard.id);
+          }
           setDeleteCard(null);
         }}
       />

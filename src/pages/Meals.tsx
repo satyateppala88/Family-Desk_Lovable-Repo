@@ -7,37 +7,37 @@ import { WeekNavigator } from "@/components/meals/WeekNavigator";
 import { MealPlanDownload } from "@/components/meals/MealPlanDownload";
 import { MarkAsCookedDialog } from "@/components/meals/MarkAsCookedDialog";
 import { RecipeBrowserSheet } from "@/components/meals/RecipeBrowserSheet";
+import { TonightDinnerCard } from "@/components/meals/TonightDinnerCard";
+import { TodayMealsRow } from "@/components/meals/TodayMealsRow";
+import { AddMealSheet } from "@/components/meals/AddMealSheet";
+import { AiSuggestSheet, type SlotMealType } from "@/components/meals/AiSuggestSheet";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useHousehold } from "@/hooks/useHousehold";
+import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
 import { useRecipes } from "@/hooks/useRecipes";
 import { useMealPlans } from "@/hooks/useMealPlans";
 import { useRecipeRating } from "@/hooks/useRecipeRating";
-import { useFeatureTour } from "@/hooks/useFeatureTour";
 import { Recipe } from "@/types/database";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
+import { ModuleNudgeBanner } from "@/components/discovery/ModuleNudgeBanner";
 import { PageLoading } from "@/components/ui/page-loading";
-import { Sparkles, Calendar, LayoutGrid, UtensilsCrossed, Search } from "lucide-react";
+import { Sparkles, Calendar, LayoutGrid, UtensilsCrossed, Search, ChevronDown, ChevronRight, Loader2 } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useQueryClient } from "@tanstack/react-query";
 import { getWeekStartDate, getRemainingDaysOfWeek, getWeekDays, getShortDayName } from "@/lib/weekUtils";
 import { addWeeks, format } from "date-fns";
 import { useRegenerateMeals } from "@/hooks/useRegenerateMeals";
 import { RecipeCard } from "@/components/meals/RecipeCard";
-import { OnboardingTour } from "@/components/onboarding/OnboardingTour";
-import type { Step } from "react-joyride";
-
-const mealsTourSteps: Step[] = [
-  { target: "body", content: "Welcome to Meal Planning! Let AI help you plan nutritious meals for the whole family.", placement: "center", disableBeacon: true },
-  { target: "[data-tour='generate-plan']", content: "Generate a complete week of meals tailored to your family's preferences and dietary needs.", placement: "bottom" },
-  { target: "[role='tablist']", content: "Switch between your weekly calendar and your full recipe collection.", placement: "bottom" },
-  { target: "[data-tour='week-navigator']", content: "Navigate between weeks to plan ahead or revisit past meals.", placement: "bottom" },
-  { target: ".user-menu", content: "You can restart this guide anytime from the menu.", placement: "bottom" },
-];
+import { assignRecipeToSlot } from "@/lib/meals/assignRecipeToSlot";
+import { AddIngredientsDialog } from "@/components/meals/AddIngredientsDialog";
 
 const CUISINE_FILTERS = ["Indian", "Italian", "Chinese", "Thai", "Mexican", "Mediterranean"];
 const DIFFICULTY_FILTERS = ["easy", "medium", "hard"];
@@ -45,6 +45,12 @@ const DIFFICULTY_FILTERS = ["easy", "medium", "hard"];
 const Meals = () => {
   const { user } = useAuth();
   const { householdId, isLoading: loadingHousehold } = useHousehold();
+  const queryClient = useQueryClient();
+  useRealtimeSubscription([
+    { table: "meal_plans", filter: householdId ? `household_id=eq.${householdId}` : undefined, enabled: !!householdId, queryKeys: [["meal-plans", householdId]] },
+    { table: "meal_plan_items", enabled: !!householdId, queryKeys: [["meal-plans", householdId]] },
+    { table: "recipes", filter: householdId ? `household_id=eq.${householdId}` : undefined, enabled: !!householdId, queryKeys: [["recipes", householdId]] },
+  ], householdId);
   const { recipes, isLoading: loadingRecipes, deleteRecipe, updateRecipe } = useRecipes(householdId);
   const [currentWeekStart, setCurrentWeekStart] = useState(() => getWeekStartDate(new Date(), "sunday"));
   const { mealPlans, isLoading: loadingMealPlans, deleteMealPlanItem } = useMealPlans(householdId, format(currentWeekStart, "yyyy-MM-dd"));
@@ -53,39 +59,62 @@ const Meals = () => {
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
   const [ratingRecipe, setRatingRecipe] = useState<Recipe | null>(null);
   const [cookingRecipe, setCookingRecipe] = useState<Recipe | null>(null);
+  const [shoppingForRecipe, setShoppingForRecipe] = useState<Recipe | null>(null);
   const [generatingPlan, setGeneratingPlan] = useState(false);
-  const [view, setView] = useState<"calendar" | "recipes">("calendar");
+  const [suggestingDinner, setSuggestingDinner] = useState(false);
+  const [view, setView] = useState<"today" | "recipes">("today");
+  const [weekOpen, setWeekOpen] = useState(false);
   const [deleteRecipeId, setDeleteRecipeId] = useState<string | null>(null);
   const calendarRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const regenerateMeals = useRegenerateMeals();
 
-  // Recipe browser sheet state
+  // Sheet state
+  const [addSheet, setAddSheet] = useState<{ open: boolean; mealType: SlotMealType }>({ open: false, mealType: "dinner" });
+  const [aiSheet, setAiSheet] = useState<{ open: boolean; mealType: SlotMealType }>({ open: false, mealType: "dinner" });
   const [browserOpen, setBrowserOpen] = useState(false);
-  const [browserSlot, setBrowserSlot] = useState<{ day: number; mealType: string } | null>(null);
+  const [browserSlot, setBrowserSlot] = useState<{ day: number; mealType: SlotMealType } | null>(null);
 
   // Recipe tab search/filter state
   const [recipeSearch, setRecipeSearch] = useState("");
   const [recipeCuisine, setRecipeCuisine] = useState<string | null>(null);
   const [recipeDifficulty, setRecipeDifficulty] = useState<string | null>(null);
 
-  const { shouldShowTour, tourChecked, markTourComplete } = useFeatureTour("meals");
-  const [runOnboarding, setRunOnboarding] = useState(false);
-
   useEffect(() => {
-    if (tourChecked && shouldShowTour && householdId) {
-      setTimeout(() => setRunOnboarding(true), 500);
-    }
-  }, [tourChecked, shouldShowTour, householdId]);
-
-  // Reset to current week when switching to calendar tab
-  useEffect(() => {
-    if (view === "calendar") {
+    if (view === "today") {
       setCurrentWeekStart(getWeekStartDate(new Date(), "sunday"));
     }
   }, [view]);
 
   const currentWeekPlan = mealPlans[0] || null;
+
+  // Today's day index relative to current week start (Sunday)
+  const todayIndex = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const start = new Date(currentWeekStart);
+    start.setHours(0, 0, 0, 0);
+    const diff = Math.floor((today.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+    return Math.max(0, Math.min(6, diff));
+  }, [currentWeekStart]);
+
+  const todaysItems = useMemo(() => {
+    return (currentWeekPlan?.items || []).filter((i: any) => i.day_of_week === todayIndex);
+  }, [currentWeekPlan, todayIndex]);
+
+  const recipeFor = (mealType: SlotMealType): Recipe | null => {
+    const item = todaysItems.find((i: any) => i.meal_type === mealType);
+    return (item?.recipe as Recipe | undefined) || null;
+  };
+
+  const todaysDinner = recipeFor("dinner");
+
+  const slots = [
+    { mealType: "breakfast" as SlotMealType, label: "Breakfast", recipe: recipeFor("breakfast") },
+    { mealType: "lunch" as SlotMealType, label: "Lunch", recipe: recipeFor("lunch") },
+    { mealType: "dinner" as SlotMealType, label: "Dinner", recipe: recipeFor("dinner") },
+    { mealType: "snack" as SlotMealType, label: "Snacks", recipe: recipeFor("snack") },
+  ];
 
   const filteredRecipes = useMemo(() => {
     return recipes.filter(r => {
@@ -96,19 +125,44 @@ const Meals = () => {
     });
   }, [recipes, recipeSearch, recipeCuisine, recipeDifficulty]);
 
-  const handleGeneratePlan = async (daysToGenerate: "full" | "remaining") => {
-    if (!householdId || !user) return;
+  const handleGeneratePlan = async (
+    daysToGenerate: "full" | "remaining",
+    source: "plan" | "recipes" = "plan",
+  ) => {
+    if (!householdId || !user) {
+      toast({
+        title: "Hang on a sec",
+        description: "Loading your household — try again in a moment.",
+      });
+      return;
+    }
     const numDays = daysToGenerate === "full" ? 7 : getRemainingDaysOfWeek("sunday");
     setGeneratingPlan(true);
     try {
-      const { data, error } = await supabase.functions.invoke("generate-meal-suggestions", {
+      const invokePromise = supabase.functions.invoke("generate-meal-suggestions", {
         body: { householdId, userId: user.id, numDays, weekStartDate: format(currentWeekStart, "yyyy-MM-dd"), generateFrom: daysToGenerate === "remaining" ? "today" : "start" },
       });
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("timeout")), 15000),
+      );
+      const { data, error } = (await Promise.race([invokePromise, timeoutPromise])) as Awaited<typeof invokePromise>;
       if (error) throw error;
-      toast({ title: "Meal plan ready! 🍽️", description: `Created ${data.meals?.length || 0} recipes for your family this week.` });
-      window.location.reload();
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["recipes", householdId] }),
+        queryClient.invalidateQueries({ queryKey: ["meal-plans", householdId] }),
+      ]);
+      if (source === "recipes") {
+        toast({ title: "Recipes generated for your household" });
+      } else {
+        toast({ title: "Meal plan ready! 🍽️", description: `Created ${data?.meals?.length || 0} recipes for your family this week.` });
+      }
     } catch (error: any) {
-      toast({ title: "Something went wrong", description: error.message || "We couldn't generate the meal plan. Please try again.", variant: "destructive" });
+      console.error("Generate meal plan error:", error);
+      toast({
+        title: "Couldn't generate right now — try again",
+        description: error?.message,
+        variant: "destructive",
+      });
     } finally {
       setGeneratingPlan(false);
     }
@@ -116,12 +170,10 @@ const Meals = () => {
 
   const handleRate = (recipeId: string, rating: number) => rateRecipe.mutate({ recipeId, rating });
   const handleHide = (recipeId: string) => hideRecipe.mutate(recipeId);
-
   const handleRemoveFromWeek = (recipeId: string) => {
-    const item = currentWeekPlan?.items?.find(i => i.recipe_id === recipeId);
+    const item = currentWeekPlan?.items?.find((i: any) => i.recipe_id === recipeId);
     if (item) deleteMealPlanItem.mutate(item.id);
   };
-
   const handleToggleFavorite = (id: string, isFavorite: boolean) => updateRecipe.mutate({ id, updates: { is_favorite: isFavorite } });
   const handleDeleteRecipe = (id: string) => setDeleteRecipeId(id);
   const confirmDeleteRecipe = () => { if (deleteRecipeId) { deleteRecipe.mutate(deleteRecipeId); setDeleteRecipeId(null); } };
@@ -131,31 +183,124 @@ const Meals = () => {
       toast({ title: "No recipes yet", description: "Generate a meal plan first to build your recipe collection." });
       return;
     }
-    setBrowserSlot({ day, mealType });
+    setBrowserSlot({ day, mealType: mealType as SlotMealType });
     setBrowserOpen(true);
   };
 
-  const handleAssignRecipe = (recipe: Recipe) => {
-    // For now, show a toast. Full assignment would require creating a meal plan item.
-    toast({ title: "Recipe selected", description: `"${recipe.title}" — full assignment coming soon.` });
+  const handleAssignFromBrowser = async (recipe: Recipe) => {
+    if (!user || !householdId || !browserSlot) return;
+    try {
+      await assignRecipeToSlot({
+        householdId, userId: user.id,
+        weekStartDate: format(currentWeekStart, "yyyy-MM-dd"),
+        dayOfWeek: browserSlot.day, mealType: browserSlot.mealType, recipeId: recipe.id,
+      });
+      queryClient.invalidateQueries({ queryKey: ["meal-plans", householdId] });
+      toast({ title: "Added to your plan", description: recipe.title });
+    } catch (e: any) {
+      console.error("Assign recipe to slot error:", e);
+      toast({ title: "Couldn't add this meal", description: "Please try again.", variant: "destructive" });
+    }
     setBrowserOpen(false);
+  };
+
+  const openAddSheet = (mealType: SlotMealType) => setAddSheet({ open: true, mealType });
+  const openAiSheet = (mealType: SlotMealType) => setAiSheet({ open: true, mealType });
+
+  const handleSuggestDinner = () => {
+    try {
+      if (!householdId) {
+        toast({
+          title: "Hang on a sec",
+          description: "Loading your household — try again in a moment.",
+        });
+        return;
+      }
+      setSuggestingDinner(true);
+      openAiSheet("dinner");
+      // Sheet renders its own skeleton; release button shortly after open.
+      setTimeout(() => setSuggestingDinner(false), 600);
+    } catch (e: any) {
+      console.error("Suggest dinner error:", e);
+      setSuggestingDinner(false);
+      toast({
+        title: "Couldn't open suggestions",
+        description: e?.message || "Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+  const openBrowseForToday = (mealType: SlotMealType) => {
+    if (recipes.length === 0) {
+      toast({ title: "No recipes yet", description: "Try AI Suggest or generate a meal plan first." });
+      return;
+    }
+    setBrowserSlot({ day: todayIndex, mealType });
+    setBrowserOpen(true);
   };
 
   const handleMarkAsCooked = async () => {
     if (!cookingRecipe || !householdId) return;
     try {
-      const ingredients = cookingRecipe.ingredients || [];
+      const ingredients = (cookingRecipe.ingredients || []) as Array<{ name: string; quantity?: string; unit?: string }>;
+      const used: { name: string; qty: number; unit: string }[] = [];
       for (const ingredient of ingredients) {
-        const itemName = ingredient.name.toLowerCase().trim();
-        const qty = parseFloat(ingredient.quantity) || 0;
-        const { data: pantryItems } = await supabase.from("pantry_items").select("id, quantity, unit").eq("household_id", householdId).ilike("name", itemName).limit(1);
+        const itemName = (ingredient.name || "").toLowerCase().trim();
+        if (!itemName) continue;
+        // Resilient quantity parsing
+        const rawQty = String(ingredient.quantity ?? "").replace(/[^0-9.]/g, "");
+        let qty = parseFloat(rawQty);
+        if (!Number.isFinite(qty) || qty <= 0) {
+          const unit = (ingredient.unit || "").toLowerCase();
+          qty = unit === "g" || unit === "ml" ? 100 : 1;
+        }
+        const { data: pantryItems } = await supabase
+          .from("pantry_items")
+          .select("id, name, quantity, unit")
+          .eq("household_id", householdId)
+          .ilike("name", `%${itemName}%`)
+          .limit(1);
         if (pantryItems && pantryItems.length > 0) {
           const pantryItem = pantryItems[0];
+          if ((pantryItem.quantity ?? 0) <= 0) continue;
           const newQty = Math.max(0, (pantryItem.quantity || 0) - qty);
           await supabase.from("pantry_items").update({ quantity: newQty }).eq("id", pantryItem.id);
+          used.push({ name: pantryItem.name, qty, unit: pantryItem.unit || ingredient.unit || "" });
         }
       }
-      toast({ title: "Marked as cooked! 👨‍🍳", description: "Your pantry has been updated to reflect what was used." });
+      queryClient.invalidateQueries({ queryKey: ["pantry-items", householdId] });
+      queryClient.invalidateQueries({ queryKey: ["pantry-stats", householdId] });
+
+      // Mark the meal_plan_item as cooked today (used by Monthly Report)
+      try {
+        const today = new Date().toISOString().slice(0, 10);
+        const { data: plans } = await supabase
+          .from("meal_plans")
+          .select("id")
+          .eq("household_id", householdId);
+        const planIds = (plans || []).map((p) => p.id);
+        if (planIds.length > 0) {
+          await supabase
+            .from("meal_plan_items")
+            .update({ cooked_at: new Date().toISOString() })
+            .in("meal_plan_id", planIds)
+            .eq("recipe_id", cookingRecipe.id)
+            .eq("scheduled_date", today);
+        }
+      } catch {
+        // non-fatal
+      }
+
+      if (used.length === 0) {
+        toast({ title: "Marked as cooked! 👨‍🍳", description: "No matching pantry items to deduct." });
+      } else {
+        const preview = used.slice(0, 5).map((u) => `${u.name} (${u.qty}${u.unit ? u.unit : ""})`).join(", ");
+        const more = used.length > 5 ? ` +${used.length - 5} more` : "";
+        toast({
+          title: "Pantry updated 👨‍🍳",
+          description: `You used: ${preview}${more}`,
+        });
+      }
     } catch {
       toast({ title: "Pantry update issue", description: "Some pantry items may not have been updated.", variant: "destructive" });
     }
@@ -170,103 +315,155 @@ const Meals = () => {
 
   return (
     <div className="page-container">
-      <Header onStartOnboarding={() => setRunOnboarding(true)} />
+      <Header />
 
       <main className="page-content">
-        {/* Header area */}
-        <div className="mb-4 space-y-3">
-          <div className="flex items-start justify-between gap-2">
-            <div>
-              <h1 className="page-heading">Meal Planning</h1>
-              <p className="text-sm text-muted-foreground mt-0.5">
-                {recipes.length > 0 ? `${recipes.length} recipes in your collection` : "Let AI create your first meal plan"}
-              </p>
-            </div>
-            <MealPlanDownload mealPlan={currentWeekPlan} weekStart={currentWeekStart} calendarRef={calendarRef} />
-          </div>
-
-          {/* Single AI generation button */}
-          <div className="relative" data-tour="generate-plan">
-            <Button
-              onClick={() => handleGeneratePlan("full")}
-              disabled={generatingPlan}
-              className="w-full sm:w-auto"
-              size="sm"
-            >
-              <Sparkles className="w-4 h-4 mr-1.5" aria-hidden="true" />
-              {generatingPlan ? "Creating your plan..." : "Generate Meal Plan"}
-            </Button>
-            <p className="text-[11px] text-muted-foreground mt-1.5">
-              I'll plan meals based on your saved recipes and preferences
+        <ModuleNudgeBanner
+          moduleKey="meals"
+          text="Tell us your dietary preferences once and the AI plans meals around them every day."
+        />
+        <div className="mb-4 flex items-start justify-between gap-2">
+          <div>
+            <h1 className="page-heading">Meals</h1>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              {recipes.length > 0 ? `${recipes.length} recipes in your collection` : "Plan tonight's dinner in seconds"}
             </p>
           </div>
+          <MealPlanDownload mealPlan={currentWeekPlan} weekStart={currentWeekStart} calendarRef={calendarRef} />
         </div>
 
         <Tabs value={view} onValueChange={(v) => setView(v as any)} className="space-y-4">
           <TabsList className="w-full grid grid-cols-2">
-            <TabsTrigger value="calendar" className="gap-2">
+            <TabsTrigger value="today" className="gap-2">
               <Calendar className="w-4 h-4" aria-hidden="true" />
-              <span className="hidden sm:inline">Calendar View</span>
-              <span className="sm:hidden">Calendar</span>
+              Today
             </TabsTrigger>
             <TabsTrigger value="recipes" className="gap-2">
               <LayoutGrid className="w-4 h-4" aria-hidden="true" />
-              <span className="hidden sm:inline">All Recipes</span>
-              <span className="sm:hidden">Recipes</span>
+              All Recipes
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="calendar" className="space-y-4">
-            <div data-tour="week-navigator">
-              <WeekNavigator
-                weekStart={currentWeekStart}
-                onPrevious={() => setCurrentWeekStart(addWeeks(currentWeekStart, -1))}
-                onNext={() => setCurrentWeekStart(addWeeks(currentWeekStart, 1))}
-              />
-            </div>
-
-            <div ref={calendarRef}>
-              <MealPlanCalendar
-                mealPlan={currentWeekPlan}
-                weekStart={currentWeekStart}
-                onRecipeClick={setSelectedRecipe}
-                onRateClick={setRatingRecipe}
-                onRemoveClick={(itemId) => deleteMealPlanItem.mutate(itemId)}
-                onAddClick={handleAddClick}
-                onRegenerateMeal={(dayIndex, mealType) => {
-                  if (!householdId) return;
-                  regenerateMeals.mutate({ householdId, weekStartDate: format(currentWeekStart, "yyyy-MM-dd"), dayOfWeek: dayIndex, mealType: mealType as "breakfast" | "lunch" | "dinner" });
-                }}
-                onRegenerateDay={(dayIndex) => {
-                  if (!householdId) return;
-                  regenerateMeals.mutate({ householdId, weekStartDate: format(currentWeekStart, "yyyy-MM-dd"), dayOfWeek: dayIndex });
-                }}
-                onMarkAsCooked={setCookingRecipe}
-              />
-            </div>
-
-            {!currentWeekPlan && (
-              <EmptyState
-                icon={UtensilsCrossed}
-                title="No meals planned this week"
-                description="Let AI suggest recipes based on your family's preferences and dietary needs."
-                encouragement="Meal planning saves time and reduces food waste!"
+          <TabsContent value="today" className="space-y-4">
+            {householdId && (
+              <TonightDinnerCard
+                recipe={todaysDinner}
+                onSuggest={handleSuggestDinner}
+                isLoading={suggestingDinner}
+                onChange={() => openAddSheet("dinner")}
+                onAddToList={(r) => setShoppingForRecipe(r)}
+                onMarkAsCooked={(r) => setCookingRecipe(r)}
               />
             )}
+
+            <div>
+              <h3 className="text-xs uppercase tracking-wide text-muted-foreground mb-2">Today</h3>
+              <TodayMealsRow
+                slots={slots}
+                onAdd={(mt) => openAddSheet(mt)}
+                onOpen={(r) => setSelectedRecipe(r)}
+                onAddToList={(r) => setShoppingForRecipe(r)}
+                onMarkAsCooked={(r) => setCookingRecipe(r)}
+              />
+            </div>
+
+            <Collapsible open={weekOpen} onOpenChange={setWeekOpen}>
+              <CollapsibleTrigger asChild>
+                <Button variant="outline" className="w-full justify-between" size="sm">
+                  <span className="flex items-center gap-2">
+                    <Calendar className="w-4 h-4" />
+                    Plan the week
+                  </span>
+                  {weekOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="space-y-4 pt-4">
+                <div className="relative" data-tour="generate-plan">
+                  <Button
+                    onClick={() => handleGeneratePlan("full")}
+                    disabled={generatingPlan}
+                    className="w-full sm:w-auto"
+                    size="sm"
+                  >
+                    {generatingPlan ? (
+                      <Loader2 className="w-4 h-4 mr-1.5 animate-spin" aria-hidden="true" />
+                    ) : (
+                      <Sparkles className="w-4 h-4 mr-1.5" aria-hidden="true" />
+                    )}
+                    {generatingPlan ? "Generating..." : "Generate Meal Plan"}
+                  </Button>
+                  <p className="text-[11px] text-muted-foreground mt-1.5">
+                    I'll plan meals based on your saved recipes and preferences
+                  </p>
+                </div>
+
+                <div data-tour="week-navigator">
+                  <WeekNavigator
+                    weekStart={currentWeekStart}
+                    onPrevious={() => setCurrentWeekStart(addWeeks(currentWeekStart, -1))}
+                    onNext={() => setCurrentWeekStart(addWeeks(currentWeekStart, 1))}
+                  />
+                </div>
+
+                <div ref={calendarRef}>
+                  <MealPlanCalendar
+                    mealPlan={currentWeekPlan}
+                    weekStart={currentWeekStart}
+                    onRecipeClick={setSelectedRecipe}
+                    onRateClick={setRatingRecipe}
+                    onRemoveClick={(itemId) => deleteMealPlanItem.mutate(itemId)}
+                    onAddClick={handleAddClick}
+                    onRegenerateMeal={(dayIndex, mealType) => {
+                      if (!householdId) return;
+                      regenerateMeals.mutate({ householdId, weekStartDate: format(currentWeekStart, "yyyy-MM-dd"), dayOfWeek: dayIndex, mealType: mealType as "breakfast" | "lunch" | "dinner" });
+                    }}
+                    onRegenerateDay={(dayIndex) => {
+                      if (!householdId) return;
+                      regenerateMeals.mutate({ householdId, weekStartDate: format(currentWeekStart, "yyyy-MM-dd"), dayOfWeek: dayIndex });
+                    }}
+                    onMarkAsCooked={setCookingRecipe}
+                    onAddToList={setShoppingForRecipe}
+                    onAiSuggest={(_day, mealType) => setAiSheet({ open: true, mealType: mealType as SlotMealType })}
+                  />
+                </div>
+
+                {!currentWeekPlan && (
+                  <EmptyState
+                    icon={UtensilsCrossed}
+                    title="No meals planned this week"
+                    description="Let AI suggest recipes based on your family's preferences and dietary needs."
+                  />
+                )}
+              </CollapsibleContent>
+            </Collapsible>
           </TabsContent>
 
           <TabsContent value="recipes" className="space-y-4">
-            {recipes.length === 0 ? (
+            {recipes.length === 0 && generatingPlan ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 animate-fade-in">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="rounded-xl border border-border/40 p-4 space-y-3">
+                    <Skeleton className="h-32 w-full rounded-lg" />
+                    <Skeleton className="h-4 w-3/4" />
+                    <Skeleton className="h-3 w-1/2" />
+                  </div>
+                ))}
+              </div>
+            ) : recipes.length === 0 ? (
               <EmptyState
                 icon={UtensilsCrossed}
                 title="Your recipe collection is empty"
-                description="Generate a meal plan and your AI-created recipes will appear here."
+                description="Tap 'Generate Recipes' to get personalised Indian meal ideas for your household. Every suggestion is tailored to your dietary preferences."
                 encouragement="Each recipe is tailored to your household's dietary preferences."
-                action={{ label: "Generate Recipes", onClick: () => handleGeneratePlan("full") }}
+                action={{
+                  label: "Generate Recipes",
+                  loading: generatingPlan,
+                  loadingLabel: "Generating recipes…",
+                  onClick: () => handleGeneratePlan("full", "recipes"),
+                }}
               />
             ) : (
               <>
-                {/* Search and filters */}
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
                     <div className="relative flex-1">
@@ -327,28 +524,53 @@ const Meals = () => {
         </Tabs>
       </main>
 
-      {/* Recipe browser for planner slot assignment */}
+      {householdId && (
+        <>
+          <AddMealSheet
+            open={addSheet.open}
+            onOpenChange={(o) => setAddSheet((s) => ({ ...s, open: o }))}
+            householdId={householdId}
+            weekStartDate={format(currentWeekStart, "yyyy-MM-dd")}
+            dayOfWeek={todayIndex}
+            mealType={addSheet.mealType}
+            onPickAi={() => openAiSheet(addSheet.mealType)}
+            onPickBrowse={() => openBrowseForToday(addSheet.mealType)}
+          />
+          <AiSuggestSheet
+            open={aiSheet.open}
+            onOpenChange={(o) => setAiSheet((s) => ({ ...s, open: o }))}
+            householdId={householdId}
+            weekStartDate={format(currentWeekStart, "yyyy-MM-dd")}
+            dayOfWeek={todayIndex}
+            mealType={aiSheet.mealType}
+          />
+        </>
+      )}
+
       <RecipeBrowserSheet
         open={browserOpen}
         onOpenChange={setBrowserOpen}
         recipes={recipes}
         slotLabel={slotLabel}
-        onAssign={handleAssignRecipe}
+        onAssign={handleAssignFromBrowser}
       />
 
       <RecipeDetailDialog recipe={selectedRecipe} open={!!selectedRecipe} onOpenChange={(open) => !open && setSelectedRecipe(null)} onRate={setRatingRecipe} />
       <RecipeRatingDialog recipe={ratingRecipe} open={!!ratingRecipe} onOpenChange={(open) => !open && setRatingRecipe(null)} onRate={handleRate} onHide={handleHide} onRemoveFromWeek={handleRemoveFromWeek} />
       <MarkAsCookedDialog open={!!cookingRecipe} onOpenChange={(open) => !open && setCookingRecipe(null)} recipeName={cookingRecipe?.title || ""} ingredients={cookingRecipe?.ingredients || []} onConfirm={handleMarkAsCooked} />
+      {householdId && user && shoppingForRecipe && (
+        <AddIngredientsDialog
+          open={!!shoppingForRecipe}
+          onOpenChange={(o) => !o && setShoppingForRecipe(null)}
+          recipeTitle={shoppingForRecipe.title}
+          ingredients={(shoppingForRecipe.ingredients as any[]) || []}
+          householdId={householdId}
+          userId={user.id}
+        />
+      )}
       <ConfirmDialog open={!!deleteRecipeId} onOpenChange={(open) => !open && setDeleteRecipeId(null)} title="Delete this recipe?" description="This recipe will be permanently removed from your collection." confirmLabel="Delete Recipe" variant="destructive" onConfirm={confirmDeleteRecipe} />
-      <OnboardingTour run={runOnboarding} onComplete={() => { setRunOnboarding(false); markTourComplete(); }} steps={mealsTourSteps} featureName="meals" />
     </div>
   );
 };
 
-import { ModuleSetupGate } from "@/components/onboarding/ModuleSetupGate";
-const MealsWithGate = () => (
-  <ModuleSetupGate module="meals_setup">
-    <Meals />
-  </ModuleSetupGate>
-);
-export default MealsWithGate;
+export default Meals;

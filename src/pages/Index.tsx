@@ -1,23 +1,30 @@
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { Header } from "@/components/layout/Header";
-import { OnboardingTour } from "@/components/onboarding/OnboardingTour";
 import { PendingInvitationBanner } from "@/components/household/PendingInvitationBanner";
 import { useHousehold } from "@/hooks/useHousehold";
 import { useOnboardingProgress } from "@/hooks/useOnboardingProgress";
 import { useAuth } from "@/contexts/AuthContext";
-import { useFeatureTour } from "@/hooks/useFeatureTour";
 import { useDashboardStats } from "@/hooks/useDashboardStats";
-import { supabase } from "@/lib/supabase";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { PageLoadingGrid } from "@/components/ui/page-loading";
-import { Household } from "@/types/database";
 import { useEnabledProducts, isProductEnabled, ProductName } from "@/hooks/useEnabledProducts";
+import { useHouseholdPreferences } from "@/hooks/useHouseholdPreferences";
+import { MODULE_SETUP_KEYS, isModuleSetupComplete } from "@/lib/moduleSetup";
 import { OnboardingProgressIndicator } from "@/components/onboarding/OnboardingProgressIndicator";
-import { FamilyPulse } from "@/components/dashboard/FamilyPulse";
-import { PermissionsTutorial } from "@/components/permissions/PermissionsTutorial";
-import { getHasSeenPermissionsTutorial } from "@/lib/launchStorage";
+import { FestivalBanner } from "@/components/dashboard/FestivalBanner";
+import { TodaySnapshot } from "@/components/dashboard/TodaySnapshot";
+import { QuickActionsRow } from "@/components/dashboard/QuickActionsRow";
+import { DidYouKnowCard } from "@/components/dashboard/DidYouKnowCard";
+import { InstallAppButton } from "@/components/install/InstallAppButton";
+import { useDashboardSnapshot } from "@/hooks/useDashboardSnapshot";
+import { format } from "date-fns";
+import { usePermissionPrimer } from "@/hooks/usePermissionPrimer";
+import { PermissionPrimerDialog } from "@/components/permissions/PermissionPrimerDialog";
+import { hasAskedPermission, isPermissionRemindActive } from "@/lib/launchStorage";
+import { toast } from "sonner";
 import {
   CheckSquare,
   UtensilsCrossed,
@@ -26,7 +33,6 @@ import {
   Leaf,
   Wallet,
 } from "lucide-react";
-import type { Step } from "react-joyride";
 
 const moduleDefinitions: {
   product: ProductName;
@@ -44,47 +50,67 @@ const moduleDefinitions: {
   { product: "finance", icon: Wallet, label: "Finance", description: "Budget & savings", path: "/finance", tintClass: "module-tint-finance" },
 ];
 
-const dashboardTourSteps: Step[] = [
-  {
-    target: "body",
-    content: "Welcome to FamilyDesk! This is your family's home base for staying organized together.",
-    placement: "center",
-    disableBeacon: true,
-  },
-  {
-    target: ".module-grid",
-    content: "Each tile opens a different part of your household toolkit. Tap any to get started.",
-    placement: "bottom",
-  },
-];
-
 const Index = () => {
   const navigate = useNavigate();
-  const { householdId, isLoading, onboardingCompleted } = useHousehold();
+  const { householdId, isLoading, onboardingCompleted, householdName, error, refetch } = useHousehold();
   const { user } = useAuth();
-  const [household, setHousehold] = useState<Household | null>(null);
+  const queryClient = useQueryClient();
   const { data: enabledProducts } = useEnabledProducts(householdId);
   const { data: progressData } = useOnboardingProgress(householdId);
   const { data: dashStats } = useDashboardStats(householdId);
+  const { moduleSubtitles } = useDashboardSnapshot(householdId);
+  const { preferences, isLoading: preferencesLoading } = useHouseholdPreferences(householdId);
+  // Banner progress is driven by which enabled modules have been set up,
+  // so the percentage and the hide-when-complete logic agree.
+  const moduleSetupProducts = (enabledProducts ?? []).filter((p) => !!MODULE_SETUP_KEYS[p as ProductName]);
+  const moduleSetupTotal = moduleSetupProducts.length;
+  const moduleSetupDone = moduleSetupProducts.reduce((n, p) => {
+    const key = MODULE_SETUP_KEYS[p as ProductName];
+    return key && isModuleSetupComplete(preferences, key) ? n + 1 : n;
+  }, 0);
+  const moduleSetupPct =
+    moduleSetupTotal > 0
+      ? Math.round((moduleSetupDone / moduleSetupTotal) * 100)
+      : 0;
+  const allModuleSetupsDone =
+    moduleSetupTotal === 0 || moduleSetupDone === moduleSetupTotal;
+  const showSetupBanner = !preferencesLoading && !onboardingCompleted && !allModuleSetupsDone;
 
-  const { shouldShowTour, tourChecked, markTourComplete } = useFeatureTour("dashboard");
-  const [runOnboarding, setRunOnboarding] = useState(false);
-  const [showPermissionsTutorial, setShowPermissionsTutorial] = useState(false);
+  const { ensurePermission, primerProps } = usePermissionPrimer();
 
+  // One-time welcome toast for brand-new accounts (created within the last 5 minutes).
   useEffect(() => {
-    if (tourChecked && shouldShowTour && householdId) {
-      setTimeout(() => setRunOnboarding(true), 500);
+    if (!user?.id || !user?.created_at) return;
+    const isNewUser =
+      Date.now() - new Date(user.created_at).getTime() < 5 * 60 * 1000;
+    if (!isNewUser) return;
+    const key = `fd_welcome_toast_shown:${user.id}`;
+    try {
+      if (sessionStorage.getItem(key)) return;
+      sessionStorage.setItem(key, "1");
+    } catch {
+      /* sessionStorage unavailable — fall through, toast will just show once per mount */
     }
-  }, [tourChecked, shouldShowTour, householdId]);
+    const firstName =
+      (user.user_metadata?.display_name as string | undefined)?.split(" ")[0] ||
+      "there";
+    toast(`Welcome to FamilyDesk, ${firstName}! 👋`, {
+      description: "Your household is set up and ready.",
+      duration: 4000,
+      closeButton: true,
+    });
+  }, [user]);
 
-  // Show the one-time permissions tutorial after the dashboard tour has
-  // had a chance to run (or been skipped). Only appears once per device.
+  // Contextual notifications primer.
   useEffect(() => {
-    if (!householdId || !tourChecked) return;
-    if (getHasSeenPermissionsTutorial()) return;
-    const t = setTimeout(() => setShowPermissionsTutorial(true), shouldShowTour ? 1800 : 600);
+    if (!householdId) return;
+    if (hasAskedPermission("notifications")) return;
+    if (isPermissionRemindActive("notifications")) return;
+    const t = setTimeout(() => {
+      void ensurePermission("notifications", "dashboard-first-load");
+    }, 500);
     return () => clearTimeout(t);
-  }, [householdId, tourChecked, shouldShowTour]);
+  }, [householdId, ensurePermission]);
 
   useEffect(() => {
     if (!isLoading && !householdId && user) {
@@ -92,48 +118,18 @@ const Index = () => {
     }
   }, [isLoading, householdId, user, navigate]);
 
-  useEffect(() => {
-    const fetchHousehold = async () => {
-      if (householdId) {
-        const { data } = await supabase
-          .from("households")
-          .select("*")
-          .eq("id", householdId)
-          .single();
-        if (data) setHousehold(data);
-      }
-    };
-    fetchHousehold();
-  }, [householdId]);
-
-  const handleStartOnboarding = () => setRunOnboarding(true);
-  const handleOnboardingComplete = () => {
-    setRunOnboarding(false);
-    markTourComplete();
-  };
-
   const visibleModules = moduleDefinitions.filter((m) =>
     isProductEnabled(enabledProducts, m.product)
   );
 
   const getModuleHint = (product: ProductName): string | null => {
-    if (!dashStats) return null;
-    switch (product) {
-      case "tasks":
-        return dashStats.pendingTasksCount > 0 ? `${dashStats.pendingTasksCount} to do` : "All clear ✓";
-      case "meals":
-        return dashStats.todayMeals?.length > 0 ? `${dashStats.todayMeals.length} planned today` : null;
-      case "grocery":
-        return dashStats.pantryItemsCount > 0 ? `${dashStats.pantryItemsCount} items tracked` : null;
-      default:
-        return null;
-    }
+    return moduleSubtitles?.[product] ?? null;
   };
 
-  if (isLoading || !household) {
+  if (isLoading) {
     return (
       <div className="page-container">
-        <Header onStartOnboarding={handleStartOnboarding} />
+        <Header />
         <main className="page-content">
           <PageLoadingGrid columns={2} cards={6} />
         </main>
@@ -141,41 +137,58 @@ const Index = () => {
     );
   }
 
+  if (error || (!householdId && user)) {
+    return (
+      <div className="page-container">
+        <Header />
+        <main className="page-content">
+          <Card>
+            <CardContent className="p-6 text-center space-y-3">
+              <p className="text-sm text-fd-ink-2">
+                Having trouble loading your home.
+              </p>
+              <Button
+                size="sm"
+                onClick={() => {
+                  queryClient.invalidateQueries({ queryKey: ["household"] });
+                  refetch?.();
+                }}
+              >
+                Tap to retry
+              </Button>
+            </CardContent>
+          </Card>
+        </main>
+      </div>
+    );
+  }
+
   const firstName = user?.user_metadata?.display_name?.split(" ")[0] || "";
-  const greeting = getGreeting(firstName);
+  const greetingPrefix = getGreetingPrefix();
 
   return (
     <div className="page-container">
-      <Header onStartOnboarding={handleStartOnboarding} />
-      {tourChecked && (
-        <OnboardingTour
-          run={runOnboarding}
-          onComplete={handleOnboardingComplete}
-          steps={dashboardTourSteps}
-          featureName="dashboard"
-        />
-      )}
+      <Header />
       <main className="page-content animate-fade-in">
         <PendingInvitationBanner />
 
-        <PermissionsTutorial
-          open={showPermissionsTutorial}
-          onClose={() => setShowPermissionsTutorial(false)}
-        />
+        <FestivalBanner />
 
-        {!onboardingCompleted && progressData && progressData.percentage < 100 && (
+        <PermissionPrimerDialog {...primerProps} />
+
+        {showSetupBanner && (
           <Card className="mb-4 border-primary/15">
             <CardContent className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4">
               <div className="flex items-center gap-4 flex-1 w-full sm:w-auto">
                 <OnboardingProgressIndicator
-                  percentage={progressData.percentage}
+                  percentage={moduleSetupPct}
                   size="small"
                   showLabel={false}
                 />
                 <div className="flex-1">
                   <h3 className="font-medium text-sm">Let's finish setting up</h3>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    {progressData.percentage}% done — just a few more steps
+                    {moduleSetupPct}% done — {moduleSetupDone} of {moduleSetupTotal} modules ready
                   </p>
                 </div>
               </div>
@@ -191,15 +204,37 @@ const Index = () => {
         )}
 
         <div className="mb-5">
-          <h1 className="page-heading">{greeting}</h1>
-          <p className="text-sm text-muted-foreground mt-1">{household.name}</p>
+          <h1 className="font-display text-[26px] leading-tight text-fd-ink">
+            {greetingPrefix}
+            {firstName && (
+              <>
+                ,{" "}
+                <span className="italic text-fd-green">{firstName}</span>
+              </>
+            )}
+          </h1>
+          <p className="text-[12px] text-fd-ink-3 mt-1">
+            {householdName ?? ""} · {format(new Date(), "EEEE, d MMM")}
+          </p>
         </div>
 
-        {/* Family Pulse — lightweight weekly snapshot */}
-        <FamilyPulse stats={dashStats} enabledProducts={enabledProducts} />
+        {/* Today's snapshot — live status cards */}
+        {householdId && <TodaySnapshot householdId={householdId} />}
+
+        {/* Rotating discovery tip */}
+        <DidYouKnowCard />
+
+        {/* PWA install CTA — auto-hides if already installed, unsupported,
+            or running inside the Lovable preview iframe. */}
+        <div className="mb-4">
+          <InstallAppButton fullWidth label="Install FamilyDesk" />
+        </div>
+
+        {/* Quick actions */}
+        {householdId && <QuickActionsRow householdId={householdId} />}
 
         {/* Module grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 module-grid">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4 module-grid">
           {visibleModules.map(({ product, icon: Icon, label, description, path, tintClass }) => {
             const hint = getModuleHint(product);
             return (
@@ -228,10 +263,9 @@ const Index = () => {
   );
 };
 
-function getGreeting(name: string): string {
+function getGreetingPrefix(): string {
   const hour = new Date().getHours();
-  const prefix = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
-  return name ? `${prefix}, ${name}` : prefix;
+  return hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
 }
 
 export default Index;

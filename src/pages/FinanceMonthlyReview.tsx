@@ -5,6 +5,9 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { EmptyState } from "@/components/ui/empty-state";
 import { useHousehold } from "@/hooks/useHousehold";
+import { useSelectedMonth } from "@/hooks/useSelectedMonth";
+import { MonthSwitcher } from "@/components/finance/MonthSwitcher";
+import { DailySpendChart } from "@/components/finance/DailySpendChart";
 import {
   useFinanceMonthlySummary,
   useFinanceBudgets,
@@ -12,13 +15,17 @@ import {
   CATEGORY_LABELS,
 } from "@/hooks/useFinance";
 import { formatINR } from "@/lib/formatINR";
+import { PrivateValue, PrivateText } from "@/components/shared/PrivateValue";
 import { format } from "date-fns";
 import { TrendingUp, TrendingDown, AlertTriangle, CheckCircle, Lightbulb, PartyPopper, Shield, BarChart3 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useCustomCategories } from "@/hooks/useCustomCategories";
+import { resolveCategoryLabel } from "@/components/finance/CategorySelect";
 
 const FinanceMonthlyReview = () => {
   const { householdId } = useHousehold();
-  const currentMonth = format(new Date(), "yyyy-MM");
+  const { month: currentMonth, label: monthLabel } = useSelectedMonth();
+  const { categories: customCats } = useCustomCategories("transaction");
   const { data: summary } = useFinanceMonthlySummary(householdId, currentMonth);
   const { data: budgets } = useFinanceBudgets(householdId, currentMonth);
   const { data: goals } = useFinanceSavingsGoals(householdId);
@@ -51,10 +58,10 @@ const FinanceMonthlyReview = () => {
       <main className="page-content space-y-4 animate-fade-in">
         <div>
           <h1 className="page-heading">Monthly Review</h1>
-          <p className="text-sm text-muted-foreground mt-1">{format(new Date(), "MMMM yyyy")} — your household's financial health</p>
+          <p className="text-sm text-muted-foreground mt-1">{monthLabel} — your household's financial health</p>
         </div>
 
-        
+        <MonthSwitcher />
 
         {/* Privacy cue */}
         <div className="trust-badge" role="status">
@@ -77,13 +84,13 @@ const FinanceMonthlyReview = () => {
               <Card>
                 <CardContent className="p-4 text-center">
                   <p className="text-label mb-1">Earned</p>
-                  <p className="text-lg font-bold text-foreground">{formatINR(summary?.income || 0)}</p>
+                  <p className="text-lg font-bold text-foreground"><PrivateValue value={summary?.income || 0} /></p>
                 </CardContent>
               </Card>
               <Card>
                 <CardContent className="p-4 text-center">
                   <p className="text-label mb-1">Spent</p>
-                  <p className="text-lg font-bold text-foreground">{formatINR(summary?.expenses || 0)}</p>
+                  <p className="text-lg font-bold text-foreground"><PrivateValue value={summary?.expenses || 0} /></p>
                 </CardContent>
               </Card>
               <Card>
@@ -99,6 +106,9 @@ const FinanceMonthlyReview = () => {
               </Card>
             </div>
 
+            {/* Daily spending pattern */}
+            <DailySpendChart householdId={householdId} month={currentMonth} />
+
             {/* Wins — celebration moment */}
             {(underBudgetCategories.length > 0 || savingsRate >= 20) && (
               <Card className="border-[hsl(var(--success))]/20 bg-[hsl(var(--success))]/3">
@@ -111,7 +121,7 @@ const FinanceMonthlyReview = () => {
                   {underBudgetCategories.map((b) => (
                     <div key={b.id} className="flex items-start gap-2 text-sm">
                       <Badge variant="success" className="mt-0.5 shrink-0">Under</Badge>
-                      <span className="text-muted-foreground">{CATEGORY_LABELS[b.category]} stayed well within budget — great restraint!</span>
+                      <span className="text-muted-foreground">{resolveCategoryLabel(b.category, CATEGORY_LABELS, customCats)} stayed well within budget — great restraint!</span>
                     </div>
                   ))}
                   {savingsRate >= 20 && (
@@ -139,7 +149,7 @@ const FinanceMonthlyReview = () => {
                       <div key={b.id} className="flex items-start gap-2 text-sm">
                         <Badge variant="destructive" className="mt-0.5 shrink-0">Over</Badge>
                         <span className="text-muted-foreground">
-                          {CATEGORY_LABELS[b.category]}: spent {formatINR(actual)} against a {formatINR(Number(b.planned_amount))} budget
+                          {resolveCategoryLabel(b.category, CATEGORY_LABELS, customCats)}: spent <PrivateValue value={actual} /> against a <PrivateValue value={Number(b.planned_amount)} /> budget
                         </span>
                       </div>
                     );
@@ -163,8 +173,8 @@ const FinanceMonthlyReview = () => {
                     return (
                       <div key={cat} className="space-y-1">
                         <div className="flex justify-between text-sm">
-                          <span className="text-foreground font-medium">{CATEGORY_LABELS[cat] || cat}</span>
-                          <span className="text-muted-foreground">{formatINR(amount as number)}</span>
+                          <span className="text-foreground font-medium">{resolveCategoryLabel(cat, CATEGORY_LABELS, customCats)}</span>
+                          <span className="text-muted-foreground"><PrivateValue value={amount as number} /></span>
                         </div>
                         {budget && <Progress value={pct} className="h-1.5" />}
                       </div>
@@ -190,11 +200,11 @@ const FinanceMonthlyReview = () => {
                     return (
                       <div key={g.id} className="space-y-1.5">
                         <div className="flex justify-between text-sm">
-                          <span className="font-medium text-foreground">{g.name}</span>
+                          <span className="font-medium text-foreground"><PrivateText value={g.name} /></span>
                           <span className="text-muted-foreground">{pct}%</span>
                         </div>
                         <Progress value={pct} className="h-1.5" />
-                        <p className="text-xs text-muted-foreground">{formatINR(Number(g.current_amount))} of {formatINR(Number(g.target_amount))}</p>
+                        <p className="text-xs text-muted-foreground"><PrivateValue value={Number(g.current_amount)} /> of <PrivateValue value={Number(g.target_amount)} /></p>
                       </div>
                     );
                   })}
@@ -216,7 +226,7 @@ const FinanceMonthlyReview = () => {
                 )}
                 {overBudgetCategories.length > 0 && (
                   <p className="text-sm text-muted-foreground">
-                    Your {overBudgetCategories.map((b) => CATEGORY_LABELS[b.category]).join(" and ")} spending ran over — try setting a weekly allowance to stay on track.
+                    Your {overBudgetCategories.map((b) => resolveCategoryLabel(b.category, CATEGORY_LABELS, customCats)).join(" and ")} spending ran over — try setting a weekly allowance to stay on track.
                   </p>
                 )}
                 {activeGoals.length === 0 && (

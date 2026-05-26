@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabase";
-import { format, startOfDay, endOfDay } from "date-fns";
+import { supabase } from "@/integrations/supabase/client";
+import { format } from "date-fns";
 
 export const useDashboardStats = (householdId: string | null) => {
   return useQuery({
@@ -9,60 +9,36 @@ export const useDashboardStats = (householdId: string | null) => {
       if (!householdId) throw new Error("No household ID");
 
       const today = new Date();
-      const todayStart = startOfDay(today);
-      const todayEnd = endOfDay(today);
-
-      // Fetch pending tasks count and top 3 upcoming tasks
-      // Use task_status instead of status - exclude completed tasks
-      const { data: tasks, error: tasksError } = await supabase
-        .from("tasks")
-        .select("*")
-        .eq("household_id", householdId)
-        .neq("task_status", "done")
-        .order("due_date", { ascending: true, nullsFirst: false })
-        .limit(3);
-
-      if (tasksError) throw tasksError;
-
-      const { count: pendingTasksCount } = await supabase
-        .from("tasks")
-        .select("*", { count: "exact", head: true })
-        .eq("household_id", householdId)
-        .neq("task_status", "done");
-
-      // Fetch today's meal plan
-      const { data: mealPlan, error: mealError } = await supabase
-        .from("meal_plans")
-        .select(`
-          *,
-          meal_plan_items(
-            *,
-            recipes(*)
-          )
-        `)
-        .eq("household_id", householdId)
-        .lte("week_start_date", format(today, "yyyy-MM-dd"))
-        .order("week_start_date", { ascending: false })
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
       const todayFormatted = format(today, "yyyy-MM-dd");
-      const todayMeals = mealPlan?.meal_plan_items?.filter((item: any) => {
-        return item.scheduled_date === todayFormatted;
-      }) || [];
 
-      // Fetch pantry items count (for grocery widget)
-      const { count: pantryCount } = await supabase
-        .from("pantry_items")
-        .select("*", { count: "exact", head: true })
-        .eq("household_id", householdId);
+      const [tasksRes, countRes, mealRes, pantryRes] = await Promise.all([
+        supabase.from("tasks").select("*")
+          .eq("household_id", householdId).neq("task_status", "done")
+          .order("due_date", { ascending: true, nullsFirst: false }).limit(3),
+        supabase.from("tasks").select("*", { count: "exact", head: true })
+          .eq("household_id", householdId).neq("task_status", "done"),
+        supabase.from("meal_plans")
+          .select("*, meal_plan_items(*, recipes(*))")
+          .eq("household_id", householdId)
+          .lte("week_start_date", todayFormatted)
+          .order("week_start_date", { ascending: false })
+          .order("created_at", { ascending: false })
+          .limit(1).maybeSingle(),
+        supabase.from("pantry_items").select("*", { count: "exact", head: true })
+          .eq("household_id", householdId),
+      ]);
+
+      if (tasksRes.error) throw tasksRes.error;
+
+      const todayMeals = mealRes.data?.meal_plan_items?.filter(
+        (item: any) => item.scheduled_date === todayFormatted
+      ) || [];
 
       return {
-        tasks: tasks || [],
-        pendingTasksCount: pendingTasksCount || 0,
+        tasks: tasksRes.data || [],
+        pendingTasksCount: countRes.count || 0,
         todayMeals,
-        pantryItemsCount: pantryCount || 0,
+        pantryItemsCount: pantryRes.count || 0,
       };
     },
     enabled: !!householdId,

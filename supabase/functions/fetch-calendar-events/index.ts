@@ -6,13 +6,12 @@ const GOOGLE_CLIENT_ID = Deno.env.get("GOOGLE_CLIENT_ID")!;
 const GOOGLE_CLIENT_SECRET = Deno.env.get("GOOGLE_CLIENT_SECRET")!;
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const CALENDAR_ENCRYPTION_KEY = Deno.env.get("CALENDAR_ENCRYPTION_KEY");
 
 interface CalendarConnection {
   id: string;
   user_id: string;
   google_account_email: string;
-  access_token: string;
-  refresh_token: string;
   token_expires_at: string;
   display_name: string;
   color: string;
@@ -21,6 +20,7 @@ interface CalendarConnection {
 
 interface CalendarEvent {
   id: string;
+  manualEventId?: string;
   title: string;
   start: string;
   end: string;
@@ -31,11 +31,98 @@ interface CalendarEvent {
   calendarId: string;
   location?: string;
   description?: string;
+  recurrence?: any;
+  memberIds?: string[];
+  exceptionDates?: string[];
+  parentEventId?: string | null;
+  occurrenceDate?: string;
+}
+
+// Expand a manual event into all occurrences within [windowStart, windowEnd)
+// based on its repeat_type.
+function expandRecurrence(
+  ev: { start_at: string; end_at: string; repeat_type?: string | null; exception_dates?: string[] | null; parent_event_id?: string | null },
+  windowStart: Date,
+  windowEnd: Date,
+): { start: Date; end: Date }[] {
+  const baseStart = new Date(ev.start_at);
+  const baseEnd = new Date(ev.end_at);
+  const duration = baseEnd.getTime() - baseStart.getTime();
+  // Override children always render as single instances regardless of legacy repeat_type.
+  const repeat = ev.parent_event_id ? "none" : (ev.repeat_type || "none").toLowerCase();
+  const exceptions = new Set((ev.exception_dates ?? []).map((d) => String(d).slice(0, 10)));
+  const isExcepted = (d: Date) => exceptions.has(d.toISOString().slice(0, 10));
+
+  if (repeat === "none") {
+    if (baseStart >= windowStart && baseStart < windowEnd) {
+      return [{ start: baseStart, end: baseEnd }];
+    }
+    return [];
+  }
+
+  const out: { start: Date; end: Date }[] = [];
+  // Cap iterations defensively (e.g. 5 years of daily = ~1825 entries)
+  const MAX_ITER = 2000;
+
+  if (repeat === "daily") {
+    let cur = new Date(Math.max(baseStart.getTime(), windowStart.getTime()));
+    // Align to baseStart time-of-day
+    cur.setHours(baseStart.getHours(), baseStart.getMinutes(), baseStart.getSeconds(), 0);
+    if (cur < windowStart) cur = new Date(cur.getTime() + 86400000);
+    let i = 0;
+    while (cur < windowEnd && i++ < MAX_ITER) {
+      if (cur >= baseStart && !isExcepted(cur)) out.push({ start: new Date(cur), end: new Date(cur.getTime() + duration) });
+      cur = new Date(cur.getTime() + 86400000);
+    }
+  } else if (repeat === "weekly") {
+    let cur = new Date(baseStart);
+    while (cur < windowStart && (cur = new Date(cur.getTime() + 7 * 86400000))) {
+      if (cur.getTime() > windowEnd.getTime() + 365 * 86400000) break;
+    }
+    let i = 0;
+    while (cur < windowEnd && i++ < MAX_ITER) {
+      if (cur >= baseStart && !isExcepted(cur)) out.push({ start: new Date(cur), end: new Date(cur.getTime() + duration) });
+      cur = new Date(cur.getTime() + 7 * 86400000);
+    }
+  } else if (repeat === "monthly") {
+    const day = baseStart.getDate();
+    let y = Math.max(baseStart.getFullYear(), windowStart.getFullYear());
+    let m = baseStart.getFullYear() === y ? baseStart.getMonth() : 0;
+    if (y === windowStart.getFullYear()) m = Math.max(m, windowStart.getMonth());
+    let i = 0;
+    while (i++ < MAX_ITER) {
+      const lastDay = new Date(y, m + 1, 0).getDate();
+      const d = Math.min(day, lastDay);
+      const occ = new Date(y, m, d, baseStart.getHours(), baseStart.getMinutes(), baseStart.getSeconds());
+      if (occ >= windowEnd) break;
+      if (occ >= baseStart && occ >= windowStart && !isExcepted(occ)) {
+        out.push({ start: occ, end: new Date(occ.getTime() + duration) });
+      }
+      m++;
+      if (m > 11) { m = 0; y++; }
+    }
+  } else if (repeat === "yearly") {
+    const month = baseStart.getMonth();
+    const day = baseStart.getDate();
+    let y = Math.max(baseStart.getFullYear(), windowStart.getFullYear());
+    let i = 0;
+    while (i++ < MAX_ITER) {
+      const occ = new Date(y, month, day, baseStart.getHours(), baseStart.getMinutes(), baseStart.getSeconds());
+      if (occ >= windowEnd) break;
+      if (occ >= baseStart && occ >= windowStart && !isExcepted(occ)) {
+        out.push({ start: occ, end: new Date(occ.getTime() + duration) });
+      }
+      y++;
+    }
+  }
+
+  return out;
 }
 
 // deno-lint-ignore no-explicit-any
 async function refreshAccessToken(
   connection: CalendarConnection,
+  refreshToken: string,
   supabaseClient: any
 ): Promise<string> {
   const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
@@ -44,7 +131,7 @@ async function refreshAccessToken(
     body: new URLSearchParams({
       client_id: GOOGLE_CLIENT_ID,
       client_secret: GOOGLE_CLIENT_SECRET,
-      refresh_token: connection.refresh_token,
+      refresh_token: refreshToken,
       grant_type: "refresh_token",
     }),
   });
@@ -56,15 +143,15 @@ async function refreshAccessToken(
     throw new Error(`Failed to refresh token: ${tokenData.error}`);
   }
 
-  // Update token in database
+  // Update token in database (encrypted server-side)
   const expiresAt = new Date(Date.now() + tokenData.expires_in * 1000);
-  await supabaseClient
-    .from("calendar_connections")
-    .update({
-      access_token: tokenData.access_token,
-      token_expires_at: expiresAt.toISOString(),
-    })
-    .eq("id", connection.id);
+  await supabaseClient.rpc("upsert_calendar_tokens", {
+    _connection_id: connection.id,
+    _access_token: tokenData.access_token,
+    _refresh_token: tokenData.refresh_token ?? null,
+    _expires_at: expiresAt.toISOString(),
+    _key: CALENDAR_ENCRYPTION_KEY,
+  });
 
   return tokenData.access_token;
 }
@@ -171,6 +258,14 @@ serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
+    if (!CALENDAR_ENCRYPTION_KEY) {
+      console.error("CALENDAR_ENCRYPTION_KEY is not configured");
+      return new Response(JSON.stringify({ error: "Server misconfiguration" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // Verify user
     const token = authHeader.replace("Bearer ", "");
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
@@ -191,10 +286,11 @@ serve(async (req) => {
       });
     }
 
-    // Get all visible calendar connections for the household
+    // Get all visible calendar connections for the household (no tokens; we
+    // fetch decrypted tokens per-connection via get_calendar_tokens below).
     const { data: connections, error: connectionsError } = await supabase
       .from("calendar_connections")
-      .select("*")
+      .select("id, user_id, google_account_email, token_expires_at, display_name, color, is_visible")
       .eq("household_id", householdId)
       .eq("is_visible", true);
 
@@ -207,15 +303,94 @@ serve(async (req) => {
     }
 
     console.log(`Found ${connections?.length || 0} visible connections for household ${householdId}`);
-    
+
+    const allEvents: CalendarEvent[] = [];
+
+    const windowStart = new Date(startDate);
+    const windowEnd = new Date(endDate);
+
+    // Fetch manual (household-created) events: in-window OR any recurring
+    try {
+      const { data: manualEvents, error: manualErr } = await supabase
+        .from("manual_calendar_events")
+        .select("*")
+        .eq("household_id", householdId)
+        .or(
+          `and(start_at.gte.${windowStart.toISOString()},start_at.lt.${windowEnd.toISOString()}),repeat_type.neq.none`
+        );
+
+      if (manualErr) {
+        console.error("Manual events fetch error:", manualErr);
+      } else if (manualEvents) {
+        for (const ev of manualEvents as any[]) {
+          const occurrences = expandRecurrence(ev, windowStart, windowEnd);
+          for (const occ of occurrences) {
+            const occDate = occ.start.toISOString().slice(0, 10);
+            allEvents.push({
+              id: `manual-${ev.id}-${occDate}`,
+              manualEventId: ev.id,
+              title: ev.title,
+              start: occ.start.toISOString(),
+              end: occ.end.toISOString(),
+              allDay: ev.all_day,
+              color: "#0F6E56",
+              calendarName: "Family events",
+              calendarOwner: "household",
+              calendarId: "manual",
+              location: ev.location ?? undefined,
+              description: ev.description ?? undefined,
+              recurrence: ev.recurrence ?? null,
+              memberIds: ev.member_ids ?? [],
+              exceptionDates: (ev.exception_dates ?? []).map((d: string) => String(d).slice(0, 10)),
+              parentEventId: ev.parent_event_id ?? null,
+              occurrenceDate: occDate,
+            });
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Manual events fetch failed:", err);
+    }
+
+    // Fetch system events (festivals & national holidays) for the same range
+    try {
+      const startDay = windowStart.toISOString().slice(0, 10);
+      const endDay = windowEnd.toISOString().slice(0, 10);
+      const { data: sysEvents, error: sysErr } = await supabase
+        .from("system_calendar_events")
+        .select("*")
+        .gte("event_date", startDay)
+        .lt("event_date", endDay);
+
+      if (sysErr) {
+        console.error("System events fetch error:", sysErr);
+      } else if (sysEvents) {
+        for (const s of sysEvents as any[]) {
+          allEvents.push({
+            id: `system-${s.id}`,
+            title: s.name,
+            start: `${s.event_date}T00:00:00.000Z`,
+            end: `${s.event_date}T23:59:59.000Z`,
+            allDay: true,
+            color: s.kind === "festival" ? "#F97316" : "#3B82F6",
+            calendarName: s.kind === "festival" ? "Festivals" : "National holidays",
+            calendarOwner: "system",
+            calendarId: "system",
+            description: s.kind === "festival" ? "Festival" : "National holiday",
+          });
+        }
+      }
+    } catch (err) {
+      console.error("System events fetch failed:", err);
+    }
+
     if (!connections || connections.length === 0) {
-      console.log("No visible connections found, returning empty events");
-      return new Response(JSON.stringify({ events: [] }), {
+      console.log("No Google connections; returning manual + system events only");
+      allEvents.sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
+      return new Response(JSON.stringify({ events: allEvents }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-
-    const allEvents: CalendarEvent[] = [];
 
     // Fetch events from each connected calendar
     for (const conn of connections) {
@@ -224,7 +399,19 @@ serve(async (req) => {
       console.log(`Token expires at: ${calConnection.token_expires_at}`);
       
       try {
-        let accessToken = calConnection.access_token;
+        // Pull decrypted tokens from the database (falls back to the legacy
+        // plaintext columns for any row not yet re-saved).
+        const { data: tokenRows, error: tokenErr } = await supabase.rpc(
+          "get_calendar_tokens",
+          { _connection_id: calConnection.id, _key: CALENDAR_ENCRYPTION_KEY },
+        );
+        if (tokenErr || !tokenRows || tokenRows.length === 0) {
+          console.error("Failed to load tokens for connection", calConnection.id, tokenErr);
+          continue;
+        }
+        const tokenRow = tokenRows[0] as { access_token: string; refresh_token: string };
+        let accessToken = tokenRow.access_token;
+        const refreshToken = tokenRow.refresh_token;
 
         // Check if token needs refresh
         const expiresAt = new Date(calConnection.token_expires_at);
@@ -233,7 +420,7 @@ serve(async (req) => {
         
         if (expiresAt <= new Date(Date.now() + 60000)) { // 1 minute buffer
           console.log("Token expired or expiring soon, refreshing...");
-          accessToken = await refreshAccessToken(calConnection, supabase);
+          accessToken = await refreshAccessToken(calConnection, refreshToken, supabase);
           console.log("Token refreshed successfully");
         }
 

@@ -1,7 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import type { RecurrenceSpec } from "@/types/recurrence";
 
 export interface FinanceSubscription {
   id: string;
@@ -20,9 +21,12 @@ export interface FinanceSubscription {
   created_by: string;
   created_at: string;
   updated_at: string;
+  recurrence?: RecurrenceSpec | null;
 }
 
-export type SubscriptionInput = Omit<FinanceSubscription, "id" | "household_id" | "created_by" | "created_at" | "updated_at">;
+export type SubscriptionInput = Omit<FinanceSubscription, "id" | "household_id" | "created_by" | "created_at" | "updated_at" | "recurrence"> & {
+  recurrence?: RecurrenceSpec | null;
+};
 
 export const SUBSCRIPTION_CATEGORIES = [
   "streaming",
@@ -77,7 +81,7 @@ export const useSubscriptions = (householdId: string | null) => {
         .eq("household_id", householdId)
         .order("next_due_date", { ascending: true, nullsFirst: false });
       if (error) throw error;
-      return data as FinanceSubscription[];
+      return data as unknown as FinanceSubscription[];
     },
     enabled: !!householdId,
   });
@@ -89,18 +93,50 @@ export const useCreateSubscription = (householdId: string | null) => {
   return useMutation({
     mutationFn: async (input: SubscriptionInput) => {
       if (!householdId || !user) throw new Error("Missing context");
-      const { error } = await supabase.from("finance_subscriptions").insert({
-        ...input,
+      const { recurrence, ...rest } = input;
+      const { data, error } = await supabase.from("finance_subscriptions").insert({
+        ...rest,
+        recurrence: (recurrence ?? null) as any,
         household_id: householdId,
         created_by: user.id,
-      });
+      }).select().single();
       if (error) throw error;
+      return data as unknown as FinanceSubscription;
     },
-    onSuccess: () => {
+    onMutate: async (input) => {
+      await qc.cancelQueries({ queryKey: ["finance-subscriptions", householdId] });
+      const optimistic: FinanceSubscription = {
+        id: `optimistic-${Date.now()}`,
+        household_id: householdId!,
+        created_by: user?.id || "",
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        ...input,
+      } as FinanceSubscription;
+      const snapshots: Array<[readonly unknown[], unknown]> = [];
+      qc.getQueriesData<FinanceSubscription[]>({ queryKey: ["finance-subscriptions", householdId] })
+        .forEach(([key, prev]) => {
+          snapshots.push([key, prev]);
+          if (Array.isArray(prev)) qc.setQueryData(key, [optimistic, ...prev]);
+        });
+      return { snapshots, optimisticId: optimistic.id };
+    },
+    onError: (error, _v, ctx: any) => {
+      ctx?.snapshots?.forEach(([key, prev]: any) => qc.setQueryData(key, prev));
+      toast.error("Could not add subscription", {
+        description: (error as Error)?.message,
+      });
+    },
+    onSuccess: (row, _v, ctx: any) => {
+      if (!row) return;
+      qc.getQueriesData<FinanceSubscription[]>({ queryKey: ["finance-subscriptions", householdId] })
+        .forEach(([key, list]) => {
+          if (!Array.isArray(list)) return;
+          qc.setQueryData(key, list.map((s) => (s.id === ctx?.optimisticId ? row : s)));
+        });
       qc.invalidateQueries({ queryKey: ["finance-subscriptions", householdId] });
       toast.success("Subscription added");
     },
-    onError: () => toast.error("Failed to add subscription"),
   });
 };
 
@@ -108,18 +144,52 @@ export const useUpdateSubscription = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (input: Partial<FinanceSubscription> & { id: string }) => {
-      const { id, ...rest } = input;
-      const { error } = await supabase
+      const { id, recurrence, ...rest } = input;
+      // Strip undefined fields so we never accidentally overwrite a column
+      // (e.g. is_active) with `undefined` coming from a partial form payload.
+      const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
+      Object.entries(rest).forEach(([k, v]) => {
+        if (v !== undefined) patch[k] = v;
+      });
+      if (recurrence !== undefined) patch.recurrence = recurrence as any;
+      const { data, error } = await supabase
         .from("finance_subscriptions")
-        .update({ ...rest, updated_at: new Date().toISOString() })
-        .eq("id", id);
+        .update(patch)
+        .eq("id", id)
+        .select()
+        .single();
       if (error) throw error;
+      if (!data) throw new Error("Update returned no row — check household access.");
+      return data as unknown as FinanceSubscription;
     },
-    onSuccess: () => {
+    onMutate: async (vars) => {
+      await qc.cancelQueries({ queryKey: ["finance-subscriptions"] });
+      const snapshots: Array<[readonly unknown[], unknown]> = [];
+      qc.getQueriesData<FinanceSubscription[]>({ queryKey: ["finance-subscriptions"] })
+        .forEach(([key, list]) => {
+          snapshots.push([key, list]);
+          if (Array.isArray(list)) {
+            qc.setQueryData(key, list.map((s) => (s.id === vars.id ? { ...s, ...vars } as FinanceSubscription : s)));
+          }
+        });
+      return { snapshots };
+    },
+    onError: (e, _v, ctx: any) => {
+      ctx?.snapshots?.forEach(([key, prev]: any) => qc.setQueryData(key, prev));
+      console.error("[useUpdateSubscription] failed", e);
+      toast.error((e as Error)?.message || "Failed to update");
+    },
+    onSuccess: (row) => {
+      if (row) {
+        qc.getQueriesData<FinanceSubscription[]>({ queryKey: ["finance-subscriptions"] })
+          .forEach(([key, list]) => {
+            if (!Array.isArray(list)) return;
+            qc.setQueryData(key, list.map((s) => (s.id === row.id ? row : s)));
+          });
+      }
       qc.invalidateQueries({ queryKey: ["finance-subscriptions"] });
       toast.success("Subscription updated");
     },
-    onError: () => toast.error("Failed to update"),
   });
 };
 
@@ -130,10 +200,24 @@ export const useDeleteSubscription = () => {
       const { error } = await supabase.from("finance_subscriptions").delete().eq("id", id);
       if (error) throw error;
     },
+    onMutate: async (id) => {
+      await qc.cancelQueries({ queryKey: ["finance-subscriptions"] });
+      const snapshots: Array<[readonly unknown[], unknown]> = [];
+      qc.getQueriesData<FinanceSubscription[]>({ queryKey: ["finance-subscriptions"] })
+        .forEach(([key, list]) => {
+          snapshots.push([key, list]);
+          if (Array.isArray(list)) qc.setQueryData(key, list.filter((s) => s.id !== id));
+        });
+      return { snapshots };
+    },
+    onError: (e, _v, ctx: any) => {
+      ctx?.snapshots?.forEach(([key, prev]: any) => qc.setQueryData(key, prev));
+      console.error("[useDeleteSubscription] failed", e);
+      toast.error((e as Error)?.message || "Failed to delete");
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["finance-subscriptions"] });
       toast.success("Subscription removed");
     },
-    onError: () => toast.error("Failed to delete"),
   });
 };

@@ -9,11 +9,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   isIos,
   isStandalone,
   markInstalled,
-  wasInstalled,
+  clearInstalledFlag,
   type BeforeInstallPromptEvent,
 } from "@/lib/install-prompt";
 
@@ -51,10 +52,14 @@ export const InstallAppButton = ({
   fullWidth = false,
 }: InstallAppButtonProps) => {
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null);
-  const [installed, setInstalled] = useState<boolean>(() => isStandalone() || wasInstalled());
+  // Only treat the app as installed when actually running standalone.
+  // localStorage flags don't survive uninstall on Android, so relying on
+  // them would lock users out of re-installing.
+  const [installed, setInstalled] = useState<boolean>(() => isStandalone());
   const [installing, setInstalling] = useState(false);
   const [iosOpen, setIosOpen] = useState(false);
   const [supported, setSupported] = useState(false);
+  const { user } = useAuth();
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -81,8 +86,12 @@ export const InstallAppButton = ({
     // Chromium: only mark supported once the browser tells us we're installable.
     const onBeforeInstall = (e: Event) => {
       e.preventDefault();
+      // The browser only fires this when the app is NOT currently
+      // installed — clear any stale flag from a previous install.
+      clearInstalledFlag();
       setDeferred(e as BeforeInstallPromptEvent);
       setSupported(true);
+      setInstalled(false);
     };
     const onInstalled = () => {
       markInstalled();
@@ -98,6 +107,10 @@ export const InstallAppButton = ({
   }, []);
 
   if (installed) {
+    const createdAt = (user as any)?.created_at;
+    const isNewInstall = !!createdAt &&
+      (Date.now() - new Date(createdAt).getTime()) < 10 * 60 * 1000;
+    if (!isNewInstall) return null;
     return (
       <div
         className={`inline-flex items-center gap-2 text-sm text-muted-foreground ${

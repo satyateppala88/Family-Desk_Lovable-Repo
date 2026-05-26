@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
 interface RegenerateMealsParams {
@@ -41,7 +41,7 @@ export const useRegenerateMeals = () => {
     onError: (error: any) => {
       toast({
         title: "Error",
-        description: error.message || "Failed to regenerate meals",
+        description: "Couldn't refresh meals. Please try again.",
         variant: "destructive",
       });
     },

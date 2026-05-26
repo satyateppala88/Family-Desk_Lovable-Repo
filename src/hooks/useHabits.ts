@@ -2,8 +2,10 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { markSelfWrite } from "@/hooks/useRealtimeSubscription";
 import { Habit, HabitLog, HabitStreak, HabitWithStreak, HabitAssignmentType, HabitFrequencyType } from "@/types/habits";
 import { format, subDays } from "date-fns";
+import type { RecurrenceSpec } from "@/types/recurrence";
 
 // Scoring constants
 const POINTS_PER_COMPLETION = 10;
@@ -24,6 +26,7 @@ interface CreateHabitData {
   target_value?: number;
   target_unit?: string;
   reminder_time?: string;
+  recurrence?: RecurrenceSpec | null;
 }
 
 export const useHabits = (householdId: string | null, userId?: string) => {
@@ -134,14 +137,23 @@ export const useHabits = (householdId: string | null, userId?: string) => {
 
   // Filter habits that are due today based on frequency
   const todaysHabits = habitsWithStreaks.filter((habit) => {
+    const todayDayOfWeek = new Date().getDay(); // 0=Sun, 1=Mon, ...
+
     if (habit.frequency_type === "daily") return true;
-    if (habit.frequency_type === "weekly") {
-      return true;
-    }
+
     if (habit.frequency_type === "specific_days") {
-      const dayOfWeek = new Date().getDay();
-      return habit.frequency_days.includes(dayOfWeek);
+      return habit.frequency_days.includes(todayDayOfWeek);
     }
+
+    if (habit.frequency_type === "weekly") {
+      // If user configured specific days, respect them;
+      // otherwise default to Monday.
+      if (habit.frequency_days && habit.frequency_days.length > 0) {
+        return habit.frequency_days.includes(todayDayOfWeek);
+      }
+      return todayDayOfWeek === 1;
+    }
+
     return true;
   });
 
@@ -164,6 +176,7 @@ export const useHabits = (householdId: string | null, userId?: string) => {
           target_value: habitData.target_value,
           target_unit: habitData.target_unit,
           assignment_type: habitData.assignment_type || "personal",
+          recurrence: (habitData.recurrence ?? null) as any,
         })
         .select()
         .single();
@@ -196,8 +209,8 @@ export const useHabits = (householdId: string | null, userId?: string) => {
     },
     onError: (error: Error) => {
       toast({
-        title: "Error",
-        description: error.message,
+        title: "Something went wrong",
+        description: "Please try again.",
         variant: "destructive",
       });
     },
@@ -217,6 +230,19 @@ export const useHabits = (householdId: string | null, userId?: string) => {
     }) => {
       if (!user?.id || !householdId) throw new Error("Not authenticated");
 
+      // Household-level habits fan out to all members via SECURITY DEFINER RPC,
+      // so one tick credits everyone with the log, streak, and points.
+      const habit = (habits ?? []).find((h) => h.id === habitId);
+      if (habit?.assignment_type === "household") {
+        const { error } = await supabase.rpc("log_household_habit", {
+          _habit_id: habitId,
+          _completed: completed,
+          _actual_value: actualValue ?? null,
+        });
+        if (error) throw error;
+        return null;
+      }
+
       // Upsert the log
       const { data, error } = await supabase
         .from("habit_logs")
@@ -231,7 +257,7 @@ export const useHabits = (householdId: string | null, userId?: string) => {
             logged_at: new Date().toISOString(),
           },
           {
-            onConflict: "habit_id,log_date",
+            onConflict: "habit_id,log_date,user_id",
           }
         )
         .select()
@@ -247,16 +273,50 @@ export const useHabits = (householdId: string | null, userId?: string) => {
 
       return data;
     },
+    onMutate: async ({ habitId, completed, actualValue }) => {
+      markSelfWrite("habit_logs");
+      const queryKey = ["habit-logs-today", householdId, targetUserId, today] as const;
+      await queryClient.cancelQueries({ queryKey });
+      const previous = queryClient.getQueryData<HabitLog[]>(queryKey);
+      queryClient.setQueryData<HabitLog[]>(queryKey, (old) => {
+        const list = old || [];
+        const existing = list.find((l) => l.habit_id === habitId);
+        if (existing) {
+          return list.map((l) =>
+            l.habit_id === habitId
+              ? { ...l, completed, actual_value: actualValue ?? l.actual_value }
+              : l
+          );
+        }
+        const optimistic = {
+          id: `optimistic-${Date.now()}`,
+          habit_id: habitId,
+          user_id: targetUserId!,
+          log_date: today,
+          completed,
+          actual_value: actualValue ?? null,
+          notes: null,
+          logged_at: new Date().toISOString(),
+        } as unknown as HabitLog;
+        return [optimistic, ...list];
+      });
+      return { previous, queryKey };
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["habit-logs-today"] });
+      // habit-logs-today is already up to date via the optimistic cache write.
       queryClient.invalidateQueries({ queryKey: ["habit-streaks"] });
       queryClient.invalidateQueries({ queryKey: ["household-habit-stats"] });
       queryClient.invalidateQueries({ queryKey: ["habit-leaderboard"] });
       queryClient.invalidateQueries({ queryKey: ["habit-scores"] });
+      // Household-habit fan-out writes logs for other members too; force a refetch.
+      queryClient.invalidateQueries({ queryKey: ["habit-logs-today"] });
     },
-    onError: (error: Error) => {
+    onError: (error: Error, _vars, ctx) => {
+      if (ctx?.queryKey) {
+        queryClient.setQueryData(ctx.queryKey, ctx.previous);
+      }
       toast({
-        title: "Error",
+        title: "Could not save habit",
         description: error.message,
         variant: "destructive",
       });
@@ -333,9 +393,16 @@ export const useHabits = (householdId: string | null, userId?: string) => {
     }
 
     // Check if all habits completed today for bonus
-    const completedToday = todaysLogs?.filter((l) => l.completed).length || 0;
+    const { count: completedTodayCount } = await supabase
+      .from("habit_logs")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .eq("log_date", today)
+      .eq("completed", true);
+
     const totalToday = todaysHabits.length;
-    if (completedToday + 1 >= totalToday && totalToday > 0) {
+    const completedToday = completedTodayCount ?? 0;
+    if (completedToday >= totalToday && totalToday > 0) {
       dailyScore += ALL_HABITS_BONUS;
     }
 
@@ -390,8 +457,8 @@ export const useHabits = (householdId: string | null, userId?: string) => {
     },
     onError: (error: Error) => {
       toast({
-        title: "Error",
-        description: error.message,
+        title: "Something went wrong",
+        description: "Please try again.",
         variant: "destructive",
       });
     },

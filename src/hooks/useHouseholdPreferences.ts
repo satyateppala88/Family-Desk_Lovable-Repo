@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { HouseholdPreferences } from "@/types/database";
 
@@ -24,8 +24,11 @@ export const useHouseholdPreferences = (householdId: string | null) => {
   });
 
   const updatePreferences = useMutation({
-    mutationFn: async (updates: Partial<HouseholdPreferences>) => {
-      if (!householdId) throw new Error("No household ID");
+    mutationFn: async (input: Partial<HouseholdPreferences> & { __silent?: boolean }) => {
+      const { __silent: _silent, ...updates } = input as Partial<HouseholdPreferences> & { __silent?: boolean };
+      // Silent no-op when called during the no-household race window
+      // (e.g. auto-backfills firing before the household query resolves).
+      if (!householdId) return null as unknown as HouseholdPreferences;
 
       // Send ONLY the fields the caller wants to change, plus the keys needed
       // for upsert. Never spread cached/optimistic data — that can include
@@ -49,7 +52,8 @@ export const useHouseholdPreferences = (householdId: string | null) => {
       if (upsertError) throw upsertError;
       return upserted as HouseholdPreferences;
     },
-    onMutate: async (updates) => {
+    onMutate: async (input) => {
+      const { __silent: _s, ...updates } = (input ?? {}) as Partial<HouseholdPreferences> & { __silent?: boolean };
       await queryClient.cancelQueries({ queryKey: ["household-preferences", householdId] });
       const previous = queryClient.getQueryData<HouseholdPreferences | null>([
         "household-preferences",
@@ -66,22 +70,31 @@ export const useHouseholdPreferences = (householdId: string | null) => {
 
       return { previous };
     },
-    onSuccess: (saved) => {
+    onSuccess: (saved, input) => {
       queryClient.setQueryData(["household-preferences", householdId], saved);
       queryClient.invalidateQueries({ queryKey: ["household-preferences", householdId] });
-      toast.success("Preferences updated!");
+      const silent = (input as { __silent?: boolean } | undefined)?.__silent === true;
+      if (!silent) toast.success("Preferences updated!");
     },
     onError: (error: any, _updates, context) => {
       queryClient.setQueryData(["household-preferences", householdId], context?.previous ?? null);
-      toast.error("Failed to update preferences: " + error.message);
+      const msg = String(error?.message ?? "");
+      if (msg.includes("Failed to fetch")) {
+        toast.error("You appear to be offline — changes will sync when reconnected.");
+      } else {
+        toast.error("Failed to update preferences: " + msg);
+      }
     },
   });
 
   return {
     preferences,
     isLoading,
-    updatePreferences: async (updates: Partial<HouseholdPreferences>) => {
-      await updatePreferences.mutateAsync(updates);
+    updatePreferences: async (
+      updates: Partial<HouseholdPreferences>,
+      options?: { silent?: boolean },
+    ) => {
+      await updatePreferences.mutateAsync({ ...updates, __silent: options?.silent } as any);
     },
     isUpdating: updatePreferences.isPending,
   };

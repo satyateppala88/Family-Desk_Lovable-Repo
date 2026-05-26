@@ -12,19 +12,21 @@ export type ModuleSetupKey =
   | "grocery_setup"
   | "finance_setup"
   | "habits_setup"
-  | "calendar_setup"
-  | "tasks_setup";
+  | "calendar_setup";
 
-export const MODULE_SETUP_KEYS: Record<ProductName, ModuleSetupKey> = {
+export const MODULE_SETUP_KEYS: Partial<Record<ProductName, ModuleSetupKey>> = {
   meals: "meals_setup",
   grocery: "grocery_setup",
   finance: "finance_setup",
   habits: "habits_setup",
   calendar: "calendar_setup",
-  tasks: "tasks_setup",
+  // Tasks intentionally has no setup questionnaire — `/tasks` should never
+  // surface another module's modal.
 };
 
 import type { HouseholdPreferences } from "@/types/database";
+import type { LucideIcon } from "lucide-react";
+import { UtensilsCrossed, ShoppingCart, Wallet, Leaf, Calendar } from "lucide-react";
 
 /**
  * Fields that the per-module setup is responsible for capturing.
@@ -37,32 +39,132 @@ export const MODULE_SETUP_FIELDS: Record<ModuleSetupKey, (keyof HouseholdPrefere
   finance_setup: ["monthly_grocery_budget", "budget_consciousness"],
   habits_setup: ["preferred_task_time"],
   calendar_setup: ["work_schedule"],
-  tasks_setup: ["preferred_task_time"],
 };
 
-export const MODULE_SETUP_META: Record<ModuleSetupKey, { title: string; description: string }> = {
+/**
+ * Per-module typed boolean column on `household_preferences` that records
+ * "the user has acknowledged this module's setup". When non-null, the gate
+ * uses this column directly instead of the legacy `completed_module_setups`
+ * jsonb merge — eliminating cache/race issues that re-prompted the modal.
+ */
+export const MODULE_SETUP_COLUMN: Record<ModuleSetupKey, keyof HouseholdPreferences | null> = {
+  finance_setup: "finance_setup_complete",
+  grocery_setup: "grocery_setup_complete",
+  meals_setup: "meals_setup_complete",
+  habits_setup: "habits_setup_complete",
+  calendar_setup: "calendar_setup_complete",
+};
+
+export const hasModuleSetupData = (
+  preferences: HouseholdPreferences | null | undefined,
+  key: ModuleSetupKey,
+) => {
+  if (!preferences) return false;
+  return MODULE_SETUP_FIELDS[key].some((field) => {
+    const value = (preferences as unknown as Record<string, unknown>)[field as string];
+    if (value === null || value === undefined || value === "") return false;
+    if (Array.isArray(value) && value.length === 0) return false;
+    return true;
+  });
+};
+
+export const isModuleSetupComplete = (
+  preferences: HouseholdPreferences | null | undefined,
+  key: ModuleSetupKey,
+) => {
+  if (!preferences) return false;
+  const typedColumn = MODULE_SETUP_COLUMN[key];
+  const typedComplete = typedColumn
+    ? (preferences as unknown as Record<string, unknown>)[typedColumn as string] === true
+    : false;
+  const legacyComplete =
+    ((preferences.completed_module_setups as Record<string, boolean> | null | undefined) ?? {})[key] === true;
+  return typedComplete || legacyComplete || hasModuleSetupData(preferences, key);
+};
+
+export const MODULE_SETUP_META: Record<ModuleSetupKey, { title: string; moduleName: string; description: string; icon: LucideIcon }> = {
   meals_setup: {
-    title: "Quick meal setup",
+    title: "Quick setup for Meals",
+    moduleName: "Meals",
     description: "Tell us about your diet so meal plans actually fit your family.",
+    icon: UtensilsCrossed,
   },
   grocery_setup: {
-    title: "Pantry & shopping setup",
+    title: "Quick setup for Grocery",
+    moduleName: "Grocery",
     description: "A few quick questions so we can size your shopping list correctly.",
+    icon: ShoppingCart,
   },
   finance_setup: {
-    title: "Budget setup",
+    title: "Quick setup for Finance",
+    moduleName: "Finance",
     description: "Set your monthly grocery budget and how strict you'd like us to be.",
+    icon: Wallet,
   },
   habits_setup: {
-    title: "Routine setup",
+    title: "Quick setup for Habits",
+    moduleName: "Habits",
     description: "When do you usually have time for habits?",
+    icon: Leaf,
   },
   calendar_setup: {
-    title: "Calendar setup",
+    title: "Quick setup for Calendar",
+    moduleName: "Calendar",
     description: "How is the household's work schedule set up?",
+    icon: Calendar,
   },
-  tasks_setup: {
-    title: "Task planning setup",
-    description: "When are you most likely to tackle tasks?",
-  },
+};
+
+// ---------------------------------------------------------------------------
+// Local "setup acknowledged" flag
+// ---------------------------------------------------------------------------
+//
+// The DB columns (`{module}_setup_complete`) remain the source of truth, but
+// the React Query cache is cold on first paint after sign-in / hard reload /
+// new browser, which can cause the gate to flash open before the preferences
+// row hydrates. We mirror "user has dismissed or completed this module's
+// setup" into localStorage so the gate has a synchronous, zero-latency
+// answer before the network call returns.
+
+const MODULE_SETUP_DONE_PREFIX = "familydesk:module-setup-done";
+
+export const moduleSetupLocalKey = (
+  householdId: string | null | undefined,
+  key: ModuleSetupKey,
+) => `${MODULE_SETUP_DONE_PREFIX}:${householdId ?? "_"}:${key}`;
+
+export const isModuleSetupDoneLocally = (
+  householdId: string | null | undefined,
+  key: ModuleSetupKey,
+): boolean => {
+  if (typeof window === "undefined" || !householdId) return false;
+  try {
+    return window.localStorage.getItem(moduleSetupLocalKey(householdId, key)) === "true";
+  } catch {
+    return false;
+  }
+};
+
+export const markModuleSetupDoneLocally = (
+  householdId: string | null | undefined,
+  key: ModuleSetupKey,
+) => {
+  if (typeof window === "undefined" || !householdId) return;
+  try {
+    window.localStorage.setItem(moduleSetupLocalKey(householdId, key), "true");
+  } catch {
+    /* quota or disabled storage — silently ignore */
+  }
+};
+
+export const clearModuleSetupDoneLocally = (
+  householdId: string | null | undefined,
+  key: ModuleSetupKey,
+) => {
+  if (typeof window === "undefined" || !householdId) return;
+  try {
+    window.localStorage.removeItem(moduleSetupLocalKey(householdId, key));
+  } catch {
+    /* noop */
+  }
 };

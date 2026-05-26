@@ -1,4 +1,5 @@
-import { Mic, MicOff } from "lucide-react";
+import { useEffect } from "react";
+import { Mic, MicOff, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
@@ -7,6 +8,12 @@ import { usePermissionPrimer } from "@/hooks/usePermissionPrimer";
 import { PermissionPrimerDialog } from "@/components/permissions/PermissionPrimerDialog";
 import { usePermissionRetry } from "@/hooks/usePermissionRetry";
 import { toast as sonnerToast } from "sonner";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 const isNative = (): boolean =>
   typeof window !== "undefined" &&
@@ -46,6 +53,10 @@ interface VoiceInputButtonProps {
   /** Visual style: "ghost" (inside text inputs) or "outline" (standalone). */
   variant?: "ghost" | "outline";
   title?: string;
+  /** Auto-stop after N ms (0 = no timeout). */
+  maxDurationMs?: number;
+  /** Notifies parent of listening state for UI hints. */
+  onListeningChange?: (listening: boolean) => void;
 }
 
 export const VoiceInputButton = ({
@@ -58,6 +69,8 @@ export const VoiceInputButton = ({
   disabled,
   variant = "ghost",
   title = "Speak",
+  maxDurationMs = 0,
+  onListeningChange,
 }: VoiceInputButtonProps) => {
   const { toast } = useToast();
   const { ensurePermission, primerProps } = usePermissionPrimer();
@@ -66,9 +79,39 @@ export const VoiceInputButton = ({
     onResult: onTranscript,
     language,
     continuous,
+    maxDurationMs,
   });
 
-  if (!isSupported) return null;
+  useEffect(() => {
+    onListeningChange?.(isListening);
+  }, [isListening, onListeningChange]);
+
+  if (!isSupported) {
+    const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
+    const isIOS = /iPad|iPhone|iPod/.test(ua);
+    if (!isIOS) return null;
+    return (
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              type="button"
+              size={size}
+              variant="ghost"
+              disabled
+              className={cn("shrink-0 opacity-60", className)}
+              aria-label="Voice input unavailable on iOS Safari"
+            >
+              <Info className="h-4 w-4" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="top" className="max-w-[220px] text-xs">
+            Voice input works best on Chrome for Android.
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
+  }
 
   const handleClick = async () => {
     if (isListening) {
@@ -99,7 +142,7 @@ export const VoiceInputButton = ({
     } catch (err: any) {
       toast({
         title: "Microphone unavailable",
-        description: err?.message || "Please check microphone permissions.",
+        description: "Please check microphone permissions.",
         variant: "destructive",
       });
     }

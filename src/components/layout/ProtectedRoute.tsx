@@ -1,6 +1,9 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { Navigate, useLocation } from "react-router-dom";
 import { Skeleton } from "@/components/ui/skeleton";
+import { BottomNav } from "@/components/layout/BottomNav";
+import { IOSInstallBanner } from "@/components/pwa/IOSInstallBanner";
+import { PushPermissionPrompt } from "@/components/pwa/PushPermissionPrompt";
 
 export const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading, isEmailVerified } = useAuth();
@@ -29,5 +32,12 @@ export const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     return <Navigate to="/auth" replace />;
   }
 
-  return <>{children}</>;
+  return (
+    <>
+      <div className="pb-24 lg:pb-0">{children}</div>
+      <BottomNav />
+      <IOSInstallBanner />
+      <PushPermissionPrompt />
+    </>
+  );
 };

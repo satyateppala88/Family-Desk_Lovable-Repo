@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.set_household_invitation_name() FROM PUBLIC, anon, authenticated;

@@ -14,19 +14,26 @@ import {
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import type { CalendarEvent } from "@/hooks/useCalendarEvents";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface CalendarGridProps {
   currentDate: Date;
+  selectedDate: Date;
   events: CalendarEvent[];
   onEventClick: (event: CalendarEvent) => void;
   onDateClick: (date: Date) => void;
+  onSelectDate: (date: Date) => void;
+  onOpenDay: (date: Date) => void;
 }
 
 export const CalendarGrid = ({
   currentDate,
+  selectedDate,
   events,
   onEventClick,
   onDateClick,
+  onSelectDate,
+  onOpenDay,
 }: CalendarGridProps) => {
   const isMobile = useIsMobile();
   
@@ -83,13 +90,16 @@ export const CalendarGrid = ({
             return (
               <div
                 key={index}
-                onClick={() => onDateClick(day)}
+                onClick={() => onSelectDate(day)}
                 className={cn(
                   "aspect-square flex items-center justify-center rounded-full text-xs cursor-pointer transition-colors min-h-[32px]",
-                  isToday(day) && "bg-primary text-primary-foreground font-bold",
-                  !isToday(day) && hasEvents && "bg-accent font-medium",
+                  // Only the explicitly selected date gets the filled style.
+                  // Today gets a subtle ring so it's still distinguishable.
+                  isSameDay(day, selectedDate) && "bg-primary text-primary-foreground font-bold",
+                  !isSameDay(day, selectedDate) && isToday(day) && "ring-1 ring-primary/50 font-semibold",
+                  !isSameDay(day, selectedDate) && !isToday(day) && hasEvents && "bg-accent font-medium",
                   !isCurrentMonth && "text-muted-foreground opacity-50",
-                  !isToday(day) && !hasEvents && "hover:bg-muted"
+                  !isSameDay(day, selectedDate) && !isToday(day) && !hasEvents && "hover:bg-muted"
                 )}
               >
                 {format(day, "d")}
@@ -138,7 +148,7 @@ export const CalendarGrid = ({
                   </div>
 
                   {/* Events for this day */}
-                  {dayEvents.map((event) => (
+                  {dayEvents.filter((e) => e.calendarId !== "system").map((event) => (
                     <div
                       key={event.id}
                       onClick={(e) => {
@@ -159,10 +169,19 @@ export const CalendarGrid = ({
                             {event.end && ` - ${format(parseISO(event.end), "h:mm a")}`}
                           </p>
                         )}
-                        {event.allDay && (
-                          <p className="text-xs text-muted-foreground mt-0.5">All day</p>
-                        )}
                       </div>
+                    </div>
+                  ))}
+                  {dayEvents.filter((e) => e.calendarId === "system").map((event) => (
+                    <div
+                      key={event.id}
+                      className="ml-4 px-3 py-1.5 text-xs flex items-center gap-2 text-muted-foreground"
+                    >
+                      <span
+                        className="w-2 h-2 rounded-full"
+                        style={{ backgroundColor: event.color }}
+                      />
+                      <span>{event.title}</span>
                     </div>
                   ))}
 
@@ -188,7 +207,7 @@ export const CalendarGrid = ({
         {weekDays.map((day) => (
           <div
             key={day}
-            className="py-2 text-center text-sm font-medium text-muted-foreground"
+            className="py-2 md:pb-1 text-center text-sm md:text-[13px] font-medium text-muted-foreground"
           >
             {day}
           </div>
@@ -205,34 +224,55 @@ export const CalendarGrid = ({
           return (
             <div
               key={index}
-              onClick={() => onDateClick(day)}
+              onClick={() => onOpenDay(day)}
               className={cn(
-                "min-h-[100px] border-b border-r p-1.5 cursor-pointer hover:bg-muted/50 transition-colors",
+                "min-h-[72px] md:min-h-[100px] border-b border-r p-1 cursor-pointer hover:bg-muted/50 transition-colors",
                 !isCurrentMonth && "bg-muted/30",
                 index % 7 === 0 && "border-l"
               )}
             >
               {/* Date number */}
-              <div
-                className={cn(
-                  "w-7 h-7 flex items-center justify-center rounded-full text-sm mb-1",
-                  isToday(day) && "bg-primary text-primary-foreground font-bold",
-                  !isCurrentMonth && "text-muted-foreground"
-                )}
-              >
-                {format(day, "d")}
+              <div className="flex items-center justify-between gap-1 mb-1">
+                <div
+                  className={cn(
+                    "w-7 h-7 flex items-center justify-center rounded-full text-sm md:text-[15px]",
+                    isSameDay(day, selectedDate) && "bg-primary text-primary-foreground font-bold",
+                    !isSameDay(day, selectedDate) && isToday(day) && "ring-1 ring-primary/50 font-semibold",
+                    !isCurrentMonth && "text-muted-foreground"
+                  )}
+                >
+                  {format(day, "d")}
+                </div>
+                <TooltipProvider delayDuration={100}>
+                  <div className="flex items-center gap-0.5">
+                    {dayEvents.filter((e) => e.calendarId === "system").slice(0, 3).map((sysEv) => (
+                      <Tooltip key={sysEv.id}>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            onClick={(e) => e.stopPropagation()}
+                            className="w-2 h-2 rounded-full"
+                            style={{ backgroundColor: sysEv.color }}
+                            aria-label={sysEv.title}
+                          />
+                        </TooltipTrigger>
+                        <TooltipContent>{sysEv.title}</TooltipContent>
+                      </Tooltip>
+                    ))}
+                  </div>
+                </TooltipProvider>
               </div>
 
               {/* Events */}
               <div className="space-y-1 overflow-hidden">
-                {dayEvents.slice(0, 3).map((event) => (
+                {dayEvents.filter((e) => e.calendarId !== "system").slice(0, 3).map((event) => (
                   <div
                     key={event.id}
                     onClick={(e) => {
                       e.stopPropagation();
                       onEventClick(event);
                     }}
-                    className="text-xs px-1.5 py-1 rounded truncate cursor-pointer hover:opacity-80 transition-opacity"
+                    className="text-xs md:text-[11px] md:h-[22px] md:flex md:items-center px-1.5 md:px-2 py-1 rounded truncate cursor-pointer hover:opacity-80 transition-opacity"
                     style={{
                       backgroundColor: event.color + "20",
                       borderLeft: `3px solid ${event.color}`,
@@ -243,13 +283,20 @@ export const CalendarGrid = ({
                         {format(parseISO(event.start), "h:mm")}
                       </span>
                     )}
-                    {event.title}
+                    <span className="truncate">{event.title}</span>
                   </div>
                 ))}
-                {dayEvents.length > 3 && (
-                  <div className="text-xs text-muted-foreground px-1">
-                    +{dayEvents.length - 3} more
-                  </div>
+                {dayEvents.filter((e) => e.calendarId !== "system").length > 3 && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onOpenDay(day);
+                    }}
+                    className="text-xs md:text-[11px] text-muted-foreground hover:text-foreground hover:underline px-1 py-1 min-h-[24px] text-left w-full"
+                  >
+                    +{dayEvents.filter((e) => e.calendarId !== "system").length - 3} more
+                  </button>
                 )}
               </div>
             </div>

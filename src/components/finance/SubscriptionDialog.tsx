@@ -1,16 +1,16 @@
 import { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
-import { CalendarIcon } from "lucide-react";
+import { DatePicker } from "@/components/ui/date-picker";
 import { format } from "date-fns";
-import { cn } from "@/lib/utils";
+import { RecurrencePicker } from "@/components/shared/RecurrencePicker";
+import { formatRecurrenceSummary } from "@/utils/recurrenceUtils";
+import type { RecurrenceSpec } from "@/types/recurrence";
 import {
   FinanceSubscription,
   SubscriptionInput,
@@ -18,6 +18,7 @@ import {
   SUBSCRIPTION_CATEGORY_LABELS,
   FREQUENCY_LABELS,
 } from "@/hooks/useSubscriptions";
+import { CategorySelect } from "@/components/finance/CategorySelect";
 
 interface Props {
   open: boolean;
@@ -37,9 +38,18 @@ export const SubscriptionDialog = ({ open, onOpenChange, onSave, initialData }: 
   const [isActive, setIsActive] = useState(true);
   const [notes, setNotes] = useState("");
   const [tags, setTags] = useState("");
+  const [recurrence, setRecurrence] = useState<RecurrenceSpec | null>(null);
 
   useEffect(() => {
     if (initialData) {
+      if (import.meta.env.DEV) {
+        // B7 diagnostic: confirm the edit form receives is_active correctly
+        console.log("[SubscriptionDialog edit init]", {
+          id: initialData.id,
+          is_active: initialData.is_active,
+          status_present: "is_active" in initialData,
+        });
+      }
       setName(initialData.name);
       setAmount(String(initialData.amount));
       setFrequency(initialData.frequency);
@@ -47,9 +57,12 @@ export const SubscriptionDialog = ({ open, onOpenChange, onSave, initialData }: 
       setNextDueDate(initialData.next_due_date ? new Date(initialData.next_due_date) : undefined);
       setStartDate(new Date(initialData.start_date));
       setEndDate(initialData.end_date ? new Date(initialData.end_date) : undefined);
-      setIsActive(initialData.is_active);
+      // Defensive fallback: if is_active is missing/undefined on the row,
+      // never silently flip the toggle to Paused on a no-op edit.
+      setIsActive(initialData.is_active ?? true);
       setNotes(initialData.notes || "");
       setTags(initialData.tags?.join(", ") || "");
+      setRecurrence(initialData.recurrence ?? null);
     } else {
       setName("");
       setAmount("");
@@ -61,47 +74,70 @@ export const SubscriptionDialog = ({ open, onOpenChange, onSave, initialData }: 
       setIsActive(true);
       setNotes("");
       setTags("");
+      setRecurrence(null);
     }
   }, [initialData, open]);
 
+  const [submitting, setSubmitting] = useState(false);
+
   const handleSave = () => {
+    if (submitting) return;
     if (!name.trim() || !amount) return;
+    setSubmitting(true);
+    const derivedFreq = recurrence
+      ? (recurrence.frequency === "yearly" ? "yearly" : "monthly")
+      : (frequency as SubscriptionInput["frequency"]);
+    const derivedEnd = recurrence?.end.type === "on_date" && recurrence.end.date
+      ? recurrence.end.date
+      : (endDate ? format(endDate, "yyyy-MM-dd") : null);
     onSave({
       name: name.trim(),
       amount: Number(amount),
       currency: "INR",
-      frequency: frequency as SubscriptionInput["frequency"],
+      frequency: derivedFreq,
       category,
       next_due_date: nextDueDate ? format(nextDueDate, "yyyy-MM-dd") : null,
       start_date: format(startDate, "yyyy-MM-dd"),
-      end_date: endDate ? format(endDate, "yyyy-MM-dd") : null,
+      end_date: derivedEnd,
       is_active: isActive,
       notes: notes.trim() || null,
       tags: tags.split(",").map((t) => t.trim()).filter(Boolean),
+      recurrence,
     });
     onOpenChange(false);
+    setTimeout(() => setSubmitting(false), 600);
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md max-h-[85vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>{initialData ? "Edit Subscription" : "Add Subscription"}</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4 pt-2">
+    <BottomSheet
+      isOpen={open}
+      onClose={() => onOpenChange(false)}
+      title={initialData ? "Edit Subscription" : "Add Subscription"}
+      footer={
+        <Button onClick={handleSave} className="w-full" disabled={submitting || !name.trim() || !amount}>
+          {submitting ? "Saving..." : initialData ? "Save Changes" : "Add Subscription"}
+        </Button>
+      }
+    >
+      <div className="space-y-4 pt-2">
           <div className="space-y-1.5">
             <Label>Name *</Label>
             <Input placeholder="e.g. Netflix, LIC Premium, AC AMC" value={name} onChange={(e) => setName(e.target.value)} />
           </div>
 
+          <div className="flex items-center justify-between">
+            <Label>Active</Label>
+            <Switch checked={isActive} onCheckedChange={setIsActive} />
+          </div>
+
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>Amount (₹) *</Label>
-              <Input type="number" placeholder="0" value={amount} onChange={(e) => setAmount(e.target.value)} />
+              <Input type="number" inputMode="numeric" placeholder="0" value={amount} onChange={(e) => setAmount(e.target.value)} />
             </div>
             <div className="space-y-1.5">
               <Label>Frequency</Label>
-              <Select value={frequency} onValueChange={setFrequency}>
+              <Select value={frequency} onValueChange={setFrequency} disabled={!!recurrence}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {Object.entries(FREQUENCY_LABELS).map(([k, v]) => (
@@ -114,45 +150,36 @@ export const SubscriptionDialog = ({ open, onOpenChange, onSave, initialData }: 
 
           <div className="space-y-1.5">
             <Label>Category</Label>
-            <Select value={category} onValueChange={setCategory}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {SUBSCRIPTION_CATEGORIES.map((c) => (
-                  <SelectItem key={c} value={c}>{SUBSCRIPTION_CATEGORY_LABELS[c]}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <CategorySelect
+              value={category}
+              onValueChange={setCategory}
+              builtIn={SUBSCRIPTION_CATEGORIES}
+              builtInLabels={SUBSCRIPTION_CATEGORY_LABELS}
+              scope="subscription"
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label>Next Due Date</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !nextDueDate && "text-muted-foreground")}>
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {nextDueDate ? format(nextDueDate, "MMM d, yyyy") : "Pick date"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar mode="single" selected={nextDueDate} onSelect={setNextDueDate} className="p-3 pointer-events-auto" />
-                </PopoverContent>
-              </Popover>
+              <DatePicker value={nextDueDate} onChange={setNextDueDate} placeholder="Pick date" />
             </div>
             <div className="space-y-1.5">
               <Label>End Date</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !endDate && "text-muted-foreground")}>
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {endDate ? format(endDate, "MMM d, yyyy") : "No end"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar mode="single" selected={endDate} onSelect={setEndDate} className="p-3 pointer-events-auto" />
-                </PopoverContent>
-              </Popover>
+              <DatePicker value={endDate} onChange={setEndDate} placeholder="No end" />
             </div>
+          </div>
+
+          <div className="space-y-1.5 pt-1 border-t border-[#E8E4D9]">
+            <RecurrencePicker
+              value={recurrence}
+              onChange={setRecurrence}
+              baseDate={nextDueDate ?? startDate}
+              context="subscription"
+            />
+            {recurrence && (
+              <p className="text-[12px] text-[#6B6965]">{formatRecurrenceSummary(recurrence)}</p>
+            )}
           </div>
 
           <div className="space-y-1.5">
@@ -165,16 +192,7 @@ export const SubscriptionDialog = ({ open, onOpenChange, onSave, initialData }: 
             <Textarea placeholder="Optional notes..." value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} />
           </div>
 
-          <div className="flex items-center justify-between">
-            <Label>Active</Label>
-            <Switch checked={isActive} onCheckedChange={setIsActive} />
-          </div>
-
-          <Button onClick={handleSave} className="w-full" disabled={!name.trim() || !amount}>
-            {initialData ? "Save Changes" : "Add Subscription"}
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </BottomSheet>
   );
 };

@@ -16,7 +16,6 @@ export default {
 		fontFamily: {
 			sans: [
 				'DM Sans',
-				'Inter',
 				'ui-sans-serif',
 				'system-ui',
 				'-apple-system',
@@ -27,7 +26,36 @@ export default {
 				'Arial',
 				'Noto Sans',
 				'sans-serif'
+			],
+			serif: [
+				'DM Serif Display',
+				'ui-serif',
+				'Georgia',
+				'serif'
+			],
+			display: [
+				'DM Serif Display',
+				'ui-serif',
+				'Georgia',
+				'serif'
 			]
+  		},
+  		// Mobile-first type scale (sp ≈ px on web).
+  		// Floor: 13px. Use these tokens via `text-display`, `text-heading`,
+  		// `text-subheading`, `text-body`, `text-caption`, `text-label`.
+  		fontSize: {
+  			display: ['24px', { lineHeight: '1.3', fontWeight: '700' }],
+  			heading: ['20px', { lineHeight: '1.35', fontWeight: '600' }],
+  			subheading: ['17px', { lineHeight: '1.4', fontWeight: '600' }],
+  			body: ['15px', { lineHeight: '1.5', fontWeight: '400' }],
+  			caption: ['13px', { lineHeight: '1.5', fontWeight: '400' }],
+  			label: ['12px', { lineHeight: '1.4', fontWeight: '500' }],
+  		},
+  		minHeight: {
+  			touch: '48px',
+  		},
+  		minWidth: {
+  			touch: '48px',
   		},
   		colors: {
   			border: 'hsl(var(--border))',
@@ -88,6 +116,41 @@ export default {
   			'module-calendar': 'hsl(var(--module-calendar))',
   			'module-habits': 'hsl(var(--module-habits))',
   			'module-finance': 'hsl(var(--module-finance))',
+  			brand: {
+  				DEFAULT: '#0F6E56',
+  				dark: '#085041',
+  				mid: '#1D9E75',
+  				light: '#5DCAA5',
+  				muted: '#E1F5EE',
+  			},
+  			ink: {
+  				DEFAULT: '#1A1A1A',
+  				secondary: '#4A4A4A',
+  				muted: '#8A8A8A',
+  				border: '#D3D1C7',
+  				surface: '#F7F6F2',
+  			},
+  			fd: {
+  				green: '#0F6E56',
+  				'green-mid': '#1D9E75',
+  				'green-light': '#E1F5EE',
+  				'green-dark': '#085041',
+  				ink: '#1A1A1A',
+  				'ink-2': '#4A4A4A',
+  				'ink-3': '#8A8A8A',
+  				surface: '#F7F6F2',
+  				white: '#FFFFFF',
+  				border: 'rgba(15,110,86,0.15)',
+  				'border-strong': 'rgba(15,110,86,0.30)',
+  				amber: '#BA7517',
+  				'amber-light': '#FAEEDA',
+  				coral: '#993C1D',
+  				'coral-light': '#FAECE7',
+  				blue: '#185FA5',
+  				'blue-light': '#E6F1FB',
+  				pink: '#993556',
+  				'pink-light': '#FBEAF0',
+  			},
   		},
   		borderRadius: {
   			lg: 'var(--radius)',
@@ -102,11 +165,17 @@ export default {
   			'accordion-up': {
   				from: { height: 'var(--radix-accordion-content-height)' },
   				to: { height: '0' }
+  			},
+  			'shake': {
+  				'0%, 100%': { transform: 'translateX(0)' },
+  				'20%, 60%': { transform: 'translateX(-6px)' },
+  				'40%, 80%': { transform: 'translateX(6px)' }
   			}
   		},
   		animation: {
   			'accordion-down': 'accordion-down 0.2s ease-out',
-  			'accordion-up': 'accordion-up 0.2s ease-out'
+  			'accordion-up': 'accordion-up 0.2s ease-out',
+  			'shake': 'shake 0.4s ease-in-out'
   		},
   		boxShadow: {
   			'2xs': 'var(--shadow-2xs)',

@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription, DialogBody } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2, Mic, MicOff, Sparkles } from "lucide-react";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
 import type { PantryItem } from "@/hooks/usePantryItems";
@@ -84,7 +84,7 @@ export const AIPantryImportDialog = ({
       console.error("Error:", error);
       toast({
         title: "Error",
-        description: error.message || "Failed to process your input. Please try again.",
+        description: "Failed to process your input. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -105,7 +105,8 @@ export const AIPantryImportDialog = ({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-4">
+        <DialogBody>
+          <div className="space-y-4 py-4">
           <div className="space-y-2">
             <div className="relative">
               <Textarea
@@ -143,9 +144,10 @@ export const AIPantryImportDialog = ({
               <li>You can use colloquial terms (e.g., "atta", "haldi")</li>
             </ul>
           </div>
-        </div>
+          </div>
+        </DialogBody>
 
-        <div className="flex gap-2 justify-end">
+        <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isProcessing}>
             Cancel
           </Button>
@@ -153,7 +155,7 @@ export const AIPantryImportDialog = ({
             {isProcessing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Extract Items
           </Button>
-        </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

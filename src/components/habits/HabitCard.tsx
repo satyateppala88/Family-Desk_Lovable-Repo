@@ -1,18 +1,22 @@
-import { Check, Flame, Plus, Minus, Sparkles } from "lucide-react";
+import { Check, Flame, Plus, Minus, Sparkles, Users } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { HabitWithStreak } from "@/types/habits";
 import { useState } from "react";
+import { SwipeFillRow } from "@/components/ui/SwipeRow";
+import { formatRecurrenceSummary } from "@/utils/recurrenceUtils";
+import type { RecurrenceSpec } from "@/types/recurrence";
 
 interface HabitCardProps {
   habit: HabitWithStreak;
   onToggle: (habitId: string, completed: boolean) => void;
   onUpdateValue?: (habitId: string, value: number) => void;
+  isPending?: boolean;
 }
 
-export const HabitCard = ({ habit, onToggle, onUpdateValue }: HabitCardProps) => {
+export const HabitCard = ({ habit, onToggle, onUpdateValue, isPending = false }: HabitCardProps) => {
   const isCompleted = habit.todayLog?.completed || false;
   const currentValue = habit.todayLog?.actual_value || 0;
   const hasTarget = habit.target_value && habit.target_unit;
@@ -63,15 +67,16 @@ export const HabitCard = ({ habit, onToggle, onUpdateValue }: HabitCardProps) =>
     ? Math.min(100, (currentValue / habit.target_value) * 100)
     : 0;
 
-  return (
+  const cardEl = (
     <Card
       className={cn(
         "p-4 transition-all duration-200 relative overflow-hidden",
         isCompleted && "bg-primary/5 border-primary/20",
         !hasTarget && "cursor-pointer hover:shadow-md",
-        showCelebration && "ring-2 ring-primary/40"
+        showCelebration && "ring-2 ring-primary/40",
+        isPending && "opacity-50 cursor-not-allowed pointer-events-none"
       )}
-      onClick={hasTarget ? undefined : handleToggle}
+      onClick={hasTarget || isPending ? undefined : handleToggle}
     >
       {showCelebration && (
         <div className="absolute inset-0 flex items-center justify-center bg-primary/5 animate-fade-in pointer-events-none z-10">
@@ -86,11 +91,13 @@ export const HabitCard = ({ habit, onToggle, onUpdateValue }: HabitCardProps) =>
             e.stopPropagation();
             if (!hasTarget) handleToggle();
           }}
+          disabled={isPending}
           className={cn(
             "w-9 h-9 rounded-full border-2 flex items-center justify-center transition-all shrink-0",
             isCompleted
               ? "bg-primary border-primary text-primary-foreground scale-105"
-              : "border-border hover:border-primary/50"
+              : "border-border hover:border-primary/50",
+            isPending && "opacity-50 cursor-not-allowed"
           )}
           style={{ minHeight: "36px" }}
         >
@@ -108,6 +115,12 @@ export const HabitCard = ({ habit, onToggle, onUpdateValue }: HabitCardProps) =>
             >
               {habit.name}
             </span>
+            {(habit.assignment_type === "household" || habit.assignment_type === "multiple") && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 text-primary px-1.5 py-0.5 text-[10px] font-medium">
+                <Users className="h-2.5 w-2.5" aria-hidden="true" />
+                {habit.assignment_type === "household" ? "Household" : "Shared"}
+              </span>
+            )}
           </div>
 
           {/* Streak display */}
@@ -124,6 +137,11 @@ export const HabitCard = ({ habit, onToggle, onUpdateValue }: HabitCardProps) =>
             {habit.reminder_time && !hasTarget && (
               <span>{habit.reminder_time.slice(0, 5)}</span>
             )}
+            {(habit as any).recurrence && (
+              <span className="truncate">
+                {formatRecurrenceSummary((habit as any).recurrence as RecurrenceSpec)}
+              </span>
+            )}
           </div>
 
           {/* Target progress bar */}
@@ -136,14 +154,14 @@ export const HabitCard = ({ habit, onToggle, onUpdateValue }: HabitCardProps) =>
         <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
           {hasTarget ? (
             <>
-              <Button variant="outline" size="icon" className="h-8 w-8" onClick={handleDecrement} disabled={currentValue === 0} style={{ minHeight: "32px" }}>
+              <Button variant="outline" size="icon" className="h-8 w-8" onClick={handleDecrement} disabled={currentValue === 0 || isPending} style={{ minHeight: "32px" }}>
                 <Minus className="h-3 w-3" />
               </Button>
               <span className="text-xs font-semibold w-14 text-center tabular-nums">
                 {currentValue}/{habit.target_value}
                 <span className="block text-[9px] text-muted-foreground font-normal">{habit.target_unit}</span>
               </span>
-              <Button variant="outline" size="icon" className="h-8 w-8" onClick={handleIncrement} style={{ minHeight: "32px" }}>
+              <Button variant="outline" size="icon" className="h-8 w-8" onClick={handleIncrement} disabled={isPending} style={{ minHeight: "32px" }}>
                 <Plus className="h-3 w-3" />
               </Button>
             </>
@@ -151,5 +169,24 @@ export const HabitCard = ({ habit, onToggle, onUpdateValue }: HabitCardProps) =>
         </div>
       </div>
     </Card>
+  );
+
+  // Habits with a quantitative target use the +/- counter; swipe-to-complete
+  // only applies to simple yes/no habits that haven't been logged today.
+  if (hasTarget || isCompleted) {
+    return cardEl;
+  }
+
+  return (
+    <SwipeFillRow
+      radiusClass="rounded-lg"
+      fillClass="bg-primary"
+      onTrigger={() => {
+        onToggle(habit.id, true);
+        triggerCelebration();
+      }}
+    >
+      {cardEl}
+    </SwipeFillRow>
   );
 };

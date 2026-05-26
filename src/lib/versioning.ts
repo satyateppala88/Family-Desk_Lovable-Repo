@@ -44,7 +44,7 @@ export interface ChangelogEntry {
 
 // ----- Current versions ---------------------------------------------------
 
-export const APP_VERSION = "1.4";
+export const APP_VERSION = "2.2";
 export const PRIVACY_VERSION = "1.1";
 export const TERMS_VERSION = "1.0";
 
@@ -82,12 +82,54 @@ export function formatVersionDate(iso: string): string {
 
 export const APP_CHANGELOG: ChangelogEntry[] = [
   {
-    version: "1.4",
-    date: "2026-04-28",
+    version: "2.2",
+    date: "2026-05-18",
     type: "minor",
-    title: "Changes",
+    title: "Budgets that carry forward, a private Finance hub",
     changes: [
-      "Changes",
+      "Finance · Set a monthly budget once and choose \"Apply to future months\" — it carries forward automatically. Edit any month later with a clear \"This month only\" vs \"This and all future months\" choice.",
+      "Finance · New Annual Budget option — enter a yearly amount for a category and Family Desk splits it into a clean monthly figure, with a tooltip showing the annual / monthly breakdown.",
+      "Finance · Privacy Mode — tap the eye icon in the header to instantly hide amounts across the app.",
+      "Finance · Protect the Finance hub with a 4-digit PIN that auto-locks when you walk away.",
+      "Finance · Polished spending charts, member contributions, savings, subscriptions, transactions and cards screens for a more consistent feel.",
+      "Tasks · Reopen a completed task from History — it slides back into All Tasks, and recurring series stay untouched.",
+      "Calendar · Manual events now support full create / edit / delete with repeat rules, and the month grid lays out better on tablets.",
+      "Account · Custom-branded sign-up, magic-link, password-reset, invite, email-change and re-authentication emails now come from familydesk.in.",
+      "Plus a round of behind-the-scenes bug fixes across Home, Calendar, Meals, Habits and Onboarding to keep things calm and responsive.",
+    ],
+  },
+  {
+    version: "2.1",
+    date: "2026-05-14",
+    type: "minor",
+    title: "Smarter recurrence and a calmer setup",
+    changes: [
+      "One unified Recurrence picker now powers Calendar events, Tasks, Habits and Subscriptions — pick daily, weekly, monthly, yearly or a custom rule, with an end date or a number of occurrences.",
+      "Recurring items show a friendly summary like \"Every 2 weeks on Mon, Wed · Until 30 Jun\" wherever they appear.",
+      "Saving Calendar preferences now works reliably — fixed a permissions issue that was blocking visibility and reminder settings from saving.",
+      "Module setup screens for Home, Calendar, Habits and Finance no longer reappear after you've completed them.",
+      "Small polish on date pickers across Calendar, Tasks, Finance and Grocery for a more consistent feel.",
+    ],
+  },
+  {
+    version: "2.0",
+    date: "2026-05-14",
+    type: "major",
+    title: "Family Desk 2.0 — a calmer, smarter home",
+    changes: [
+      "New 3-screen onboarding replaces the previous 7-screen tour — get started faster with a clearer story.",
+      "Permissions now ask at the right moment instead of all at once: microphone when you first use voice, camera and photos when you change your avatar, and notifications when you land on the dashboard.",
+      "Fresh visual identity with Poppins typography, FamilyDesk green, warm surfaces, and a new logo lockup.",
+      "Home dashboard adds a Family Pulse weekly snapshot and a Grocery quick-action tile.",
+      "Taskmaster gets 5-page sub-navigation, 5 ready-made household templates, recurring tasks with a ↺ marker, and a manual calendar scan.",
+      "Calendar now supports multiple Google accounts, shows an agenda-first view on mobile, shared festivals with prep-task banners, and manual events with repeat rules.",
+      "Meal planner uses pantry-aware AI suggestions, offers a 3-day mobile / 7-day desktop layout, and exports straight to a grocery PDF.",
+      "Grocery module introduces AI Pantry import, quick-add checklists, auto-deduction from pantry stock, category-first navigation, and an Insights dashboard.",
+      "Habits adds 7-day and 21-day challenges, a monthly Streak Freeze, and habit-stacking suggestions after you create a habit.",
+      "Finance Hub launches with an AI assistant, Monthly Review, subscriptions tracker with monthly averages, and a Credit Card Optimizer.",
+      "WhatsApp reminders via approved Meta templates and custom-branded email verification from familydesk.in.",
+      "Household admin-invite model, per-module settings, and platform admin tools.",
+      "PWA install button now recovers properly after uninstall and reinstall on Android.",
     ],
   },
   {

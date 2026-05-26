@@ -1,4 +1,7 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { Header } from "@/components/layout/Header";
 
 import { useHousehold } from "@/hooks/useHousehold";
@@ -42,7 +45,8 @@ import {
   Play,
   Check,
   Trash2,
-  Edit
+  Edit,
+  Repeat as RepeatIcon
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -56,8 +60,24 @@ import { cn } from "@/lib/utils";
 const TaskmasterTasks = () => {
   const { householdId, isLoading: loadingHousehold } = useHousehold();
   const { user } = useAuth();
-  const { tasks, isLoading, createTask, updateTask, deleteTask, markTaskDone, startTask } = useTaskmaster(householdId);
+  const { tasks, isLoading, createTask, updateTask, deleteTask, markTaskDone, startTask } = useTaskmaster(householdId, { excludeDone: true });
   const { projects } = useProjects(householdId);
+
+  // Lightweight count of completed tasks — drives the "View completed tasks" link.
+  const { data: completedCount = 0 } = useQuery({
+    queryKey: ["taskmaster-tasks-completed-count", householdId],
+    queryFn: async () => {
+      if (!householdId) return 0;
+      const { count } = await supabase
+        .from("tasks")
+        .select("id", { count: "exact", head: true })
+        .eq("household_id", householdId)
+        .eq("task_status", "done");
+      return count ?? 0;
+    },
+    enabled: !!householdId,
+    staleTime: 60 * 1000,
+  });
 
   useRealtimeSubscription([
     {
@@ -77,7 +97,7 @@ const TaskmasterTasks = () => {
       queryKeys: [["projects", householdId]],
       enabled: !!householdId,
     },
-  ]);
+  ], householdId);
   
   const [selectedTask, setSelectedTask] = useState<TaskmasterTask | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -86,6 +106,7 @@ const TaskmasterTasks = () => {
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [projectFilter, setProjectFilter] = useState<string>("all");
   const [priorityFilter, setPriorityFilter] = useState<string>("all");
+  const [sortBy, setSortBy] = useState<string>("priority");
 
   const getPriorityLabel = (level: number) => {
     switch (level) {
@@ -120,6 +141,35 @@ const TaskmasterTasks = () => {
     return true;
   });
 
+  const sortedTasks = [...filteredTasks].sort((a: any, b: any) => {
+    switch (sortBy) {
+      case "priority":
+        return (a.priority_level || 3) - (b.priority_level || 3);
+      case "priority_desc":
+        return (b.priority_level || 3) - (a.priority_level || 3);
+      case "due_date": {
+        const aDate = a.due_date ? new Date(a.due_date).getTime() : Infinity;
+        const bDate = b.due_date ? new Date(b.due_date).getTime() : Infinity;
+        return aDate - bDate;
+      }
+      case "due_date_desc": {
+        const aDate = a.due_date ? new Date(a.due_date).getTime() : -Infinity;
+        const bDate = b.due_date ? new Date(b.due_date).getTime() : -Infinity;
+        return bDate - aDate;
+      }
+      case "created_desc":
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      case "created_asc":
+        return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+      case "title":
+        return (a.title || "").localeCompare(b.title || "");
+      case "status":
+        return (a.task_status || "").localeCompare(b.task_status || "");
+      default:
+        return 0;
+    }
+  });
+
   const handleCreateTask = () => {
     setSelectedTask(null);
     setDialogOpen(true);
@@ -136,6 +186,8 @@ const TaskmasterTasks = () => {
       project_id: draft.project_id,
       household_id: householdId!,
       assignee_ids: draft.assignee_ids,
+      recurring: draft.recurring,
+      recurring_pattern: draft.recurring_pattern as any,
     });
   };
 
@@ -243,7 +295,6 @@ const TaskmasterTasks = () => {
                 <SelectItem value="today">Today</SelectItem>
                 <SelectItem value="in_progress">In Progress</SelectItem>
                 <SelectItem value="blocked">Blocked</SelectItem>
-                <SelectItem value="done">Done</SelectItem>
               </SelectContent>
             </Select>
 
@@ -286,6 +337,22 @@ const TaskmasterTasks = () => {
                 <SelectItem value="4">P4 (Lowest)</SelectItem>
               </SelectContent>
             </Select>
+
+            <Select value={sortBy} onValueChange={setSortBy}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Sort by" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="priority">Priority (High → Low)</SelectItem>
+                <SelectItem value="priority_desc">Priority (Low → High)</SelectItem>
+                <SelectItem value="due_date">Due date (Earliest)</SelectItem>
+                <SelectItem value="due_date_desc">Due date (Latest)</SelectItem>
+                <SelectItem value="created_desc">Newest first</SelectItem>
+                <SelectItem value="created_asc">Oldest first</SelectItem>
+                <SelectItem value="title">Title (A → Z)</SelectItem>
+                <SelectItem value="status">Status</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
@@ -306,7 +373,7 @@ const TaskmasterTasks = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredTasks.length === 0 ? (
+                {sortedTasks.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={8} className="text-center py-8">
                       <p className="text-muted-foreground mb-4">No tasks found</p>
@@ -317,7 +384,7 @@ const TaskmasterTasks = () => {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredTasks.map((task: any) => {
+                  sortedTasks.map((task: any) => {
                     const priority = getPriorityLabel(task.priority_level || 3);
                     const status = getStatusBadge(task.task_status || 'backlog');
                     const ageDays = getAgeDays(task.created_at);
@@ -326,8 +393,11 @@ const TaskmasterTasks = () => {
                     return (
                       <TableRow key={task.id} className={cn(isDone && "opacity-60")}>
                         <TableCell>
-                          <div className={cn(isDone && "line-through")}>
-                            {task.title}
+                          <div className={cn("flex items-center gap-1.5", isDone && "line-through")}>
+                            <span>{task.title}</span>
+                            {task.recurring && (
+                              <RepeatIcon className="h-3 w-3 text-muted-foreground" />
+                            )}
                           </div>
                         </TableCell>
                         <TableCell className="hidden sm:table-cell">
@@ -411,6 +481,17 @@ const TaskmasterTasks = () => {
             </Table>
           </div>
         </Card>
+
+        {completedCount > 0 && (
+          <div className="mt-4">
+            <Link
+              to="/tasks/history"
+              className="text-[13px] text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
+            >
+              View completed tasks →
+            </Link>
+          </div>
+        )}
       </main>
 
       

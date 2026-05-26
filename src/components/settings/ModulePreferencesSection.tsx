@@ -6,12 +6,12 @@ import {
   RotateCcw, UtensilsCrossed, ShoppingCart, Wallet,
   Sparkles, Calendar, ListChecks,
 } from "lucide-react";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useEnabledProducts, type ProductName } from "@/hooks/useEnabledProducts";
 import { useHousehold } from "@/hooks/useHousehold";
 import { useHouseholdPreferences } from "@/hooks/useHouseholdPreferences";
-import { MODULE_SETUP_KEYS, type ModuleSetupKey } from "@/lib/moduleSetup";
+import { MODULE_SETUP_COLUMN, MODULE_SETUP_KEYS, clearModuleSetupDoneLocally, type ModuleSetupKey } from "@/lib/moduleSetup";
 import { EditMealsPreferencesDialog } from "./EditMealsPreferencesDialog";
 import { EditGroceryPreferencesDialog } from "./EditGroceryPreferencesDialog";
 import { EditBudgetPreferencesDialog } from "./EditBudgetPreferencesDialog";
@@ -67,6 +67,12 @@ export const ModulePreferencesSection = () => {
         .from("profiles")
         .update({ completed_tours: { ...tours, [key]: false } })
         .eq("id", user.id);
+      const column = MODULE_SETUP_COLUMN[key];
+      if (column && householdId) {
+        await updatePreferences({ [column]: false } as any, { silent: true });
+      }
+      // Clear the local "done" flag so the gate actually re-opens next visit.
+      clearModuleSetupDoneLocally(householdId, key);
       queryClient.invalidateQueries({ queryKey: ["module-setup", user.id] });
       queryClient.invalidateQueries({ queryKey: ["completed-tours", user.id] });
       toast.success("Setup will replay next time you open this module");
@@ -173,7 +179,7 @@ export const ModulePreferencesSection = () => {
               </CardHeader>
               <CardContent className="space-y-4">
                 {renderSummary(p, preferences)}
-                <div className="flex justify-end">
+                {setupKey && <div className="flex justify-end">
                   <Button
                     variant="ghost"
                     size="sm"
@@ -183,7 +189,7 @@ export const ModulePreferencesSection = () => {
                     <RotateCcw className="h-3 w-3 mr-1" />
                     Re-run setup
                   </Button>
-                </div>
+                </div>}
               </CardContent>
             </Card>
           );

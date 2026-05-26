@@ -77,7 +77,7 @@ export const useHabitLeaderboard = (householdId: string | null) => {
 
         return {
           userId,
-          displayName: profile?.display_name || "Unknown",
+          displayName: profile?.display_name || "Member",
           avatarUrl: profile?.avatar_url || null,
           weeklyScore: weekly.score,
           monthlyScore: monthly,

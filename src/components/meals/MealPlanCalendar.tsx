@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Clock, Star, Youtube, Trash2, Plus, Flame, RefreshCw, ChefHat, ChevronLeft, ChevronRight } from "lucide-react";
+import { Clock, Star, Youtube, Trash2, Plus, Flame, RefreshCw, ChefHat, ChevronLeft, ChevronRight, ShoppingCart, Sparkles, ChevronDown, ChevronUp } from "lucide-react";
 import { MealPlan } from "@/hooks/useMealPlans";
 import { getWeekDays, getShortDayName } from "@/lib/weekUtils";
 import { format, isToday, isBefore, startOfDay } from "date-fns";
@@ -19,9 +19,12 @@ interface MealPlanCalendarProps {
   onRegenerateMeal?: (dayIndex: number, mealType: string) => void;
   onRegenerateDay?: (dayIndex: number) => void;
   onMarkAsCooked?: (recipe: any) => void;
+  onAddToList?: (recipe: any) => void;
+  onAiSuggest?: (day: number, mealType: string) => void;
 }
 
 const BASE_MEAL_TYPES = ["breakfast", "lunch", "dinner"];
+const MOBILE_MEAL_TYPES = ["breakfast", "lunch", "dinner", "snack"] as const;
 
 export const MealPlanCalendar = ({
   mealPlan,
@@ -33,6 +36,8 @@ export const MealPlanCalendar = ({
   onRegenerateMeal,
   onRegenerateDay,
   onMarkAsCooked,
+  onAddToList,
+  onAiSuggest,
 }: MealPlanCalendarProps) => {
   const weekDays = getWeekDays(weekStart);
   const isMobile = useIsMobile();
@@ -41,6 +46,10 @@ export const MealPlanCalendar = ({
   const todayIndex = weekDays.findIndex(d => isToday(d));
   const defaultCenter = todayIndex >= 0 ? todayIndex : 0;
   const [mobileCenter, setMobileCenter] = useState(defaultCenter);
+
+  // Mobile: selected day for the new day-picker layout
+  const [selectedDay, setSelectedDay] = useState<number>(defaultCenter);
+  const [showWeeklyPlan, setShowWeeklyPlan] = useState(false);
 
   // Track which days have snack row enabled
   const [snackDays, setSnackDays] = useState<Set<number>>(new Set());
@@ -55,7 +64,7 @@ export const MealPlanCalendar = ({
   };
 
   const getMealTypesForDay = (dayIndex: number) => {
-    return snackDays.has(dayIndex) ? [...BASE_MEAL_TYPES, "snacks"] : BASE_MEAL_TYPES;
+    return snackDays.has(dayIndex) ? [...BASE_MEAL_TYPES, "snack"] : BASE_MEAL_TYPES;
   };
 
   // Mobile visible indices (3-day window)
@@ -157,6 +166,12 @@ export const MealPlanCalendar = ({
                 <ChefHat className="w-3 h-3" />
               </Button>
             )}
+            {onAddToList && (
+              <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-primary"
+                onClick={(e) => { e.stopPropagation(); onAddToList(recipe); }} title="Add ingredients to shopping list">
+                <ShoppingCart className="w-3 h-3" />
+              </Button>
+            )}
             <Button variant="ghost" size="sm" className="h-6 w-6 p-0"
               onClick={(e) => { e.stopPropagation(); onRateClick(recipe); }}>
               <Star className={cn("w-3 h-3", recipe.rating && "fill-warning text-warning")} />
@@ -181,85 +196,145 @@ export const MealPlanCalendar = ({
     );
   };
 
-  // ─── MOBILE: 3-day rolling ───
+  // ─── MOBILE: Day picker + selected day's slots ───
   if (isMobile) {
+    const selDay = weekDays[selectedDay];
+    const dinnerMeal = getMealForDayAndType(selectedDay, "dinner");
+    const dinnerEmpty = !dinnerMeal || !dinnerMeal.recipe;
+
     return (
-      <div className="space-y-3">
-        {/* Day navigation */}
-        <div className="flex items-center justify-between gap-2">
-          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0"
-            disabled={mobileStart <= 0} onClick={() => setMobileCenter(c => Math.max(1, c - 1))}>
-            <ChevronLeft className="w-4 h-4" />
-          </Button>
-          <div className="flex gap-1 flex-1 justify-center">
-            {weekDays.map((day, i) => (
-              <button key={i}
-                className={cn(
-                  "w-8 h-8 rounded-full text-xs font-medium transition-colors",
-                  mobileIndices.includes(i) ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-accent",
-                  isToday(day) && !mobileIndices.includes(i) && "ring-1 ring-primary"
-                )}
-                onClick={() => setMobileCenter(i)}
-              >
-                {format(day, "d")}
-              </button>
-            ))}
+      <div className="space-y-4">
+        {/* Section 1 — Day picker strip */}
+        <div className="-mx-4 px-4 overflow-x-auto scrollbar-hide">
+          <div className="flex gap-2 min-w-min">
+            {weekDays.map((day, i) => {
+              const today = isToday(day);
+              const selected = i === selectedDay;
+              return (
+                <button
+                  key={i}
+                  onClick={() => setSelectedDay(i)}
+                  className={cn(
+                    "shrink-0 w-[52px] h-[52px] rounded-full flex flex-col items-center justify-center transition-colors",
+                    today && "bg-primary text-primary-foreground",
+                    !today && selected && "bg-[#2C2C2A] text-white",
+                    !today && !selected && "bg-transparent text-[#6B6965] hover:bg-accent"
+                  )}
+                  aria-pressed={selected}
+                  aria-label={format(day, "EEEE, MMM d")}
+                >
+                  <span className="text-[10px] font-medium leading-none uppercase tracking-wider">
+                    {format(day, "EEE")}
+                  </span>
+                  <span className="text-sm font-semibold leading-tight mt-0.5">
+                    {format(day, "d")}
+                  </span>
+                </button>
+              );
+            })}
           </div>
-          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0"
-            disabled={mobileStart >= 4} onClick={() => setMobileCenter(c => Math.min(5, c + 1))}>
-            <ChevronRight className="w-4 h-4" />
-          </Button>
         </div>
 
-        {/* Day columns */}
-        {mobileIndices.map(dayIndex => {
-          const day = weekDays[dayIndex];
-          const today = isToday(day);
-          const past = isBefore(startOfDay(day), startOfDay(new Date())) && !today;
-          const mealTypes = getMealTypesForDay(dayIndex);
-          const dailyCals = getDailyCalories(dayIndex);
+        {/* Section 2 — Selected day's meal slots */}
+        <div className="space-y-2">
+          <div className="flex items-baseline justify-between px-1">
+            <h2 className="font-semibold text-base">
+              {isToday(selDay) ? "Today" : format(selDay, "EEEE")}
+              <span className="ml-1.5 text-xs font-normal text-muted-foreground">
+                {format(selDay, "MMM d")}
+              </span>
+            </h2>
+            {getDailyCalories(selectedDay) > 0 && (
+              <span className="text-xs text-muted-foreground">{getDailyCalories(selectedDay)} cal</span>
+            )}
+          </div>
 
-          return (
-            <div key={dayIndex} className={cn("rounded-xl border p-3 space-y-2", today && "border-primary/40 bg-primary/[0.02]", past && "opacity-70")}>
-              <div className="flex items-center justify-between">
-                <div>
-                  <span className="font-semibold text-sm">{format(day, "EEEE")}</span>
-                  <span className="text-xs text-muted-foreground ml-1.5">{format(day, "MMM d")}</span>
-                  {today && <Badge variant="secondary" className="ml-2 text-[10px] px-1.5 py-0 h-4">Today</Badge>}
+          {MOBILE_MEAL_TYPES.map((mealType) => {
+            const meal = getMealForDayAndType(selectedDay, mealType);
+            const hasMeal = meal && meal.recipe;
+            const isDinner = mealType === "dinner";
+            const label = mealType.charAt(0).toUpperCase() + mealType.slice(1);
+
+            return (
+              <div key={mealType}>
+                <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-1 px-1">
+                  {label}
+                </p>
+                <div className={cn("relative", isDinner && "pl-1")}>
+                  {isDinner && (
+                    <span className="absolute left-0 top-0 bottom-0 w-[3px] rounded-full bg-primary" aria-hidden />
+                  )}
+                  {hasMeal ? (
+                    <MealSlot dayIndex={selectedDay} mealType={mealType} />
+                  ) : (
+                    <button
+                      onClick={() => onAddClick(selectedDay, mealType)}
+                      className="w-full min-h-[72px] rounded-xl border border-dashed border-border/60 hover:border-primary/30 hover:bg-accent/40 transition-colors flex items-center px-4 text-left"
+                    >
+                      <span className="text-[15px] text-muted-foreground">
+                        <Plus className="w-4 h-4 inline mr-1.5 -mt-0.5" />
+                        Add {label}
+                      </span>
+                    </button>
+                  )}
                 </div>
-                {dailyCals > 0 && (
-                  <span className="text-xs text-muted-foreground">{dailyCals} cal</span>
-                )}
               </div>
+            );
+          })}
+        </div>
 
-              <div className="space-y-2">
-                {mealTypes.map(mealType => (
+        {/* Section 3 — Dinner AI button */}
+        {dinnerEmpty && (
+          <Button
+            className="w-full h-12 gap-2 text-[15px]"
+            onClick={() => (onAiSuggest ?? onAddClick)(selectedDay, "dinner")}
+          >
+            <Sparkles className="w-4 h-4" />
+            What's for dinner tonight?
+          </Button>
+        )}
+
+        {/* Section 4 — Plan the week collapsible */}
+        <div className="pt-2">
+          <button
+            onClick={() => setShowWeeklyPlan((v) => !v)}
+            className="w-full flex items-center justify-center gap-1.5 py-2 text-sm text-muted-foreground hover:text-foreground border-t border-border"
+          >
+            {showWeeklyPlan ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            {showWeeklyPlan ? "Hide weekly plan" : "View weekly plan"}
+          </button>
+
+          {showWeeklyPlan && (
+            <div className="mt-3 -mx-4 px-4 overflow-x-auto">
+              <div className="min-w-[640px] space-y-4">
+                {/* Same 7-column grid as desktop */}
+                <div className="grid grid-cols-7 gap-2">
+                  {weekDays.map((day, index) => {
+                    const dailyCals = getDailyCalories(index);
+                    const today = isToday(day);
+                    return (
+                      <div key={index} className={cn("text-center p-2 rounded-xl space-y-0.5", today ? "bg-primary/15 ring-1 ring-primary/30" : "bg-muted/50")}>
+                        <div className="font-semibold text-xs">{getShortDayName(day)}</div>
+                        <div className="text-[10px] text-muted-foreground">{format(day, "MMM d")}</div>
+                        {dailyCals > 0 && <div className="text-[10px] text-muted-foreground">{dailyCals} cal</div>}
+                      </div>
+                    );
+                  })}
+                </div>
+                {BASE_MEAL_TYPES.map((mealType) => (
                   <div key={mealType}>
-                    <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-1">{mealType}</p>
-                    <MealSlot dayIndex={dayIndex} mealType={mealType} />
+                    <h3 className="font-semibold capitalize mb-2 text-[10px] text-muted-foreground uppercase tracking-wider">{mealType}</h3>
+                    <div className="grid grid-cols-7 gap-2">
+                      {weekDays.map((_, dayIndex) => (
+                        <MealSlot key={dayIndex} dayIndex={dayIndex} mealType={mealType} />
+                      ))}
+                    </div>
                   </div>
                 ))}
               </div>
-
-              {/* Add snack row toggle */}
-              {!snackDays.has(dayIndex) && (
-                <button
-                  className="w-full text-xs text-muted-foreground hover:text-foreground flex items-center justify-center gap-1 py-1 transition-colors"
-                  onClick={() => toggleSnackDay(dayIndex)}
-                >
-                  <Plus className="w-3 h-3" /> Add snack / evening
-                </button>
-              )}
-
-              {onRegenerateDay && getDailyCalories(dayIndex) > 0 && (
-                <Button variant="ghost" size="sm" className="w-full h-7 text-xs text-muted-foreground"
-                  onClick={() => onRegenerateDay(dayIndex)}>
-                  <RefreshCw className="w-3 h-3 mr-1" /> Regenerate day
-                </Button>
-              )}
             </div>
-          );
-        })}
+          )}
+        </div>
       </div>
     );
   }
@@ -306,7 +381,7 @@ export const MealPlanCalendar = ({
           <div className="grid grid-cols-7 gap-2">
             {weekDays.map((_, dayIndex) => (
               snackDays.has(dayIndex)
-                ? <MealSlot key={dayIndex} dayIndex={dayIndex} mealType="snacks" />
+                ? <MealSlot key={dayIndex} dayIndex={dayIndex} mealType="snack" />
                 : <div key={dayIndex} className="border border-dashed border-border/30 rounded-xl p-3 min-h-[100px] flex items-center justify-center">
                     <button className="text-xs text-muted-foreground hover:text-foreground" onClick={() => toggleSnackDay(dayIndex)}>
                       <Plus className="w-3 h-3 mx-auto mb-0.5" /> Add

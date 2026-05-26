@@ -1,0 +1,3 @@
+DELETE FROM public.user_roles WHERE household_id IN ('f6b51d0f-9447-4ce1-84e9-61ac1d9ee25c','b4a4665a-64ae-4244-b0cd-238ed6a0cadc','decdc813-5048-4804-95cb-d7c2c3a81f85');
+DELETE FROM public.household_members WHERE household_id IN ('f6b51d0f-9447-4ce1-84e9-61ac1d9ee25c','b4a4665a-64ae-4244-b0cd-238ed6a0cadc','decdc813-5048-4804-95cb-d7c2c3a81f85');
+DELETE FROM public.households WHERE id IN ('f6b51d0f-9447-4ce1-84e9-61ac1d9ee25c','b4a4665a-64ae-4244-b0cd-238ed6a0cadc','decdc813-5048-4804-95cb-d7c2c3a81f85');

@@ -1,13 +1,13 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.78.0";
-import { Resend } from "https://esm.sh/resend@2.0.0";
 import { getCorsHeaders } from "../_shared/cors.ts";
+import { sendViaQueue } from "../_shared/send-email-queue.ts";
+const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 import {
   getEmailWrapper,
   getHouseholdMemberWelcomeContent,
 } from "../_shared/email-templates.ts";
-
-const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
 interface RequestBody {
   householdId: string;
@@ -105,11 +105,12 @@ serve(async (req: Request): Promise<Response> => {
       preheader: `You're now part of ${householdName} on Family Desk`,
     });
 
-    const { data: emailData, error: emailError } = await resend.emails.send({
-      from: "Family Desk <noreply@familydesk.in>",
-      to: [user.email],
+    const { data: emailData, error: emailError } = await sendViaQueue(supabaseUrl, supabaseServiceKey, {
+      to: user.email,
       subject: `Welcome to ${householdName} - Family Desk`,
       html: htmlContent,
+      templateName: "send-household-member-welcome",
+      idempotencyKey: `household-welcome-${householdId}-${user.id}`,
     });
 
     if (emailError) {

@@ -47,6 +47,17 @@ export const useHouseholdHabitStats = (householdId: string | null) => {
 
       if (habitsError) throw habitsError;
 
+      // Get assignees for "multiple" assignment habits
+      const habitIds = (habits || []).map((h) => h.id);
+      const { data: assignees, error: assigneesError } = habitIds.length
+        ? await supabase
+            .from("habit_assignees")
+            .select("habit_id, user_id")
+            .in("habit_id", habitIds)
+        : { data: [], error: null };
+
+      if (assigneesError) throw assigneesError;
+
       // Get today's logs
       const { data: todaysLogs, error: logsError } = await supabase
         .from("habit_logs")
@@ -101,12 +112,27 @@ export const useHouseholdHabitStats = (householdId: string | null) => {
       // Calculate per-member stats
       const memberStats: MemberHabitStats[] = memberIds.map((userId) => {
         const profile = profiles?.find((p) => p.id === userId);
-        const memberHabits = habits?.filter((h) => h.user_id === userId) || [];
+        const memberHabits =
+          habits?.filter((h) => {
+            if (h.assignment_type === "personal") return h.user_id === userId;
+            if (h.assignment_type === "household") return true;
+            if (h.assignment_type === "multiple") {
+              return (assignees || []).some(
+                (a) => a.habit_id === h.id && a.user_id === userId
+              );
+            }
+            return h.user_id === userId;
+          }) || [];
+        const memberHabitIds = new Set(memberHabits.map((h) => h.id));
         const memberTodayLogs =
-          todaysLogs?.filter((l) => l.user_id === userId) || [];
+          todaysLogs?.filter(
+            (l) => l.user_id === userId && memberHabitIds.has(l.habit_id)
+          ) || [];
         const memberStreaks = streaks?.filter((s) => s.user_id === userId) || [];
         const memberWeekLogs =
-          weekLogs?.filter((l) => l.user_id === userId) || [];
+          weekLogs?.filter(
+            (l) => l.user_id === userId && memberHabitIds.has(l.habit_id)
+          ) || [];
 
         const memberPlannedToday = memberHabits.filter((habit) => {
           if (habit.frequency_type === "daily") return true;

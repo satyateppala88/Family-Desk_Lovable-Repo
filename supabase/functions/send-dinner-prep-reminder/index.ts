@@ -1,6 +1,7 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.95.0";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.78.0";
 import { sendPush } from "../_shared/push.ts";
 import { todayIST } from "../_shared/time.ts";
+import { validateCronSecret } from "../_shared/cron-auth.ts";
 
 /**
  * Cron (~5pm local): pings households with a dinner planned for tonight so
@@ -16,6 +17,13 @@ const corsHeaders = {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
+  }
+
+  if (!validateCronSecret(req)) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 
   const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;

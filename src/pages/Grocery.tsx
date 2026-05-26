@@ -2,12 +2,12 @@ import { useState, useEffect, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import { Header } from "@/components/layout/Header";
-import { OnboardingTour } from "@/components/onboarding/OnboardingTour";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
-import { Plus, ListChecks, Package, Sparkles, ShoppingCart, ScanLine } from "lucide-react";
+import { ModuleNudgeBanner } from "@/components/discovery/ModuleNudgeBanner";
+import { Plus, ListChecks, Package, Sparkles, ShoppingCart, ScanLine, Settings } from "lucide-react";
 import { PantryItemCard } from "@/components/grocery/PantryItemCard";
 import { AddPantryItemDialog } from "@/components/grocery/AddPantryItemDialog";
 import { QuickAddChecklist } from "@/components/grocery/QuickAddChecklist";
@@ -20,6 +20,9 @@ import { CreateShoppingListDialog } from "@/components/grocery/CreateShoppingLis
 import { PantryEducationBanner } from "@/components/grocery/PantryEducationBanner";
 import { ExpiringItemsAlert } from "@/components/grocery/ExpiringItemsAlert";
 import { LowStockAlert } from "@/components/grocery/LowStockAlert";
+import { RunningLowChips } from "@/components/grocery/RunningLowChips";
+import { PantrySettingsSheet } from "@/components/grocery/PantrySettingsSheet";
+import { ShareOnWhatsAppButton } from "@/components/grocery/ShareOnWhatsAppButton";
 import { PantryCategorySection } from "@/components/grocery/PantryCategorySection";
 import { ShoppingListDetailView } from "@/components/grocery/ShoppingListDetailView";
 import { PantryAnalytics } from "@/components/grocery/PantryAnalytics";
@@ -31,51 +34,23 @@ import { usePantryCategories } from "@/hooks/usePantryCategories";
 import { usePantryStats } from "@/hooks/usePantryStats";
 import { useShoppingLists } from "@/hooks/useShoppingLists";
 import { useHousehold } from "@/hooks/useHousehold";
+import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
 import { useAuth } from "@/contexts/AuthContext";
-import { useFeatureTour } from "@/hooks/useFeatureTour";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import type { Step } from "react-joyride";
 import type { PantryItem } from "@/hooks/usePantryItems";
-
-const groceryTourSteps: Step[] = [
-  {
-    target: "body",
-    content: "Welcome to Grocery! Keep track of what's in your pantry and what you need to buy.",
-    placement: "center",
-    disableBeacon: true,
-  },
-  {
-    target: "[data-tour='ai-import']",
-    content: "Describe what's in your kitchen and let AI organize it for you.",
-    placement: "bottom",
-  },
-  {
-    target: "[data-tour='quick-add']",
-    content: "Quickly add common pantry staples with one tap.",
-    placement: "bottom",
-  },
-  {
-    target: "[role='tablist']",
-    content: "Switch between your pantry inventory, shopping lists, and usage insights.",
-    placement: "bottom",
-  },
-  {
-    target: "[data-tour='category-grid']",
-    content: "Browse items by category. We'll flag anything that's running low or expiring soon.",
-    placement: "top",
-  },
-  {
-    target: ".user-menu",
-    content: "You can restart this guide anytime from the menu.",
-    placement: "bottom",
-  },
-];
+import { decodeIngredientsParam } from "@/lib/meals/shoppingListBridge";
+import { AIActionSheet } from "@/components/ai/AIActionSheet";
 
 const Grocery = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const { householdId } = useHousehold();
+  useRealtimeSubscription([
+    { table: "shopping_lists", filter: householdId ? `household_id=eq.${householdId}` : undefined, enabled: !!householdId, queryKeys: [["shopping-lists", householdId]] },
+    { table: "shopping_list_items", enabled: !!householdId, queryKeys: [["shopping-lists", householdId]] },
+    { table: "pantry_items", filter: householdId ? `household_id=eq.${householdId}` : undefined, enabled: !!householdId, queryKeys: [["pantry-items", householdId], ["pantry-stats", householdId]] },
+  ], householdId);
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   const { pantryItems, isLoading, addPantryItem, updatePantryItem, deletePantryItem, bulkAddItems } = usePantryItems(householdId);
@@ -100,27 +75,74 @@ const Grocery = () => {
   
   const [selectedCategoryDetail, setSelectedCategoryDetail] = useState<string | null>(null);
   const [cartItemCount, setCartItemCount] = useState(0);
+  const [activeTab, setActiveTab] = useState<string>(() => searchParams.get("tab") || "pantry");
+  const [showPantrySettings, setShowPantrySettings] = useState(false);
+  const [isAddingLowStock, setIsAddingLowStock] = useState(false);
+  const [aiOpen, setAiOpen] = useState(false);
 
-  const { shouldShowTour, tourChecked, markTourComplete } = useFeatureTour("grocery");
-  const [runOnboarding, setRunOnboarding] = useState(false);
-
+  // Handle inbound link from Meals: ?tab=shopping&newList=...&items=...
   useEffect(() => {
-    if (tourChecked && shouldShowTour && householdId) {
-      setTimeout(() => setRunOnboarding(true), 500);
+    const tab = searchParams.get("tab");
+    if (tab) setActiveTab(tab);
+    // Open Add Item sheet when navigated with ?add=1 (e.g. dashboard quick action)
+    if (searchParams.get("add") === "1") {
+      setShowAddDialog(true);
+      const next = new URLSearchParams(searchParams);
+      next.delete("add");
+      setSearchParams(next, { replace: true });
     }
-  }, [tourChecked, shouldShowTour, householdId]);
+    const newList = searchParams.get("newList");
+    const items = searchParams.get("items");
+    if (!newList || !householdId || !user?.id) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data: list, error } = await supabase
+          .from("shopping_lists")
+          .insert([{ household_id: householdId, name: newList, created_by: user.id, status: "active" }])
+          .select()
+          .single();
+        if (error || !list) throw error;
+
+        const ingredients = decodeIngredientsParam(items);
+        if (ingredients.length > 0) {
+          const rows = ingredients.map((ing) => ({
+            list_id: (list as any).id,
+            name: ing.name,
+            quantity: ing.quantity ? Number(String(ing.quantity).replace(/[^0-9.]/g, "")) || null : null,
+            unit: ing.unit || null,
+            category: null,
+            is_checked: false,
+            pantry_item_id: null,
+            recipe_source: newList,
+          }));
+          await supabase.from("shopping_list_items").insert(rows);
+        }
+        if (cancelled) return;
+        queryClient.invalidateQueries({ queryKey: ["shopping-lists", householdId] });
+        toast({ title: "Shopping list created", description: newList });
+        // Clear the params so a refresh doesn't recreate
+        const next = new URLSearchParams(searchParams);
+        next.delete("newList");
+        next.delete("items");
+        next.set("tab", "shopping");
+        next.set("list", (list as any).id);
+        setSearchParams(next, { replace: true });
+        setActiveTab("shopping");
+      } catch (e: any) {
+        toast({ title: "Couldn't create list", description: "Please try again.", variant: "destructive" });
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [householdId, user?.id]);
 
   useEffect(() => {
     if (householdId && categories.length === 0 && !categoriesLoading) {
       initializeDefaultCategories.mutate(householdId);
     }
   }, [householdId, categories.length, categoriesLoading]);
-
-  const handleStartOnboarding = () => setRunOnboarding(true);
-  const handleOnboardingComplete = () => {
-    setRunOnboarding(false);
-    markTourComplete();
-  };
 
   const handleAddItem = (item: Partial<PantryItem>) => {
     if (!householdId || !user?.id) return;
@@ -160,7 +182,12 @@ const Grocery = () => {
       household_id: householdId,
       added_by: user.id,
     }));
-    bulkAddItems.mutate(itemsWithRequired);
+    bulkAddItems.mutate(itemsWithRequired, {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ["pantry-items", householdId] });
+        queryClient.invalidateQueries({ queryKey: ["pantry-stats", householdId] });
+      },
+    });
   };
 
   const handleAIImport = (items: Partial<PantryItem>[]) => {
@@ -206,7 +233,7 @@ const Grocery = () => {
     } catch (err: any) {
       toast({
         title: "Could not save",
-        description: err?.message || "Please try again.",
+        description: "Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -269,7 +296,7 @@ const Grocery = () => {
       console.error("Error generating shopping list:", error);
       toast({
         title: "Something went wrong",
-        description: error.message || "We couldn't generate the shopping list. Please try again.",
+        description: "We couldn't generate the shopping list. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -324,6 +351,71 @@ const Grocery = () => {
     const minQty = item.minimum_quantity || 0;
     return minQty > 0 && qty <= minQty;
   });
+
+  const handleAddLowStockItem = async (item: PantryItem) => {
+    if (!householdId || !user?.id) return;
+    setIsAddingLowStock(true);
+    try {
+      let activeList = shoppingLists.find((l) => l.status === "active");
+      if (!activeList) {
+        const { data, error } = await supabase
+          .from("shopping_lists")
+          .insert([
+            {
+              household_id: householdId,
+              name: `Shopping List — ${new Date().toLocaleDateString()}`,
+              created_by: user.id,
+              status: "active",
+            },
+          ])
+          .select()
+          .single();
+        if (error || !data) throw error;
+        activeList = data as any;
+      }
+
+      // Avoid duplicates: same pantry item, not yet checked
+      const existing = activeList!.items?.find(
+        (i) => i.pantry_item_id === item.id && !i.is_checked
+      );
+      if (existing) {
+        toast({ title: "Already on your list", description: item.name });
+        return;
+      }
+
+      const need = Math.max(
+        1,
+        Math.ceil((item.minimum_quantity || 1) - (item.quantity || 0))
+      );
+      const { error: insertError } = await supabase
+        .from("shopping_list_items")
+        .insert([
+          {
+            list_id: activeList!.id,
+            name: item.name,
+            quantity: need,
+            unit: item.unit,
+            category: item.category,
+            is_checked: false,
+            pantry_item_id: item.id,
+            recipe_source: null,
+          },
+        ]);
+      if (insertError) throw insertError;
+
+      queryClient.invalidateQueries({ queryKey: ["shopping-lists", householdId] });
+      setCartItemCount((c) => c + 1);
+      toast({ title: `${item.name} added to shopping list` });
+    } catch (e: any) {
+      toast({
+        title: "Couldn't add item",
+        description: "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsAddingLowStock(false);
+    }
+  };
 
   const groupedItems = useMemo(() => {
     const groups: Record<string, PantryItem[]> = {};
@@ -436,7 +528,7 @@ const Grocery = () => {
   if (!user || !householdId) {
     return (
       <div className="page-container">
-        <Header onStartOnboarding={handleStartOnboarding} />
+        <Header />
         <main className="page-content">
           <EmptyState
             icon={Package}
@@ -450,8 +542,12 @@ const Grocery = () => {
 
   return (
     <div className="page-container">
-      <Header onStartOnboarding={handleStartOnboarding} />
+      <Header />
       <main className="page-content flex-1">
+        <ModuleNudgeBanner
+          moduleKey="grocery"
+          text="Add pantry staples now — FamilyDesk tracks what's running low so you never forget at the store."
+        />
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
           <div>
             <h1 className="page-heading">Grocery</h1>
@@ -498,10 +594,20 @@ const Grocery = () => {
               <span className="hidden xs:inline">Add Item</span>
               <span className="xs:hidden">Add</span>
             </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setShowPantrySettings(true)}
+              className="h-9 w-9"
+              aria-label="Grocery settings"
+              title="Grocery settings"
+            >
+              <Settings className="h-4 w-4" aria-hidden="true" />
+            </Button>
           </div>
         </div>
 
-        <Tabs defaultValue="pantry" className="space-y-4">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
           <TabsList>
             <TabsTrigger value="pantry" className="gap-2">
               <Package className="h-4 w-4" aria-hidden="true" />
@@ -517,13 +623,20 @@ const Grocery = () => {
           </TabsList>
 
           <TabsContent value="pantry" className="space-y-6">
+            {lowStockItems.length > 0 && (
+              <RunningLowChips
+                items={lowStockItems}
+                onAddItem={handleAddLowStockItem}
+                isAdding={isAddingLowStock}
+              />
+            )}
             {isLoading ? (
               <EmptyState icon={Package} title="Loading your pantry..." />
             ) : pantryItems.length === 0 ? (
               <EmptyState
                 icon={Package}
-                title="Your pantry is empty"
-                description="Add items to track what you have at home and know what to buy."
+                title="Your pantry is a blank slate"
+                description="Add staples your household always keeps at home. When stock runs low, FamilyDesk will flag it and add items to your shopping list automatically."
                 encouragement="Try AI Import to add everything at once!"
                 action={{ label: "Add Item", onClick: () => setShowAddDialog(true) }}
                 secondaryAction={{ label: "Quick Add Staples", onClick: () => setShowQuickAdd(true) }}
@@ -546,7 +659,18 @@ const Grocery = () => {
                 />
               </div>
             )}
-            
+
+            {pantryItems.length > 0 && !selectedCategoryDetail && (
+              <Button
+                variant="outline"
+                onClick={() => setAiOpen(true)}
+                className="w-full gap-2"
+              >
+                <Sparkles className="w-4 h-4" />
+                What am I running low on?
+              </Button>
+            )}
+
             <FloatingCartButton
               itemCount={cartItemCount}
               onClick={handleViewCart}
@@ -568,10 +692,22 @@ const Grocery = () => {
                   <p className="text-sm text-muted-foreground">
                     Create lists manually or generate them from your meal plan.
                   </p>
-                  <Button onClick={() => setShowCreateList(true)} className="gap-2">
-                    <ShoppingCart className="h-4 w-4" aria-hidden="true" />
-                    Create List
-                  </Button>
+                  <div className="flex gap-2">
+                    {shoppingLists.length > 0 && (
+                      <ShareOnWhatsAppButton
+                        list={
+                          shoppingLists.find((l) => l.status === "active") ||
+                          shoppingLists[0]
+                        }
+                        size="sm"
+                        label="Share"
+                      />
+                    )}
+                    <Button onClick={() => setShowCreateList(true)} className="gap-2">
+                      <ShoppingCart className="h-4 w-4" aria-hidden="true" />
+                      Create List
+                    </Button>
+                  </div>
                 </div>
 
                 {shoppingLists.length === 0 ? (
@@ -691,20 +827,15 @@ const Grocery = () => {
         onConfirm={confirmDeleteList}
       />
 
-      <OnboardingTour 
-        run={runOnboarding} 
-        onComplete={handleOnboardingComplete} 
-        steps={groceryTourSteps}
-        featureName="grocery"
+      <PantrySettingsSheet open={showPantrySettings} onOpenChange={setShowPantrySettings} />
+
+      <AIActionSheet
+        isOpen={aiOpen}
+        onClose={() => setAiOpen(false)}
+        initialPrompt="Based on my current pantry inventory, what staples are running low and what should I add to my shopping list this week?"
       />
     </div>
   );
 };
 
-import { ModuleSetupGate } from "@/components/onboarding/ModuleSetupGate";
-const GroceryWithGate = () => (
-  <ModuleSetupGate module="grocery_setup">
-    <Grocery />
-  </ModuleSetupGate>
-);
-export default GroceryWithGate;
+export default Grocery;

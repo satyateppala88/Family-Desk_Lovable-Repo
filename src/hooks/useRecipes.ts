@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 import { Recipe } from "@/types/database";
 import { useToast } from "@/hooks/use-toast";
 
@@ -21,7 +21,7 @@ export const useRecipes = (householdId: string | null, pagination?: PaginationPa
     queryFn: async () => {
       if (!householdId) return { recipes: [], totalCount: 0 };
 
-      const { data, error, count } = await (supabase as any)
+      const { data, error, count } = await supabase
         .from("recipes")
         .select("*", { count: "exact" })
         .eq("household_id", householdId)
@@ -37,7 +37,7 @@ export const useRecipes = (householdId: string | null, pagination?: PaginationPa
 
   const createRecipe = useMutation({
     mutationFn: async (newRecipe: Partial<Recipe>) => {
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from("recipes")
         .insert(newRecipe)
         .select()
@@ -55,8 +55,8 @@ export const useRecipes = (householdId: string | null, pagination?: PaginationPa
     },
     onError: (error: any) => {
       toast({
-        title: "Error",
-        description: error.message,
+        title: "Something went wrong",
+        description: "Please try again.",
         variant: "destructive",
       });
     },
@@ -64,7 +64,7 @@ export const useRecipes = (householdId: string | null, pagination?: PaginationPa
 
   const updateRecipe = useMutation({
     mutationFn: async ({ id, updates }: { id: string; updates: Partial<Recipe> }) => {
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from("recipes")
         .update(updates)
         .eq("id", id)
@@ -83,8 +83,8 @@ export const useRecipes = (householdId: string | null, pagination?: PaginationPa
     },
     onError: (error: any) => {
       toast({
-        title: "Error",
-        description: error.message,
+        title: "Something went wrong",
+        description: "Please try again.",
         variant: "destructive",
       });
     },
@@ -92,7 +92,7 @@ export const useRecipes = (householdId: string | null, pagination?: PaginationPa
 
   const deleteRecipe = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await (supabase as any)
+      const { error } = await supabase
         .from("recipes")
         .delete()
         .eq("id", id);
@@ -108,8 +108,8 @@ export const useRecipes = (householdId: string | null, pagination?: PaginationPa
     },
     onError: (error: any) => {
       toast({
-        title: "Error",
-        description: error.message,
+        title: "Something went wrong",
+        description: "Please try again.",
         variant: "destructive",
       });
     },

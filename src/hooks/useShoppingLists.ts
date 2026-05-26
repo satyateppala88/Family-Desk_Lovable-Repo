@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
 export interface ShoppingListItem {
@@ -74,8 +74,8 @@ export const useShoppingLists = (householdId: string | null) => {
     },
     onError: (error: Error) => {
       toast({
-        title: "Error",
-        description: error.message,
+        title: "Something went wrong",
+        description: "Please try again.",
         variant: "destructive",
       });
     },
@@ -97,8 +97,8 @@ export const useShoppingLists = (householdId: string | null) => {
     },
     onError: (error: Error) => {
       toast({
-        title: "Error",
-        description: error.message,
+        title: "Something went wrong",
+        description: "Please try again.",
         variant: "destructive",
       });
     },
@@ -123,8 +123,8 @@ export const useShoppingLists = (householdId: string | null) => {
     },
     onError: (error: Error) => {
       toast({
-        title: "Error",
-        description: error.message,
+        title: "Something went wrong",
+        description: "Please try again.",
         variant: "destructive",
       });
     },
@@ -146,15 +146,32 @@ export const useShoppingLists = (householdId: string | null) => {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["shopping-lists", householdId] });
+    onMutate: async ({ id, is_checked }) => {
+      await queryClient.cancelQueries({ queryKey: ['shopping-lists', householdId] });
+      const previous = queryClient.getQueryData(['shopping-lists', householdId]);
+      queryClient.setQueryData(['shopping-lists', householdId], (old: any[]) =>
+        (old || []).map(list => ({
+          ...list,
+          items: (list.items || []).map((item: any) =>
+            item.id === id ? { ...item, is_checked } : item
+          ),
+        }))
+      );
+      return { previous };
     },
-    onError: (error: Error) => {
+    onError: (_err, _vars, context) => {
+      queryClient.setQueryData(['shopping-lists', householdId], context?.previous);
       toast({
-        title: "Error",
-        description: error.message,
+        title: "Something went wrong",
+        description: "Please try again.",
         variant: "destructive",
       });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['shopping-lists', householdId] });
+    },
+    onSuccess: () => {
+      // No toast for toggle — keeps it lightweight during shopping
     },
   });
 
@@ -182,8 +199,8 @@ export const useShoppingLists = (householdId: string | null) => {
     },
     onError: (error: Error) => {
       toast({
-        title: "Error",
-        description: error.message,
+        title: "Something went wrong",
+        description: "Please try again.",
         variant: "destructive",
       });
     },
@@ -207,8 +224,8 @@ export const useShoppingLists = (householdId: string | null) => {
     },
     onError: (error: Error) => {
       toast({
-        title: "Error",
-        description: error.message,
+        title: "Something went wrong",
+        description: "Please try again.",
         variant: "destructive",
       });
     },
@@ -228,8 +245,8 @@ export const useShoppingLists = (householdId: string | null) => {
     },
     onError: (error: Error) => {
       toast({
-        title: "Error",
-        description: error.message,
+        title: "Something went wrong",
+        description: "Please try again.",
         variant: "destructive",
       });
     },

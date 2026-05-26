@@ -1,8 +1,8 @@
 import { useState, useRef } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Loader2, Camera, Upload, X, ScanLine } from "lucide-react";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
 const MAX_IMAGES = 5;
@@ -133,7 +133,7 @@ export const ScanBillDialog = ({ open, onOpenChange, onScanned, householdId }: S
     } catch (err: any) {
       toast({
         title: "Scan failed",
-        description: err?.message || "Please try again.",
+        description: "Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -230,7 +230,7 @@ export const ScanBillDialog = ({ open, onOpenChange, onScanned, householdId }: S
           </div>
         </div>
 
-        <div className="flex justify-end gap-2">
+        <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isProcessing}>
             Cancel
           </Button>
@@ -238,7 +238,7 @@ export const ScanBillDialog = ({ open, onOpenChange, onScanned, householdId }: S
             {isProcessing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {isProcessing ? "Reading bill…" : `Extract ${images.length || ""} item${images.length === 1 ? "" : "s"}`.trim()}
           </Button>
-        </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

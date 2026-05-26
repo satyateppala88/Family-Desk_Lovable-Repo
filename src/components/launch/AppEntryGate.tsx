@@ -2,7 +2,7 @@ import { useState, useCallback } from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { SplashScreen } from "./SplashScreen";
-import { FeatureTour } from "./featureTour/FeatureTour";
+import { Onboarding } from "./Onboarding";
 import { useFeatureTourGate } from "@/hooks/useFeatureTourGate";
 
 type LaunchPhase = "splash" | "decided";
@@ -23,9 +23,9 @@ export const AppEntryGate = () => {
     return <Navigate to="/dashboard" replace />;
   }
 
-  // First-time visitor (or freshly installed PWA) → feature tour
+  // First-time visitor (or freshly installed PWA) → onboarding
   if (shouldShow) {
-    return <FeatureTour />;
+    return <Onboarding />;
   }
 
   // Returning unauthenticated → auth

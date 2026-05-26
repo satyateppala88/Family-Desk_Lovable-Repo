@@ -1,10 +1,12 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.78.0';
 import { z } from "https://deno.land/x/zod@v3.23.8/mod.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
 import { checkRateLimit, AI_RATE_LIMIT } from "../_shared/rate-limit.ts";
 import { Logger } from "../_shared/logger.ts";
+import { buildHouseholdContext, DEGRADED_CONTEXT, type AIContextModule } from "../_shared/aiContext.ts";
+import { renderSystemPrompt } from "../_shared/aiSystemPrompts.ts";
 
 // Input validation schema
 const MAX_MESSAGE_LENGTH = 4000;
@@ -20,6 +22,7 @@ const AIChatRequestSchema = z.object({
   messages: z.array(MessageSchema)
     .max(MAX_MESSAGES_PER_REQUEST, 'Too many messages in request'),
   householdId: z.string().uuid('Invalid household ID'),
+  module: z.enum(['finance', 'habits', 'tasks', 'calendar', 'meals', 'general']).optional(),
 });
 
 // Define tools for the AI to use
@@ -121,7 +124,8 @@ serve(async (req) => {
       });
     }
 
-    const { messages, householdId } = validationResult.data;
+    const { messages, householdId, module: moduleParam } = validationResult.data;
+    const moduleName: AIContextModule = moduleParam || 'general';
     
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
@@ -174,31 +178,25 @@ serve(async (req) => {
       });
     }
 
-    // Build system prompt with personality
-    const systemPrompt = `You are HomeMate AI, a friendly and proactive household assistant for Indian families. 
+    // Build module-scoped household context. Degrade gracefully on failure.
+    let contextBlock: string;
+    let contextDegraded = false;
+    try {
+      contextBlock = await buildHouseholdContext({
+        supabase,
+        module: moduleName,
+        householdId,
+        userId,
+      });
+    } catch (ctxErr) {
+      log.warn("Context build failed", { error: String(ctxErr) });
+      contextBlock = DEGRADED_CONTEXT;
+      contextDegraded = true;
+    }
+    const systemPrompt = renderSystemPrompt(moduleName, contextBlock);
 
-Your personality:
-- Warm, supportive best friend who genuinely cares 😊
-- Culturally aware of Indian festivals, cuisine, and household practices
-- Proactive: offer helpful suggestions without being pushy
-- Use casual, friendly language (like chatting with a close friend)
-
-Your capabilities:
-- Manage household tasks (create, update, complete)
-- View meal plans and recipes
-- Provide household insights and suggestions
-
-Current context:
-- Household ID: ${householdId}
-- User ID: ${userId}
-
-Guidelines:
-- Always confirm before making changes to important data
-- Suggest tasks/meals based on household preferences
-- Celebrate completed tasks and milestones
-- Use emojis naturally (but not excessively)
-
-When using tools, always explain what you're doing in a friendly way.`;
+    // Cap conversation history at the most recent 20 messages.
+    const trimmedMessages = messages.length > 20 ? messages.slice(-20) : messages;
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -210,7 +208,7 @@ When using tools, always explain what you're doing in a friendly way.`;
         model: 'google/gemini-2.5-flash',
         messages: [
           { role: 'system', content: systemPrompt },
-          ...messages,
+          ...trimmedMessages,
         ],
         tools,
         tool_choice: 'auto',
@@ -235,7 +233,12 @@ When using tools, always explain what you're doing in a friendly way.`;
     }
 
     return new Response(response.body, {
-      headers: { ...corsHeaders, 'Content-Type': 'text/event-stream' },
+      headers: {
+        ...corsHeaders,
+        'Content-Type': 'text/event-stream',
+        'x-context-degraded': contextDegraded ? 'true' : 'false',
+        'Access-Control-Expose-Headers': 'x-context-degraded',
+      },
     });
 
   } catch (error: any) {

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -80,8 +80,8 @@ const AccountSettings = () => {
     } catch (error: any) {
       toast({
         variant: "destructive",
-        title: "Error",
-        description: error.message,
+        title: "Something went wrong",
+        description: "Please try again.",
       });
     } finally {
       setLoading(false);
@@ -129,8 +129,8 @@ const AccountSettings = () => {
     } catch (error: any) {
       toast({
         variant: "destructive",
-        title: "Error",
-        description: error.message,
+        title: "Something went wrong",
+        description: "Please try again.",
       });
     } finally {
       setLoading(false);

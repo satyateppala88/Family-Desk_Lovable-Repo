@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, Link, useSearchParams } from "react-router-dom";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,7 +9,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { Eye, EyeOff, Mail, RefreshCw } from "lucide-react";
-import logoImg from "@/assets/logo-family-desk-primary.png";
+import { FamilyDeskLogo } from "@/components/brand/FamilyDeskLogo";
+import { isProductionHost } from "@/lib/env";
 
 type AuthState = "form" | "verification-pending";
 
@@ -23,10 +24,31 @@ const Auth = () => {
   const [authState, setAuthState] = useState<AuthState>("form");
   const [resendCooldown, setResendCooldown] = useState(0);
   const [pendingUserId, setPendingUserId] = useState<string | null>(null);
+  const [signInError, setSignInError] = useState<string | null>(null);
+  const [forgotMessage, setForgotMessage] = useState<string | null>(null);
+  const [forgotLoading, setForgotLoading] = useState(false);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { toast } = useToast();
   const defaultTab = searchParams.get("tab") === "signup" ? "signup" : "signin";
+  const [tab, setTab] = useState<"signin" | "signup">(defaultTab as "signin" | "signup");
+
+  const resetFormFields = () => {
+    setEmail("");
+    setPassword("");
+    setDisplayName("");
+    setTermsAccepted(false);
+    setShowPassword(false);
+    setSignInError(null);
+    setForgotMessage(null);
+  };
+
+  const handleTabChange = (next: string) => {
+    if (next !== tab) {
+      resetFormFields();
+      setTab(next as "signin" | "signup");
+    }
+  };
 
   const sendVerificationEmail = async (userId: string, userEmail: string, userName?: string) => {
     try {
@@ -156,6 +178,8 @@ const Auth = () => {
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSignInError(null);
+    setForgotMessage(null);
     setLoading(true);
 
     try {
@@ -164,21 +188,35 @@ const Auth = () => {
         password,
       });
 
-      if (error) throw error;
-
-      // Check if email is verified
-      if (data.user && !data.user.email_confirmed_at) {
-        // User exists but email not verified - show verification pending
-        setPendingUserId(data.user.id);
-        setDisplayName(data.user.user_metadata?.display_name || "");
-        setAuthState("verification-pending");
-        
-        toast({
-          title: "Email Not Verified",
-          description: "Please verify your email address to continue.",
-          variant: "destructive",
-        });
+      if (error) {
+        setSignInError("Incorrect email or password. Please try again.");
         return;
+      }
+
+      // Check if email is verified via our custom token flow.
+      // Source of truth is profiles.email_verified_at (auth.users.email_confirmed_at
+      // is auto-set on signup since we send our own branded verification email).
+      // Only enforced in production — test/preview environments allow unverified sign-in.
+      if (data.user && isProductionHost()) {
+        const { data: profileRow } = await supabase
+          .from("profiles")
+          .select("email_verified_at, display_name")
+          .eq("id", data.user.id)
+          .maybeSingle();
+
+        if (!profileRow?.email_verified_at) {
+          setPendingUserId(data.user.id);
+          setDisplayName(profileRow?.display_name || data.user.user_metadata?.display_name || "");
+          setAuthState("verification-pending");
+          await supabase.auth.signOut();
+
+          toast({
+            title: "Email Not Verified",
+            description: "Please verify your email address to continue.",
+            variant: "destructive",
+          });
+          return;
+        }
       }
 
       // Check if user has a household
@@ -198,23 +236,8 @@ const Auth = () => {
         return;
       }
 
-      // Check if onboarding is complete
-      const { data: householdData } = await supabase
-        .from("households")
-        .select("onboarding_completed")
-        .eq("id", memberData.household_id)
-        .single();
-
-      if (!householdData?.onboarding_completed) {
-        toast({
-          title: "Welcome back!",
-          description: "Let's continue setting up your preferences.",
-        });
-        navigate("/onboarding/preferences");
-        return;
-      }
-
-      // Fully onboarded - go to dashboard
+      // Always land on the dashboard. Users with incomplete setup see a
+      // dismissible "Continue Setup" banner there — no forced redirect.
       toast({
         title: "Welcome back!",
         description: "You've successfully signed in.",
@@ -228,6 +251,28 @@ const Auth = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    setSignInError(null);
+    setForgotMessage(null);
+    const trimmed = email.trim();
+    if (!trimmed || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+      setSignInError("Enter your email above first, then tap Forgot password.");
+      return;
+    }
+    setForgotLoading(true);
+    try {
+      await supabase.auth.resetPasswordForEmail(trimmed, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+    } catch (err) {
+      // Swallow — never reveal whether the address exists.
+      console.error("resetPasswordForEmail error:", err);
+    } finally {
+      setForgotLoading(false);
+      setForgotMessage("If this email is registered, you'll receive a reset link shortly.");
     }
   };
 
@@ -298,24 +343,17 @@ const Auth = () => {
 
   return (
     <div className="min-h-[100svh] flex flex-col items-center justify-center overflow-y-auto bg-gradient-to-br from-primary/5 via-background to-secondary/5 p-4 py-6">
-      <Card className="w-full max-w-md">
+      <Card className="w-full max-w-md bg-white">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-3">
-            <div className="bg-white/90 rounded-2xl p-2.5 shadow-lg ring-1 ring-black/5">
-              <img 
-                src={logoImg} 
-                alt="Family Desk Logo" 
-                className="h-16 w-16 sm:h-24 sm:w-24 object-contain"
-              />
-            </div>
+            <FamilyDeskLogo size="lg" />
           </div>
-          <CardTitle className="text-2xl sm:text-3xl">Family Desk</CardTitle>
           <CardDescription>
             Manage your household with ease
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Tabs defaultValue={defaultTab} className="w-full">
+          <Tabs value={tab} onValueChange={handleTabChange} className="w-full">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="signin">Sign In</TabsTrigger>
               <TabsTrigger value="signup">Sign Up</TabsTrigger>
@@ -330,19 +368,35 @@ const Auth = () => {
                     type="email"
                     placeholder="you@example.com"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      if (signInError) setSignInError(null);
+                    }}
                     required
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="signin-password">Password</Label>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="signin-password">Password</Label>
+                    <button
+                      type="button"
+                      onClick={handleForgotPassword}
+                      disabled={forgotLoading}
+                      className="text-xs text-primary hover:underline disabled:opacity-60"
+                    >
+                      {forgotLoading ? "Sending…" : "Forgot password?"}
+                    </button>
+                  </div>
                   <div className="relative">
                     <Input
                       id="signin-password"
                       type={showPassword ? "text" : "password"}
                       placeholder="••••••••"
                       value={password}
-                      onChange={(e) => setPassword(e.target.value)}
+                      onChange={(e) => {
+                        setPassword(e.target.value);
+                        if (signInError) setSignInError(null);
+                      }}
                       required
                       className="pr-12"
                     />
@@ -363,6 +417,12 @@ const Auth = () => {
                 <Button type="submit" className="w-full" disabled={loading}>
                   {loading ? "Signing in..." : "Sign In"}
                 </Button>
+                {signInError && (
+                  <p className="text-sm text-destructive" role="alert">{signInError}</p>
+                )}
+                {forgotMessage && (
+                  <p className="text-sm text-muted-foreground" role="status">{forgotMessage}</p>
+                )}
               </form>
             </TabsContent>
             

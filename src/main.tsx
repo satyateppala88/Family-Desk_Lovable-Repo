@@ -1,6 +1,11 @@
 import { createRoot } from "react-dom/client";
-import App from "./App.tsx";
 import "./index.css";
+import { rehydrateAuthStorage } from "@/integrations/native/auth-storage-bridge";
+import { processExpiredPermissionReminds } from "@/lib/launchStorage";
+
+// Clear any expired "Remind me in 7 days" permission timers so the
+// contextual sheet can show again on the next relevant trigger.
+try { processExpiredPermissionReminds(); } catch { /* ignore */ }
 
 // ---------------------------------------------------------------------------
 // PWA / Service Worker safety net
@@ -54,4 +59,11 @@ try {
   /* SSR / non-browser */
 }
 
+// On Capacitor native (iOS/Android) we must seed localStorage from the
+// persistent Preferences/Keychain store BEFORE the Supabase client is
+// imported — otherwise it boots with an empty session and signs the user
+// out. On web this resolves immediately. We then dynamically import App
+// so that the supabase client module is evaluated only after rehydration.
+await rehydrateAuthStorage();
+const { default: App } = await import("./App.tsx");
 createRoot(document.getElementById("root")!).render(<App />);

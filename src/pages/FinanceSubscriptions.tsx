@@ -10,6 +10,7 @@ import { QuickActionButton } from "@/components/ui/quick-action-button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Trash2, Pencil, RefreshCw, CalendarClock, Pause, Play } from "lucide-react";
 import { useHousehold } from "@/hooks/useHousehold";
+import { useFinanceRealtime } from "@/hooks/useFinance";
 import {
   useSubscriptions,
   useCreateSubscription,
@@ -21,13 +22,19 @@ import {
   FinanceSubscription,
 } from "@/hooks/useSubscriptions";
 import { SubscriptionDialog } from "@/components/finance/SubscriptionDialog";
+import { useCustomCategories } from "@/hooks/useCustomCategories";
+import { resolveCategoryLabel } from "@/components/finance/CategorySelect";
 import { formatINR } from "@/lib/formatINR";
+import { PrivateValue } from "@/components/shared/PrivateValue";
 import { format, isPast, isToday, addDays } from "date-fns";
 import { cn } from "@/lib/utils";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { formatRecurrenceSummary } from "@/utils/recurrenceUtils";
 
 const FinanceSubscriptions = () => {
   const { householdId } = useHousehold();
+  useFinanceRealtime(householdId);
+  const { categories: customCats } = useCustomCategories("subscription");
   const [catFilter, setCatFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("active");
   const [showAdd, setShowAdd] = useState(false);
@@ -87,7 +94,7 @@ const FinanceSubscriptions = () => {
           <CardContent className="p-4 flex items-center justify-between">
             <div>
               <p className="text-xs text-muted-foreground">Est. Monthly Cost</p>
-              <p className="text-xl font-bold text-primary">{formatINR(Math.round(totalMonthly))}</p>
+              <p className="text-xl font-bold text-primary"><PrivateValue value={Math.round(totalMonthly)} /></p>
             </div>
             <div className="text-right">
               <p className="text-xs text-muted-foreground">Active</p>
@@ -112,6 +119,9 @@ const FinanceSubscriptions = () => {
               <SelectItem value="all">All Categories</SelectItem>
               {SUBSCRIPTION_CATEGORIES.map((c) => (
                 <SelectItem key={c} value={c}>{SUBSCRIPTION_CATEGORY_LABELS[c]}</SelectItem>
+              ))}
+              {customCats.map((c) => (
+                <SelectItem key={c.key} value={c.key}>{c.label}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -148,9 +158,13 @@ const FinanceSubscriptions = () => {
                         {!sub.is_active && <Badge variant="outline" className="text-[9px] px-1 py-0">Paused</Badge>}
                       </div>
                       <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground flex-wrap">
-                        <span>{SUBSCRIPTION_CATEGORY_LABELS[sub.category] || sub.category}</span>
+                        <span>{resolveCategoryLabel(sub.category, SUBSCRIPTION_CATEGORY_LABELS, customCats)}</span>
                         <span>·</span>
-                        <span>{FREQUENCY_LABELS[sub.frequency] || sub.frequency}</span>
+                        <span>
+                          {sub.recurrence
+                            ? formatRecurrenceSummary(sub.recurrence)
+                            : (FREQUENCY_LABELS[sub.frequency] || sub.frequency)}
+                        </span>
                         {sub.next_due_date && (
                           <>
                             <span>·</span>
@@ -172,7 +186,7 @@ const FinanceSubscriptions = () => {
                         )}
                       </div>
                     </div>
-                    <span className="text-sm font-semibold tabular-nums shrink-0">{formatINR(Number(sub.amount))}</span>
+                    <span className="text-sm font-semibold tabular-nums shrink-0"><PrivateValue value={Number(sub.amount)} /></span>
                     <div className="flex gap-0.5 shrink-0">
                       <Button
                         variant="ghost"

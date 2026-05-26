@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Sparkles, FileText, ShieldCheck, ArrowRight, PlayCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   APP_CHANGELOG,

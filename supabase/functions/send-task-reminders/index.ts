@@ -1,22 +1,30 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { Resend } from "https://esm.sh/resend@2.0.0";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.78.0";
 import { 
   getEmailWrapper, 
   getTaskReminderContent 
 } from "../_shared/email-templates.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
+import { validateCronSecret } from "../_shared/cron-auth.ts";
 import { sendPush } from "../_shared/push.ts";
-import { nextISTMidnightUTC } from "../_shared/time.ts";
+import { nextISTMidnightUTC, todayIST } from "../_shared/time.ts";
 
-const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
-
+import { sendViaQueue } from "../_shared/send-email-queue.ts";
+const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const handler = async (req: Request): Promise<Response> => {
   const origin = req.headers.get("origin");
   const corsHeaders = getCorsHeaders(origin);
 
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
+  }
+
+  if (!validateCronSecret(req)) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 
   try {
@@ -28,6 +36,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Get tomorrow's date range, anchored to IST midnight.
     const tomorrow = nextISTMidnightUTC();
     const dayAfterTomorrow = new Date(tomorrow.getTime() + 86_400_000);
+    const today = todayIST();
 
     // Get tasks due tomorrow that aren't completed
     const { data: tasks, error: tasksError } = await supabaseAdmin
@@ -114,15 +123,13 @@ const handler = async (req: Request): Promise<Response> => {
           "https://familydesk.in/taskmaster/today"
         );
 
-        const emailResponse = await resend.emails.send({
-          from: "Family Desk <noreply@familydesk.in>",
-          to: [userData.user.email],
-          subject: `Reminder: ${userTasks.length} task${userTasks.length > 1 ? "s" : ""} due tomorrow`,
-          html: getEmailWrapper(emailContent, {
-            recipientName: profile?.display_name || undefined,
-            preheader: `You have ${userTasks.length} task${userTasks.length > 1 ? "s" : ""} due tomorrow`,
-          }),
-        });
+        const emailResponse = await sendViaQueue(supabaseUrl, supabaseServiceKey, {
+      to: userData.user.email,
+      subject: `Reminder: ${userTasks.length} task${userTasks.length > 1 ? "s" : ""} due tomorrow`,
+      html: getEmailWrapper(emailContent),
+      templateName: "send-task-reminders",
+      idempotencyKey: `task-reminder-${userId}-${today}`,
+    });
 
         console.log(`Task reminder sent to ${userData.user.email}:`, emailResponse);
         emailsSent.push(userData.user.email);

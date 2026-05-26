@@ -22,7 +22,8 @@ import {
   Play,
   MoreHorizontal,
   Edit,
-  Trash2
+  Trash2,
+  Repeat as RepeatIcon
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -38,7 +39,7 @@ const TaskmasterProjectDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { householdId, isLoading: loadingHousehold } = useHousehold();
-  const { projects, isLoading: loadingProjects } = useProjects(householdId);
+  const { projects, isLoading: loadingProjects, isFetching: fetchingProjects } = useProjects(householdId);
   const { tasks, createTask, updateTask, deleteTask, markTaskDone, startTask } = useTaskmaster(householdId);
 
   useRealtimeSubscription([
@@ -54,7 +55,7 @@ const TaskmasterProjectDetail = () => {
       queryKeys: [["projects", householdId]],
       enabled: !!householdId,
     },
-  ]);
+  ], householdId);
 
   const [selectedTask, setSelectedTask] = useState<TaskmasterTask | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -134,6 +135,22 @@ const TaskmasterProjectDetail = () => {
           </div>
         </main>
         
+      </div>
+    );
+  }
+
+  if (!project && fetchingProjects) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <main className="container px-4 py-6 pb-20">
+          <Skeleton className="h-8 w-48 mb-6" />
+          <Skeleton className="h-40 mb-6" />
+          <div className="space-y-4">
+            <Skeleton className="h-24" />
+            <Skeleton className="h-24" />
+          </div>
+        </main>
       </div>
     );
   }
@@ -237,10 +254,13 @@ const TaskmasterProjectDetail = () => {
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1">
                         <h3 className={cn(
-                          "font-medium mb-1",
+                          "font-medium mb-1 flex items-center gap-1.5",
                           isDone && "line-through text-muted-foreground"
                         )}>
-                          {task.title}
+                          <span>{task.title}</span>
+                          {task.recurring && (
+                            <RepeatIcon className="h-3.5 w-3.5 text-muted-foreground" />
+                          )}
                         </h3>
                         <div className="flex flex-wrap items-center gap-2">
                           <Badge className={cn("text-xs", priority.color)}>

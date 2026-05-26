@@ -117,7 +117,7 @@ export const PantryItemRow = ({
         </Button>
         
         <Input
-          type="number"
+          type="number" inputMode="numeric"
           value={quantity}
           onChange={(e) => handleInputChange(e.target.value)}
           className="w-20 text-center h-8"

@@ -1,14 +1,22 @@
 import { Link } from "react-router-dom";
 import { Header } from "@/components/layout/Header";
 import { Card, CardContent } from "@/components/ui/card";
-import { PageLoading } from "@/components/ui/page-loading";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useHousehold } from "@/hooks/useHousehold";
-import { useFinanceMonthlySummary } from "@/hooks/useFinance";
+import { useFinanceMonthlySummary, useFinanceRealtime } from "@/hooks/useFinance";
 import { useSubscriptions } from "@/hooks/useSubscriptions";
 import { useFinanceSavingsGoals } from "@/hooks/useFinance";
 import { useUserCards } from "@/hooks/useUserCards";
 import { formatINR } from "@/lib/formatINR";
-import { format, isPast, addDays } from "date-fns";
+import { PrivateValue } from "@/components/shared/PrivateValue";
+import { format, isPast, addDays, parse, addMonths } from "date-fns";
+import { useSelectedMonth } from "@/hooks/useSelectedMonth";
+import { MonthSwitcher } from "@/components/finance/MonthSwitcher";
+import { MemberContributions } from "@/components/finance/MemberContributions";
+import { ModuleNudgeBanner } from "@/components/discovery/ModuleNudgeBanner";
+import { useState } from "react";
+import { AIActionSheet } from "@/components/ai/AIActionSheet";
+import { Button } from "@/components/ui/button";
 import {
   ArrowLeftRight,
   Target,
@@ -20,14 +28,24 @@ import {
   TrendingUp,
   TrendingDown,
   Shield,
+  LineChart,
+  ArrowUp,
+  ArrowDown,
+  FileBarChart,
+  Sparkles,
 } from "lucide-react";
 
 const Finance = () => {
   const { householdId } = useHousehold();
-  const { data: summary, isLoading } = useFinanceMonthlySummary(householdId);
+  useFinanceRealtime(householdId);
+  const { month, label: monthLabel, isCurrent } = useSelectedMonth();
+  const prevMonth = format(addMonths(parse(month + "-01", "yyyy-MM-dd", new Date()), -1), "yyyy-MM");
+  const { data: summary, isLoading } = useFinanceMonthlySummary(householdId, month);
+  const { data: prevSummary } = useFinanceMonthlySummary(householdId, prevMonth);
   const { data: subscriptions } = useSubscriptions(householdId);
   const { data: savingsGoals } = useFinanceSavingsGoals(householdId);
   const { data: userCards } = useUserCards(householdId);
+  const [aiOpen, setAiOpen] = useState(false);
 
   // Compute contextual hints
   const dueSoonCount = subscriptions?.filter((s) => {
@@ -62,27 +80,56 @@ const Finance = () => {
     { path: "/finance/cards", icon: CreditCard, label: "Cards", description: "Card optimizer", tintClass: "module-tint-finance", hintKey: "cards" },
     { path: "/finance/chat", icon: Bot, label: "AI Advisor", description: "Ask about finances", tintClass: "module-tint-finance", hintKey: "" },
     { path: "/finance/review", icon: BarChart3, label: "Review", description: "Insights & trends", tintClass: "module-tint-finance", hintKey: "" },
+    { path: "/finance/trends", icon: LineChart, label: "Trends", description: "6-month comparison", tintClass: "module-tint-finance", hintKey: "" },
+    { path: "/finance/report", icon: FileBarChart, label: "Monthly Report", description: "Shareable recap", tintClass: "module-tint-finance", hintKey: "" },
   ];
 
-  if (isLoading) {
+  const renderDelta = (current: number, prev: number, invert = false) => {
+    if (prev === 0) return null;
+    const pct = Math.round(((current - prev) / prev) * 100);
+    if (pct === 0) return <span className="text-[10px] text-muted-foreground">— vs prev</span>;
+    const up = pct > 0;
+    // For income: up is good. For expenses: up is bad.
+    const isGood = invert ? !up : up;
+    const Icon = up ? ArrowUp : ArrowDown;
     return (
-      <div className="page-container">
-        <Header />
-        <main className="page-content">
-          <PageLoading cards={4} />
-        </main>
-      </div>
+      <span className={`text-[10px] font-medium inline-flex items-center gap-0.5 ${isGood ? "text-[hsl(var(--success))]" : "text-destructive"}`}>
+        <Icon className="w-2.5 h-2.5" />
+        {Math.abs(pct)}% vs prev
+      </span>
     );
-  }
+  };
 
   return (
     <div className="page-container">
       <Header />
       <main className="page-content space-y-4 animate-fade-in">
-        <div>
-          <h1 className="page-heading">Finance</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">{format(new Date(), "MMMM yyyy")}</p>
+        {!isLoading && (summary?.transactionCount ?? 0) === 0 && (
+          <ModuleNudgeBanner
+            moduleKey="finance"
+            text="Log your first expense in 10 seconds. By month-end, you'll have a full household spending report."
+          />
+        )}
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h1 className="page-heading">Finance</h1>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              {monthLabel}{!isCurrent && " · viewing past month"}
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setAiOpen(true)}
+            className="gap-1.5 shrink-0"
+          >
+            <Sparkles className="w-4 h-4" />
+            <span className="hidden sm:inline">Analyse this month</span>
+            <span className="sm:hidden">Analyse</span>
+          </Button>
         </div>
+
+        <MonthSwitcher />
 
         {/* Privacy cue */}
         <div className="trust-badge" role="status">
@@ -97,7 +144,14 @@ const Finance = () => {
               <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
                 <TrendingUp className="w-3.5 h-3.5" aria-hidden="true" /> Income
               </div>
-              <p className="text-lg font-bold">{formatINR(summary?.income || 0)}</p>
+              {isLoading && !summary ? (
+                <Skeleton className="h-6 w-24" />
+              ) : (
+                <>
+                  <p className="text-lg font-bold"><PrivateValue value={summary?.income || 0} /></p>
+                  {prevSummary && renderDelta(summary?.income || 0, prevSummary.income, false)}
+                </>
+              )}
             </CardContent>
           </Card>
           <Card>
@@ -105,13 +159,23 @@ const Finance = () => {
               <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
                 <TrendingDown className="w-3.5 h-3.5" aria-hidden="true" /> Spent
               </div>
-              <p className="text-lg font-bold">{formatINR(summary?.expenses || 0)}</p>
+              {isLoading && !summary ? (
+                <Skeleton className="h-6 w-24" />
+              ) : (
+                <>
+                  <p className="text-lg font-bold"><PrivateValue value={summary?.expenses || 0} /></p>
+                  {prevSummary && renderDelta(summary?.expenses || 0, prevSummary.expenses, true)}
+                </>
+              )}
             </CardContent>
           </Card>
         </div>
 
+        {/* Member contributions (hidden for single-member households) */}
+        <MemberContributions householdId={householdId} month={month} />
+
         {/* Module grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           {financeModules.map(({ path, icon: Icon, label, description, tintClass, hintKey }) => {
             const hint = getHint(hintKey);
             return (
@@ -136,14 +200,13 @@ const Finance = () => {
           })}
         </div>
       </main>
+      <AIActionSheet
+        isOpen={aiOpen}
+        onClose={() => setAiOpen(false)}
+        initialPrompt="Analyse my household's spending for this month. Highlight the top 3 categories, any unusual spikes, and one actionable suggestion to reduce spend."
+      />
     </div>
   );
 };
 
-import { ModuleSetupGate } from "@/components/onboarding/ModuleSetupGate";
-const FinanceWithGate = () => (
-  <ModuleSetupGate module="finance_setup">
-    <Finance />
-  </ModuleSetupGate>
-);
-export default FinanceWithGate;
+export default Finance;

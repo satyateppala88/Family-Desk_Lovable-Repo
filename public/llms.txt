@@ -1,0 +1,28 @@
+# FamilyDesk
+
+> FamilyDesk is a household-centric family operating system for Indian families. It brings tasks, meals, groceries, habits, finance, and the family calendar into one shared, mobile-first app powered by AI.
+
+## Pages
+
+- [Home](/): Personal dashboard with today's snapshot, quick actions, family pulse, and tips.
+- [Landing](/landing): Public marketing page introducing FamilyDesk and its modules.
+- [How to Use](/how-to-use): Guide to getting started with each module.
+- [Install](/install): Install FamilyDesk as a PWA on Android, iOS, or desktop.
+- [Tasks](/tasks): Shared household task list with assignments and reminders.
+- [Taskmaster Today](/taskmaster/today): AI-generated daily plan across the household.
+- [Taskmaster Projects](/taskmaster/projects): Multi-step projects and templates for recurring household work.
+- [Taskmaster Templates](/taskmaster/templates): Pre-built task sets for common household routines.
+- [Calendar](/calendar): Unified family calendar with Google Calendar sync, festivals, and manual events.
+- [Meals](/meals): Weekly meal planner with AI suggestions for breakfast, lunch, dinner, and snacks.
+- [Grocery](/grocery): AI pantry, quick-add checklists, and shopping lists with meal-plan auto-deduction.
+- [Habits](/habits): Family habit tracker with streaks, challenges, and a habit coach.
+- [Finance](/finance): Household finance hub with transactions, budgets, subscriptions, and AI advisor.
+- [Finance Transactions](/finance/transactions): Log and review household spending in INR.
+- [Finance Budget](/finance/budget): Monthly and annual budgets by category.
+- [Finance Subscriptions](/finance/subscriptions): Track recurring subscriptions normalized to monthly cost.
+- [Finance Cards](/finance/cards): Credit card optimizer with reward recommendations.
+- [Finance Chat](/finance/chat): AI finance advisor for plain-language money questions.
+- [Settings](/settings): Account, household, notifications, and permissions.
+- [Household Members](/household/members): Manage family members and roles (up to 12).
+- [Privacy Policy](/privacy-policy): How FamilyDesk handles your data.
+- [Terms of Service](/terms-of-service): Terms for using FamilyDesk.

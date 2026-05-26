@@ -2,6 +2,7 @@ import { MutationCache, QueryClient } from "@tanstack/react-query";
 import { persistQueryClient } from "@tanstack/react-query-persist-client";
 import { get, set, del, createStore, type UseStore } from "idb-keyval";
 import { toast } from "sonner";
+import { Capacitor } from "@capacitor/core";
 import { APP_VERSION } from "@/lib/versioning";
 
 // ---------------------------------------------------------------------------
@@ -58,18 +59,17 @@ export function createPersistedQueryClient(): QueryClient {
     }),
     defaultOptions: {
       queries: {
-        // Keep data considered fresh for 5 min so the UI doesn't refetch
-        // every navigation when online.
-        staleTime: 1000 * 60 * 5,
-        // Hold onto cached data for 7 days even after queries unmount, so
-        // the persister has something to write to disk.
+        // Short freshness window so navigating between pages re-fetches
+        // anything older than 30s. Realtime keeps things in sync between
+        // updates; this is the safety net for missed events / cold tabs.
+        staleTime: 30 * 1000,
+        // Hold cached data for 7 days even after queries unmount so the
+        // persister has something to write to disk.
         gcTime: MAX_AGE_MS,
-        // We always want to revalidate when the user comes back online so
-        // stale data is replaced quickly.
         refetchOnReconnect: true,
-        // One automatic retry is enough — failing fast is better when
-        // offline so the UI can fall back to cached data.
-        retry: 1,
+        refetchOnMount: true,
+        refetchOnWindowFocus: !Capacitor.isNativePlatform(),
+        retry: 2,
       },
     },
   });

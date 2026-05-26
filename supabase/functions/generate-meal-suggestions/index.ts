@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.78.0";
 import { z } from "https://deno.land/x/zod@v3.23.8/mod.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
 import { authenticateRequest, verifyHouseholdMembership } from "../_shared/auth.ts";
@@ -218,7 +218,7 @@ serve(async (req) => {
       pantryContext = "\n\nNote: No pantry inventory data available. Generate meals using commonly available Indian ingredients.";
     }
 
-    const systemPrompt = `You are a professional Indian meal planning assistant. Generate a ${numDays}-day meal plan featuring authentic Indian cuisine with breakfast, lunch, and dinner for each day.
+    const systemPrompt = `You are a professional Indian meal planning assistant. Generate a ${numDays}-day meal plan featuring authentic Indian cuisine with breakfast, lunch, dinner, and one snack for each day.
 
 MEAL GENERATION INSTRUCTIONS:
 - Generate meals for ${numDays} consecutive days starting from day ${startDayIndex} (${startDayName})
@@ -226,6 +226,7 @@ MEAL GENERATION INSTRUCTIONS:
 - Start generating meals from day ${startDayIndex} and continue for ${numDays} days
 - Each meal MUST have the correct day_of_week number (starting from ${startDayIndex})
 - Example: If starting from day 3 (Wednesday), the first meal should be day: 3, second meal day: 3, etc., then day 4, 5, 6...
+- For each day, output exactly 4 meals: breakfast, lunch, dinner, and snack.
 
 HOUSEHOLD PROFILE:
 - ${familyContext}
@@ -257,6 +258,7 @@ Indian Meal Structure:
 - Breakfast: Include options like poha, upma, dosa, idli, paratha, poori-bhaji, sandwich, uttapam, dhokla, etc.
 - Lunch: Typically includes dal, sabzi (vegetable curry), rice, roti/chapati, raita, salad
 - Dinner: Similar to lunch but can be lighter; include dal, sabzi, rice/roti combinations, sometimes one-pot meals
+- Snack: One light item per day, typically eaten around 4-5pm. Examples: poha, upma, samosa, pakoda, chivda, fruit chaat, roasted makhana, or chai with biscuits. Keep it light and realistic.
 
 Requirements:
 - Create balanced, nutritious Indian meals
@@ -291,7 +293,7 @@ Example: If a recipe serves 4, calculate the nutritional info for 1/4 of the tot
           { role: "system", content: systemPrompt },
           { 
             role: "user", 
-            content: `Generate ${numDays} days of meal suggestions (breakfast, lunch, dinner) as a meal plan.` 
+            content: `Generate ${numDays} days of meal suggestions (breakfast, lunch, dinner, snack) as a meal plan.` 
           }
         ],
         tools: [
@@ -311,7 +313,7 @@ Example: If a recipe serves 4, calculate the nutritional info for 1/4 of the tot
                         day: { type: "integer", description: "Day number (0-6 for week)" },
                         meal_type: { 
                           type: "string", 
-                          enum: ["breakfast", "lunch", "dinner"],
+                          enum: ["breakfast", "lunch", "dinner", "snack"],
                           description: "Type of meal"
                         },
                         recipe: {

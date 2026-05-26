@@ -1,73 +1,54 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
+import { format, isSameDay, parseISO } from "date-fns";
 import { Header } from "@/components/layout/Header";
 import { CalendarGrid } from "@/components/calendar/CalendarGrid";
 import { CalendarHeader } from "@/components/calendar/CalendarHeader";
 import { CalendarEventDialog } from "@/components/calendar/CalendarEventDialog";
 import { ConnectCalendarDialog } from "@/components/calendar/ConnectCalendarDialog";
-import { OnboardingTour } from "@/components/onboarding/OnboardingTour";
+import { CreateEventDialog } from "@/components/calendar/CreateEventDialog";
+import { ManageCalendarsSheet } from "@/components/calendar/ManageCalendarsSheet";
+import { RecurrenceEditScopeDialog } from "@/components/calendar/RecurrenceEditScopeDialog";
+import type { RecurringEditScope } from "@/hooks/useManualCalendarEvents";
 import { useCalendarEvents, type CalendarEvent } from "@/hooks/useCalendarEvents";
 import { useCalendarConnections } from "@/hooks/useCalendarConnections";
 import { useHousehold } from "@/hooks/useHousehold";
-import { useFeatureTour } from "@/hooks/useFeatureTour";
+import { useRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
+import { ModuleNudgeBanner } from "@/components/discovery/ModuleNudgeBanner";
 import { CalendarDays, Plus } from "lucide-react";
-import type { Step } from "react-joyride";
-
-const calendarTourSteps: Step[] = [
-  {
-    target: "body",
-    content: "Welcome to Calendar! View and manage all your events in one place.",
-    placement: "center",
-    disableBeacon: true,
-  },
-  {
-    target: "[data-tour='connect-calendar']",
-    content: "Connect your Google Calendar to sync events automatically.",
-    placement: "bottom",
-  },
-  {
-    target: "[data-tour='calendar-nav']",
-    content: "Navigate between months and return to today.",
-    placement: "bottom",
-  },
-  {
-    target: "[data-tour='calendar-grid']",
-    content: "Click any event to see details. Tasks, meals, and external calendar events are color-coded.",
-    placement: "center",
-  },
-  {
-    target: ".user-menu",
-    content: "Access settings and restart this tour anytime from the User Guide menu.",
-    placement: "bottom",
-  },
-];
+import { DayDetailSheet } from "@/components/calendar/DayDetailSheet";
 
 const Calendar = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [showConnectDialog, setShowConnectDialog] = useState(false);
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [showManageSheet, setShowManageSheet] = useState(false);
+  const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
+  const [dayDetailOpen, setDayDetailOpen] = useState(false);
+  const [pendingRecurringEdit, setPendingRecurringEdit] = useState<CalendarEvent | null>(null);
+  const [recurrenceScope, setRecurrenceScope] = useState<RecurringEditScope | undefined>(undefined);
+
+  const openDayDetail = (date: Date) => {
+    setSelectedDate(date);
+    setDayDetailOpen(true);
+  };
 
   const { householdId } = useHousehold();
+  useRealtimeSubscription([
+    {
+      table: "calendar_events",
+      filter: householdId ? `household_id=eq.${householdId}` : undefined,
+      enabled: !!householdId,
+      queryKeys: [["calendar-events", householdId], ["calendar-events-today", householdId]],
+    },
+  ], householdId);
   const { data: events, isLoading } = useCalendarEvents(currentDate, "month");
   const { handleOAuthCallback } = useCalendarConnections();
-
-  const { shouldShowTour, tourChecked, markTourComplete } = useFeatureTour("calendar");
-  const [runOnboarding, setRunOnboarding] = useState(false);
-
-  useEffect(() => {
-    if (tourChecked && shouldShowTour && householdId) {
-      setTimeout(() => setRunOnboarding(true), 500);
-    }
-  }, [tourChecked, shouldShowTour, householdId]);
-
-  const handleStartOnboarding = () => setRunOnboarding(true);
-  const handleOnboardingComplete = () => {
-    setRunOnboarding(false);
-    markTourComplete();
-  };
 
   useEffect(() => {
     const code = searchParams.get("code");
@@ -81,14 +62,20 @@ const Calendar = () => {
 
   return (
     <div className="page-container">
-      <Header onStartOnboarding={handleStartOnboarding} />
+      <Header />
       
       <main className="flex-1 flex flex-col pb-20">
         <div data-tour="calendar-nav" style={{ maxWidth: 'var(--content-max-width)', width: '100%', margin: '0 auto', paddingLeft: 'var(--page-padding-x)', paddingRight: 'var(--page-padding-x)' }}>
+          <ModuleNudgeBanner
+            moduleKey="calendar"
+            text="Add a shared event and every household member gets it on their view automatically."
+          />
           <CalendarHeader
             currentDate={currentDate}
             onDateChange={setCurrentDate}
             onConnectCalendar={() => setShowConnectDialog(true)}
+            onAddEvent={() => setShowCreateDialog(true)}
+            onManageCalendars={() => setShowManageSheet(true)}
           />
         </div>
 
@@ -101,20 +88,89 @@ const Calendar = () => {
             <div style={{ maxWidth: 'var(--content-max-width)', width: '100%', margin: '0 auto', paddingLeft: 'var(--page-padding-x)', paddingRight: 'var(--page-padding-x)' }}>
               <EmptyState
                 icon={CalendarDays}
-                title="No events this week"
-                description="Your calendar is wide open — a perfect chance to plan something fun or just enjoy the quiet."
+                title="Your family calendar is clear"
+                description="Add events manually or connect Google Calendar. FamilyDesk will remind you before festivals, birthdays, and anything else that matters to your household."
                 encouragement="Add a family event, sync your Google Calendar, or simply take it easy."
-                action={{ label: "Add Event", onClick: () => setShowConnectDialog(true) }}
+                action={{ label: "Add Event", onClick: () => setShowCreateDialog(true) }}
               />
             </div>
           ) : (
             <div data-tour="calendar-grid" style={{ maxWidth: 'var(--content-max-width)', width: '100%', margin: '0 auto', paddingLeft: 'var(--page-padding-x)', paddingRight: 'var(--page-padding-x)' }}>
               <CalendarGrid
                 currentDate={currentDate}
+                selectedDate={selectedDate}
                 events={events || []}
-                onEventClick={setSelectedEvent}
+                onEventClick={(ev) => {
+                  if (ev.calendarId === "system") return;
+                  setSelectedEvent(ev);
+                }}
                 onDateClick={setCurrentDate}
+                onSelectDate={setSelectedDate}
+                onOpenDay={openDayDetail}
               />
+            </div>
+          )}
+
+          {/* Selected date events list */}
+          {!!householdId && !isLoading && (
+            <div style={{ maxWidth: 'var(--content-max-width)', width: '100%', margin: '0 auto', paddingLeft: 'var(--page-padding-x)', paddingRight: 'var(--page-padding-x)' }} className="mt-4 pb-8">
+              {(() => {
+                const selectedDateEvents = (events || []).filter((ev) =>
+                  isSameDay(parseISO(ev.start), selectedDate)
+                );
+                const isTodaySelected = isSameDay(selectedDate, new Date());
+                const dayLabel = format(selectedDate, "EEE");
+                const dateLabel = format(selectedDate, "d MMMM yyyy");
+
+                return (
+                  <div className="space-y-3">
+                    <div className="flex items-baseline gap-2">
+                      <div>
+                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{dayLabel}</p>
+                        <p className="text-sm font-semibold">{dateLabel}</p>
+                      </div>
+                      <span className="text-xs text-muted-foreground ml-auto">
+                        {selectedDateEvents.length} event{selectedDateEvents.length !== 1 ? "s" : ""}
+                      </span>
+                    </div>
+
+                    {selectedDateEvents.length === 0 ? (
+                      <p className="text-sm text-muted-foreground py-2">
+                        {isTodaySelected
+                          ? "No events today — tap + to add one"
+                          : `No events on ${format(selectedDate, "EEEE, d MMMM")}`}
+                      </p>
+                    ) : (
+                      <div className="space-y-2">
+                        {selectedDateEvents.map((event) => (
+                          <div
+                            key={event.id}
+                            onClick={() => {
+                              if (event.calendarId === "system") return;
+                              setSelectedEvent(event);
+                            }}
+                            className="p-3 rounded-lg cursor-pointer hover:opacity-80 transition-opacity min-h-[48px] flex items-center"
+                            style={{
+                              backgroundColor: event.color + "15",
+                              borderLeft: `4px solid ${event.color}`,
+                            }}
+                          >
+                            <div className="flex-1">
+                              <p className="font-medium text-sm">{event.title}</p>
+                              {!event.allDay && (
+                                <p className="text-xs text-muted-foreground mt-0.5">
+                                  {format(parseISO(event.start), "h:mm a")}
+                                  {event.end && ` - ${format(parseISO(event.end), "h:mm a")}`}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
           )}
         </div>
@@ -124,6 +180,30 @@ const Calendar = () => {
         event={selectedEvent}
         open={!!selectedEvent}
         onOpenChange={(open) => !open && setSelectedEvent(null)}
+        onEdit={(ev) => {
+          setSelectedEvent(null);
+          if (ev.recurrence) {
+            setPendingRecurringEdit(ev);
+          } else {
+            setRecurrenceScope(undefined);
+            setEditingEvent(ev);
+          }
+        }}
+      />
+
+      <RecurrenceEditScopeDialog
+        open={!!pendingRecurringEdit}
+        onOpenChange={(open) => {
+          if (!open) setPendingRecurringEdit(null);
+        }}
+        onSelect={(scope) => {
+          const ev = pendingRecurringEdit;
+          setPendingRecurringEdit(null);
+          if (ev) {
+            setRecurrenceScope(scope);
+            setEditingEvent(ev);
+          }
+        }}
       />
 
       <ConnectCalendarDialog
@@ -131,20 +211,46 @@ const Calendar = () => {
         onOpenChange={setShowConnectDialog}
       />
 
-      <OnboardingTour
-        run={runOnboarding}
-        onComplete={handleOnboardingComplete}
-        steps={calendarTourSteps}
-        featureName="calendar"
+      <ManageCalendarsSheet
+        open={showManageSheet}
+        onOpenChange={setShowManageSheet}
+        onConnectCalendar={() => {
+          setShowManageSheet(false);
+          setShowConnectDialog(true);
+        }}
+      />
+
+      <CreateEventDialog
+        open={showCreateDialog || !!editingEvent}
+        onOpenChange={(open) => {
+          if (!open) {
+            setShowCreateDialog(false);
+            setEditingEvent(null);
+            setRecurrenceScope(undefined);
+          } else {
+            setShowCreateDialog(true);
+          }
+        }}
+        defaultDate={currentDate}
+        eventToEdit={editingEvent}
+        recurrenceScope={recurrenceScope}
+      />
+
+      <DayDetailSheet
+        open={dayDetailOpen}
+        onOpenChange={setDayDetailOpen}
+        date={selectedDate}
+        events={(events || []).filter((ev) =>
+          format(parseISO(ev.start), "yyyy-MM-dd") === format(selectedDate, "yyyy-MM-dd")
+        )}
+        onEventClick={(ev) => {
+          if (ev.calendarId === "system") return;
+          setDayDetailOpen(false);
+          setSelectedEvent(ev);
+        }}
       />
     </div>
   );
 };
 
-import { ModuleSetupGate } from "@/components/onboarding/ModuleSetupGate";
-const CalendarWithGate = () => (
-  <ModuleSetupGate module="calendar_setup">
-    <Calendar />
-  </ModuleSetupGate>
-);
-export default CalendarWithGate;
+export default Calendar;

@@ -2,7 +2,7 @@ import { useRef, useState } from "react";
 import { Camera, Loader2, Trash2, Upload } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { usePermissionPrimer } from "@/hooks/usePermissionPrimer";
@@ -39,8 +39,52 @@ const buildPath = (scope: AvatarScope, ext: string) => {
   return `family/${scope.householdId}/${scope.memberId}-${stamp}.${ext}`;
 };
 
-const MAX_BYTES = 4 * 1024 * 1024;
-const ALLOWED = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+const MAX_BYTES = 10 * 1024 * 1024; // 10 MB hard cap on the original file
+const TARGET_BYTES = 1.5 * 1024 * 1024; // compress down toward ~1.5 MB
+const MAX_DIMENSION = 1024; // max width/height after downscale
+const ALLOWED = ["image/jpeg", "image/png", "image/webp", "image/gif", "image/heic", "image/heif"];
+
+const compressImage = async (file: Blob): Promise<{ blob: Blob; ext: string }> => {
+  // GIFs may be animated — preserve as-is.
+  if (file.type === "image/gif") return { blob: file, ext: "gif" };
+
+  const dataUrl: string = await new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result as string);
+    r.onerror = () => reject(r.error);
+    r.readAsDataURL(file);
+  });
+  const img: HTMLImageElement = await new Promise((resolve, reject) => {
+    const i = new Image();
+    i.onload = () => resolve(i);
+    i.onerror = () => reject(new Error("Could not read image"));
+    i.src = dataUrl;
+  });
+
+  let { width, height } = img;
+  const scale = Math.min(1, MAX_DIMENSION / Math.max(width, height));
+  width = Math.round(width * scale);
+  height = Math.round(height * scale);
+
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return { blob: file, ext: "jpg" };
+  ctx.drawImage(img, 0, 0, width, height);
+
+  let quality = 0.85;
+  let out: Blob | null = null;
+  for (let i = 0; i < 5; i++) {
+    out = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob((b) => resolve(b), "image/jpeg", quality)
+    );
+    if (!out || out.size <= TARGET_BYTES) break;
+    quality -= 0.15;
+  }
+  if (!out) return { blob: file, ext: "jpg" };
+  return { blob: out, ext: "jpg" };
+};
 
 const isNativePlatform = (): boolean => {
   if (typeof window === "undefined") return false;
@@ -71,25 +115,36 @@ export const AvatarUploader = ({
     if (blob.size > MAX_BYTES) {
       toast({
         title: "Image too large",
-        description: "Please choose an image under 4 MB.",
+        description: "Please choose an image under 10 MB.",
         variant: "destructive",
       });
       return;
     }
     setBusy(true);
     try {
-      const path = buildPath(scope, ext);
+      // Compress/downscale to keep uploads fast and well under storage limits.
+      const { blob: finalBlob, ext: finalExt } = await compressImage(blob).catch(() => ({
+        blob,
+        ext,
+      }));
+      const path = buildPath(scope, finalExt);
       const { error: upErr } = await supabase.storage
         .from("avatars")
-        .upload(path, blob, { contentType: blob.type || `image/${ext}`, upsert: true });
+        .upload(path, finalBlob, {
+          contentType: finalBlob.type || `image/${finalExt}`,
+          upsert: true,
+          cacheControl: "3600",
+        });
       if (upErr) throw upErr;
       const { data: pub } = supabase.storage.from("avatars").getPublicUrl(path);
-      await onChange(pub.publicUrl);
+      // Cache-bust so the new image shows immediately.
+      const busted = `${pub.publicUrl}?v=${Date.now()}`;
+      await onChange(busted);
       toast({ title: "Photo updated" });
     } catch (err: any) {
       toast({
         title: "Upload failed",
-        description: err?.message || "Please try again.",
+        description: "Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -148,7 +203,7 @@ export const AvatarUploader = ({
     e.target.value = "";
     if (!file) return;
 
-    if (!ALLOWED.includes(file.type)) {
+    if (file.type && !ALLOWED.includes(file.type)) {
       toast({ title: "Unsupported file", description: "Please choose a JPG, PNG, WEBP, or GIF image.", variant: "destructive" });
       return;
     }
@@ -162,7 +217,7 @@ export const AvatarUploader = ({
       await onChange(null);
       toast({ title: "Photo removed" });
     } catch (err: any) {
-      toast({ title: "Failed to remove", description: err?.message || "Please try again.", variant: "destructive" });
+      toast({ title: "Failed to remove", description: "Please try again.", variant: "destructive" });
     } finally {
       setBusy(false);
     }

@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,8 +9,8 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CheckCircle2 } from "lucide-react";
-import logoImg from "@/assets/logo-family-desk-primary.png";
+import { CheckCircle2, Mail, RefreshCw } from "lucide-react";
+import { FamilyDeskLogo } from "@/components/brand/FamilyDeskLogo";
 
 const HouseholdSetup = () => {
   const [householdName, setHouseholdName] = useState("");
@@ -19,6 +19,12 @@ const HouseholdSetup = () => {
   const [verifiedHousehold, setVerifiedHousehold] = useState<{ id: string; name: string } | null>(null);
   const [verifyingCode, setVerifyingCode] = useState(false);
   const [joiningHousehold, setJoiningHousehold] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
+  const [verifyError, setVerifyError] = useState<string | null>(null);
+  const [joinError, setJoinError] = useState<string | null>(null);
+  const [pendingRequest, setPendingRequest] = useState<{ householdName: string } | null>(null);
+  const [checkingStatus, setCheckingStatus] = useState(false);
+  const joinButtonRef = useRef<HTMLButtonElement | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
@@ -41,8 +47,37 @@ const HouseholdSetup = () => {
     validateSession();
   }, [navigate, toast]);
 
+  // On mount, check if the user already has a pending join request — if so,
+  // show the pending state directly so they don't re-submit.
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("household_invitations")
+        .select("household_id, status, households!inner(name)")
+        .eq("invitee_user_id", user.id)
+        .eq("status", "pending")
+        .maybeSingle();
+      if (cancelled) return;
+      if (data) {
+        const name = (data as any).households?.name ?? "your household";
+        setPendingRequest({ householdName: name });
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
+
   const handleCreateHousehold = async (e: React.FormEvent) => {
     e.preventDefault();
+    const trimmed = householdName.trim();
+    if (!trimmed) {
+      setCreateError("Please enter a household name");
+      return;
+    }
+    setCreateError(null);
     setLoading(true);
 
     try {
@@ -50,7 +85,7 @@ const HouseholdSetup = () => {
       
       // Call the edge function to create household
       const { data, error } = await supabase.functions.invoke('create-household', {
-        body: { householdName },
+        body: { householdName: trimmed },
       });
 
       if (error) {
@@ -70,15 +105,18 @@ const HouseholdSetup = () => {
       description: `Welcome to ${householdName}. Let's set up your preferences.`,
     });
 
-    // Invalidate household query cache to ensure fresh data on next page
-    queryClient.invalidateQueries({ queryKey: ["household"] });
+    // Await the refetch so the next page sees the new household immediately.
+    // Invalidate alone leaves stale `data` (null) with `isLoading=false` during
+    // the background refetch, which causes the onboarding page to bounce the
+    // user back here — producing duplicate households on every retry.
+    await queryClient.refetchQueries({ queryKey: ["household"] });
 
     navigate("/onboarding/preferences");
     } catch (error: any) {
       console.error("Complete error:", error);
       toast({
         title: "Error",
-        description: error.message || "Failed to create household",
+        description: "Failed to create household. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -88,14 +126,11 @@ const HouseholdSetup = () => {
 
   const handleVerifyCode = async () => {
     if (!inviteCode || inviteCode.length !== 6) {
-      toast({
-        title: "Invalid code",
-        description: "Please enter a valid 6-digit invite code",
-        variant: "destructive",
-      });
+      setVerifyError("Please enter a valid 6-digit invite code");
       return;
     }
 
+    setVerifyError(null);
     setVerifyingCode(true);
     try {
       const { data, error } = await supabase
@@ -105,12 +140,8 @@ const HouseholdSetup = () => {
         .single();
 
       if (error || !data) {
-        toast({
-          title: "Invalid code",
-          description: "No household found with this invite code",
-          variant: "destructive",
-        });
         setVerifiedHousehold(null);
+        setVerifyError("Invalid invite code. Please check with your household admin.");
         return;
       }
 
@@ -126,14 +157,24 @@ const HouseholdSetup = () => {
         description: "Failed to verify invite code",
         variant: "destructive",
       });
+      setVerifyError("Invalid invite code. Please check with your household admin.");
     } finally {
       setVerifyingCode(false);
     }
   };
 
+  // Focus the join CTA the moment the household is verified so the user
+  // sees it's the obvious next step rather than thinking they're done.
+  useEffect(() => {
+    if (verifiedHousehold && joinButtonRef.current) {
+      joinButtonRef.current.focus();
+    }
+  }, [verifiedHousehold]);
+
   const handleJoinHousehold = async () => {
     if (!verifiedHousehold || !user) return;
 
+    setJoinError(null);
     setJoiningHousehold(true);
     try {
       const { error: inviteError } = await supabase
@@ -145,40 +186,118 @@ const HouseholdSetup = () => {
           invitee_name: user.user_metadata?.display_name || user.email?.split('@')[0],
           requested_role: 'member',
           status: 'pending',
+          invitation_type: 'join_request',
         });
 
-      if (inviteError) throw inviteError;
+      if (inviteError) {
+        // Duplicate request (unique household_id+invitee_user_id) → treat as success.
+        const isDuplicate =
+          (inviteError as any).code === "23505" ||
+          /duplicate key|unique/i.test(inviteError.message ?? "");
+        if (!isDuplicate) {
+          console.error("Join insert error:", inviteError);
+          setJoinError(
+            "We couldn't send your request. Please check your invite code and try again."
+          );
+          return;
+        }
+      }
 
       toast({
         title: "Request sent!",
         description: `Your request to join ${verifiedHousehold.name} has been sent to the admin.`,
       });
 
-      navigate("/");
+      setPendingRequest({ householdName: verifiedHousehold.name });
     } catch (error: any) {
       console.error("Join error:", error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to send join request",
-        variant: "destructive",
-      });
+      setJoinError(error.message || "Failed to send join request");
     } finally {
       setJoiningHousehold(false);
     }
   };
 
+  const handleCheckStatus = async () => {
+    if (!user) return;
+    setCheckingStatus(true);
+    try {
+      const { data: memberData } = await supabase
+        .from("household_members")
+        .select("household_id")
+        .eq("user_id", user.id)
+        .limit(1)
+        .maybeSingle();
+      if (memberData?.household_id) {
+        queryClient.invalidateQueries({ queryKey: ["household"] });
+        navigate("/onboarding/preferences");
+        return;
+      }
+      toast({
+        title: "Still pending",
+        description: "Your request hasn't been approved yet. We'll email you once it is.",
+      });
+    } finally {
+      setCheckingStatus(false);
+    }
+  };
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    navigate("/auth");
+  };
+
+  if (pendingRequest) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-secondary/5 p-4">
+        <Card className="w-full max-w-md text-center">
+          <CardHeader>
+            <div className="flex justify-center mb-4">
+              <div className="h-16 w-16 bg-primary/10 rounded-full flex items-center justify-center">
+                <Mail className="h-8 w-8 text-primary" />
+              </div>
+            </div>
+            <CardTitle className="text-2xl">Request sent</CardTitle>
+            <CardDescription className="mt-2">
+              We've asked the admin of <strong>{pendingRequest.householdName}</strong> to add you.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              You'll get an email the moment they approve. You can wait here or come back later.
+            </p>
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={handleCheckStatus}
+              disabled={checkingStatus}
+            >
+              {checkingStatus ? (
+                <>
+                  <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                  Checking…
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  Check status
+                </>
+              )}
+            </Button>
+            <Button variant="ghost" className="w-full" onClick={handleSignOut}>
+              Sign out
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 via-background to-secondary/5 p-4">
-      <Card className="w-full max-w-md">
+      <Card className="w-full max-w-md bg-white">
         <CardHeader className="text-center">
-          <div className="flex justify-center mb-4">
-            <div className="bg-white/90 rounded-2xl p-3 shadow-lg ring-1 ring-black/5">
-              <img 
-                src={logoImg} 
-                alt="Family Desk Logo" 
-                className="h-20 w-20 object-contain"
-              />
-            </div>
+          <div className="flex justify-center mb-3">
+            <FamilyDeskLogo size="lg" />
           </div>
         <CardTitle className="text-2xl">Set Up Your Household</CardTitle>
         <CardDescription>
@@ -201,9 +320,14 @@ const HouseholdSetup = () => {
                   type="text"
                   placeholder="Smith Family, Apartment 4B, etc."
                   value={householdName}
-                  onChange={(e) => setHouseholdName(e.target.value)}
-                  required
+                  onChange={(e) => {
+                    setHouseholdName(e.target.value);
+                    if (createError) setCreateError(null);
+                  }}
                 />
+                {createError && (
+                  <p className="text-sm text-destructive" role="alert">{createError}</p>
+                )}
               </div>
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading ? "Creating..." : "Create Household"}
@@ -222,7 +346,10 @@ const HouseholdSetup = () => {
                     placeholder="123456"
                     maxLength={6}
                     value={inviteCode}
-                    onChange={(e) => setInviteCode(e.target.value.replace(/\D/g, ''))}
+                    onChange={(e) => {
+                      setInviteCode(e.target.value.replace(/\D/g, ''));
+                      if (verifyError) setVerifyError(null);
+                    }}
                   />
                   <Button 
                     type="button" 
@@ -233,25 +360,32 @@ const HouseholdSetup = () => {
                     {verifyingCode ? "Verifying..." : "Verify"}
                   </Button>
                 </div>
+                {verifyError && (
+                  <p className="text-sm text-destructive" role="alert">{verifyError}</p>
+                )}
               </div>
 
               {verifiedHousehold && (
                 <div className="p-4 border rounded-lg bg-primary/5 space-y-3">
                   <div className="flex items-center gap-2 text-green-600">
                     <CheckCircle2 className="h-5 w-5" />
-                    <span className="font-medium">Household Found</span>
+                    <span className="font-medium">Household found — request to join</span>
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    You're about to request to join:
+                    We'll send a request to the household admin. You'll get an email when they approve.
                   </p>
                   <p className="font-semibold text-lg">{verifiedHousehold.name}</p>
                   <Button 
+                    ref={joinButtonRef}
                     className="w-full" 
                     onClick={handleJoinHousehold}
                     disabled={joiningHousehold}
                   >
-                    {joiningHousehold ? "Sending Request..." : "Send Join Request"}
+                    {joiningHousehold ? "Sending Request..." : `Request to join ${verifiedHousehold.name}`}
                   </Button>
+                  {joinError && (
+                    <p className="text-sm text-destructive" role="alert">{joinError}</p>
+                  )}
                 </div>
               )}
 

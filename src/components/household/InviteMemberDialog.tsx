@@ -1,11 +1,11 @@
-import { useState } from "react";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { useState, cloneElement, isValidElement } from "react";
+import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { Mail, UserPlus, Loader2 } from "lucide-react";
@@ -47,19 +47,6 @@ export const InviteMemberDialog = ({ householdId, trigger }: InviteMemberDialogP
       }
 
       // Create the invitation - the user will be linked when they accept
-      const { error: insertError } = await supabase
-        .from("household_invitations")
-        .insert({
-          household_id: householdId,
-          invitee_email: normalizedEmail,
-          invitee_name: displayName.trim() || null,
-          requested_role: role,
-          invitation_type: "admin_invite",
-          invited_by: user.id,
-        });
-
-      if (insertError) throw insertError;
-
       // Get household name and inviter's profile for the email
       const [householdResult, profileResult] = await Promise.all([
         supabase.from("households").select("name").eq("id", householdId).single(),
@@ -68,6 +55,20 @@ export const InviteMemberDialog = ({ householdId, trigger }: InviteMemberDialogP
 
       const householdName = householdResult.data?.name || "the household";
       const inviterName = profileResult.data?.display_name || user.email?.split("@")[0] || "Someone";
+
+      const { error: insertError } = await supabase
+        .from("household_invitations")
+        .insert({
+          household_id: householdId,
+          household_name: householdResult.data?.name ?? null,
+          invitee_email: normalizedEmail,
+          invitee_name: displayName.trim() || null,
+          requested_role: role,
+          invitation_type: "admin_invite",
+          invited_by: user.id,
+        } as any);
+
+      if (insertError) throw insertError;
 
       // Send invitation email
       const session = await supabase.auth.getSession();
@@ -116,27 +117,55 @@ export const InviteMemberDialog = ({ householdId, trigger }: InviteMemberDialogP
   });
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {trigger || (
-          <Button>
-            <UserPlus className="h-4 w-4 mr-2" />
-            Invite Member
-          </Button>
-        )}
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+    <>
+      {trigger && isValidElement(trigger) ? (
+        cloneElement(trigger as React.ReactElement<any>, {
+          onClick: (e: React.MouseEvent) => {
+            (trigger as any).props?.onClick?.(e);
+            if (!e.defaultPrevented) setOpen(true);
+          },
+        })
+      ) : (
+        <Button onClick={() => setOpen(true)}>
+          <UserPlus className="h-4 w-4 mr-2" />
+          Invite Member
+        </Button>
+      )}
+      <BottomSheet
+        isOpen={open}
+        onClose={() => setOpen(false)}
+        title={
+          <span className="flex items-center gap-2">
             <Mail className="h-5 w-5" />
             Invite New Member
-          </DialogTitle>
-          <DialogDescription>
-            Send an invitation to add someone to your household
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-4 py-4">
+          </span>
+        }
+        description="Send an invitation to add someone to your household"
+        footer={
+          <div className="flex gap-2 justify-end">
+            <Button variant="outline" onClick={() => setOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => inviteMutation.mutate()}
+              disabled={inviteMutation.isPending || !email.trim()}
+            >
+              {inviteMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Sending...
+                </>
+              ) : (
+                <>
+                  <Mail className="h-4 w-4 mr-2" />
+                  Send Invitation
+                </>
+              )}
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="email">Email Address *</Label>
             <Input
@@ -179,29 +208,7 @@ export const InviteMemberDialog = ({ householdId, trigger }: InviteMemberDialogP
             </RadioGroup>
           </div>
         </div>
-
-        <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)}>
-            Cancel
-          </Button>
-          <Button 
-            onClick={() => inviteMutation.mutate()} 
-            disabled={inviteMutation.isPending || !email.trim()}
-          >
-            {inviteMutation.isPending ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Sending...
-              </>
-            ) : (
-              <>
-                <Mail className="h-4 w-4 mr-2" />
-                Send Invitation
-              </>
-            )}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      </BottomSheet>
+    </>
   );
 };

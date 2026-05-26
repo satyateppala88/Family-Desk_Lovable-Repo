@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useHousehold } from "@/hooks/useHousehold";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -23,7 +23,7 @@ interface Message {
 
 // ─── Contextual prompt chips based on current route ───
 const PROMPT_CHIPS: Record<string, string[]> = {
-  meals: ["Plan meals this week", "Find a vegetarian recipe", "Add meals to grocery list", "What's in my pantry?"],
+  meals: ["Plan meals this week", "Find a vegetarian recipe", "Add meals to grocery list"],
   tasks: ["Add a task", "What's due today?", "Mark tasks complete", "Show overdue tasks"],
   finance: ["Show this month's spending", "Add a transaction", "How is my budget?", "Set a savings goal"],
   default: ["Plan meals this week", "Add a task", "What's due today?", "Show spending summary"],
@@ -42,7 +42,6 @@ const PLACEHOLDERS = [
   "Plan this week's meals...",
   "Add a task for tomorrow...",
   "What did we spend last month?",
-  "What's in my pantry?",
 ];
 
 const getTimeGreeting = () => {
@@ -92,6 +91,13 @@ export const AIChatWidget = () => {
   useEffect(() => {
     if (!isOpen && isSpeaking) stopSpeaking();
   }, [isOpen, isSpeaking, stopSpeaking]);
+
+  // Allow other parts of the app (e.g. dashboard quick actions) to open the widget
+  useEffect(() => {
+    const open = () => setIsOpen(true);
+    window.addEventListener("familydesk:open-ai", open);
+    return () => window.removeEventListener("familydesk:open-ai", open);
+  }, []);
 
   // Rotate placeholder
   useEffect(() => {
@@ -151,7 +157,7 @@ export const AIChatWidget = () => {
       const response = await fetch(CHAT_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
-        body: JSON.stringify({ messages: allMessages.map(m => ({ role: m.role, content: m.content })), householdId, userId: user.id }),
+        body: JSON.stringify({ messages: allMessages.map(m => ({ role: m.role, content: m.content })), householdId, userId: user.id, module: "general" }),
       });
 
       if (!response.ok) throw new Error(await response.text());
@@ -192,7 +198,7 @@ export const AIChatWidget = () => {
         }
       }
     } catch (error: any) {
-      toast({ title: "Error", description: error.message || "Failed to send message", variant: "destructive" });
+      toast({ title: "Error", description: "Failed to send message", variant: "destructive" });
       setMessages(prev => {
         const updated = [...prev];
         const last = updated[updated.length - 1];
@@ -375,18 +381,6 @@ export const AIChatWidget = () => {
 
   return (
     <>
-      {/* Trigger button — hidden while the chat panel is open so it doesn't
-          overlap the mic/send icons inside the input row. */}
-      {!isOpen && (
-        <Button
-          size="lg"
-          className="ai-chat-fab fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg z-[60] bg-gradient-to-br from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 transition-[bottom] duration-200"
-          onClick={() => setIsOpen(true)}
-        >
-          <Sparkles className="h-6 w-6" />
-        </Button>
-      )}
-
       {/* Mobile: bottom drawer ~65% */}
       {isMobile ? (
         <Drawer open={isOpen} onOpenChange={setIsOpen}>
