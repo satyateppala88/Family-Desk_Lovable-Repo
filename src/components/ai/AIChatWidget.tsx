@@ -19,6 +19,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 interface Message {
   role: "user" | "assistant";
   content: string;
+  toolResult?: string; // label shown when AI executed a tool
 }
 
 // ─── Contextual prompt chips based on current route ───
@@ -182,6 +183,9 @@ export const AIChatWidget = () => {
       if (!response.ok) throw new Error(await response.text());
       if (!response.body) throw new Error("No response body");
 
+      const toolsExecuted = response.headers.get("x-tools-executed") || "";
+      const executedTools = toolsExecuted ? toolsExecuted.split(",").filter(Boolean) : [];
+
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let textBuffer = "";
@@ -214,6 +218,47 @@ export const AIChatWidget = () => {
               });
             }
           } catch { break; }
+        }
+      }
+
+      // Attach tool-result chip + refetch hints when the AI executed any tools
+      if (executedTools.length > 0) {
+        const toolLabels: Record<string, string> = {
+          create_task: "✅ Task created",
+          update_task: "✅ Task updated",
+          add_transaction: "💰 Transaction added",
+          add_pantry_item: "🥫 Added to pantry",
+          add_shopping_item: "🛒 Added to shopping list",
+          log_habit: "🔥 Habit logged",
+          get_meal_plan: "🍽️ Meal plan fetched",
+          get_household_summary: "🏠 Summary fetched",
+          get_pantry_status: "🥫 Pantry checked",
+          get_finance_summary: "💰 Finance checked",
+          get_habit_status: "📊 Habits checked",
+          get_expiring_items: "⚠️ Expiring items checked",
+          list_tasks: "📋 Tasks checked",
+        };
+        const labels = executedTools.map(t => toolLabels[t] || `✓ ${t}`).join(" · ");
+        setMessages(prev => {
+          const updated = [...prev];
+          const last = updated[updated.length - 1];
+          if (last?.role === "assistant") {
+            updated[updated.length - 1] = { ...last, toolResult: labels };
+          }
+          return updated;
+        });
+
+        if (executedTools.some(t => t.includes("task"))) {
+          window.dispatchEvent(new Event("familydesk:refetch-tasks"));
+        }
+        if (executedTools.some(t => t.includes("pantry") || t.includes("shopping"))) {
+          window.dispatchEvent(new Event("familydesk:refetch-grocery"));
+        }
+        if (executedTools.some(t => t.includes("transaction") || t.includes("finance"))) {
+          window.dispatchEvent(new Event("familydesk:refetch-finance"));
+        }
+        if (executedTools.some(t => t.includes("habit"))) {
+          window.dispatchEvent(new Event("familydesk:refetch-habits"));
         }
       }
     } catch (error: any) {
@@ -306,6 +351,11 @@ export const AIChatWidget = () => {
                 msg.role === "user" ? "bg-primary text-primary-foreground rounded-br-sm" : "bg-muted rounded-bl-sm"
               )}>
                 <p className="text-sm whitespace-pre-wrap leading-relaxed">{msg.content}</p>
+                {msg.toolResult && (
+                  <div className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-primary/10 border border-primary/20 px-3 py-1 text-xs font-medium text-primary">
+                    {msg.toolResult}
+                  </div>
+                )}
               </div>
             </div>
           ))}
