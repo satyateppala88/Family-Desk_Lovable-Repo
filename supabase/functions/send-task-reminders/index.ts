@@ -80,33 +80,37 @@ const handler = async (req: Request): Promise<Response> => {
     const errors: string[] = [];
     const pushUserIds: string[] = [];
 
+    const allUserIds = [...new Set(Object.keys(tasksByAssignee))];
+
+    const [allProfiles, allPrefs] = await Promise.all([
+      supabaseAdmin
+        .from("profiles")
+        .select("id, display_name, email")
+        .in("id", allUserIds),
+      supabaseAdmin
+        .from("user_email_preferences")
+        .select("user_id, task_notifications")
+        .in("user_id", allUserIds),
+    ]);
+
+    const profileMap = new Map((allProfiles.data ?? []).map((p: any) => [p.id, p]));
+    const prefMap = new Map((allPrefs.data ?? []).map((p: any) => [p.user_id, p]));
+
     // Send emails to each assignee
     for (const [userId, userTasks] of Object.entries(tasksByAssignee)) {
       try {
-        // Check user email preferences
-        const { data: prefs } = await supabaseAdmin
-          .from("user_email_preferences")
-          .select("task_notifications")
-          .eq("user_id", userId)
-          .maybeSingle();
-
-        if (prefs?.task_notifications === false) {
+        const pref = prefMap.get(userId);
+        if (pref?.task_notifications === false) {
           console.log(`User ${userId} has opted out of task notifications`);
           continue;
         }
 
-        // Get user info
-        const { data: userData } = await supabaseAdmin.auth.admin.getUserById(userId);
-        if (!userData?.user?.email) {
+        const profile = profileMap.get(userId);
+        if (!profile?.email) {
           console.log(`No email found for user ${userId}`);
           continue;
         }
 
-        const { data: profile } = await supabaseAdmin
-          .from("profiles")
-          .select("display_name")
-          .eq("id", userId)
-          .maybeSingle();
 
         const formattedTasks = userTasks.map(t => ({
           title: t.title,
