@@ -1,3 +1,4 @@
+import { validateCronSecret } from '../_shared/cron-auth.ts';
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.78.0";
 import { corsHeaders } from "npm:@supabase/supabase-js@2.78.0/cors";
 
@@ -12,6 +13,13 @@ import { corsHeaders } from "npm:@supabase/supabase-js@2.78.0/cors";
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
+  }
+
+  if (!validateCronSecret(req)) {
+    return new Response(
+      JSON.stringify({ error: 'Unauthorized' }),
+      { status: 401, headers: { 'Content-Type': 'application/json' } }
+    );
   }
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
