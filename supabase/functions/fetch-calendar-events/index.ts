@@ -6,13 +6,12 @@ const GOOGLE_CLIENT_ID = Deno.env.get("GOOGLE_CLIENT_ID")!;
 const GOOGLE_CLIENT_SECRET = Deno.env.get("GOOGLE_CLIENT_SECRET")!;
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const CALENDAR_ENCRYPTION_KEY = Deno.env.get("CALENDAR_ENCRYPTION_KEY");
 
 interface CalendarConnection {
   id: string;
   user_id: string;
   google_account_email: string;
-  access_token: string;
-  refresh_token: string;
   token_expires_at: string;
   display_name: string;
   color: string;
@@ -123,6 +122,7 @@ function expandRecurrence(
 // deno-lint-ignore no-explicit-any
 async function refreshAccessToken(
   connection: CalendarConnection,
+  refreshToken: string,
   supabaseClient: any
 ): Promise<string> {
   const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
@@ -131,7 +131,7 @@ async function refreshAccessToken(
     body: new URLSearchParams({
       client_id: GOOGLE_CLIENT_ID,
       client_secret: GOOGLE_CLIENT_SECRET,
-      refresh_token: connection.refresh_token,
+      refresh_token: refreshToken,
       grant_type: "refresh_token",
     }),
   });
@@ -143,15 +143,15 @@ async function refreshAccessToken(
     throw new Error(`Failed to refresh token: ${tokenData.error}`);
   }
 
-  // Update token in database
+  // Update token in database (encrypted server-side)
   const expiresAt = new Date(Date.now() + tokenData.expires_in * 1000);
-  await supabaseClient
-    .from("calendar_connections")
-    .update({
-      access_token: tokenData.access_token,
-      token_expires_at: expiresAt.toISOString(),
-    })
-    .eq("id", connection.id);
+  await supabaseClient.rpc("upsert_calendar_tokens", {
+    _connection_id: connection.id,
+    _access_token: tokenData.access_token,
+    _refresh_token: tokenData.refresh_token ?? null,
+    _expires_at: expiresAt.toISOString(),
+    _key: CALENDAR_ENCRYPTION_KEY,
+  });
 
   return tokenData.access_token;
 }
