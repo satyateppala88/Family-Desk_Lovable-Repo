@@ -59,9 +59,15 @@ Deno.serve(async (req) => {
       tasks: tasks.data ?? [],
       habits: habits.data ?? [],
       habit_logs: habitLogs.data ?? [],
+      habit_streaks: habitStreaks.data ?? [],
       finance_transactions: transactions.data ?? [],
+      finance_budgets: budgets.data ?? [],
+      finance_savings_goals: savingsGoals.data ?? [],
+      finance_subscriptions: subscriptions.data ?? [],
       meal_plans: mealPlans.data ?? [],
       pantry_items: pantry.data ?? [],
+      shopping_lists: shoppingLists.data ?? [],
+      household_preferences: householdPrefs.data,
       notification_preferences: prefs.data,
     };
 
