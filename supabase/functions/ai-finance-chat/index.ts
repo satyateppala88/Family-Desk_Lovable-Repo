@@ -155,7 +155,7 @@ serve(async (req) => {
   } catch (error: any) {
     console.error("Finance chat error:", error);
     const corsHeaders = getCorsHeaders(req.headers.get("origin"));
-    return new Response(JSON.stringify({ error: error.message }), {
+    return new Response(JSON.stringify({ error: 'An internal error occurred.' }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

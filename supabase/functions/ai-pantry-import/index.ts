@@ -182,7 +182,7 @@ Guidelines:
     log.error("Error in ai-pantry-import", error);
     const corsHeaders = getCorsHeaders(req.headers.get("origin"));
     return new Response(
-      JSON.stringify({ error: error.message || "Failed to process pantry import" }),
+      JSON.stringify({ error: 'An internal error occurred.' }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }

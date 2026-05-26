@@ -202,7 +202,7 @@ serve(async (req) => {
     console.error("Error generating shopping list:", error);
     const corsHeaders = getCorsHeaders(req.headers.get("origin"));
     return new Response(
-      JSON.stringify({ error: error.message || "Failed to generate shopping list" }),
+      JSON.stringify({ error: 'An internal error occurred.' }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
