@@ -680,10 +680,30 @@ export async function buildHouseholdContext(opts: AIContextOptions): Promise<str
     ? ` | 🎉 ${upcomingFestival.name} in ${upcomingFestival.daysAway} day${upcomingFestival.daysAway === 1 ? "" : "s"}`
     : "";
 
+  let memoryBlock = "";
+  if (opts.userId) {
+    try {
+      const { data: memories } = await supabase
+        .from("user_ai_memory")
+        .select("content, memory_type")
+        .eq("user_id", opts.userId)
+        .eq("household_id", householdId)
+        .or("expires_at.is.null,expires_at.gt." + now.toISOString())
+        .limit(10);
+      if (memories?.length) {
+        memoryBlock =
+          "\nUSER MEMORY (from previous conversations — acknowledge these when relevant):\n" +
+          memories.map((m: any) => `• [${m.memory_type}] ${m.content}`).join("\n");
+      }
+    } catch (_e) {
+      // ignore memory fetch failures
+    }
+  }
+
   const header =
     `HOUSEHOLD CONTEXT\n=================\n` +
     `Household: ${householdName} | Members: ${memberNames.join(", ") || "—"} | ` +
-    `Date: ${WEEKDAYS[now.getDay()]}, ${pad(now.getDate())} ${FULL_MONTHS[now.getMonth()]} ${now.getFullYear()}${festivalLine}`;
+    `Date: ${WEEKDAYS[now.getDay()]}, ${pad(now.getDate())} ${FULL_MONTHS[now.getMonth()]} ${now.getFullYear()}${festivalLine}${memoryBlock}`;
 
   const blocks: string[] = [header];
   if (urgencyAlerts) blocks.push("", urgencyAlerts);
