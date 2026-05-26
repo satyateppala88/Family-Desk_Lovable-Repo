@@ -49,6 +49,7 @@ const Meals = () => {
   useRealtimeSubscription([
     { table: "meal_plans", filter: householdId ? `household_id=eq.${householdId}` : undefined, enabled: !!householdId, queryKeys: [["meal-plans", householdId]] },
     { table: "meal_plan_items", enabled: !!householdId, queryKeys: [["meal-plans", householdId]] },
+    { table: "recipes", filter: householdId ? `household_id=eq.${householdId}` : undefined, enabled: !!householdId, queryKeys: [["recipes", householdId]] },
   ], householdId);
   const { recipes, isLoading: loadingRecipes, deleteRecipe, updateRecipe } = useRecipes(householdId);
   const [currentWeekStart, setCurrentWeekStart] = useState(() => getWeekStartDate(new Date(), "sunday"));
