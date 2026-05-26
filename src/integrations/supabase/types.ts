@@ -1402,6 +1402,38 @@ export type Database = {
           },
         ]
       }
+      household_ai_insights: {
+        Row: {
+          generated_at: string
+          household_id: string
+          id: string
+          insight_text: string
+          week_start: string
+        }
+        Insert: {
+          generated_at?: string
+          household_id: string
+          id?: string
+          insight_text: string
+          week_start: string
+        }
+        Update: {
+          generated_at?: string
+          household_id?: string
+          id?: string
+          insight_text?: string
+          week_start?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "household_ai_insights_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       household_challenges: {
         Row: {
           created_at: string
@@ -3248,6 +3280,10 @@ export type Database = {
           _key: string
           _refresh_token: string
         }
+        Returns: undefined
+      }
+      vault_upsert_cron_secret: {
+        Args: { _secret: string }
         Returns: undefined
       }
       vault_upsert_push_key: { Args: { _key: string }; Returns: undefined }

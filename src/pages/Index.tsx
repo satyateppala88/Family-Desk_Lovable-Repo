@@ -18,6 +18,7 @@ import { FestivalBanner } from "@/components/dashboard/FestivalBanner";
 import { TodaySnapshot } from "@/components/dashboard/TodaySnapshot";
 import { QuickActionsRow } from "@/components/dashboard/QuickActionsRow";
 import { DidYouKnowCard } from "@/components/dashboard/DidYouKnowCard";
+import { WeeklyInsightCard } from "@/components/dashboard/WeeklyInsightCard";
 import { InstallAppButton } from "@/components/install/InstallAppButton";
 import { useDashboardSnapshot } from "@/hooks/useDashboardSnapshot";
 import { format } from "date-fns";
@@ -219,6 +220,9 @@ const Index = () => {
 
         {/* Today's snapshot — live status cards */}
         {householdId && <TodaySnapshot householdId={householdId} />}
+
+        {/* Weekly AI-generated insight */}
+        {householdId && <WeeklyInsightCard householdId={householdId} />}
 
         {/* Rotating discovery tip */}
         <DidYouKnowCard />
