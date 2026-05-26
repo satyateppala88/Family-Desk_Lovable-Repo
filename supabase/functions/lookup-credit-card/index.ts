@@ -148,6 +148,9 @@ Color: a hex color matching the bank's brand (e.g. HDFC #1a3a5c, SBI #003d82, IC
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error: unknown) {
+    if ((error as any)?.name === "AbortError") {
+      return new Response(JSON.stringify({ error: "AI service timed out. Please try again." }), { status: 408, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
     console.error("lookup-credit-card error:", error);
     const message = error instanceof Error ? error.message : "Failed to look up card";
     return new Response(JSON.stringify({ error: message }), {

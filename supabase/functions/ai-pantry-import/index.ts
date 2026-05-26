@@ -179,6 +179,9 @@ Guidelines:
     });
 
   } catch (error: any) {
+    if ((error as any)?.name === "AbortError") {
+      return new Response(JSON.stringify({ error: "AI service timed out. Please try again." }), { status: 408, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
     log.error("Error in ai-pantry-import", error);
     const corsHeaders = getCorsHeaders(req.headers.get("origin"));
     return new Response(

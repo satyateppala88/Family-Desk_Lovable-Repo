@@ -319,6 +319,9 @@ Generate creative, varied meals that are different from what the user might alre
     });
 
   } catch (error: any) {
+    if ((error as any)?.name === "AbortError") {
+      return new Response(JSON.stringify({ error: "AI service timed out. Please try again." }), { status: 408, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
     console.error("Error in regenerate-meals:", error);
     return new Response(JSON.stringify({ error: 'An internal error occurred.' }), {
       status: 500,

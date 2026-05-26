@@ -492,6 +492,9 @@ Example: If a recipe serves 4, calculate the nutritional info for 1/4 of the tot
     });
 
   } catch (error: any) {
+    if ((error as any)?.name === "AbortError") {
+      return new Response(JSON.stringify({ error: "AI service timed out. Please try again." }), { status: 408, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
     log.error("Error in generate-meal-suggestions", error);
     const corsHeaders = getCorsHeaders(req.headers.get("origin"));
     return new Response(

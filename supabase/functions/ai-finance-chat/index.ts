@@ -159,6 +159,9 @@ Deno.serve(async (req) => {
       },
     });
   } catch (error: any) {
+    if ((error as any)?.name === "AbortError") {
+      return new Response(JSON.stringify({ error: "AI service timed out. Please try again." }), { status: 408, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
     console.error("Finance chat error:", error);
     const corsHeaders = getCorsHeaders(req.headers.get("origin"));
     return new Response(JSON.stringify({ error: 'An internal error occurred.' }), {

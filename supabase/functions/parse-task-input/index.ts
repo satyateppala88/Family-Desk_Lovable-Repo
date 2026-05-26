@@ -213,6 +213,9 @@ If there's additional context beyond the title, put it in the description.`;
     );
 
   } catch (error: unknown) {
+    if ((error as any)?.name === "AbortError") {
+      return new Response(JSON.stringify({ error: "AI service timed out. Please try again." }), { status: 408, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
     console.error("parse-task-input error:", error);
     const message = error instanceof Error ? error.message : "Failed to parse task";
     const corsHeaders = getCorsHeaders(req.headers.get("origin"));
