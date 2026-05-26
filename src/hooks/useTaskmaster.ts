@@ -86,19 +86,41 @@ export const useTaskmaster = (
 
       return data;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["taskmaster-tasks", householdId] });
-      toast({
-        title: "Task created",
-        description: "Your task has been added successfully.",
+    onMutate: async (newTask) => {
+      await queryClient.cancelQueries({ queryKey: ["taskmaster-tasks", householdId] });
+      const previous = queryClient.getQueriesData<TaskmasterTask[]>({
+        queryKey: ["taskmaster-tasks", householdId],
       });
+      const optimistic: any = {
+        ...newTask,
+        id: `temp-${Date.now()}`,
+        created_at: new Date().toISOString(),
+        assignees: [],
+      };
+      queryClient.setQueriesData<TaskmasterTask[]>(
+        { queryKey: ["taskmaster-tasks", householdId] },
+        (old) => [optimistic, ...(old || [])],
+      );
+      return { previous };
     },
-    onError: (error: any) => {
+    onError: (_err, _vars, context: any) => {
+      context?.previous?.forEach(([key, data]: [any, any]) => {
+        queryClient.setQueryData(key, data);
+      });
       toast({
         title: "Something went wrong",
         description: "Please try again.",
         variant: "destructive",
       });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Task created",
+        description: "Your task has been added successfully.",
+      });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["taskmaster-tasks", householdId] });
     },
   });
 
@@ -139,20 +161,37 @@ export const useTaskmaster = (
 
       return data;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["taskmaster-tasks", householdId] });
-      queryClient.invalidateQueries({ queryKey: ["daily-plan"] });
-      toast({
-        title: "Task updated",
-        description: "Your changes have been saved.",
+    onMutate: async ({ id, updates }) => {
+      await queryClient.cancelQueries({ queryKey: ["taskmaster-tasks", householdId] });
+      const previous = queryClient.getQueriesData<TaskmasterTask[]>({
+        queryKey: ["taskmaster-tasks", householdId],
       });
+      queryClient.setQueriesData<TaskmasterTask[]>(
+        { queryKey: ["taskmaster-tasks", householdId] },
+        (old) =>
+          (old || []).map((t) => (t.id === id ? ({ ...t, ...updates } as TaskmasterTask) : t)),
+      );
+      return { previous };
     },
-    onError: (error: any) => {
+    onError: (_err, _vars, context: any) => {
+      context?.previous?.forEach(([key, data]: [any, any]) => {
+        queryClient.setQueryData(key, data);
+      });
       toast({
         title: "Something went wrong",
         description: "Please try again.",
         variant: "destructive",
       });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Task updated",
+        description: "Your changes have been saved.",
+      });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["taskmaster-tasks", householdId] });
+      queryClient.invalidateQueries({ queryKey: ["daily-plan"] });
     },
   });
 
@@ -165,20 +204,36 @@ export const useTaskmaster = (
 
       if (error) throw error;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["taskmaster-tasks", householdId] });
-      queryClient.invalidateQueries({ queryKey: ["daily-plan"] });
-      toast({
-        title: "Task deleted",
-        description: "The task has been removed.",
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: ["taskmaster-tasks", householdId] });
+      const previous = queryClient.getQueriesData<TaskmasterTask[]>({
+        queryKey: ["taskmaster-tasks", householdId],
       });
+      queryClient.setQueriesData<TaskmasterTask[]>(
+        { queryKey: ["taskmaster-tasks", householdId] },
+        (old) => (old || []).filter((t) => t.id !== id),
+      );
+      return { previous };
     },
-    onError: (error: any) => {
+    onError: (_err, _vars, context: any) => {
+      context?.previous?.forEach(([key, data]: [any, any]) => {
+        queryClient.setQueryData(key, data);
+      });
       toast({
         title: "Something went wrong",
         description: "Please try again.",
         variant: "destructive",
       });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Task deleted",
+        description: "The task has been removed.",
+      });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["taskmaster-tasks", householdId] });
+      queryClient.invalidateQueries({ queryKey: ["daily-plan"] });
     },
   });
 
