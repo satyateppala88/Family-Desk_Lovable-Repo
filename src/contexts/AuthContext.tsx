@@ -39,22 +39,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const isEmailVerified = Boolean(user?.email_confirmed_at);
 
   useEffect(() => {
-    // Set up auth state listener first
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
-
-    // Then check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
-
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        setSession(session);
+        setUser(session?.user ?? null);
+        setLoading(false);
+      }
+    );
     return () => subscription.unsubscribe();
   }, []);
 
