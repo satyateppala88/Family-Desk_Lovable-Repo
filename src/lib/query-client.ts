@@ -68,7 +68,7 @@ export function createPersistedQueryClient(): QueryClient {
         gcTime: MAX_AGE_MS,
         refetchOnReconnect: true,
         refetchOnMount: true,
-        refetchOnWindowFocus: true,
+        refetchOnWindowFocus: !Capacitor.isNativePlatform(),
         retry: 2,
       },
     },
