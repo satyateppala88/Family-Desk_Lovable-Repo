@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import { Header } from "@/components/layout/Header";
@@ -8,27 +8,17 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ModuleNudgeBanner } from "@/components/discovery/ModuleNudgeBanner";
 import { Plus, ListChecks, Package, Sparkles, ShoppingCart, ScanLine, Settings } from "lucide-react";
-import { PantryItemCard } from "@/components/grocery/PantryItemCard";
 import { AddPantryItemDialog } from "@/components/grocery/AddPantryItemDialog";
 import { QuickAddChecklist } from "@/components/grocery/QuickAddChecklist";
-import { PantryFilters } from "@/components/grocery/PantryFilters";
-import { AIPantryImportDialog } from "@/components/grocery/AIPantryImportDialog";
-import { ScanBillDialog, type ScannedBill } from "@/components/grocery/ScanBillDialog";
-import { BillReviewDialog } from "@/components/grocery/BillReviewDialog";
-import { ShoppingListCard } from "@/components/grocery/ShoppingListCard";
 import { CreateShoppingListDialog } from "@/components/grocery/CreateShoppingListDialog";
 import { PantryEducationBanner } from "@/components/grocery/PantryEducationBanner";
 import { ExpiringItemsAlert } from "@/components/grocery/ExpiringItemsAlert";
 import { LowStockAlert } from "@/components/grocery/LowStockAlert";
-import { RunningLowChips } from "@/components/grocery/RunningLowChips";
 import { PantrySettingsSheet } from "@/components/grocery/PantrySettingsSheet";
-import { ShareOnWhatsAppButton } from "@/components/grocery/ShareOnWhatsAppButton";
-import { PantryCategorySection } from "@/components/grocery/PantryCategorySection";
-import { ShoppingListDetailView } from "@/components/grocery/ShoppingListDetailView";
 import { PantryAnalytics } from "@/components/grocery/PantryAnalytics";
-import { PantryCategoryGrid } from "@/components/grocery/PantryCategoryGrid";
-import { PantryCategoryDetail } from "@/components/grocery/PantryCategoryDetail";
-import { FloatingCartButton } from "@/components/grocery/FloatingCartButton";
+import { PantryTabContent } from "@/components/grocery/PantryTabContent";
+import { ShoppingTabContent } from "@/components/grocery/ShoppingTabContent";
+import { BillScanFlow, type BillScanFlowHandle } from "@/components/grocery/BillScanFlow";
 import { usePantryItems } from "@/hooks/usePantryItems";
 import { usePantryCategories } from "@/hooks/usePantryCategories";
 import { usePantryStats } from "@/hooks/usePantryStats";
@@ -60,10 +50,6 @@ const Grocery = () => {
   
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showQuickAdd, setShowQuickAdd] = useState(false);
-  const [showAIImport, setShowAIImport] = useState(false);
-  const [showScanBill, setShowScanBill] = useState(false);
-  const [scannedBill, setScannedBill] = useState<ScannedBill | null>(null);
-  const [isSavingBill, setIsSavingBill] = useState(false);
   const [showCreateList, setShowCreateList] = useState(false);
   const [editItem, setEditItem] = useState<PantryItem | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -72,13 +58,14 @@ const Grocery = () => {
   const [isGeneratingList, setIsGeneratingList] = useState(false);
   const [deleteItemId, setDeleteItemId] = useState<string | null>(null);
   const [deleteListId, setDeleteListId] = useState<string | null>(null);
-  
+
   const [selectedCategoryDetail, setSelectedCategoryDetail] = useState<string | null>(null);
   const [cartItemCount, setCartItemCount] = useState(0);
   const [activeTab, setActiveTab] = useState<string>(() => searchParams.get("tab") || "pantry");
   const [showPantrySettings, setShowPantrySettings] = useState(false);
   const [isAddingLowStock, setIsAddingLowStock] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
+  const billScanRef = useRef<BillScanFlowHandle>(null);
 
   // Handle inbound link from Meals: ?tab=shopping&newList=...&items=...
   useEffect(() => {
@@ -209,7 +196,6 @@ const Grocery = () => {
     billDate: string | null;
   }) => {
     if (!householdId || !user?.id) return;
-    setIsSavingBill(true);
     try {
       if (inserts.length > 0) {
         const enriched = inserts.map(i => ({
@@ -229,15 +215,13 @@ const Grocery = () => {
         title: "Pantry updated",
         description: `${inserts.length} added, ${merges.length} merged.`,
       });
-      setScannedBill(null);
     } catch (err: any) {
       toast({
         title: "Could not save",
         description: "Please try again.",
         variant: "destructive",
       });
-    } finally {
-      setIsSavingBill(false);
+      throw err;
     }
   };
 
