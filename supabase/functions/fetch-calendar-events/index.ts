@@ -258,6 +258,14 @@ serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
+    if (!CALENDAR_ENCRYPTION_KEY) {
+      console.error("CALENDAR_ENCRYPTION_KEY is not configured");
+      return new Response(JSON.stringify({ error: "Server misconfiguration" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // Verify user
     const token = authHeader.replace("Bearer ", "");
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
@@ -278,10 +286,11 @@ serve(async (req) => {
       });
     }
 
-    // Get all visible calendar connections for the household
+    // Get all visible calendar connections for the household (no tokens; we
+    // fetch decrypted tokens per-connection via get_calendar_tokens below).
     const { data: connections, error: connectionsError } = await supabase
       .from("calendar_connections")
-      .select("*")
+      .select("id, user_id, google_account_email, token_expires_at, display_name, color, is_visible")
       .eq("household_id", householdId)
       .eq("is_visible", true);
 
