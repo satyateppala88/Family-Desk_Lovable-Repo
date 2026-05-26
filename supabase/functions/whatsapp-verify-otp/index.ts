@@ -66,39 +66,41 @@ const handler = async (req: Request): Promise<Response> => {
 
     const formattedPhone = formatPhoneNumber(phoneNumber);
 
-    // Find matching OTP token
-    const { data: tokenData, error: tokenError } = await supabaseAdmin
-      .from("phone_verification_tokens")
-      .select("*")
-      .eq("user_id", userId)
-      .eq("phone_number", formattedPhone)
-      .eq("token", otp)
-      .is("used_at", null)
-      .gt("expires_at", new Date().toISOString())
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+    const formattedPhone = formatPhoneNumber(phoneNumber);
 
-    if (tokenError) {
-      console.error("Error looking up OTP:", tokenError);
-      return new Response(
-        JSON.stringify({ error: "Failed to verify OTP" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    const { data: activeTokens } = await supabaseAdmin
+      .from('phone_verification_tokens')
+      .select('id, token, failed_attempts')
+      .eq('user_id', userId)
+      .eq('phone_number', formattedPhone)
+      .is('used_at', null)
+      .gt('expires_at', new Date().toISOString())
+      .order('created_at', { ascending: false })
+      .limit(1);
+
+    const activeToken = activeTokens?.[0];
+    if (!activeToken) {
+      return new Response(JSON.stringify({ error: 'Invalid or expired OTP. Please request a new code.' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    if (!tokenData) {
-      return new Response(
-        JSON.stringify({ error: "Invalid or expired OTP. Please request a new code." }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    if ((activeToken.failed_attempts ?? 0) >= 5) {
+      return new Response(JSON.stringify({ error: 'Too many failed attempts. Please request a new OTP.' }),
+        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    // Mark token as used
-    await supabaseAdmin
-      .from("phone_verification_tokens")
+    if (activeToken.token !== otp) {
+      await supabaseAdmin.from('phone_verification_tokens')
+        .update({ failed_attempts: (activeToken.failed_attempts ?? 0) + 1 })
+        .eq('id', activeToken.id);
+      const remaining = 4 - (activeToken.failed_attempts ?? 0);
+      return new Response(JSON.stringify({ error: `Invalid OTP. ${remaining} attempt${remaining===1?'':'s'} remaining.` }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    await supabaseAdmin.from('phone_verification_tokens')
       .update({ used_at: new Date().toISOString() })
-      .eq("id", tokenData.id);
+      .eq('id', activeToken.id);
 
     // Update profile - phone is now verified
     const { error: profileError } = await supabaseAdmin
