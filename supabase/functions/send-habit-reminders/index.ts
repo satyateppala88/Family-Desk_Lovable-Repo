@@ -6,6 +6,7 @@ import {
   getStreakWarningContent
 } from "../_shared/email-templates.ts";
 import { getCorsHeaders } from "../_shared/cors.ts";
+import { validateCronSecret } from "../_shared/cron-auth.ts";
 import { todayIST } from "../_shared/time.ts";
 
 import { sendViaQueue } from "../_shared/send-email-queue.ts";
@@ -17,6 +18,13 @@ const handler = async (req: Request): Promise<Response> => {
 
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
+  }
+
+  if (!validateCronSecret(req)) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 
   try {
