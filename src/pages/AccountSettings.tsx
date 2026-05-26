@@ -102,11 +102,11 @@ const AccountSettings = () => {
       return;
     }
 
-    if (newPassword.length < 6) {
+    if (newPassword.length < 8) {
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Password must be at least 6 characters.",
+        description: "Password must be at least 8 characters.",
       });
       return;
     }
@@ -276,7 +276,7 @@ const AccountSettings = () => {
                     placeholder="Enter new password"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
-                    minLength={6}
+                    minLength={8}
                     required
                   />
                 </div>
@@ -289,7 +289,7 @@ const AccountSettings = () => {
                     placeholder="Confirm new password"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    minLength={6}
+                    minLength={8}
                     required
                   />
                 </div>
