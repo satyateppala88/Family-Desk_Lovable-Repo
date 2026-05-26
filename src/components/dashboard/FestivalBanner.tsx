@@ -86,7 +86,7 @@ export const FestivalBanner = () => {
         status: "pending",
         due_date: dueDate,
       }));
-      const { error } = await (supabase as any).from("tasks").insert(rows);
+      const { error } = await supabase.from("tasks").insert(rows);
       if (error) throw error;
       qc.invalidateQueries({ queryKey: ["tasks", householdId] });
       toast({

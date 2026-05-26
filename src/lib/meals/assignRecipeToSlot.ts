@@ -14,7 +14,7 @@ export async function assignRecipeToSlot(params: {
 }) {
   const { householdId, userId, weekStartDate, dayOfWeek, mealType, recipeId } = params;
 
-  const { data: plan, error: planError } = await (supabase as any)
+  const { data: plan, error: planError } = await supabase
     .from("meal_plans")
     .upsert(
       { household_id: householdId, week_start_date: weekStartDate, created_by: userId },
@@ -28,7 +28,7 @@ export async function assignRecipeToSlot(params: {
   }
 
   // Remove any existing item in that slot
-  await (supabase as any)
+  await supabase
     .from("meal_plan_items")
     .delete()
     .eq("meal_plan_id", plan.id)
@@ -39,7 +39,7 @@ export async function assignRecipeToSlot(params: {
   scheduled.setDate(scheduled.getDate() + dayOfWeek);
   const scheduledDate = scheduled.toISOString().split("T")[0];
 
-  const { data: item, error: itemError } = await (supabase as any)
+  const { data: item, error: itemError } = await supabase
     .from("meal_plan_items")
     .insert({
       meal_plan_id: plan.id,
@@ -75,7 +75,7 @@ export async function persistAiRecipe(params: {
   };
 }) {
   const { householdId, userId, recipe } = params;
-  const { data, error } = await (supabase as any)
+  const { data, error } = await supabase
     .from("recipes")
     .insert({
       title: recipe.title,

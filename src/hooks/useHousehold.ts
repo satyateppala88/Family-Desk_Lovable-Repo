@@ -14,7 +14,7 @@ export const useHousehold = () => {
         // Fetch recent memberships and choose the best household client-side.
         // If a user has an abandoned/incomplete household plus a real one,
         // prefer the completed household so the dashboard does not open empty.
-        const { data: memberData, error: memberError } = await (supabase as any)
+        const { data: memberData, error: memberError } = await supabase
           .from("household_members")
           .select("household_id, households(onboarding_completed, name, avatar_url, created_at)")
           .eq("user_id", user.id)
