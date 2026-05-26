@@ -152,6 +152,6 @@ export const useDashboardSnapshot = (householdId: string | null) => {
       finance: `${money(spent)} spent this month`,
     } as Record<string, string>;
 
-    return { items, moduleSubtitles, todayEvents: todayEvents || [] };
+    return { items, moduleSubtitles, todayEvents: todayEvents || [], dashStats };
   }, [tasks, dashStats, monthly, budgets, todaysHabits, shoppingLists, weekEvents, todayEvents, todayTaskCount, isPrivate]);
 };
