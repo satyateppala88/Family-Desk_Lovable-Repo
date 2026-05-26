@@ -1,7 +1,7 @@
 import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Cell } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Calendar } from "lucide-react";
-import { useDailySpend } from "@/hooks/financeTrends";
+import { useDailySpend } from "@/hooks/useFinanceTrends";
 import { formatINRCompact, formatINR } from "@/lib/formatINR";
 import { PrivateValue } from "@/components/shared/PrivateValue";
 import { usePrivacyMode } from "@/contexts/PrivacyModeContext";

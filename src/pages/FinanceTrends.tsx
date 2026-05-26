@@ -5,7 +5,7 @@ import { PageLoading } from "@/components/ui/page-loading";
 import { Badge } from "@/components/ui/badge";
 import { useHousehold } from "@/hooks/useHousehold";
 import { useFinanceRealtime, CATEGORY_LABELS } from "@/hooks/finance";
-import { useFinanceTrends } from "@/hooks/financeTrends";
+import { useFinanceTrends } from "@/hooks/useFinanceTrends";
 import { useCustomCategories } from "@/hooks/useCustomCategories";
 import { resolveCategoryLabel } from "@/components/finance/CategorySelect";
 import { formatINR, formatINRCompact } from "@/lib/formatINR";
