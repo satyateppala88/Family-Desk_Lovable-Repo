@@ -2300,6 +2300,7 @@ export type Database = {
           completed_tours: Json | null
           created_at: string
           display_name: string | null
+          email: string | null
           email_verified_at: string | null
           id: string
           last_freeze_used_at: string | null
@@ -2320,6 +2321,7 @@ export type Database = {
           completed_tours?: Json | null
           created_at?: string
           display_name?: string | null
+          email?: string | null
           email_verified_at?: string | null
           id: string
           last_freeze_used_at?: string | null
@@ -2340,6 +2342,7 @@ export type Database = {
           completed_tours?: Json | null
           created_at?: string
           display_name?: string | null
+          email?: string | null
           email_verified_at?: string | null
           id?: string
           last_freeze_used_at?: string | null
