@@ -72,101 +72,74 @@ const handler = async (req: Request): Promise<Response> => {
     const emailsSent: string[] = [];
     const errors: string[] = [];
 
-    // Send alerts to each household's members
+    // Collect all member IDs across all households first
+    const allHouseholdIds = Object.keys(itemsByHousehold);
+    const { data: allMembers } = await supabaseAdmin
+      .from('household_members')
+      .select('user_id, household_id')
+      .in('household_id', allHouseholdIds);
+
+    const allMemberIds = (allMembers ?? []).map((m: any) => m.user_id);
+
+    // Batch fetch all profiles and prefs at once
+    const [allProfiles, allPrefs] = await Promise.all([
+      supabaseAdmin.from('profiles')
+        .select('id, email, display_name, phone_number, phone_verified, whatsapp_opted_in')
+        .in('id', allMemberIds),
+      supabaseAdmin.from('user_email_preferences')
+        .select('user_id, pantry_alerts, pantry_alerts_whatsapp')
+        .in('user_id', allMemberIds),
+    ]);
+
+    const profileMap = new Map((allProfiles.data ?? []).map((p: any) => [p.id, p]));
+    const prefMap = new Map((allPrefs.data ?? []).map((p: any) => [p.user_id, p]));
+
+    // Now loop per household with ZERO DB calls inside
     for (const [householdId, items] of Object.entries(itemsByHousehold)) {
       try {
-        // Get household members
-        const { data: members } = await supabaseAdmin
-          .from("household_members")
-          .select("user_id")
-          .eq("household_id", householdId);
-
-        if (!members || members.length === 0) continue;
+        const householdMembers = (allMembers ?? []).filter((m: any) => m.household_id === householdId);
+        if (householdMembers.length === 0) continue;
 
         const formattedItems = items.map(item => ({
           name: item.name,
-          quantity: `${item.quantity || ""}${item.unit ? ` ${item.unit}` : ""}`.trim() || "N/A",
-          expiryDate: new Date(item.expiry_date!).toLocaleDateString("en-US", {
-            weekday: "short",
-            month: "short",
-            day: "numeric",
+          quantity: `${item.quantity || ''}${item.unit ? ` ${item.unit}` : ''}`.trim() || 'N/A',
+          expiryDate: new Date(item.expiry_date!).toLocaleDateString('en-IN', {
+            weekday: 'short', month: 'short', day: 'numeric',
           }),
         }));
 
-        const emailContent = getPantryAlertContent(
-          formattedItems,
-          "https://familydesk.in/grocery"
-        );
+        const emailContent = getPantryAlertContent(formattedItems, 'https://familydesk.in/grocery');
 
-        // Send to each member
-        for (const member of members) {
+        for (const member of householdMembers) {
           try {
-            // Get user info
-            const { data: userData } = await supabaseAdmin.auth.admin.getUserById(member.user_id);
-            if (!userData?.user?.email) continue;
+            const profile: any = profileMap.get(member.user_id);
+            const pref: any = prefMap.get(member.user_id);
+            if (!profile?.email) continue;
 
-            const { data: profile } = await supabaseAdmin
-              .from("profiles")
-              .select("display_name, phone_number, phone_verified, whatsapp_opted_in")
-              .eq("id", member.user_id)
-              .maybeSingle();
-
-            // Check user email preferences
-            const { data: prefs } = await supabaseAdmin
-              .from("user_email_preferences")
-              .select("pantry_alerts, pantry_alerts_whatsapp")
-              .eq("user_id", member.user_id)
-              .maybeSingle();
-
-            // Send email if not opted out
-            if (prefs?.pantry_alerts !== false) {
-              const emailResponse = await sendViaQueue(supabaseUrl, supabaseServiceKey, {
-      to: userData.user.email,
-      subject: `🥫 ${items.length} item${items.length > 1 ? "s" : ""} expiring soon!`,
-      html: getEmailWrapper(emailContent),
-      templateName: "send-pantry-alerts",
-      idempotencyKey: `pantry-alert-${member.user_id}-${todayStr}`,
-    });
-
-              console.log(`Pantry alert email sent to ${userData.user.email}:`, emailResponse);
-              emailsSent.push(userData.user.email);
+            if (pref?.pantry_alerts !== false) {
+              await sendViaQueue(supabaseUrl, supabaseServiceKey, {
+                to: profile.email,
+                subject: `🥫 ${items.length} item${items.length > 1 ? 's' : ''} expiring soon!`,
+                html: getEmailWrapper(emailContent),
+                templateName: 'send-pantry-alerts',
+                idempotencyKey: `pantry-alert-${member.user_id}-${todayStr}`,
+              });
+              emailsSent.push(profile.email);
             }
 
-            // Send WhatsApp if enabled
-            if (
-              profile?.phone_verified &&
-              profile?.whatsapp_opted_in &&
-              profile?.phone_number &&
-              prefs?.pantry_alerts_whatsapp
-            ) {
-              const itemsList = formattedItems
-                .slice(0, 3)
-                .map((item) => `${item.name} - ${item.expiryDate}`)
-                .join(", ");
-
-              const waResult = await sendWhatsAppTemplate(
-                profile.phone_number,
+            if (profile.phone_verified && profile.whatsapp_opted_in &&
+                profile.phone_number && pref?.pantry_alerts_whatsapp) {
+              const itemsList = formattedItems.slice(0, 3)
+                .map(i => `${i.name} - ${i.expiryDate}`).join(', ');
+              await sendWhatsAppTemplate(profile.phone_number,
                 WHATSAPP_TEMPLATES.PANTRY_EXPIRY_ALERT,
-                [
-                  items.length.toString(),
-                  itemsList,
-                  "https://familydesk.in/grocery"
-                ]
-              );
-
-              if (waResult.success) {
-                console.log(`Pantry alert WhatsApp sent to ${profile.phone_number}`);
-              } else {
-                console.log(`Failed WhatsApp to ${profile.phone_number}:`, waResult.error);
-              }
+                [items.length.toString(), itemsList, 'https://familydesk.in/grocery']);
             }
           } catch (memberError: any) {
-            console.error(`Error sending to member ${member.user_id}:`, memberError);
             errors.push(`Member ${member.user_id}: ${memberError.message}`);
           }
         }
       } catch (householdError: any) {
-        console.error(`Error processing household ${householdId}:`, householdError);
         errors.push(`Household ${householdId}: ${householdError.message}`);
       }
     }
