@@ -50,7 +50,7 @@ const FinanceTransactions = () => {
   const [catFilter, setCatFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
   const [paidByFilter, setPaidByFilter] = useState("all");
-  const [activeTab, setActiveTab] = useState<"list" | "members">("list");
+  const [activeTab, setActiveTab] = useState<"list" | "insights" | "members">("list");
   const [allTime, setAllTime] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
   const [editTx, setEditTx] = useState<FinanceTransaction | null>(null);
