@@ -74,6 +74,59 @@ if ((isPreviewHost || isInIframe) && "serviceWorker" in navigator) {
     });
 }
 
+// ---------------------------------------------------------------------------
+// Chunk-load self-heal (stale-SW recovery)
+// ---------------------------------------------------------------------------
+// After a new deploy, devices with the previous service worker may still
+// hold an HTML shell that references chunks that no longer exist. Vite then
+// throws `ChunkLoadError` / "Failed to fetch dynamically imported module"
+// when the user navigates to a lazy route — the page goes blank with no
+// recovery. Listen globally, unregister any SW, clear all caches, and force
+// a single hard reload. A sessionStorage flag guarantees we never loop.
+try {
+  const RELOAD_FLAG = "fd_chunk_reload";
+  const isChunkLoadError = (msg: string) =>
+    /ChunkLoadError|Loading chunk \d+ failed|Failed to fetch dynamically imported module|Importing a module script failed/i.test(
+      msg,
+    );
+
+  const recover = async (reason: string) => {
+    try {
+      if (sessionStorage.getItem(RELOAD_FLAG)) return;
+      sessionStorage.setItem(RELOAD_FLAG, "1");
+      // eslint-disable-next-line no-console
+      console.warn("[chunk-recovery] hard reloading:", reason);
+      if ("serviceWorker" in navigator) {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(regs.map((r) => r.unregister()));
+      }
+      if ("caches" in window) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map((k) => caches.delete(k)));
+      }
+    } finally {
+      window.location.reload();
+    }
+  };
+
+  // Clear the guard once we land on a fresh boot without errors.
+  window.addEventListener("load", () => {
+    setTimeout(() => sessionStorage.removeItem(RELOAD_FLAG), 5000);
+  });
+
+  window.addEventListener("error", (e) => {
+    const msg = (e?.message || "") + " " + (e?.error?.message || "");
+    if (isChunkLoadError(msg)) void recover(msg);
+  });
+  window.addEventListener("unhandledrejection", (e) => {
+    const reason: any = e?.reason;
+    const msg = typeof reason === "string" ? reason : reason?.message || "";
+    if (isChunkLoadError(msg)) void recover(msg);
+  });
+} catch {
+  /* non-browser */
+}
+
 // Record PWA install moment (analytics-only flag). The welcome tour itself is
 // gated by `useFeatureTourGate`, which already plays once on first launch and
 // will naturally play after install if the user hadn't visited the web app
