@@ -287,6 +287,17 @@ const FinanceBudget = () => {
         )}
 
         {/* Overall progress */}
+        {!isMemberView && budgetRows.length > 0 && totalPlanned > 0 && (
+          <BudgetHealthCard
+            monthLabel={monthLabel}
+            totalPlanned={totalPlanned}
+            totalActual={totalActual}
+            onTrack={healthCounts.onTrack}
+            atRisk={healthCounts.atRisk}
+            overBudget={healthCounts.over}
+          />
+        )}
+
         <Card>
           <CardContent className="p-4 space-y-2">
             <div className="flex justify-between text-sm">
