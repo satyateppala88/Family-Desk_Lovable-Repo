@@ -382,6 +382,7 @@ export const useFinanceAnnualBudget = (householdId: string | null, year: number)
       for (const cat of cats) {
         const row = ensure(cat);
         const annual = annualRows.find((b) => b.category === cat);
+        if (annual) row.isAnnual = true;
         const exactsByMonthIdx = new Map<number, number>(); // 0..11 -> amount
         exactRows
           .filter((b) => b.category === cat)
@@ -433,6 +434,7 @@ export const useFinanceAnnualBudget = (householdId: string | null, year: number)
         monthlyPlanned,
         monthlyActual,
         rows,
+        annualCategoryKeys: Array.from(new Set(annualRows.map((b) => b.category))),
       };
     },
   });

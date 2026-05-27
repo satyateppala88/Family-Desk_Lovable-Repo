@@ -81,6 +81,8 @@ export interface AnnualBudgetRow {
   monthlyActual: number[];
   annualPlanned: number;
   annualActual: number;
+  /** True if the household explicitly set a yearly (annual) budget for this category. */
+  isAnnual?: boolean;
 }
 
 export interface AnnualBudgetData {
@@ -90,6 +92,8 @@ export interface AnnualBudgetData {
   monthlyPlanned: number[]; // length 12
   monthlyActual: number[];
   rows: AnnualBudgetRow[];
+  /** Category keys that have a true annual (budget_type='annual') budget set for this year. */
+  annualCategoryKeys: string[];
 }
 
 // ─── Category constants ──────────────────────────────────────
