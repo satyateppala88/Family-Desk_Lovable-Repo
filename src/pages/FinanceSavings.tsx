@@ -249,6 +249,32 @@ const FinanceSavings = () => {
           </Card>
         )}
 
+        {!isLoading && (activeGoals.length > 0 || completedGoals.length > 0) && (
+          <div className="rounded-xl p-4 bg-[hsl(165_42%_92%)]">
+            <p className="text-[11px] text-muted-foreground">Total saved across all goals</p>
+            <p className="text-2xl font-semibold tabular-nums mt-0.5">
+              <PrivateValue value={totalSavedCapped} />
+            </p>
+            <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[11px]">
+              <span className="text-muted-foreground">
+                Goals on track: <span className="font-semibold text-foreground">{onTrackCount}</span>
+              </span>
+              <span className="text-muted-foreground">
+                Behind: <span className="font-semibold text-foreground">{behindCount}</span>
+              </span>
+              <span className="text-muted-foreground">
+                Done: <span className="font-semibold text-foreground">{doneCount}</span>
+              </span>
+            </div>
+            <p className="text-[11px] mt-2 text-muted-foreground">
+              This month's contributions:{" "}
+              <span className="font-semibold text-foreground tabular-nums">
+                <PrivateValue value={thisMonthContribTotal} />
+              </span>
+            </p>
+          </div>
+        )}
+
         {isLoading ? (
           <div className="space-y-3">
             {[1,2].map(i => <Card key={i}><CardContent className="p-4 h-28" /></Card>)}
