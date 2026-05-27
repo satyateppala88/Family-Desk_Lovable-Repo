@@ -459,6 +459,22 @@ const FinanceBudget = () => {
                       </button>
                     )}
                   </div>
+                  {!isMemberView && (() => {
+                    const prev = prevSummary?.categoryBreakdown?.[row.category];
+                    if (prev === undefined || prev === 0) return null;
+                    const delta = row.actual - prev;
+                    if (delta === 0) return null;
+                    const up = delta > 0;
+                    return (
+                      <p className={cn(
+                        "text-[11px]",
+                        up ? "text-warning" : "text-success",
+                      )}>
+                        vs last month: {up ? "+" : "−"}
+                        <PrivateValue value={Math.abs(delta)} /> {up ? "↑" : "↓"}
+                      </p>
+                    );
+                  })()}
                   {!isMemberView && hasMultipleMembers && (categoryTotal[row.category] || 0) > 0 && (() => {
                     const expanded = !!expandedBreakdown[row.id];
                     const total = categoryTotal[row.category] || 0;
