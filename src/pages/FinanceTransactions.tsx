@@ -38,6 +38,7 @@ import { useMemberContributions } from "@/hooks/useMemberContributions";
 import { useAuth } from "@/contexts/AuthContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { TransactionAnalyticsPanel } from "@/components/finance/TransactionAnalyticsPanel";
 
 const FinanceTransactions = () => {
   const { householdId } = useHousehold();
@@ -65,6 +66,17 @@ const FinanceTransactions = () => {
     paidBy: paidByFilter,
     search: search || undefined,
   });
+  // Unfiltered current-month + prev-month transactions for the analytics panel.
+  const { data: monthAllTx } = useFinanceTransactions(householdId, {
+    month: allTime ? undefined : month,
+  });
+  const prevMonth = (() => {
+    if (!month) return undefined;
+    const [y, m] = month.split("-").map(Number);
+    const pm = m === 1 ? `${y - 1}-12` : `${y}-${String(m - 1).padStart(2, "0")}`;
+    return pm;
+  })();
+  const { data: prevMonthTx } = useFinanceTransactions(householdId, { month: prevMonth });
   const { data: memberTotals } = useMemberContributions(householdId, month);
   const showMembersTab = (members?.length ?? 0) >= 2;
 
@@ -199,6 +211,55 @@ const FinanceTransactions = () => {
         </div>
         {!allTime && (
           <p className="text-[11px] text-muted-foreground -mt-2">Showing transactions for {monthLabel}</p>
+        )}
+
+        {/* Analytics panel — only on list view, not on All time */}
+        {!allTime && (monthAllTx?.length ?? 0) > 0 && (
+          <TransactionAnalyticsPanel
+            currentMonthTx={monthAllTx || []}
+            prevMonthTx={prevMonthTx || []}
+            members={members || []}
+            monthLabel={monthLabel}
+            month={month}
+            activeCategory={catFilter !== "all" ? catFilter : undefined}
+            activeMember={paidByFilter !== "all" ? paidByFilter : undefined}
+            onSelectCategory={(c) => setCatFilter((cur) => (cur === c ? "all" : c))}
+            onSelectMember={(m) => setPaidByFilter((cur) => (cur === m ? "all" : m))}
+          />
+        )}
+
+        {/* Active filter chips */}
+        {(catFilter !== "all" || paidByFilter !== "all") && (
+          <div className="flex flex-wrap gap-2">
+            {catFilter !== "all" && (
+              <Badge variant="secondary" className="gap-1 pl-2 pr-1 py-1">
+                <span className="text-[11px]">Filtered: {resolveCategoryLabel(catFilter, CATEGORY_LABELS, customCats)}</span>
+                <button
+                  type="button"
+                  aria-label="Clear category filter"
+                  className="ml-1 rounded-full hover:bg-background/60 p-0.5"
+                  onClick={() => setCatFilter("all")}
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </Badge>
+            )}
+            {paidByFilter !== "all" && (
+              <Badge variant="secondary" className="gap-1 pl-2 pr-1 py-1">
+                <span className="text-[11px]">
+                  Filtered: {(members || []).find((m) => m.userId === paidByFilter)?.displayName || "Member"}
+                </span>
+                <button
+                  type="button"
+                  aria-label="Clear member filter"
+                  className="ml-1 rounded-full hover:bg-background/60 p-0.5"
+                  onClick={() => setPaidByFilter("all")}
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </Badge>
+            )}
+          </div>
         )}
 
         {/* Filters */}
