@@ -8,6 +8,37 @@ import { processExpiredPermissionReminds } from "@/lib/launchStorage";
 try { processExpiredPermissionReminds(); } catch { /* ignore */ }
 
 // ---------------------------------------------------------------------------
+// Disable pinch-zoom + double-tap zoom (iOS Safari ignores viewport meta).
+// ---------------------------------------------------------------------------
+try {
+  const preventGesture = (e: Event) => e.preventDefault();
+  document.addEventListener("gesturestart", preventGesture, { passive: false });
+  document.addEventListener("gesturechange", preventGesture, { passive: false });
+  document.addEventListener("gestureend", preventGesture, { passive: false });
+
+  let lastTouchEnd = 0;
+  document.addEventListener(
+    "touchend",
+    (e) => {
+      const now = Date.now();
+      if (now - lastTouchEnd <= 300) e.preventDefault();
+      lastTouchEnd = now;
+    },
+    { passive: false },
+  );
+
+  document.addEventListener(
+    "touchmove",
+    (e: TouchEvent) => {
+      if (e.touches.length > 1) e.preventDefault();
+    },
+    { passive: false },
+  );
+} catch {
+  /* non-browser */
+}
+
+// ---------------------------------------------------------------------------
 // PWA / Service Worker safety net
 // ---------------------------------------------------------------------------
 // `vite-plugin-pwa` auto-registers a service worker in production builds.
