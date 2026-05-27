@@ -25,6 +25,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { formatINR } from "@/lib/formatINR";
 import { PrivateValue, PrivateText } from "@/components/shared/PrivateValue";
 import { SavingsGoalDialog } from "@/components/finance/SavingsGoalDialog";
+import { SavingsCategoryDashboard } from "@/components/finance/SavingsCategoryDashboard";
 import { format, differenceInDays, addMonths } from "date-fns";
 import { cn } from "@/lib/utils";
 import { formatTimeLeft } from "@/lib/formatTimeLeft";
@@ -273,6 +274,10 @@ const FinanceSavings = () => {
               </span>
             </p>
           </div>
+        )}
+
+        {!isLoading && (contributions?.length || 0) > 0 && (
+          <SavingsCategoryDashboard householdId={householdId} />
         )}
 
         {isLoading ? (
