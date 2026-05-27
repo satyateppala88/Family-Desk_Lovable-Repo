@@ -10,6 +10,8 @@ export interface MonthlyAggregate {
   savings: number;
   savingsRate: number; // %
   byCategory: Record<string, number>;
+  contributions: number; // sum of type='savings' rows
+  bySavingsCategory: Record<string, number>;
   count: number;
 }
 
@@ -50,6 +52,8 @@ export const useFinanceTrends = (
           savings: 0,
           savingsRate: 0,
           byCategory: {},
+          contributions: 0,
+          bySavingsCategory: {},
           count: 0,
         });
       }
@@ -57,7 +61,7 @@ export const useFinanceTrends = (
 
       for (const row of (data || []) as Array<{
         amount: number | string;
-        type: "income" | "expense";
+        type: "income" | "expense" | "savings";
         category: string;
         transaction_date: string;
       }>) {
@@ -65,8 +69,13 @@ export const useFinanceTrends = (
         const bucket = byKey.get(key);
         if (!bucket) continue;
         const amt = Number(row.amount);
-        if (row.type === "income") bucket.income += amt;
-        else {
+        if (row.type === "income") {
+          bucket.income += amt;
+        } else if (row.type === "savings") {
+          bucket.contributions += amt;
+          bucket.bySavingsCategory[row.category] =
+            (bucket.bySavingsCategory[row.category] || 0) + amt;
+        } else {
           bucket.expenses += amt;
           bucket.byCategory[row.category] = (bucket.byCategory[row.category] || 0) + amt;
         }
