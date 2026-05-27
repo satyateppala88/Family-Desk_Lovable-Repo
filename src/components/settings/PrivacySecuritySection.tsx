@@ -6,13 +6,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { usePrivacyMode } from "@/contexts/PrivacyModeContext";
 import {
-  clearStoredHash,
+  clearPin,
   getIdleTimeout,
-  hashPin,
   IdleTimeout,
   isPinEnabled,
   setIdleTimeout,
-  setStoredHash,
+  setPin,
   verifyPin,
 } from "@/lib/financePin";
 import { PinKeypad } from "@/components/finance/PinKeypad";
@@ -52,11 +51,17 @@ export const PrivacySecuritySection = () => {
   };
 
   const finishSet = async (pin: string) => {
-    const hash = await hashPin(pin);
-    setStoredHash(hash);
-    setPinEnabled(true);
-    setFlow(null);
-    toast.success("Finance PIN saved");
+    try {
+      await setPin(pin);
+      setPinEnabled(true);
+      setFlow(null);
+      toast.success("Finance PIN saved", {
+        description: "Your new PIN is now active on all your devices.",
+      });
+    } catch (e) {
+      setErrorMsg("Couldn't save PIN. Please try again.");
+      triggerShake();
+    }
   };
 
   const handlePinComplete = async (pin: string) => {
@@ -113,10 +118,15 @@ export const PrivacySecuritySection = () => {
         triggerShake();
         return;
       }
-      clearStoredHash();
-      setPinEnabled(false);
-      setFlow(null);
-      toast.success("Finance PIN disabled");
+      try {
+        await clearPin();
+        setPinEnabled(false);
+        setFlow(null);
+        toast.success("Finance PIN disabled");
+      } catch {
+        setErrorMsg("Couldn't disable PIN. Please try again.");
+        triggerShake();
+      }
     }
   };
 
@@ -199,7 +209,7 @@ export const PrivacySecuritySection = () => {
             <DialogHeader>
               <DialogTitle>{flowTitle()}</DialogTitle>
               <DialogDescription>
-                Your PIN is stored only on this device.
+                Your PIN syncs securely across all your devices.
               </DialogDescription>
             </DialogHeader>
             <div className="py-2">
