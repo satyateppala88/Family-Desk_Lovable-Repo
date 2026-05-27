@@ -394,15 +394,15 @@ const FinanceTransactions = () => {
                       {tx.paid_by && tx.paid_by !== user?.id && memberById.get(tx.paid_by) && (
                         <span className="inline-flex items-center gap-1">
                           <span>·</span>
-                          <Avatar className="h-4 w-4">
+                          <Avatar className="h-6 w-6">
                             {memberById.get(tx.paid_by)?.avatarUrl && (
                               <AvatarImage src={memberById.get(tx.paid_by)!.avatarUrl!} alt="" />
                             )}
-                            <AvatarFallback className="text-[8px]">
+                            <AvatarFallback className="text-[10px]">
                               {initialsOf(memberById.get(tx.paid_by)!.displayName)}
                             </AvatarFallback>
                           </Avatar>
-                          <span>{memberById.get(tx.paid_by)!.displayName.split(" ")[0]}</span>
+                          <span>{memberById.get(tx.paid_by)!.displayName}</span>
                         </span>
                       )}
                     </div>
