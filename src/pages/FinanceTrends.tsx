@@ -39,7 +39,7 @@ const FinanceTrends = () => {
   // Top 5 categories across the window
   const totalsByCategory: Record<string, number> = {};
   trends?.forEach((m) => {
-    Object.entries(m.byCategory).forEach(([k, v]) => {
+    Object.entries(m.byCategory || {}).forEach(([k, v]) => {
       totalsByCategory[k] = (totalsByCategory[k] || 0) + (v as number);
     });
   });
@@ -51,14 +51,14 @@ const FinanceTrends = () => {
   // Build per-month rows for stacked-category chart
   const stackedData = (trends || []).map((m) => {
     const row: Record<string, any> = { label: m.label };
-    topCats.forEach((c) => (row[c] = m.byCategory[c] || 0));
+    topCats.forEach((c) => (row[c] = (m.byCategory || {})[c] || 0));
     return row;
   });
 
   // Savings categories across the window
   const savingsTotalsByCategory: Record<string, number> = {};
   trends?.forEach((m) => {
-    Object.entries(m.bySavingsCategory).forEach(([k, v]) => {
+    Object.entries(m.bySavingsCategory || {}).forEach(([k, v]) => {
       savingsTotalsByCategory[k] = (savingsTotalsByCategory[k] || 0) + (v as number);
     });
   });
@@ -68,7 +68,7 @@ const FinanceTrends = () => {
     .map(([k]) => k);
   const stackedSavingsData = (trends || []).map((m) => {
     const row: Record<string, any> = { label: m.label };
-    topSavingsCats.forEach((c) => (row[c] = m.bySavingsCategory[c] || 0));
+    topSavingsCats.forEach((c) => (row[c] = (m.bySavingsCategory || {})[c] || 0));
     return row;
   });
 
