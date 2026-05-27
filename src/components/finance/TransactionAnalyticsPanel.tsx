@@ -1,9 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
-import { ChevronDown, ChevronUp, Sparkles } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { CATEGORY_LABELS } from "@/hooks/finance";
 import type { FinanceTransaction } from "@/hooks/finance";
 import { resolveCategoryLabel } from "@/components/finance/CategorySelect";
@@ -45,23 +44,8 @@ export const TransactionAnalyticsPanel = ({
   onSelectMember,
 }: Props) => {
   const { categories: customCats } = useCustomCategories("transaction");
-  const [collapsed, setCollapsed] = useState(false);
-  const [scrollCollapsed, setScrollCollapsed] = useState(false);
   const [tab, setTab] = useState<"category" | "member" | "week">("category");
-  const [showAllCats, setShowAllCats] = useState(false);
-  const sentinelRef = useRef<HTMLDivElement | null>(null);
-
-  // Auto-collapse on scroll past the panel.
-  useEffect(() => {
-    const node = sentinelRef.current;
-    if (!node) return;
-    const obs = new IntersectionObserver(
-      ([entry]) => setScrollCollapsed(!entry.isIntersecting),
-      { rootMargin: "-80px 0px 0px 0px", threshold: 0 }
-    );
-    obs.observe(node);
-    return () => obs.disconnect();
-  }, []);
+  const [showAllCats, setShowAllCats] = useState(true);
 
   const expenses = useMemo(
     () => currentMonthTx.filter((t) => t.type === "expense"),
@@ -164,34 +148,18 @@ export const TransactionAnalyticsPanel = ({
     return null;
   }, [expenses, categoryRows, prevMonthTx, memberRows, memberTotal, weekBuckets, weekAvg, peakWeekIdx, totalSpent, customCats]);
 
-  const isHidden = collapsed || scrollCollapsed;
-
   return (
-    <>
-      <div ref={sentinelRef} aria-hidden className="h-0" />
-      <Card className="overflow-hidden">
-        <button
-          type="button"
-          onClick={() => setCollapsed((v) => !v)}
-          className="w-full flex items-center justify-between p-3 hover:bg-accent/30 transition-colors"
-        >
-          <div className="flex items-center gap-2 text-left">
-            <Sparkles className="w-4 h-4 text-primary" />
-            <div>
-              <p className="text-xs text-muted-foreground leading-tight">{monthLabel} spend</p>
-              <p className="text-sm font-semibold tabular-nums leading-tight">
-                <PrivateValue value={totalSpent} />
-                {insight && isHidden && (
-                  <span className="ml-2 font-normal text-muted-foreground">· {insight}</span>
-                )}
-              </p>
-            </div>
-          </div>
-          {isHidden ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronUp className="w-4 h-4 text-muted-foreground" />}
-        </button>
-
-        {!isHidden && (
-          <CardContent className="pt-0 pb-4 space-y-4">
+    <Card className="overflow-hidden">
+      <div className="flex items-center gap-2 p-3 border-b border-border/40">
+        <Sparkles className="w-4 h-4 text-primary" />
+        <div>
+          <p className="text-xs text-muted-foreground leading-tight">{monthLabel} spend</p>
+          <p className="text-sm font-semibold tabular-nums leading-tight">
+            <PrivateValue value={totalSpent} />
+          </p>
+        </div>
+      </div>
+      <CardContent className="pt-4 pb-4 space-y-4">
             <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
               <TabsList className="grid grid-cols-3 w-full h-9">
                 <TabsTrigger value="category" className="text-xs">By Category</TabsTrigger>
@@ -373,10 +341,8 @@ export const TransactionAnalyticsPanel = ({
                 <p className="text-xs text-foreground/90 leading-snug">{insight}</p>
               </div>
             )}
-          </CardContent>
-        )}
-      </Card>
-    </>
+      </CardContent>
+    </Card>
   );
 };
 
