@@ -79,6 +79,7 @@ const FinanceTransactions = () => {
   const { data: prevMonthTx } = useFinanceTransactions(householdId, { month: prevMonth });
   const { data: memberTotals } = useMemberContributions(householdId, month);
   const showMembersTab = (members?.length ?? 0) >= 2;
+  const hasInsights = !allTime && (monthAllTx?.length ?? 0) > 0;
 
   const memberById = new Map((members || []).map((m) => [m.userId, m]));
   const initialsOf = (name: string) =>
@@ -136,16 +137,35 @@ const FinanceTransactions = () => {
           </Button>
         </div>
 
-        {showMembersTab && (
-          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "list" | "members")}>
-            <TabsList className="grid grid-cols-2 w-full sm:w-auto">
-              <TabsTrigger value="list">All transactions</TabsTrigger>
-              <TabsTrigger value="members">By Member</TabsTrigger>
+        {(showMembersTab || hasInsights) && (
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)}>
+            <TabsList className={cn("grid w-full sm:w-auto", showMembersTab && hasInsights ? "grid-cols-3" : "grid-cols-2") }>
+              <TabsTrigger value="list">Transactions</TabsTrigger>
+              {hasInsights && <TabsTrigger value="insights">Insights</TabsTrigger>}
+              {showMembersTab && <TabsTrigger value="members">By Member</TabsTrigger>}
             </TabsList>
           </Tabs>
         )}
 
-        {activeTab === "members" && showMembersTab ? (
+        {activeTab === "insights" && hasInsights ? (
+          <TransactionAnalyticsPanel
+            currentMonthTx={monthAllTx || []}
+            prevMonthTx={prevMonthTx || []}
+            members={members || []}
+            monthLabel={monthLabel}
+            month={month}
+            activeCategory={catFilter !== "all" ? catFilter : undefined}
+            activeMember={paidByFilter !== "all" ? paidByFilter : undefined}
+            onSelectCategory={(c) => {
+              setCatFilter((cur) => (cur === c ? "all" : c));
+              setActiveTab("list");
+            }}
+            onSelectMember={(m) => {
+              setPaidByFilter((cur) => (cur === m ? "all" : m));
+              setActiveTab("list");
+            }}
+          />
+        ) : activeTab === "members" && showMembersTab ? (
           <div className="space-y-3">
             <p className="text-[11px] text-muted-foreground">Totals for {monthLabel}</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
