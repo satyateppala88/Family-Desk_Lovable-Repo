@@ -168,6 +168,54 @@ const FinanceSavings = () => {
   const redGoalIds = activeGoals.filter((g) => signalsByGoal.get(g.id)?.kind === "review").map((g) => g.id);
   const showNudge = !nudgeDismissed && redGoalIds.length > 0;
 
+  // ── Portfolio overview math ────────────────────────────────────
+  const now = new Date();
+  const currentMonthKey = `${now.getFullYear()}-${now.getMonth()}`;
+
+  const monthlyContribTotal = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const c of contributions || []) {
+      const d = new Date(c.transaction_date);
+      const key = `${d.getFullYear()}-${d.getMonth()}`;
+      map.set(key, (map.get(key) || 0) + Number(c.amount || 0));
+    }
+    return map;
+  }, [contributions]);
+
+  const thisMonthContribTotal = monthlyContribTotal.get(currentMonthKey) || 0;
+
+  // Per-goal monthly buckets — used for the sparkline and "last month" copy.
+  const monthlyByGoal = useMemo(() => {
+    const out = new Map<string, Map<string, number>>();
+    for (const c of contributions || []) {
+      if (!c.savings_goal_id) continue;
+      const d = new Date(c.transaction_date);
+      const key = `${d.getFullYear()}-${d.getMonth()}`;
+      const inner = out.get(c.savings_goal_id) || new Map<string, number>();
+      inner.set(key, (inner.get(key) || 0) + Number(c.amount || 0));
+      out.set(c.savings_goal_id, inner);
+    }
+    return out;
+  }, [contributions]);
+
+  // Cap each goal's contribution to its target so overage doesn't inflate totals.
+  const totalSavedCapped =
+    activeGoals.reduce((sum, g) => {
+      const linked = sumContrib(g.id);
+      const effective = Math.max(Number(g.current_amount), linked);
+      return sum + Math.min(effective, Number(g.target_amount));
+    }, 0) +
+    completedGoals.reduce((sum, g) => sum + Number(g.target_amount), 0);
+
+  const onTrackCount = activeGoals.filter((g) => signalsByGoal.get(g.id)?.kind === "ontrack").length;
+  const behindCount = activeGoals.filter((g) => {
+    const k = signalsByGoal.get(g.id)?.kind;
+    return k === "behind" || k === "review";
+  }).length;
+  const doneCount =
+    completedGoals.length +
+    activeGoals.filter((g) => signalsByGoal.get(g.id)?.kind === "reached").length;
+
   const dismissNudge = () => {
     sessionStorage.setItem("savings-nudge-dismissed", "1");
     setNudgeDismissed(true);
