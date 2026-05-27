@@ -5,6 +5,15 @@
 
 /* Family Desk — Warm, calm, premium design system */
 
+/* Disable pinch-zoom, double-tap zoom, and rubber-band overscroll across the app. */
+html,
+body {
+  touch-action: pan-x pan-y;
+  overscroll-behavior: none;
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
+
 @layer base {
   :root {
     /* ─── FamilyDesk raw palette (hex) ─── */
