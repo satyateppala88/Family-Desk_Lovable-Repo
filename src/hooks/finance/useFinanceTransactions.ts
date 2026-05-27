@@ -18,6 +18,7 @@ export const useFinanceTransactions = (
         .select("*")
         .eq("household_id", householdId!)
         .order("transaction_date", { ascending: false })
+        .order("created_at", { ascending: false })
         .limit(500);
 
       if (filters?.month) {
