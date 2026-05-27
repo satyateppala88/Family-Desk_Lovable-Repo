@@ -1,0 +1,1 @@
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.user_finance_pin TO authenticated; GRANT ALL ON public.user_finance_pin TO service_role;
