@@ -14,11 +14,11 @@ import { useEnabledProducts, isProductEnabled, ProductName } from "@/hooks/useEn
 import { useHouseholdPreferences } from "@/hooks/useHouseholdPreferences";
 import { MODULE_SETUP_KEYS, isModuleSetupComplete } from "@/lib/moduleSetup";
 import { OnboardingProgressIndicator } from "@/components/onboarding/OnboardingProgressIndicator";
-import { FestivalBanner } from "@/components/dashboard/FestivalBanner";
 import { TodaySnapshot } from "@/components/dashboard/TodaySnapshot";
 import { QuickActionsRow } from "@/components/dashboard/QuickActionsRow";
-import { DidYouKnowCard } from "@/components/dashboard/DidYouKnowCard";
 import { WeeklyInsightCard } from "@/components/dashboard/WeeklyInsightCard";
+import { DashboardNudge } from "@/components/dashboard/DashboardNudge";
+import { NotificationsBlockedBanner } from "@/components/dashboard/NotificationsBlockedBanner";
 import { InstallAppButton } from "@/components/install/InstallAppButton";
 import { useDashboardSnapshot } from "@/hooks/useDashboardSnapshot";
 import { format } from "date-fns";
@@ -106,6 +106,11 @@ const Index = () => {
     if (!householdId) return;
     if (hasAskedPermission("notifications")) return;
     if (isPermissionRemindActive("notifications")) return;
+    // If notifications are already OS-denied, don't fire the toast — the
+    // NotificationsBlockedBanner below the header surfaces that quietly.
+    if (typeof Notification !== "undefined" && Notification.permission === "denied") {
+      return;
+    }
     const t = setTimeout(() => {
       void ensurePermission("notifications", "dashboard-first-load");
     }, 500);
@@ -170,9 +175,8 @@ const Index = () => {
     <div className="page-container">
       <Header />
       <main className="page-content animate-fade-in">
+        <NotificationsBlockedBanner />
         <PendingInvitationBanner />
-
-        <FestivalBanner />
 
         <PermissionPrimerDialog {...primerProps} />
 
@@ -218,14 +222,14 @@ const Index = () => {
           </p>
         </div>
 
+        {/* Zone 2 — single contextual nudge (festival / overdue / budget / tip) */}
+        <DashboardNudge householdId={householdId} />
+
         {/* Today's snapshot — live status cards */}
         {householdId && <TodaySnapshot householdId={householdId} />}
 
         {/* Weekly AI-generated insight */}
         {householdId && <WeeklyInsightCard householdId={householdId} />}
-
-        {/* Rotating discovery tip */}
-        <DidYouKnowCard />
 
         {/* PWA install CTA — auto-hides if already installed, unsupported,
             or running inside the Lovable preview iframe. */}
