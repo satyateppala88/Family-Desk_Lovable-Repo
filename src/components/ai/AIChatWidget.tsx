@@ -340,14 +340,14 @@ export const AIChatWidget = () => {
               {/* Prompt chips */}
               <div className="flex flex-wrap gap-1.5 pl-10">
                 {promptChips.map(chip => (
-                  <Badge
+                  <button
                     key={chip}
-                    variant="outline"
-                    className="text-xs cursor-pointer hover:bg-primary/10 hover:border-primary/30 transition-colors py-1 px-2.5"
+                    type="button"
+                    className="text-xs text-left rounded-md bg-muted/40 hover:bg-primary/5 transition-colors py-1.5 pl-2.5 pr-3 border-l-[3px] border-primary/80"
                     onClick={() => sendMessage(chip)}
                   >
                     {chip}
-                  </Badge>
+                  </button>
                 ))}
               </div>
             </div>

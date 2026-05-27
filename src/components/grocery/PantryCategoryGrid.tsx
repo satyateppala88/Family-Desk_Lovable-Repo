@@ -70,23 +70,23 @@ export const PantryCategoryGrid = ({
   }, [categories, categoryStats]);
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
       {sortedCategories.map((category) => {
         const stats = categoryStats[category.name] || { count: 0, lowStock: 0, expiring: 0, expired: 0 };
         
         return (
           <Card
             key={category.id}
-            className="p-6 cursor-pointer hover:bg-accent/50 transition-colors border-2 hover:border-primary"
+            className="px-4 py-5 cursor-pointer hover:bg-accent/40 transition-colors"
             onClick={() => onSelectCategory(category.name)}
           >
-            <div className="text-center space-y-3">
+            <div className="text-center space-y-2">
               {category.icon && (
-                <div className="text-4xl mb-2">{category.icon}</div>
+                <div className="text-[32px] leading-none mb-2">{category.icon}</div>
               )}
               <div>
-                <h3 className="font-semibold text-lg">{category.name}</h3>
-                <p className="text-sm text-muted-foreground">
+                <h3 className="font-medium text-[13px] leading-tight">{category.name}</h3>
+                <p className="text-[12px] text-muted-foreground mt-0.5">
                   {stats.count} item{stats.count !== 1 ? 's' : ''}
                 </p>
               </div>
