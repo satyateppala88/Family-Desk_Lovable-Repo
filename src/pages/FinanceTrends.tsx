@@ -4,7 +4,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { PageLoading } from "@/components/ui/page-loading";
 import { Badge } from "@/components/ui/badge";
 import { useHousehold } from "@/hooks/useHousehold";
-import { useFinanceRealtime, CATEGORY_LABELS } from "@/hooks/finance";
+import { useFinanceRealtime, CATEGORY_LABELS, SAVINGS_CATEGORY_LABELS } from "@/hooks/finance";
 import { useFinanceTrends } from "@/hooks/useFinanceTrends";
 import { useCustomCategories } from "@/hooks/useCustomCategories";
 import { resolveCategoryLabel } from "@/components/finance/CategorySelect";
@@ -52,6 +52,23 @@ const FinanceTrends = () => {
   const stackedData = (trends || []).map((m) => {
     const row: Record<string, any> = { label: m.label };
     topCats.forEach((c) => (row[c] = m.byCategory[c] || 0));
+    return row;
+  });
+
+  // Savings categories across the window
+  const savingsTotalsByCategory: Record<string, number> = {};
+  trends?.forEach((m) => {
+    Object.entries(m.bySavingsCategory).forEach(([k, v]) => {
+      savingsTotalsByCategory[k] = (savingsTotalsByCategory[k] || 0) + (v as number);
+    });
+  });
+  const topSavingsCats = Object.entries(savingsTotalsByCategory)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 5)
+    .map(([k]) => k);
+  const stackedSavingsData = (trends || []).map((m) => {
+    const row: Record<string, any> = { label: m.label };
+    topSavingsCats.forEach((c) => (row[c] = m.bySavingsCategory[c] || 0));
     return row;
   });
 
@@ -108,7 +125,7 @@ const FinanceTrends = () => {
             {/* Income vs Expenses */}
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm">Income vs Expenses</CardTitle>
+                <CardTitle className="text-sm">Income, Expenses & Savings</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="h-56 -mx-2">
@@ -124,6 +141,7 @@ const FinanceTrends = () => {
                       <Legend wrapperStyle={{ fontSize: 11 }} />
                       <Bar dataKey="income" name="Income" fill="hsl(var(--success))" radius={[4, 4, 0, 0]} />
                       <Bar dataKey="expenses" name="Expenses" fill="hsl(var(--module-finance))" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="contributions" name="Savings" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -173,6 +191,34 @@ const FinanceTrends = () => {
                         <Legend wrapperStyle={{ fontSize: 11 }} formatter={(v) => resolveCategoryLabel(v as string, CATEGORY_LABELS, customCats)} />
                         {topCats.map((c, i) => (
                           <Bar key={c} dataKey={c} stackId="a" fill={palette[i % palette.length]} radius={i === topCats.length - 1 ? [4, 4, 0, 0] : 0} />
+                        ))}
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Savings by category */}
+            {topSavingsCats.length > 0 && (
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm">Savings by category</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-56 -mx-2">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={stackedSavingsData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+                        <XAxis dataKey="label" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+                        <YAxis tickFormatter={(v) => moneyAxis(v)} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} width={50} />
+                        <Tooltip
+                          contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }}
+                          formatter={(v: number) => moneyTip(v)}
+                        />
+                        <Legend wrapperStyle={{ fontSize: 11 }} formatter={(v) => SAVINGS_CATEGORY_LABELS[v as string] || (v as string)} />
+                        {topSavingsCats.map((c, i) => (
+                          <Bar key={c} dataKey={c} stackId="s" fill={palette[i % palette.length]} radius={i === topSavingsCats.length - 1 ? [4, 4, 0, 0] : 0} />
                         ))}
                       </BarChart>
                     </ResponsiveContainer>
