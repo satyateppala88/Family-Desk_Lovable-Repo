@@ -39,6 +39,7 @@ import { BudgetSubNav } from "@/components/finance/BudgetSubNav";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { BudgetHealthCard } from "@/components/finance/BudgetHealthCard";
 
 const FinanceBudget = () => {
   const { householdId } = useHousehold();
@@ -47,6 +48,13 @@ const FinanceBudget = () => {
   const { month: currentMonth, label: monthLabel } = useSelectedMonth();
   const { data: budgets, isLoading } = useFinanceBudgets(householdId, currentMonth);
   const { data: summary } = useFinanceMonthlySummary(householdId, currentMonth);
+  const prevMonth = useMemo(() => {
+    const [y, m] = currentMonth.split("-").map(Number);
+    const py = m === 1 ? y - 1 : y;
+    const pm = m === 1 ? 12 : m - 1;
+    return `${py}-${String(pm).padStart(2, "0")}`;
+  }, [currentMonth]);
+  const { data: prevSummary } = useFinanceMonthlySummary(householdId, prevMonth);
   const { data: members } = useHouseholdMembers(householdId);
   const hasMultipleMembers = (members?.length ?? 0) >= 2;
   const [selectedPaidBy, setSelectedPaidBy] = useState<string>("household");
@@ -146,6 +154,20 @@ const FinanceBudget = () => {
     const over = actual > Number(b.planned_amount);
     return { ...b, actual, pct, over };
   }).sort((a, b) => b.pct - a.pct);
+
+  // Health-score buckets (household view only — member toggles re-use the same thresholds against household limits).
+  const healthCounts = useMemo(() => {
+    let onTrack = 0, atRisk = 0, over = 0;
+    for (const r of budgetRows) {
+      const planned = Number(r.planned_amount);
+      if (planned <= 0) continue;
+      const ratio = r.actual / planned;
+      if (ratio > 1) over++;
+      else if (ratio >= 0.8) atRisk++;
+      else onTrack++;
+    }
+    return { onTrack, atRisk, over };
+  }, [budgetRows]);
 
   // All available expense categories (built-in minus income + custom)
   const incomeKeys = new Set(["salary", "freelance", "investment_returns"]);
