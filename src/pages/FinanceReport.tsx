@@ -9,6 +9,7 @@ import { useMonthlyReport } from "@/hooks/useMonthlyReport";
 import { useReportTagline } from "@/hooks/useReportTagline";
 import { ReportCard } from "@/components/finance/ReportCard";
 import { ReportShareButton } from "@/components/finance/ReportShareButton";
+import { MonthlyReportInsights } from "@/components/finance/MonthlyReportInsights";
 import { format, addMonths, parse, startOfMonth } from "date-fns";
 
 const FinanceReport = () => {
@@ -61,7 +62,10 @@ const FinanceReport = () => {
             <Skeleton className="h-48 w-full rounded-2xl" />
           </div>
         ) : (
-          <ReportCard ref={cardRef} report={report} tagline={tagline || ""} />
+          <>
+            <ReportCard ref={cardRef} report={report} tagline={tagline || ""} />
+            <MonthlyReportInsights month={month} />
+          </>
         )}
       </main>
     </div>
