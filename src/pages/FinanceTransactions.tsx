@@ -233,21 +233,6 @@ const FinanceTransactions = () => {
           <p className="text-[11px] text-muted-foreground -mt-2">Showing transactions for {monthLabel}</p>
         )}
 
-        {/* Analytics panel — only on list view, not on All time */}
-        {!allTime && (monthAllTx?.length ?? 0) > 0 && (
-          <TransactionAnalyticsPanel
-            currentMonthTx={monthAllTx || []}
-            prevMonthTx={prevMonthTx || []}
-            members={members || []}
-            monthLabel={monthLabel}
-            month={month}
-            activeCategory={catFilter !== "all" ? catFilter : undefined}
-            activeMember={paidByFilter !== "all" ? paidByFilter : undefined}
-            onSelectCategory={(c) => setCatFilter((cur) => (cur === c ? "all" : c))}
-            onSelectMember={(m) => setPaidByFilter((cur) => (cur === m ? "all" : m))}
-          />
-        )}
-
         {/* Active filter chips */}
         {(catFilter !== "all" || paidByFilter !== "all") && (
           <div className="flex flex-wrap gap-2">
