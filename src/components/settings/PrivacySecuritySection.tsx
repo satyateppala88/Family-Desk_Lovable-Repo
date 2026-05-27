@@ -209,7 +209,7 @@ export const PrivacySecuritySection = () => {
             <DialogHeader>
               <DialogTitle>{flowTitle()}</DialogTitle>
               <DialogDescription>
-                Your PIN is stored only on this device.
+                Your PIN syncs securely across all your devices.
               </DialogDescription>
             </DialogHeader>
             <div className="py-2">
