@@ -42,6 +42,7 @@ const LazyAIChatWidget = () => {
 import ScrollToTop from "./components/ScrollToTop";
 import { OfflineBanner } from "@/components/layout/OfflineBanner";
 import { SyncingIndicator } from "@/components/layout/SyncingIndicator";
+import { PullToRefresh } from "@/components/layout/PullToRefresh";
 import { createPersistedQueryClient } from "@/lib/query-client";
 import { NotificationPermissionPrompt } from "@/components/notifications/NotificationPermissionPrompt";
 import { NotificationActionRunner } from "@/components/notifications/NotificationActionRunner";
@@ -123,6 +124,7 @@ const App = () => (
       <Sonner />
       <OfflineBanner />
       <SyncingIndicator />
+      <PullToRefresh />
       <BrowserRouter>
 
           <AuthProvider>
