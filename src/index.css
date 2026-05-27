@@ -364,20 +364,29 @@
 
 /* ─── Typography helpers ─── */
 .text-label {
-  @apply text-xs font-medium uppercase tracking-wider text-muted-foreground;
+  @apply text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground;
 }
 
 .text-helper {
-  @apply text-xs text-muted-foreground;
+  @apply text-[12px] leading-[1.5] text-muted-foreground;
 }
 
 .text-metric {
-  @apply text-2xl font-bold tracking-tight text-foreground;
+  @apply text-[26px] font-bold tracking-[-0.02em] leading-[1.1] text-foreground tabular-nums;
 }
 
 .text-section-title {
   font-size: var(--subheading-size);
-  @apply font-semibold text-foreground;
+  @apply font-semibold tracking-[-0.01em] text-foreground;
+}
+
+/* Body / supporting copy helper */
+.text-body {
+  @apply text-[14px] leading-[1.55] text-foreground;
+}
+
+.text-body-muted {
+  @apply text-[14px] leading-[1.55] text-muted-foreground;
 }
 
 /* ─── Module tint utility classes ─── */
