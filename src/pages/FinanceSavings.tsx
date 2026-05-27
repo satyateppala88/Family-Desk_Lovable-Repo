@@ -341,9 +341,9 @@ const FinanceSavings = () => {
                         {goal.target_date && (
                           <p className={cn(
                             "text-[11px] mt-0.5",
-                            daysLeft !== null && daysLeft < 0 ? "text-destructive" : "text-muted-foreground"
+                            !isReached && daysLeft !== null && daysLeft < 0 ? "text-destructive" : "text-muted-foreground"
                           )}>
-                            {formatTimeLeft(daysLeft)}
+                            {isReached ? "Goal reached 🎉" : formatTimeLeft(daysLeft)}
                             {" · "}{format(new Date(goal.target_date), "dd/MM/yyyy")}
                           </p>
                         )}
@@ -381,10 +381,58 @@ const FinanceSavings = () => {
                         className={cn("h-2", isReached && "[&>*]:bg-[hsl(var(--success))]")}
                       />
                       <div className="flex justify-between text-[11px] text-muted-foreground">
-                        <span><PrivateValue value={effectiveAmount} /> saved</span>
-                        <span className="font-medium">{Math.round(pct)}% of <PrivateValue value={Number(goal.target_amount)} /></span>
+                        <span><PrivateValue value={Math.min(effectiveAmount, Number(goal.target_amount))} /> saved</span>
+                        <span className="font-medium">
+                          {isReached
+                            ? "Goal reached"
+                            : <>{Math.round(pct)}% of <PrivateValue value={Number(goal.target_amount)} /></>}
+                        </span>
                       </div>
                     </div>
+
+                    {(() => {
+                      // 6-month contribution sparkline
+                      const goalMonthly = monthlyByGoal.get(goal.id) || new Map<string, number>();
+                      const sparkMonths: { key: string; label: string; value: number }[] = [];
+                      for (let i = 5; i >= 0; i--) {
+                        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                        const key = `${d.getFullYear()}-${d.getMonth()}`;
+                        sparkMonths.push({ key, label: format(d, "MMM"), value: goalMonthly.get(key) || 0 });
+                      }
+                      const monthsWithData = sparkMonths.filter((s) => s.value > 0).length;
+                      if (monthsWithData < 2) return null;
+                      const max = Math.max(...sparkMonths.map((s) => s.value), 1);
+                      const lastMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+                      const lastMonthKey = `${lastMonthDate.getFullYear()}-${lastMonthDate.getMonth()}`;
+                      const lastMonthVal = goalMonthly.get(lastMonthKey) || 0;
+                      return (
+                        <div className="space-y-1">
+                          <div className="flex items-end gap-1 h-10">
+                            {sparkMonths.map((s) => (
+                              <div key={s.key} className="flex-1 flex flex-col items-center justify-end h-full" title={`${s.label}: ${formatINR(s.value)}`}>
+                                <div
+                                  className={cn(
+                                    "w-full rounded-sm",
+                                    s.value > 0 ? "bg-primary/70" : "bg-muted"
+                                  )}
+                                  style={{ height: `${s.value > 0 ? Math.max((s.value / max) * 100, 8) : 4}%` }}
+                                />
+                              </div>
+                            ))}
+                          </div>
+                          <div className="flex gap-1 px-0.5">
+                            {sparkMonths.map((s) => (
+                              <div key={s.key} className="flex-1 text-center text-[9px] text-muted-foreground">{s.label[0]}</div>
+                            ))}
+                          </div>
+                          <p className="text-[11px] text-muted-foreground">
+                            {lastMonthVal > 0
+                              ? <><PrivateValue value={lastMonthVal} /> added last month</>
+                              : "No contributions last month"}
+                          </p>
+                        </div>
+                      );
+                    })()}
 
                     {signal.kind === "needs_date" && (
                       <button
