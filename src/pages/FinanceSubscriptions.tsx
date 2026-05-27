@@ -169,7 +169,17 @@ const FinanceSubscriptions = () => {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5">
+                        <span
+                          aria-hidden="true"
+                          className="inline-block h-2 w-2 rounded-full shrink-0"
+                          style={{ backgroundColor: categoryDot(sub.category) }}
+                        />
                         <p className="text-sm font-medium truncate">{sub.name}</p>
+                        {nameCounts[sub.name.trim().toLowerCase()] > 1 && (
+                          <span className="text-[11px] text-muted-foreground tabular-nums shrink-0">
+                            · {formatINR(Number(sub.amount))}
+                          </span>
+                        )}
                         {!sub.is_active && <Badge variant="outline" className="text-[9px] px-1 py-0">Paused</Badge>}
                       </div>
                       <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground flex-wrap">
