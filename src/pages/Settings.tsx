@@ -19,6 +19,7 @@ import { EditHouseholdBasicsDialog } from "@/components/settings/EditHouseholdBa
 import { supabase } from "@/integrations/supabase/client";
 import { TermsSection, PrivacySection } from "@/components/settings/LegalDocsSection";
 import { PrivacySecuritySection } from "@/components/settings/PrivacySecuritySection";
+import { AppMaintenanceSection } from "@/components/settings/AppMaintenanceSection";
 import { ModulePreferencesSection } from "@/components/settings/ModulePreferencesSection";
 import { SetupProgressCard } from "@/components/settings/SetupProgressCard";
 import { AvatarUploader } from "@/components/avatar/AvatarUploader";
@@ -313,6 +314,8 @@ export const Settings = () => {
           )}
 
           <PrivacySecuritySection />
+
+          <AppMaintenanceSection />
 
           <TermsSection />
           <PrivacySection />
