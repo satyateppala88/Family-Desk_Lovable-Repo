@@ -202,7 +202,8 @@ export default function NotificationSettings() {
         <div className="max-w-2xl mx-auto space-y-4">
           <div className="flex items-center gap-3">
             <Bell className="h-5 w-5 text-primary" />
-            <h1 className="page-heading">Notifications</h1>
+            <div className="fd-eyebrow mb-0.5">SETTINGS</div>
+            <h1 className="fd-display text-[24px] text-fd-ink">Notifications</h1>
           </div>
 
           {/* Permission status */}
