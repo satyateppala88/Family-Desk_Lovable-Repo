@@ -1,4 +1,5 @@
 @import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Serif+Display:ital@0;1&display=swap");
+@import './styles/tokens.css';
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -17,109 +18,107 @@ body {
 @layer base {
   :root {
     /* ─── FamilyDesk raw palette (hex) ─── */
-    --fd-green: #0F6E56;
-    --fd-green-mid: #1D9E75;
-    --fd-green-light: #E1F5EE;
-    --fd-green-dark: #085041;
-    --fd-ink: #1A1A1A;
-    --fd-ink-2: #4A4A4A;
-    --fd-ink-3: #8A8A8A;
-    --fd-surface: #F7F6F2;
+    /* Quiet Precision palette — see ./styles/tokens.css for fd-* tokens.
+       Legacy aliases preserved for any component that still reads them. */
+    --fd-green: var(--fd-sage);
+    --fd-green-mid: var(--fd-sage-2);
+    --fd-green-light: var(--fd-sage-3);
+    --fd-green-dark: #0F4A35;
+    --fd-surface: var(--fd-mist);
     --fd-white: #FFFFFF;
-    --fd-border: rgba(15,110,86,0.15);
-    --fd-border-strong: rgba(15,110,86,0.30);
-    --fd-amber: #BA7517;
-    --fd-amber-light: #FAEEDA;
-    --fd-coral: #993C1D;
-    --fd-coral-light: #FAECE7;
+    --fd-border: var(--fd-mist-3);
+    --fd-border-strong: var(--fd-slate-2);
+    --fd-amber-light: var(--fd-amber-bg);
+    --fd-coral: var(--fd-crimson);
+    --fd-coral-light: var(--fd-crimson-bg);
     --fd-blue: #185FA5;
     --fd-blue-light: #E6F1FB;
     --fd-pink: #993556;
     --fd-pink-light: #FBEAF0;
-    --fd-shadow-sm: 0 1px 3px rgba(15,110,86,0.08), 0 4px 12px rgba(15,110,86,0.06);
-    --fd-shadow-lg: 0 4px 16px rgba(15,110,86,0.12), 0 12px 32px rgba(15,110,86,0.08);
+    --fd-shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+    --fd-shadow-lg: 0 2px 8px rgba(0,0,0,0.07);
     --fd-radius-sm: 8px;
     --fd-radius-md: 12px;
     --fd-radius-lg: 16px;
     --fd-radius-xl: 24px;
 
     /* ─── shadcn semantic tokens (HSL — re-pointed at fd palette) ─── */
-    --background: 40 25% 97%;          /* #F7F6F2 fd-surface */
-    --foreground: 0 0% 10%;            /* #1A1A1A fd-ink */
+    --background: 46 23% 94%;          /* #F4F2ED fd-mist */
+    --foreground: 60 9% 5%;            /* #0D0D0B fd-ink */
 
     --card: 0 0% 100%;
-    --card-foreground: 0 0% 10%;
+    --card-foreground: 60 9% 5%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 10%;
+    --popover-foreground: 60 9% 5%;
 
-    /* Primary accent: FamilyDesk green #0F6E56 */
-    --primary: 165 76% 24%;
+    /* Primary accent: Quiet Precision sage #1B6B4E */
+    --primary: 158 60% 26%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 158 53% 92%;          /* #E1F5EE green-light */
-    --secondary-foreground: 165 84% 15%; /* #085041 green-dark */
+    --secondary: 152 32% 88%;          /* #D6EDE4 sage-3 */
+    --secondary-foreground: 158 60% 20%;
 
-    --muted: 40 25% 97%;               /* surface */
-    --muted-foreground: 0 0% 54%;      /* #8A8A8A */
+    --muted: 45 17% 91%;               /* #ECEAE4 mist-2 */
+    --muted-foreground: 41 4% 39%;     /* #6B6860 slate */
 
-    --accent: 158 53% 92%;
-    --accent-foreground: 165 84% 15%;
+    --accent: 152 32% 88%;
+    --accent-foreground: 158 60% 20%;
 
     /* Status colors */
-    --success: 165 76% 24%;
+    --success: 158 60% 26%;
     --success-foreground: 0 0% 100%;
 
-    --warning: 30 78% 41%;             /* #BA7517 */
+    --warning: 37 80% 43%;             /* #C47F17 amber */
     --warning-foreground: 0 0% 100%;
 
-    --destructive: 13 68% 35%;          /* #993C1D coral */
+    --destructive: 7 62% 44%;          /* #B53B2A crimson */
     --destructive-foreground: 0 0% 100%;
 
-    /* Borders & inputs — green-tinted */
-    --border: 158 30% 88%;
-    --input: 158 30% 88%;
-    --ring: 165 76% 24%;
+    /* Borders & inputs — mist neutral */
+    --border: 42 19% 87%;              /* #E2DFD8 mist-3 */
+    --input: 42 19% 87%;
+    --ring: 158 60% 26%;
 
     /* ─── Brand & ink scale (raw hex tokens) ─── */
-    --brand: #0F6E56;
-    --brand-dark: #085041;
-    --brand-mid: #1D9E75;
-    --brand-light: #5DCAA5;
-    --brand-muted: #E1F5EE;
+    --brand: #1B6B4E;
+    --brand-dark: #0F4A35;
+    --brand-mid: #2E8B62;
+    --brand-light: #3DB87A;
+    --brand-muted: #D6EDE4;
 
-    --ink: #1A1A1A;
-    --ink-secondary: #4A4A4A;
-    --ink-muted: #8A8A8A;
-    --ink-border: #D3D1C7;
-    --ink-surface: #F7F6F2;
+    --ink: #0D0D0B;
+    --ink-secondary: #1C1C19;
+    --ink-muted: #6B6860;
+    --ink-border: #E2DFD8;
+    --ink-surface: #F4F2ED;
 
     --color-primary: var(--brand);
     --color-primary-hover: var(--brand-dark);
-    --color-background: #F7F6F2;
+    --color-background: #F4F2ED;
     --color-surface: #FFFFFF;
     --color-surface-raised: #FFFFFF;
-    --color-border: rgba(15,110,86,0.15);
+    --color-border: #E2DFD8;
     --color-text: var(--ink);
     --color-text-muted: var(--ink-muted);
     /* Mobile design-system semantic tokens */
-    --color-text-primary: #1A1A1A;
-    --color-text-secondary: #4A4A4A;
-    --color-text-disabled: #8A8A8A;
-    --color-brand: #0F6E56;
-    --color-error: #993C1D;
-    --color-warning: #BA7517;
-    --color-success: #0F6E56;
+    --color-text-primary: #0D0D0B;
+    --color-text-secondary: #1C1C19;
+    --color-text-disabled: #9B9890;
+    --color-brand: #1B6B4E;
+    --color-error: #B53B2A;
+    --color-warning: #C47F17;
+    --color-success: #1B6B4E;
 
     --radius: 0.75rem; /* 12px → fd-radius-md */
 
     /* ─── Module tints (for icon backgrounds, subtle accents) ─── */
-    --module-tasks: 165 76% 24%;
-    --module-meals: 24 70% 50%;
-    --module-grocery: 152 40% 42%;
-    --module-calendar: 220 50% 52%;
-    --module-habits: 280 35% 52%;
-    --module-finance: 38 75% 52%;
+    --module-tasks: 158 60% 26%;
+    --module-meals: 37 80% 43%;
+    --module-grocery: 158 60% 26%;
+    --module-calendar: 254 45% 45%;
+    --module-habits: 254 45% 45%;
+    --module-finance: 7 62% 44%;
 
     /* Sidebar */
     --sidebar-background: 43 19% 93%;
@@ -269,7 +268,7 @@ body {
 
   body {
     @apply bg-background text-foreground antialiased;
-    font-family: 'DM Sans', ui-sans-serif, system-ui, -apple-system, sans-serif;
+    font-family: var(--font-body);
     font-feature-settings: "cv11", "ss01";
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
