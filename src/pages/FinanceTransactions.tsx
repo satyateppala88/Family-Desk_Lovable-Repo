@@ -130,8 +130,11 @@ const FinanceTransactions = () => {
     <div className="page-container">
       <Header />
       <main className="page-content space-y-4">
-        <div className="flex items-center justify-between">
-          <h1 className="page-heading">Transactions</h1>
+        <div className="flex items-end justify-between">
+          <div>
+            <div className="fd-eyebrow mb-0.5">FINANCE</div>
+            <h1 className="fd-display text-[24px] text-fd-ink">Transactions</h1>
+          </div>
           <Button size="sm" onClick={() => setShowAdd(true)} className="hidden sm:flex">
             <Plus className="w-4 h-4 mr-1" /> Add
           </Button>
@@ -376,12 +379,12 @@ const FinanceTransactions = () => {
                     aria-label="Select transaction"
                   />
                   <div className={cn(
-                    "w-8 h-8 rounded-lg flex items-center justify-center text-xs font-semibold shrink-0",
+                    "w-[34px] h-[34px] rounded-md flex items-center justify-center text-[13px] font-semibold shrink-0 border border-fd-mist-3",
                     tx.type === "income"
-                      ? "bg-[hsl(var(--success))]/10 text-[hsl(var(--success))]"
+                      ? "bg-fd-sage-3 text-fd-sage"
                       : tx.type === "savings"
-                      ? "bg-primary/10 text-primary"
-                      : "bg-muted text-muted-foreground"
+                      ? "bg-fd-violet-bg text-fd-violet"
+                      : "bg-fd-mist-2 text-fd-slate"
                   )}>
                     {tx.type === "income" ? "+" : tx.type === "savings" ? "→" : "−"}
                   </div>
@@ -413,9 +416,10 @@ const FinanceTransactions = () => {
                     </div>
                   </div>
                   <span className={cn(
-                    "text-sm font-semibold tabular-nums shrink-0",
-                    tx.type === "income" && "text-[hsl(var(--success))]",
-                    tx.type === "savings" && "text-primary"
+                    "fd-mono text-[13px] font-bold tracking-[-0.02em] shrink-0",
+                    tx.type === "income" ? "text-fd-sage-glow"
+                    : tx.type === "savings" ? "text-fd-violet"
+                    : "text-fd-ink"
                   )}>
                     {tx.type === "income" ? "+" : tx.type === "savings" ? "→" : "−"}<PrivateValue value={Number(tx.amount)} />
                   </span>
