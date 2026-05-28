@@ -17,10 +17,10 @@ export const StreakRecoveryBanner = ({ missed, freezesRemaining, onUseFreeze, on
   const others = missed.length - 1;
 
   return (
-    <Card className="border-sky-200 bg-sky-50/40">
+    <Card className="border-primary/20 bg-primary/5">
       <CardContent className="p-4 space-y-2">
         <div className="flex items-start gap-2">
-          <Snowflake className="h-5 w-5 text-sky-500 mt-0.5" aria-hidden="true" />
+          <Snowflake className="h-5 w-5 text-primary mt-0.5" aria-hidden="true" />
           <div className="flex-1">
             <p className="text-sm font-medium">
               You missed yesterday — use your streak freeze to protect your {top.currentStreak}-day streak?
