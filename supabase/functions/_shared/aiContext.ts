@@ -9,6 +9,7 @@ export type AIContextModule =
   | "tasks"
   | "calendar"
   | "meals"
+  | "grocery"
   | "general";
 
 export interface AIContextOptions {
@@ -383,6 +384,12 @@ async function buildTasksBlock(
     }
   }
 
+  const festival = await getUpcomingFestival(supabase, now).catch(() => null);
+  if (festival) {
+    lines.push("");
+    lines.push(`UPCOMING FESTIVAL: ${festival.name} in ${festival.daysAway} days — suggest prep tasks if relevant`);
+  }
+
   return lines.join("\n");
 }
 
@@ -502,7 +509,160 @@ async function buildMealsBlock(
   lines.push("");
   lines.push(`Cooked at home (last 7d): ${cookedThisWeek}`);
   lines.push(`Grocery list pending items: ${pendingCount}`);
+
+  const festival = await getUpcomingFestival(supabase, now).catch(() => null);
+  if (festival) {
+    lines.push("");
+    lines.push(`UPCOMING FESTIVAL: ${festival.name} in ${festival.daysAway} days — consider traditional dishes`);
+  }
+
   return lines.join("\n");
+}
+
+async function buildGroceryBlock(
+  supabase: any,
+  householdId: string,
+  now: Date,
+  limitItems = 15,
+): Promise<string> {
+  const todayStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+  const in7Days = new Date(now);
+  in7Days.setDate(in7Days.getDate() + 7);
+  const in7Str = `${in7Days.getFullYear()}-${pad(in7Days.getMonth() + 1)}-${pad(in7Days.getDate())}`;
+
+  const [pantry, expiring, lists] = await Promise.all([
+    supabase.from("pantry_items")
+      .select("name, quantity, unit, category, expiry_date")
+      .eq("household_id", householdId)
+      .order("category").limit(100),
+    supabase.from("pantry_items")
+      .select("name, quantity, unit, expiry_date")
+      .eq("household_id", householdId)
+      .lte("expiry_date", in7Str).gte("expiry_date", todayStr)
+      .order("expiry_date"),
+    supabase.from("shopping_lists")
+      .select("name, shopping_list_items(name, quantity, is_checked)")
+      .eq("household_id", householdId)
+      .eq("status", "active").limit(3),
+  ]);
+
+  const lines: string[] = ["GROCERY & PANTRY"];
+  if (expiring.data?.length) {
+    lines.push("");
+    lines.push(`EXPIRING SOON (${expiring.data.length} items)`);
+    for (const i of expiring.data) {
+      lines.push(`${i.name}${i.quantity ? ` (${i.quantity}${i.unit || ""})` : ""} — expires ${fmtDate(i.expiry_date)}`);
+    }
+  }
+  if (pantry.data?.length) {
+    lines.push("");
+    lines.push(`PANTRY (${pantry.data.length} items)`);
+    const byCat: Record<string, string[]> = {};
+    for (const i of pantry.data.slice(0, limitItems)) {
+      const cat = i.category || "Other";
+      if (!byCat[cat]) byCat[cat] = [];
+      byCat[cat].push(`${i.name}${i.quantity ? ` ×${i.quantity}${i.unit || ""}` : ""}`);
+    }
+    for (const [cat, items] of Object.entries(byCat)) {
+      lines.push(`${cat}: ${items.join(", ")}`);
+    }
+  }
+  if (lists.data?.length) {
+    lines.push("");
+    lines.push("SHOPPING LISTS");
+    for (const list of lists.data) {
+      const items = list.shopping_list_items || [];
+      const pending = items.filter((i: any) => !i.is_checked);
+      lines.push(`${list.name}: ${pending.length} items pending`);
+      for (const i of pending.slice(0, 5)) {
+        lines.push(`  • ${i.name}${i.quantity ? ` (${i.quantity})` : ""}`);
+      }
+    }
+  }
+  return lines.join("\n");
+}
+
+async function getUpcomingFestival(
+  supabase: any, now: Date
+): Promise<{ name: string; daysAway: number } | null> {
+  const todayStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+  const in14 = new Date(now); in14.setDate(in14.getDate() + 14);
+  const in14Str = `${in14.getFullYear()}-${pad(in14.getMonth() + 1)}-${pad(in14.getDate())}`;
+
+  const { data } = await supabase.from("system_calendar_events")
+    .select("name, event_date")
+    .eq("kind", "festival")
+    .gte("event_date", todayStr)
+    .lte("event_date", in14Str)
+    .order("event_date").limit(1).maybeSingle();
+
+  if (!data) return null;
+  const diff = Math.round(
+    (new Date(data.event_date).getTime() - new Date(todayStr).getTime()) / 86400000
+  );
+  return { name: data.name, daysAway: diff };
+}
+
+async function buildUrgencyAlerts(
+  supabase: any, householdId: string, userId: string, now: Date
+): Promise<string> {
+  const todayStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+  const in3Days = new Date(now); in3Days.setDate(in3Days.getDate() + 3);
+  const in3Str = `${in3Days.getFullYear()}-${pad(in3Days.getMonth() + 1)}-${pad(in3Days.getDate())}`;
+  const monthYm = `${now.getFullYear()}-${pad(now.getMonth() + 1)}`;
+
+  const [overdueTasks, expiringItems, budgets, txThisMonth, atRiskStreaks] = await Promise.all([
+    supabase.from("tasks").select("title", { count: "exact" })
+      .eq("household_id", householdId).lt("due_date", todayStr).neq("task_status", "done").limit(3),
+    supabase.from("pantry_items").select("name, expiry_date")
+      .eq("household_id", householdId).lte("expiry_date", in3Str).gte("expiry_date", todayStr),
+    supabase.from("finance_budgets").select("category, planned_amount")
+      .eq("household_id", householdId).eq("month", monthYm),
+    supabase.from("finance_transactions").select("amount, category")
+      .eq("household_id", householdId).gte("transaction_date", `${monthYm}-01`).eq("type", "expense"),
+    supabase.from("habit_streaks").select("habit_id, current_streak, habits!inner(name, household_id)")
+      .eq("habits.household_id", householdId).eq("user_id", userId).gte("current_streak", 3)
+      .limit(5),
+  ]);
+
+  const alerts: string[] = [];
+
+  if (overdueTasks.count && overdueTasks.count > 0) {
+    const names = overdueTasks.data?.map((t: any) => t.title).slice(0, 2).join(", ");
+    alerts.push(`🔴 ${overdueTasks.count} OVERDUE TASK${overdueTasks.count > 1 ? "S" : ""}: ${names}${overdueTasks.count > 2 ? " +more" : ""}`);
+  }
+
+  if (expiringItems.data?.length) {
+    const names = expiringItems.data.map((i: any) => i.name).join(", ");
+    alerts.push(`⚠️ EXPIRING IN 3 DAYS: ${names}`);
+  }
+
+  // Check over-budget categories
+  const catSpend: Record<string, number> = {};
+  for (const t of txThisMonth.data || []) {
+    catSpend[t.category] = (catSpend[t.category] || 0) + Number(t.amount);
+  }
+  for (const b of budgets.data || []) {
+    const spent = catSpend[b.category] || 0;
+    if (spent > Number(b.planned_amount)) {
+      alerts.push(`💸 OVER BUDGET: ${b.category} ${fmtINR(spent)} vs ${fmtINR(Number(b.planned_amount))} limit`);
+    }
+  }
+
+  // Check for streaks at risk (has streak but hasn't logged today)
+  if (atRiskStreaks.data?.length) {
+    const { data: todayLogs } = await supabase.from("habit_logs")
+      .select("habit_id").eq("user_id", userId).eq("log_date", todayStr).eq("completed", true);
+    const loggedIds = new Set(todayLogs?.map((l: any) => l.habit_id));
+    const atRisk = atRiskStreaks.data.filter((s: any) => !loggedIds.has(s.habit_id));
+    if (atRisk.length) {
+      const names = atRisk.map((s: any) => `${s.habits?.name} (${s.current_streak}🔥)`).join(", ");
+      alerts.push(`🔥 STREAK AT RISK: ${names}`);
+    }
+  }
+
+  if (!alerts.length) return "";
+  return "⚡ ALERTS — MENTION THESE PROACTIVELY IF RELEVANT\n" + alerts.join("\n") + "\n";
 }
 
 export async function buildHouseholdContext(opts: AIContextOptions): Promise<string> {
@@ -513,17 +673,45 @@ export async function buildHouseholdContext(opts: AIContextOptions): Promise<str
     householdId,
   );
 
+  const urgencyAlerts = await buildUrgencyAlerts(supabase, householdId, opts.userId, now).catch(() => "");
+  const upcomingFestival = await getUpcomingFestival(supabase, now).catch(() => null);
+
+  const festivalLine = upcomingFestival
+    ? ` | 🎉 ${upcomingFestival.name} in ${upcomingFestival.daysAway} day${upcomingFestival.daysAway === 1 ? "" : "s"}`
+    : "";
+
+  let memoryBlock = "";
+  if (opts.userId) {
+    try {
+      const { data: memories } = await supabase
+        .from("user_ai_memory")
+        .select("content, memory_type")
+        .eq("user_id", opts.userId)
+        .eq("household_id", householdId)
+        .or("expires_at.is.null,expires_at.gt." + now.toISOString())
+        .limit(10);
+      if (memories?.length) {
+        memoryBlock =
+          "\nUSER MEMORY (from previous conversations — acknowledge these when relevant):\n" +
+          memories.map((m: any) => `• [${m.memory_type}] ${m.content}`).join("\n");
+      }
+    } catch (_e) {
+      // ignore memory fetch failures
+    }
+  }
+
   const header =
     `HOUSEHOLD CONTEXT\n=================\n` +
     `Household: ${householdName} | Members: ${memberNames.join(", ") || "—"} | ` +
-    `Date: ${WEEKDAYS[now.getDay()]}, ${pad(now.getDate())} ${FULL_MONTHS[now.getMonth()]} ${now.getFullYear()}`;
+    `Date: ${WEEKDAYS[now.getDay()]}, ${pad(now.getDate())} ${FULL_MONTHS[now.getMonth()]} ${now.getFullYear()}${festivalLine}${memoryBlock}`;
 
   const blocks: string[] = [header];
+  if (urgencyAlerts) blocks.push("", urgencyAlerts);
   const cap = module === "general" ? 5 : 10;
 
   const wanted: AIContextModule[] =
     module === "general"
-      ? ["finance", "habits", "tasks", "calendar", "meals"]
+      ? ["finance", "habits", "tasks", "calendar", "meals", "grocery"]
       : [module];
 
   const results = await Promise.allSettled(
@@ -539,6 +727,8 @@ export async function buildHouseholdContext(opts: AIContextOptions): Promise<str
           return buildCalendarBlock(supabase, householdId, now, nameById, cap);
         case "meals":
           return buildMealsBlock(supabase, householdId, now, cap);
+        case "grocery":
+          return buildGroceryBlock(supabase, householdId, now, cap);
         default:
           return Promise.resolve("");
       }

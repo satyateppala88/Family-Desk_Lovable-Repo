@@ -38,6 +38,7 @@ import { useMemberContributions } from "@/hooks/useMemberContributions";
 import { useAuth } from "@/contexts/AuthContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { TransactionAnalyticsPanel } from "@/components/finance/TransactionAnalyticsPanel";
 
 const FinanceTransactions = () => {
   const { householdId } = useHousehold();
@@ -49,7 +50,7 @@ const FinanceTransactions = () => {
   const [catFilter, setCatFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
   const [paidByFilter, setPaidByFilter] = useState("all");
-  const [activeTab, setActiveTab] = useState<"list" | "members">("list");
+  const [activeTab, setActiveTab] = useState<"list" | "insights" | "members">("list");
   const [allTime, setAllTime] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
   const [editTx, setEditTx] = useState<FinanceTransaction | null>(null);
@@ -65,8 +66,20 @@ const FinanceTransactions = () => {
     paidBy: paidByFilter,
     search: search || undefined,
   });
+  // Unfiltered current-month + prev-month transactions for the analytics panel.
+  const { data: monthAllTx } = useFinanceTransactions(householdId, {
+    month: allTime ? undefined : month,
+  });
+  const prevMonth = (() => {
+    if (!month) return undefined;
+    const [y, m] = month.split("-").map(Number);
+    const pm = m === 1 ? `${y - 1}-12` : `${y}-${String(m - 1).padStart(2, "0")}`;
+    return pm;
+  })();
+  const { data: prevMonthTx } = useFinanceTransactions(householdId, { month: prevMonth });
   const { data: memberTotals } = useMemberContributions(householdId, month);
   const showMembersTab = (members?.length ?? 0) >= 2;
+  const hasInsights = !allTime && (monthAllTx?.length ?? 0) > 0;
 
   const memberById = new Map((members || []).map((m) => [m.userId, m]));
   const initialsOf = (name: string) =>
@@ -117,23 +130,45 @@ const FinanceTransactions = () => {
     <div className="page-container">
       <Header />
       <main className="page-content space-y-4">
-        <div className="flex items-center justify-between">
-          <h1 className="page-heading">Transactions</h1>
+        <div className="flex items-end justify-between">
+          <div>
+            <div className="fd-eyebrow mb-0.5">FINANCE</div>
+            <h1 className="fd-display text-[24px] text-fd-ink">Transactions</h1>
+          </div>
           <Button size="sm" onClick={() => setShowAdd(true)} className="hidden sm:flex">
             <Plus className="w-4 h-4 mr-1" /> Add
           </Button>
         </div>
 
-        {showMembersTab && (
-          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "list" | "members")}>
-            <TabsList className="grid grid-cols-2 w-full sm:w-auto">
-              <TabsTrigger value="list">All transactions</TabsTrigger>
-              <TabsTrigger value="members">By Member</TabsTrigger>
+        {(showMembersTab || hasInsights) && (
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)}>
+            <TabsList className={cn("grid w-full sm:w-auto", showMembersTab && hasInsights ? "grid-cols-3" : "grid-cols-2") }>
+              <TabsTrigger value="list">Transactions</TabsTrigger>
+              {hasInsights && <TabsTrigger value="insights">Insights</TabsTrigger>}
+              {showMembersTab && <TabsTrigger value="members">By Member</TabsTrigger>}
             </TabsList>
           </Tabs>
         )}
 
-        {activeTab === "members" && showMembersTab ? (
+        {activeTab === "insights" && hasInsights ? (
+          <TransactionAnalyticsPanel
+            currentMonthTx={monthAllTx || []}
+            prevMonthTx={prevMonthTx || []}
+            members={members || []}
+            monthLabel={monthLabel}
+            month={month}
+            activeCategory={catFilter !== "all" ? catFilter : undefined}
+            activeMember={paidByFilter !== "all" ? paidByFilter : undefined}
+            onSelectCategory={(c) => {
+              setCatFilter((cur) => (cur === c ? "all" : c));
+              setActiveTab("list");
+            }}
+            onSelectMember={(m) => {
+              setPaidByFilter((cur) => (cur === m ? "all" : m));
+              setActiveTab("list");
+            }}
+          />
+        ) : activeTab === "members" && showMembersTab ? (
           <div className="space-y-3">
             <p className="text-[11px] text-muted-foreground">Totals for {monthLabel}</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -199,6 +234,40 @@ const FinanceTransactions = () => {
         </div>
         {!allTime && (
           <p className="text-[11px] text-muted-foreground -mt-2">Showing transactions for {monthLabel}</p>
+        )}
+
+        {/* Active filter chips */}
+        {(catFilter !== "all" || paidByFilter !== "all") && (
+          <div className="flex flex-wrap gap-2">
+            {catFilter !== "all" && (
+              <Badge variant="secondary" className="gap-1 pl-2 pr-1 py-1">
+                <span className="text-[11px]">Filtered: {resolveCategoryLabel(catFilter, CATEGORY_LABELS, customCats)}</span>
+                <button
+                  type="button"
+                  aria-label="Clear category filter"
+                  className="ml-1 rounded-full hover:bg-background/60 p-0.5"
+                  onClick={() => setCatFilter("all")}
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </Badge>
+            )}
+            {paidByFilter !== "all" && (
+              <Badge variant="secondary" className="gap-1 pl-2 pr-1 py-1">
+                <span className="text-[11px]">
+                  Filtered: {(members || []).find((m) => m.userId === paidByFilter)?.displayName || "Member"}
+                </span>
+                <button
+                  type="button"
+                  aria-label="Clear member filter"
+                  className="ml-1 rounded-full hover:bg-background/60 p-0.5"
+                  onClick={() => setPaidByFilter("all")}
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </Badge>
+            )}
+          </div>
         )}
 
         {/* Filters */}
@@ -310,12 +379,12 @@ const FinanceTransactions = () => {
                     aria-label="Select transaction"
                   />
                   <div className={cn(
-                    "w-8 h-8 rounded-lg flex items-center justify-center text-xs font-semibold shrink-0",
+                    "w-[34px] h-[34px] rounded-md flex items-center justify-center text-[13px] font-semibold shrink-0 border border-fd-mist-3",
                     tx.type === "income"
-                      ? "bg-[hsl(var(--success))]/10 text-[hsl(var(--success))]"
+                      ? "bg-fd-sage-3 text-fd-sage"
                       : tx.type === "savings"
-                      ? "bg-primary/10 text-primary"
-                      : "bg-muted text-muted-foreground"
+                      ? "bg-fd-violet-bg text-fd-violet"
+                      : "bg-fd-mist-2 text-fd-slate"
                   )}>
                     {tx.type === "income" ? "+" : tx.type === "savings" ? "→" : "−"}
                   </div>
@@ -333,23 +402,24 @@ const FinanceTransactions = () => {
                       {tx.paid_by && tx.paid_by !== user?.id && memberById.get(tx.paid_by) && (
                         <span className="inline-flex items-center gap-1">
                           <span>·</span>
-                          <Avatar className="h-4 w-4">
+                          <Avatar className="h-6 w-6">
                             {memberById.get(tx.paid_by)?.avatarUrl && (
                               <AvatarImage src={memberById.get(tx.paid_by)!.avatarUrl!} alt="" />
                             )}
-                            <AvatarFallback className="text-[8px]">
+                            <AvatarFallback className="text-[10px]">
                               {initialsOf(memberById.get(tx.paid_by)!.displayName)}
                             </AvatarFallback>
                           </Avatar>
-                          <span>{memberById.get(tx.paid_by)!.displayName.split(" ")[0]}</span>
+                          <span>{memberById.get(tx.paid_by)!.displayName}</span>
                         </span>
                       )}
                     </div>
                   </div>
                   <span className={cn(
-                    "text-sm font-semibold tabular-nums shrink-0",
-                    tx.type === "income" && "text-[hsl(var(--success))]",
-                    tx.type === "savings" && "text-primary"
+                    "fd-mono text-[13px] font-bold tracking-[-0.02em] shrink-0",
+                    tx.type === "income" ? "text-fd-sage-glow"
+                    : tx.type === "savings" ? "text-fd-violet"
+                    : "text-fd-ink"
                   )}>
                     {tx.type === "income" ? "+" : tx.type === "savings" ? "→" : "−"}<PrivateValue value={Number(tx.amount)} />
                   </span>

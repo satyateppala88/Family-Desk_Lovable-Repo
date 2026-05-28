@@ -9,7 +9,13 @@ const ALLOWED_ORIGINS = new Set([
 ]);
 
 export function getCorsHeaders(origin: string | null): Record<string, string> {
-  const isAllowed = origin !== null && ALLOWED_ORIGINS.has(origin);
+  const isAllowed =
+    origin !== null &&
+    (ALLOWED_ORIGINS.has(origin) ||
+      // Lovable preview/sandbox URLs (e.g. id-preview--*.lovable.app, *.sandbox.lovable.dev)
+      /^https:\/\/[a-z0-9-]+\.lovable\.app$/i.test(origin) ||
+      /^https:\/\/[a-z0-9-]+\.sandbox\.lovable\.dev$/i.test(origin) ||
+      /^https:\/\/[a-z0-9-]+\.lovableproject\.com$/i.test(origin));
   const allowedOrigin = isAllowed ? origin : 'https://familydesk.in';
   return {
     'Access-Control-Allow-Origin': allowedOrigin,

@@ -19,6 +19,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 interface Message {
   role: "user" | "assistant";
   content: string;
+  toolResult?: string; // label shown when AI executed a tool
 }
 
 // ─── Contextual prompt chips based on current route ───
@@ -82,7 +83,9 @@ export const AIChatWidget = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [placeholderIdx, setPlaceholderIdx] = useState(0);
   const [voiceReplyEnabled, setVoiceReplyEnabled] = useState(false);
+  const [feedbackGiven, setFeedbackGiven] = useState<Record<number, 'up'|'down'>>({});
   const scrollRef = useRef<HTMLDivElement>(null);
+
 
   const { speak, stop: stopSpeaking, isSpeaking, isSupported: ttsSupported } =
     useSpeechSynthesis({ language: "en-IN" });
@@ -117,6 +120,29 @@ export const AIChatWidget = () => {
 
   const routeCategory = getRouteCategory(location.pathname);
   const promptChips = PROMPT_CHIPS[routeCategory] || PROMPT_CHIPS.default;
+
+  const aiModule = useMemo(() => {
+    const moduleMap: Record<string, string> = {
+      finance: 'finance',
+      tasks: 'tasks',
+      meals: 'meals',
+      habits: 'habits',
+      grocery: 'grocery',
+      default: 'general',
+    };
+    return moduleMap[routeCategory] || 'general';
+  }, [routeCategory]);
+
+  const handleFeedback = useCallback(async (messageIndex: number, vote: 'up'|'down') => {
+    if (!user || !householdId) return;
+    setFeedbackGiven(prev => ({ ...prev, [messageIndex]: vote }));
+    await (supabase as any).from('ai_feedback').insert({
+      user_id: user.id,
+      household_id: householdId,
+      module: aiModule,
+      vote,
+    });
+  }, [user, householdId, aiModule]);
 
   const displayName = useMemo(() => {
     return user?.user_metadata?.display_name || user?.email?.split("@")[0] || "there";
@@ -160,11 +186,19 @@ export const AIChatWidget = () => {
       const response = await fetch(CHAT_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
-        body: JSON.stringify({ messages: cappedMessages.map(m => ({ role: m.role, content: m.content })), householdId, userId: user.id, module: "general" }),
+        body: JSON.stringify({
+          messages: cappedMessages.map(m => ({ role: m.role, content: m.content })),
+          householdId,
+          userId: user.id,
+          module: aiModule,
+        }),
       });
 
       if (!response.ok) throw new Error(await response.text());
       if (!response.body) throw new Error("No response body");
+
+      const toolsExecuted = response.headers.get("x-tools-executed") || "";
+      const executedTools = toolsExecuted ? toolsExecuted.split(",").filter(Boolean) : [];
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
@@ -198,6 +232,47 @@ export const AIChatWidget = () => {
               });
             }
           } catch { break; }
+        }
+      }
+
+      // Attach tool-result chip + refetch hints when the AI executed any tools
+      if (executedTools.length > 0) {
+        const toolLabels: Record<string, string> = {
+          create_task: "✅ Task created",
+          update_task: "✅ Task updated",
+          add_transaction: "💰 Transaction added",
+          add_pantry_item: "🥫 Added to pantry",
+          add_shopping_item: "🛒 Added to shopping list",
+          log_habit: "🔥 Habit logged",
+          get_meal_plan: "🍽️ Meal plan fetched",
+          get_household_summary: "🏠 Summary fetched",
+          get_pantry_status: "🥫 Pantry checked",
+          get_finance_summary: "💰 Finance checked",
+          get_habit_status: "📊 Habits checked",
+          get_expiring_items: "⚠️ Expiring items checked",
+          list_tasks: "📋 Tasks checked",
+        };
+        const labels = executedTools.map(t => toolLabels[t] || `✓ ${t}`).join(" · ");
+        setMessages(prev => {
+          const updated = [...prev];
+          const last = updated[updated.length - 1];
+          if (last?.role === "assistant") {
+            updated[updated.length - 1] = { ...last, toolResult: labels };
+          }
+          return updated;
+        });
+
+        if (executedTools.some(t => t.includes("task"))) {
+          window.dispatchEvent(new Event("familydesk:refetch-tasks"));
+        }
+        if (executedTools.some(t => t.includes("pantry") || t.includes("shopping"))) {
+          window.dispatchEvent(new Event("familydesk:refetch-grocery"));
+        }
+        if (executedTools.some(t => t.includes("transaction") || t.includes("finance"))) {
+          window.dispatchEvent(new Event("familydesk:refetch-finance"));
+        }
+        if (executedTools.some(t => t.includes("habit"))) {
+          window.dispatchEvent(new Event("familydesk:refetch-habits"));
         }
       }
     } catch (error: any) {
@@ -265,14 +340,14 @@ export const AIChatWidget = () => {
               {/* Prompt chips */}
               <div className="flex flex-wrap gap-1.5 pl-10">
                 {promptChips.map(chip => (
-                  <Badge
+                  <button
                     key={chip}
-                    variant="outline"
-                    className="text-xs cursor-pointer hover:bg-primary/10 hover:border-primary/30 transition-colors py-1 px-2.5"
+                    type="button"
+                    className="text-xs text-left rounded-md bg-muted/40 hover:bg-primary/5 transition-colors py-1.5 pl-2.5 pr-3 border-l-[3px] border-primary/80"
                     onClick={() => sendMessage(chip)}
                   >
                     {chip}
-                  </Badge>
+                  </button>
                 ))}
               </div>
             </div>
@@ -286,10 +361,38 @@ export const AIChatWidget = () => {
                 </div>
               )}
               <div className={cn(
-                "rounded-2xl px-4 py-2.5 max-w-[85%]",
-                msg.role === "user" ? "bg-primary text-primary-foreground rounded-br-sm" : "bg-muted rounded-bl-sm"
+                "flex flex-col",
+                msg.role === "user" ? "max-w-[85%]" : "max-w-[85%]"
               )}>
-                <p className="text-sm whitespace-pre-wrap leading-relaxed">{msg.content}</p>
+                <div className={cn(
+                  "rounded-2xl px-4 py-2.5",
+                  msg.role === "user" ? "bg-primary text-primary-foreground rounded-br-sm" : "bg-muted rounded-bl-sm"
+                )}>
+                  <p className="text-sm whitespace-pre-wrap leading-relaxed">{msg.content}</p>
+                  {msg.toolResult && (
+                    <div className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-primary/10 border border-primary/20 px-3 py-1 text-xs font-medium text-primary">
+                      {msg.toolResult}
+                    </div>
+                  )}
+                </div>
+                {msg.role === 'assistant' && !isLoading && idx === messages.length - 1 && (
+                  <div className='flex gap-1 mt-1 opacity-60 hover:opacity-100 transition-opacity'>
+                    <button
+                      onClick={() => handleFeedback(idx, 'up')}
+                      className={cn('text-xs p-1 rounded hover:bg-primary/10',
+                        feedbackGiven[idx] === 'up' && 'text-primary opacity-100')}
+                      aria-label='Helpful'>
+                      👍
+                    </button>
+                    <button
+                      onClick={() => handleFeedback(idx, 'down')}
+                      className={cn('text-xs p-1 rounded hover:bg-destructive/10',
+                        feedbackGiven[idx] === 'down' && 'text-destructive opacity-100')}
+                      aria-label='Not helpful'>
+                      👎
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           ))}

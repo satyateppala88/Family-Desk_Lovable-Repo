@@ -25,6 +25,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { formatINR } from "@/lib/formatINR";
 import { PrivateValue, PrivateText } from "@/components/shared/PrivateValue";
 import { SavingsGoalDialog } from "@/components/finance/SavingsGoalDialog";
+import { SavingsCategoryDashboard } from "@/components/finance/SavingsCategoryDashboard";
 import { format, differenceInDays, addMonths } from "date-fns";
 import { cn } from "@/lib/utils";
 import { formatTimeLeft } from "@/lib/formatTimeLeft";
@@ -168,6 +169,54 @@ const FinanceSavings = () => {
   const redGoalIds = activeGoals.filter((g) => signalsByGoal.get(g.id)?.kind === "review").map((g) => g.id);
   const showNudge = !nudgeDismissed && redGoalIds.length > 0;
 
+  // ── Portfolio overview math ────────────────────────────────────
+  const now = new Date();
+  const currentMonthKey = `${now.getFullYear()}-${now.getMonth()}`;
+
+  const monthlyContribTotal = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const c of contributions || []) {
+      const d = new Date(c.transaction_date);
+      const key = `${d.getFullYear()}-${d.getMonth()}`;
+      map.set(key, (map.get(key) || 0) + Number(c.amount || 0));
+    }
+    return map;
+  }, [contributions]);
+
+  const thisMonthContribTotal = monthlyContribTotal.get(currentMonthKey) || 0;
+
+  // Per-goal monthly buckets — used for the sparkline and "last month" copy.
+  const monthlyByGoal = useMemo(() => {
+    const out = new Map<string, Map<string, number>>();
+    for (const c of contributions || []) {
+      if (!c.savings_goal_id) continue;
+      const d = new Date(c.transaction_date);
+      const key = `${d.getFullYear()}-${d.getMonth()}`;
+      const inner = out.get(c.savings_goal_id) || new Map<string, number>();
+      inner.set(key, (inner.get(key) || 0) + Number(c.amount || 0));
+      out.set(c.savings_goal_id, inner);
+    }
+    return out;
+  }, [contributions]);
+
+  // Cap each goal's contribution to its target so overage doesn't inflate totals.
+  const totalSavedCapped =
+    activeGoals.reduce((sum, g) => {
+      const linked = sumContrib(g.id);
+      const effective = Math.max(Number(g.current_amount), linked);
+      return sum + Math.min(effective, Number(g.target_amount));
+    }, 0) +
+    completedGoals.reduce((sum, g) => sum + Number(g.target_amount), 0);
+
+  const onTrackCount = activeGoals.filter((g) => signalsByGoal.get(g.id)?.kind === "ontrack").length;
+  const behindCount = activeGoals.filter((g) => {
+    const k = signalsByGoal.get(g.id)?.kind;
+    return k === "behind" || k === "review";
+  }).length;
+  const doneCount =
+    completedGoals.length +
+    activeGoals.filter((g) => signalsByGoal.get(g.id)?.kind === "reached").length;
+
   const dismissNudge = () => {
     sessionStorage.setItem("savings-nudge-dismissed", "1");
     setNudgeDismissed(true);
@@ -181,8 +230,11 @@ const FinanceSavings = () => {
     <div className="page-container">
       <Header />
       <main className="page-content space-y-4">
-        <div className="flex items-center justify-between">
-          <h1 className="page-heading">Savings</h1>
+        <div className="flex items-end justify-between">
+          <div>
+            <div className="fd-eyebrow mb-0.5">FINANCE</div>
+            <h1 className="fd-display text-[24px] text-fd-ink">Savings</h1>
+          </div>
           <Button size="sm" onClick={() => setShowAdd(true)} className="hidden sm:flex">
             <Plus className="w-4 h-4 mr-1" /> New Goal
           </Button>
@@ -199,6 +251,39 @@ const FinanceSavings = () => {
               </Button>
             </CardContent>
           </Card>
+        )}
+
+        {!isLoading && (activeGoals.length > 0 || completedGoals.length > 0) && (
+          <div className="fd-icard p-5">
+            <div className="fd-icard-glow" />
+            <div className="text-[10px] uppercase tracking-[0.1em] fd-mono text-white/30">Portfolio</div>
+            <div className="fd-display text-[30px] text-white mt-1 mb-3">
+              <PrivateValue value={totalSavedCapped} />
+            </div>
+            <div className="grid grid-cols-3">
+              <div className="pr-3 border-r border-white/10">
+                <div className="text-[9px] uppercase tracking-[0.1em] fd-mono text-white/30">On track</div>
+                <div className="fd-mono text-[15px] font-bold text-fd-sage-glow mt-1">{onTrackCount}</div>
+              </div>
+              <div className="px-3 border-r border-white/10">
+                <div className="text-[9px] uppercase tracking-[0.1em] fd-mono text-white/30">Behind</div>
+                <div className="fd-mono text-[15px] font-bold text-fd-amber mt-1">{behindCount}</div>
+              </div>
+              <div className="pl-3">
+                <div className="text-[9px] uppercase tracking-[0.1em] fd-mono text-white/30">This month</div>
+                <div className="fd-mono text-[15px] font-bold text-white mt-1">
+                  <PrivateValue value={thisMonthContribTotal} />
+                </div>
+              </div>
+            </div>
+            {doneCount > 0 && (
+              <p className="text-[10px] text-white/40 mt-3 fd-mono">{doneCount} completed</p>
+            )}
+          </div>
+        )}
+
+        {!isLoading && (contributions?.length || 0) > 0 && (
+          <SavingsCategoryDashboard householdId={householdId} />
         )}
 
         {isLoading ? (
@@ -267,9 +352,9 @@ const FinanceSavings = () => {
                         {goal.target_date && (
                           <p className={cn(
                             "text-[11px] mt-0.5",
-                            daysLeft !== null && daysLeft < 0 ? "text-destructive" : "text-muted-foreground"
+                            !isReached && daysLeft !== null && daysLeft < 0 ? "text-destructive" : "text-muted-foreground"
                           )}>
-                            {formatTimeLeft(daysLeft)}
+                            {isReached ? "Goal reached 🎉" : formatTimeLeft(daysLeft)}
                             {" · "}{format(new Date(goal.target_date), "dd/MM/yyyy")}
                           </p>
                         )}
@@ -307,10 +392,58 @@ const FinanceSavings = () => {
                         className={cn("h-2", isReached && "[&>*]:bg-[hsl(var(--success))]")}
                       />
                       <div className="flex justify-between text-[11px] text-muted-foreground">
-                        <span><PrivateValue value={effectiveAmount} /> saved</span>
-                        <span className="font-medium">{Math.round(pct)}% of <PrivateValue value={Number(goal.target_amount)} /></span>
+                        <span><PrivateValue value={Math.min(effectiveAmount, Number(goal.target_amount))} /> saved</span>
+                        <span className="font-medium">
+                          {isReached
+                            ? "Goal reached"
+                            : <>{Math.round(pct)}% of <PrivateValue value={Number(goal.target_amount)} /></>}
+                        </span>
                       </div>
                     </div>
+
+                    {(() => {
+                      // 6-month contribution sparkline
+                      const goalMonthly = monthlyByGoal.get(goal.id) || new Map<string, number>();
+                      const sparkMonths: { key: string; label: string; value: number }[] = [];
+                      for (let i = 5; i >= 0; i--) {
+                        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                        const key = `${d.getFullYear()}-${d.getMonth()}`;
+                        sparkMonths.push({ key, label: format(d, "MMM"), value: goalMonthly.get(key) || 0 });
+                      }
+                      const monthsWithData = sparkMonths.filter((s) => s.value > 0).length;
+                      if (monthsWithData < 2) return null;
+                      const max = Math.max(...sparkMonths.map((s) => s.value), 1);
+                      const lastMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+                      const lastMonthKey = `${lastMonthDate.getFullYear()}-${lastMonthDate.getMonth()}`;
+                      const lastMonthVal = goalMonthly.get(lastMonthKey) || 0;
+                      return (
+                        <div className="space-y-1">
+                          <div className="flex items-end gap-1 h-10">
+                            {sparkMonths.map((s) => (
+                              <div key={s.key} className="flex-1 flex flex-col items-center justify-end h-full" title={`${s.label}: ${formatINR(s.value)}`}>
+                                <div
+                                  className={cn(
+                                    "w-full rounded-sm",
+                                    s.value > 0 ? "bg-primary/70" : "bg-muted"
+                                  )}
+                                  style={{ height: `${s.value > 0 ? Math.max((s.value / max) * 100, 8) : 4}%` }}
+                                />
+                              </div>
+                            ))}
+                          </div>
+                          <div className="flex gap-1 px-0.5">
+                            {sparkMonths.map((s) => (
+                              <div key={s.key} className="flex-1 text-center text-[9px] text-muted-foreground">{s.label[0]}</div>
+                            ))}
+                          </div>
+                          <p className="text-[11px] text-muted-foreground">
+                            {lastMonthVal > 0
+                              ? <><PrivateValue value={lastMonthVal} /> added last month</>
+                              : "No contributions last month"}
+                          </p>
+                        </div>
+                      );
+                    })()}
 
                     {signal.kind === "needs_date" && (
                       <button

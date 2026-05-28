@@ -85,11 +85,24 @@ export function useAddCustomCategory() {
       if (reservedLabels.includes(label.toLowerCase())) {
         throw new Error("RESERVED_KEY");
       }
+      // Avoid colliding with existing custom-category keys in this household
+      // (the DB has a unique (household_id, key) index — but we suffix proactively
+      // so the user gets the new category instead of an error).
+      const { data: existing } = await supabase
+        .from("finance_custom_categories")
+        .select("key")
+        .eq("household_id", householdId!);
+      const taken = new Set((existing || []).map((r: { key: string }) => r.key));
+      let finalKey = key;
+      let suffix = 2;
+      while (taken.has(finalKey)) {
+        finalKey = `${key}_${suffix++}`;
+      }
       const { data, error } = await supabase
         .from("finance_custom_categories")
         .insert({
           household_id: householdId!,
-          key,
+          key: finalKey,
           label,
           scope: input.scope || "all",
           created_by: user!.id,

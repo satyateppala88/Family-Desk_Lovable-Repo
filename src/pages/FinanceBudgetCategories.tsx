@@ -108,7 +108,8 @@ export default function FinanceBudgetCategories() {
             </Link>
           </Button>
           <div>
-            <h1 className="page-heading">Categories</h1>
+            <div className="fd-eyebrow mb-0.5">FINANCE</div>
+            <h1 className="fd-display text-[24px] text-fd-ink">Categories</h1>
             <p className="text-xs text-muted-foreground">
               Add custom categories your household can use across budgets and transactions.
             </p>

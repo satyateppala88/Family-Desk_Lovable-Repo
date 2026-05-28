@@ -24,6 +24,10 @@ export const PinKeypad = ({
 }: PinKeypadProps) => {
   const [digits, setDigits] = useState<string>("");
   const completedRef = useRef<string | null>(null);
+  const onCompleteRef = useRef(onComplete);
+  useEffect(() => {
+    onCompleteRef.current = onComplete;
+  }, [onComplete]);
 
   useEffect(() => {
     setDigits("");
@@ -33,9 +37,9 @@ export const PinKeypad = ({
   useEffect(() => {
     if (digits.length === length && completedRef.current !== digits) {
       completedRef.current = digits;
-      onComplete(digits);
+      onCompleteRef.current(digits);
     }
-  }, [digits, length, onComplete]);
+  }, [digits, length]);
 
   useEffect(() => {
     if (!autoFocus) return;

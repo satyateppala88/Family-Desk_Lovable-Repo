@@ -131,7 +131,8 @@ const AskAi = () => {
       <Header />
       <main className="page-content flex flex-col min-h-0">
         <div className="mb-4">
-          <h1 className="page-heading flex items-center gap-2">
+          <div className="fd-eyebrow mb-0.5">ASSISTANT</div>
+          <h1 className="fd-display text-[24px] text-fd-ink flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-primary" />
             FamilyDesk AI
           </h1>

@@ -95,6 +95,30 @@ export const PermissionRetryHint = ({
     if (granted) onGranted?.();
   };
 
+  // OS-blocked state — single inline line, no card. Tapping the line opens settings.
+  if (isOSBlocked) {
+    const emoji =
+      kind === "camera" ? "📷" :
+      kind === "microphone" ? "🎤" :
+      kind === "photos" ? "🖼️" : "🔔";
+    const label =
+      kind === "camera" ? "Camera blocked" :
+      kind === "microphone" ? "Microphone blocked" :
+      kind === "photos" ? "Photo access blocked" :
+      "Notifications blocked";
+    return (
+      <button
+        type="button"
+        onClick={handleClick}
+        className={`inline-flex items-center gap-1.5 text-[12px] text-amber-700 dark:text-amber-400 hover:underline ${className ?? ""}`}
+        role="status"
+      >
+        <span aria-hidden="true">{emoji}</span>
+        <span>{label} · Open settings to enable</span>
+      </button>
+    );
+  }
+
   return (
     <div
       className={`flex items-start gap-2 rounded-lg border border-border bg-muted/40 p-2.5 text-xs ${className ?? ""}`}

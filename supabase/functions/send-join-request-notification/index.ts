@@ -10,7 +10,6 @@ import {
 
 interface RequestBody {
   requesterName: string;
-  requesterEmail: string;
   householdId: string;
   householdName: string;
 }
@@ -49,20 +48,28 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    const { requesterName, requesterEmail, householdId, householdName }: RequestBody = await req.json();
+    const { requesterName, householdId, householdName }: RequestBody = await req.json();
 
     // Validate required fields
-    if (!requesterName || !requesterEmail || !householdId || !householdName) {
+    if (!requesterName || !householdId || !householdName) {
       return new Response(
         JSON.stringify({ error: "Missing required fields" }),
         { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
 
-    // Get all admin members of the household
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
+    // Fetch requester's email from profile (prevent spoofing)
+    const { data: requesterProfile } = await supabaseAdmin
+      .from("profiles")
+      .select("email, display_name")
+      .eq("id", authUser.id)
+      .maybeSingle();
+    const requesterEmail = requesterProfile?.email ?? "";
+
+    // Get all admin members of the household
     const { data: admins, error: adminsError } = await supabaseAdmin
       .from("household_members")
       .select("user_id")
@@ -87,29 +94,31 @@ const handler = async (req: Request): Promise<Response> => {
     const reviewUrl = "https://familydesk.in/household/members";
     const emailsSent: string[] = [];
 
-    for (const admin of admins) {
-      // Check email preferences
-      const { data: prefs } = await supabaseAdmin
-        .from("user_email_preferences")
-        .select("household_invitations")
-        .eq("user_id", admin.user_id)
-        .maybeSingle();
+    const adminIds = (admins ?? []).map((a: any) => a.user_id);
 
-      if (prefs?.household_invitations === false) {
+    const [adminProfiles, adminPrefs] = await Promise.all([
+      supabaseAdmin
+        .from("profiles")
+        .select("id, display_name, email")
+        .in("id", adminIds),
+      supabaseAdmin
+        .from("user_email_preferences")
+        .select("user_id, household_invitations")
+        .in("user_id", adminIds),
+    ]);
+
+    const adminProfileMap = new Map((adminProfiles.data ?? []).map((p: any) => [p.id, p]));
+    const adminPrefMap = new Map((adminPrefs.data ?? []).map((p: any) => [p.user_id, p]));
+
+    for (const admin of admins) {
+      const pref = adminPrefMap.get(admin.user_id);
+      if (pref?.household_invitations === false) {
         console.log(`Admin ${admin.user_id} has household invitations disabled`);
         continue;
       }
 
-      // Get admin's email from auth
-      const { data: userData } = await supabaseAdmin.auth.admin.getUserById(admin.user_id);
-      if (!userData?.user?.email) continue;
-
-      // Get admin's display name
-      const { data: profile } = await supabaseAdmin
-        .from("profiles")
-        .select("display_name")
-        .eq("id", admin.user_id)
-        .maybeSingle();
+      const profile = adminProfileMap.get(admin.user_id);
+      if (!profile?.email) continue;
 
       const emailContent = getJoinRequestNotificationContent(
         requesterName,
@@ -124,18 +133,18 @@ const handler = async (req: Request): Promise<Response> => {
       });
 
       const { data: emailData, error: emailError } = await sendViaQueue(supabaseUrl, supabaseServiceKey, {
-      to: userData.user.email,
-      subject: `New Join Request for ${householdName} - Family Desk`,
-      html: htmlContent,
-      templateName: "send-join-request-notification",
-      idempotencyKey: `join-request-${householdId}-${requesterEmail}-${admin.user_id}`,
-    });
+        to: profile.email,
+        subject: `New Join Request for ${householdName} - Family Desk`,
+        html: htmlContent,
+        templateName: "send-join-request-notification",
+        idempotencyKey: `join-request-${householdId}-${requesterEmail}-${admin.user_id}`,
+      });
 
       if (emailError) {
-        console.error(`Error sending to ${userData.user.email}:`, emailError);
+        console.error(`Error sending to ${profile.email}:`, emailError);
       } else {
-        emailsSent.push(userData.user.email);
-        console.log(`Join request notification sent to ${userData.user.email}:`, emailData);
+        emailsSent.push(profile.email);
+        console.log(`Join request notification sent to ${profile.email}:`, emailData);
       }
     }
 

@@ -2,6 +2,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.78.0";
 import { getCorsHeaders } from "../_shared/cors.ts";
 import { checkRateLimit, AI_RATE_LIMIT } from "../_shared/rate-limit.ts";
 import { Logger } from "../_shared/logger.ts";
+import { fetchWithTimeout } from "../_shared/fetch-with-timeout.ts";
 
 Deno.serve(async (req) => {
   const log = new Logger("extract-calendar-tasks");
@@ -165,7 +166,7 @@ ${eventsList}
 
 Return ONLY the events that are actionable tasks the user needs to complete. Skip appointments, meetings, and events they just need to attend.`;
 
-    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const aiResponse = await fetchWithTimeout("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${apiKey}`,
@@ -312,6 +313,9 @@ Return ONLY the events that are actionable tasks the user needs to complete. Ski
     );
 
   } catch (err) {
+    if ((e as any)?.name === "AbortError") {
+      return new Response(JSON.stringify({ error: "AI service timed out. Please try again." }), { status: 408, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
     console.error('extract-calendar-tasks error:', err);
     const corsHeaders = getCorsHeaders(req.headers.get("origin"));
     return new Response(

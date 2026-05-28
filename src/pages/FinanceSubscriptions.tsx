@@ -53,6 +53,21 @@ const FinanceSubscriptions = () => {
     return true;
   });
 
+  // Detect duplicate names so we can surface the amount as a secondary identifier.
+  const nameCounts = (filtered ?? []).reduce<Record<string, number>>((acc, s) => {
+    const key = s.name.trim().toLowerCase();
+    acc[key] = (acc[key] || 0) + 1;
+    return acc;
+  }, {});
+
+  // Stable category → color dot mapping (HSL hues, low risk of clashing with brand).
+  const categoryDot = (cat: string): string => {
+    let hash = 0;
+    for (let i = 0; i < cat.length; i++) hash = (hash * 31 + cat.charCodeAt(i)) | 0;
+    const hue = Math.abs(hash) % 360;
+    return `hsl(${hue} 55% 55%)`;
+  };
+
   const totalMonthly = filtered
     ?.filter((s) => s.is_active)
     .reduce((sum, s) => {
@@ -81,7 +96,8 @@ const FinanceSubscriptions = () => {
       <Header />
       <main className="page-content space-y-4">
         <div className="flex items-center justify-between">
-          <h1 className="page-heading">Subscriptions</h1>
+          <div className="fd-eyebrow mb-0.5">FINANCE</div>
+          <h1 className="fd-display text-[24px] text-fd-ink">Subscriptions</h1>
           <Button size="sm" onClick={() => setShowAdd(true)} className="hidden sm:flex">
             <Plus className="w-4 h-4 mr-1" /> Add
           </Button>
@@ -154,7 +170,17 @@ const FinanceSubscriptions = () => {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5">
+                        <span
+                          aria-hidden="true"
+                          className="inline-block h-2 w-2 rounded-full shrink-0"
+                          style={{ backgroundColor: categoryDot(sub.category) }}
+                        />
                         <p className="text-sm font-medium truncate">{sub.name}</p>
+                        {nameCounts[sub.name.trim().toLowerCase()] > 1 && (
+                          <span className="text-[11px] text-muted-foreground tabular-nums shrink-0">
+                            · {formatINR(Number(sub.amount))}
+                          </span>
+                        )}
                         {!sub.is_active && <Badge variant="outline" className="text-[9px] px-1 py-0">Paused</Badge>}
                       </div>
                       <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground flex-wrap">

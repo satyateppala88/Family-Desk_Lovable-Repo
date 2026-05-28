@@ -54,14 +54,14 @@ const FinanceChat = () => {
       if (!token) throw new Error("Not authenticated");
 
       const resp = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-finance-chat`,
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-chat`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify({ messages: newMessages, householdId }),
+          body: JSON.stringify({ messages: newMessages, householdId, module: 'finance' }),
         }
       );
 
@@ -119,7 +119,8 @@ const FinanceChat = () => {
       <Header />
       <main className="page-content flex flex-col" style={{ paddingBottom: "1rem" }}>
         <div className="mb-3">
-          <h1 className="page-heading">AI Advisor</h1>
+          <div className="fd-eyebrow mb-0.5">FINANCE</div>
+          <h1 className="fd-display text-[24px] text-fd-ink">AI Advisor</h1>
           <p className="text-xs text-muted-foreground mt-0.5">Ask anything about your household finances</p>
         </div>
         

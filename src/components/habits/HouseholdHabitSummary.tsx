@@ -39,7 +39,7 @@ export const HouseholdHabitSummary = ({ stats }: HouseholdHabitSummaryProps) => 
       {summaryItems.map((item) => (
         <Card key={item.label} className="p-4 text-center">
           <item.icon className={`h-5 w-5 mx-auto mb-2 ${item.color}`} />
-          <p className="text-2xl font-bold">{item.value}</p>
+          <p className="text-2xl font-bold fd-mono">{item.value}</p>
           <p className="text-xs text-muted-foreground">{item.label}</p>
         </Card>
       ))}

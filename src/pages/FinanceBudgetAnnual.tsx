@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ChevronLeft, ChevronRight, Target } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { useHousehold } from "@/hooks/useHousehold";
 import { useSelectedMonth } from "@/hooks/useSelectedMonth";
 import {
@@ -42,20 +43,36 @@ export default function FinanceBudgetAnnual() {
   const { data, isLoading } = useFinanceAnnualBudget(householdId, year);
   const { categories: customCats } = useCustomCategories("transaction");
   const { isPrivate } = usePrivacyMode();
+  const navigate = useNavigate();
 
+  // Annual view shows ONLY categories that have an explicit annual (yearly)
+  // budget. Recurring/monthly budgets belong to the monthly view.
+  const annualKeys = useMemo(
+    () => new Set(data?.annualCategoryKeys || []),
+    [data?.annualCategoryKeys],
+  );
+  const rows = useMemo(
+    () => (data?.rows || []).filter((r) => annualKeys.has(r.category)),
+    [data?.rows, annualKeys],
+  );
+  const totalPlanned = useMemo(
+    () => rows.reduce((s, r) => s + r.annualPlanned, 0),
+    [rows],
+  );
+  const totalActual = useMemo(
+    () => rows.reduce((s, r) => s + r.annualActual, 0),
+    [rows],
+  );
   const overallPct =
-    data && data.totalPlanned > 0
-      ? Math.min(100, (data.totalActual / data.totalPlanned) * 100)
-      : 0;
-
-  const rows = useMemo(() => data?.rows || [], [data]);
+    totalPlanned > 0 ? Math.min(100, (totalActual / totalPlanned) * 100) : 0;
 
   return (
     <div className="page-container">
       <Header />
       <main className="page-content space-y-4">
         <div>
-          <h1 className="page-heading">Budget</h1>
+          <div className="fd-eyebrow mb-0.5">FINANCE</div>
+          <h1 className="fd-display text-[24px] text-fd-ink">Annual Budget</h1>
           <p className="text-xs text-muted-foreground">Annual rollup across all categories.</p>
         </div>
 
@@ -72,19 +89,21 @@ export default function FinanceBudgetAnnual() {
           </Button>
         </div>
 
-        {/* Overall card */}
-        <Card>
-          <CardContent className="p-4 space-y-2">
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Year total</span>
-              <span className={cn("font-medium", overallPct > 90 && "text-destructive")}>
-                <PrivateValue value={data?.totalActual || 0} /> / <PrivateValue value={data?.totalPlanned || 0} />
-              </span>
-            </div>
-            <Progress value={overallPct} className="h-2" />
-            <p className="text-[11px] text-muted-foreground text-right">{Math.round(overallPct)}% used</p>
-          </CardContent>
-        </Card>
+        {/* Overall card — only when annual budgets exist */}
+        {rows.length > 0 && (
+          <Card>
+            <CardContent className="p-4 space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Year total</span>
+                <span className={cn("font-medium", overallPct > 90 && "text-destructive")}>
+                  <PrivateValue value={totalActual} /> / <PrivateValue value={totalPlanned} />
+                </span>
+              </div>
+              <Progress value={overallPct} className="h-2" />
+              <p className="text-[11px] text-muted-foreground text-right">{Math.round(overallPct)}% used</p>
+            </CardContent>
+          </Card>
+        )}
 
         {/* By-category heatmap table */}
         {isLoading ? (
@@ -94,8 +113,9 @@ export default function FinanceBudgetAnnual() {
         ) : rows.length === 0 ? (
           <EmptyState
             icon={Target}
-            title="No budget activity in this year"
-            description="Add monthly budgets to see them roll up here."
+            title="No annual budgets set yet"
+            description="Set yearly limits for categories you'd rather plan once a year (e.g. insurance, school fees, vacations)."
+            action={{ label: "Set Annual Budget", onClick: () => navigate("/finance/budget") }}
           />
         ) : (
           <div className="space-y-2">

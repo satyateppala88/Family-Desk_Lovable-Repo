@@ -10,6 +10,8 @@ import {
   isSameDay,
   isToday,
   parseISO,
+  startOfDay,
+  isBefore,
 } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -64,7 +66,20 @@ export const CalendarGrid = ({
 
   // Mobile: Agenda-style view for today and upcoming days with events
   if (isMobile) {
+    // Agenda should never start in the previous month just because those
+    // days fill the first row of the calendar grid. Anchor the agenda to
+    // either today (when viewing the current month or later) or to the
+    // first of the visible month (when the user has navigated to a past
+    // month and is browsing history).
+    const today = startOfDay(new Date());
+    const monthStart = startOfMonth(currentDate);
+    const viewingCurrentOrFuture = !isBefore(monthStart, startOfMonth(today));
+    const agendaFloor = viewingCurrentOrFuture
+      ? (isBefore(monthStart, today) ? today : monthStart)
+      : monthStart;
+
     const daysWithEvents = days
+      .filter((day) => !isBefore(startOfDay(day), agendaFloor))
       .filter((day) => {
         const dateKey = format(day, "yyyy-MM-dd");
         const dayEvents = eventsByDate.get(dateKey) || [];

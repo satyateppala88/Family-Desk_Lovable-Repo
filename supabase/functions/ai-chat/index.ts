@@ -90,7 +90,294 @@ const tools = [
       parameters: { type: "object", properties: {} },
     },
   },
+  // GROCERY
+  {
+    type: "function",
+    function: {
+      name: "add_pantry_item",
+      description: "Add an item to the household pantry inventory",
+      parameters: {
+        type: "object",
+        required: ["name"],
+        properties: {
+          name: { type: "string" },
+          quantity: { type: "number" },
+          unit: { type: "string", enum: ["kg","g","L","ml","pcs","packets","bottles","dozen"] },
+          category: { type: "string", description: "e.g. Vegetables, Dairy, Grains" },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "add_shopping_item",
+      description: "Add an item to the active shopping list",
+      parameters: {
+        type: "object",
+        required: ["item_name"],
+        properties: {
+          item_name: { type: "string" },
+          quantity: { type: "string", description: "e.g. 2 kg, 1 packet" },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_pantry_status",
+      description: "Check pantry inventory and items expiring soon",
+      parameters: { type: "object", properties: {} },
+    },
+  },
+  // FINANCE
+  {
+    type: "function",
+    function: {
+      name: "add_transaction",
+      description: "Add a financial transaction (expense, income, or savings)",
+      parameters: {
+        type: "object",
+        required: ["amount", "type", "category"],
+        properties: {
+          amount: { type: "number", description: "Amount in INR" },
+          type: { type: "string", enum: ["expense", "income", "savings"] },
+          category: { type: "string", description: "e.g. Groceries, Dining, Transport, Salary" },
+          description: { type: "string" },
+          transaction_date: { type: "string", description: "YYYY-MM-DD, defaults to today" },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_finance_summary",
+      description: "Get this month spending, income, and budget status",
+      parameters: { type: "object", properties: {} },
+    },
+  },
+  // HABITS
+  {
+    type: "function",
+    function: {
+      name: "log_habit",
+      description: "Mark a habit as completed for today",
+      parameters: {
+        type: "object",
+        required: ["habit_name"],
+        properties: {
+          habit_name: { type: "string", description: "Name or partial name of the habit" },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_habit_status",
+      description: "Get today habit completion and current streaks",
+      parameters: { type: "object", properties: {} },
+    },
+  },
+  // HOUSEHOLD
+  {
+    type: "function",
+    function: {
+      name: "get_expiring_items",
+      description: "Get pantry items expiring in the next 7 days",
+      parameters: { type: "object", properties: {} },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "remember_user_goal",
+      description: "Save an important goal or preference the user mentioned so it is remembered in future conversations",
+      parameters: {
+        type: "object",
+        required: ["content", "memory_type"],
+        properties: {
+          content: {
+            type: "string",
+            description: "The goal or preference to remember, e.g. saving for Goa trip by December",
+          },
+          memory_type: {
+            type: "string",
+            enum: ["goal", "preference", "context"],
+          },
+        },
+      },
+    },
+  },
 ];
+
+async function executeToolCall(
+  fn: string, args: any, supabase: any, householdId: string, userId: string
+): Promise<string> {
+  switch (fn) {
+    case 'create_task': {
+      const priorityMap: Record<string, number> = { urgent: 1, high: 2, medium: 3, low: 4 };
+      const { data, error } = await supabase.from('tasks').insert({
+        title: args.title,
+        description: args.description || null,
+        priority_level: priorityMap[args.priority] || 3,
+        due_date: args.due_date || null,
+        household_id: householdId,
+        created_by: userId,
+        task_status: 'pending',
+      }).select('id, title').single();
+      if (error) throw new Error(error.message);
+      return `Task created: '${data.title}' (ID: ${data.id})`;
+    }
+    case 'update_task': {
+      const statusMap: Record<string, string> = { pending: 'pending', in_progress: 'in_progress', completed: 'done' };
+      const { error } = await supabase.from('tasks')
+        .update({ task_status: statusMap[args.status] || args.status })
+        .eq('id', args.task_id).eq('household_id', householdId);
+      if (error) throw new Error(error.message);
+      return `Task ${args.task_id} updated to ${args.status}`;
+    }
+    case 'list_tasks': {
+      const statusFilter = args.status && args.status !== 'all' ? args.status : null;
+      let query = supabase.from('tasks').select('title, task_status, due_date')
+        .eq('household_id', householdId).limit(10);
+      if (statusFilter) query = query.eq('task_status', statusFilter);
+      const { data } = await query;
+      return JSON.stringify(data || []);
+    }
+    case 'get_meal_plan': {
+      const { data } = await supabase.from('meal_plans')
+        .select('week_start_date, meal_plan_items(meal_type, scheduled_date, recipes(name))')
+        .eq('household_id', householdId)
+        .order('week_start_date', { ascending: false }).limit(1).maybeSingle();
+      return JSON.stringify(data || {});
+    }
+    case 'get_household_summary': {
+      const [tasks, pantry] = await Promise.all([
+        supabase.from('tasks').select('id', { count: 'exact', head: true })
+          .eq('household_id', householdId).neq('task_status', 'done'),
+        supabase.from('pantry_items').select('id', { count: 'exact', head: true })
+          .eq('household_id', householdId),
+      ]);
+      return JSON.stringify({ open_tasks: tasks.count, pantry_items: pantry.count });
+    }
+    case 'add_pantry_item': {
+      const { data, error } = await supabase.from('pantry_items').insert({
+        name: args.name,
+        quantity: args.quantity ?? 1,
+        unit: args.unit || 'pcs',
+        category: args.category || 'Other',
+        household_id: householdId,
+        added_by: userId,
+      }).select('id, name').single();
+      if (error) throw new Error(error.message);
+      return `Added '${data.name}' to pantry`;
+    }
+    case 'add_shopping_item': {
+      // Find or create the active shopping list
+      let { data: list } = await supabase.from('shopping_lists')
+        .select('id').eq('household_id', householdId).eq('status', 'active')
+        .order('created_at', { ascending: false }).limit(1).maybeSingle();
+      if (!list) {
+        const { data: newList, error: newListErr } = await supabase.from('shopping_lists')
+          .insert({ name: 'Shopping List', household_id: householdId, created_by: userId, status: 'active' })
+          .select('id').single();
+        if (newListErr) throw new Error(newListErr.message);
+        list = newList;
+      }
+      // Parse "2 kg" into numeric quantity + unit
+      let qty: number | null = null;
+      let unit: string | null = null;
+      if (args.quantity) {
+        const m = String(args.quantity).trim().match(/^([\d.]+)\s*(.*)$/);
+        if (m) {
+          qty = Number(m[1]) || null;
+          unit = m[2]?.trim() || null;
+        }
+      }
+      const { error } = await supabase.from('shopping_list_items').insert({
+        name: args.item_name,
+        quantity: qty ?? 1,
+        unit,
+        list_id: list.id,
+        is_checked: false,
+      });
+      if (error) throw new Error(error.message);
+      return `Added '${args.item_name}' to shopping list`;
+    }
+    case 'add_transaction': {
+      const today = new Date().toISOString().slice(0, 10);
+      const { data, error } = await supabase.from('finance_transactions').insert({
+        amount: args.amount,
+        type: args.type,
+        category: args.category,
+        description: args.description || args.category,
+        transaction_date: args.transaction_date || today,
+        household_id: householdId,
+        created_by: userId,
+      }).select('id').single();
+      if (error) throw new Error(error.message);
+      return `Transaction added: ₹${args.amount} ${args.type} — ${args.category}`;
+    }
+    case 'log_habit': {
+      const { data: habits } = await supabase.from('habits')
+        .select('id, name').eq('household_id', householdId).eq('is_active', true);
+      const match = habits?.find((h: any) =>
+        h.name.toLowerCase().includes(String(args.habit_name).toLowerCase()));
+      if (!match) return `No habit found matching '${args.habit_name}'`;
+      const today = new Date().toISOString().slice(0, 10);
+      const { error } = await supabase.from('habit_logs').upsert({
+        habit_id: match.id, user_id: userId, log_date: today, completed: true,
+      }, { onConflict: 'habit_id,log_date,user_id' });
+      if (error) throw new Error(error.message);
+      return `Logged habit: '${match.name}' ✓`;
+    }
+    case 'get_pantry_status':
+    case 'get_expiring_items': {
+      const { data } = await supabase.from('pantry_items')
+        .select('name, quantity, unit, expiry_date')
+        .eq('household_id', householdId)
+        .order('expiry_date', { ascending: true }).limit(20);
+      return JSON.stringify(data || []);
+    }
+    case 'get_finance_summary': {
+      const now = new Date();
+      const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      const { data: tx } = await supabase.from('finance_transactions')
+        .select('amount, type, category')
+        .eq('household_id', householdId)
+        .gte('transaction_date', `${ym}-01`);
+      const income = tx?.filter((t: any) => t.type === 'income').reduce((s: number, t: any) => s + Number(t.amount), 0) || 0;
+      const spent = tx?.filter((t: any) => t.type === 'expense').reduce((s: number, t: any) => s + Number(t.amount), 0) || 0;
+      return JSON.stringify({ month: ym, income, spent, net: income - spent });
+    }
+    case 'get_habit_status': {
+      const today = new Date().toISOString().slice(0, 10);
+      const { data: habits } = await supabase.from('habits')
+        .select('id, name').eq('household_id', householdId).eq('is_active', true);
+      const habitIds = habits?.map((h: any) => h.id) || [];
+      const { data: logs } = habitIds.length
+        ? await supabase.from('habit_logs').select('habit_id, completed')
+            .in('habit_id', habitIds).eq('log_date', today).eq('user_id', userId)
+        : { data: [] };
+      const doneIds = new Set((logs || []).filter((l: any) => l.completed).map((l: any) => l.habit_id));
+      return JSON.stringify((habits || []).map((h: any) => ({ name: h.name, done: doneIds.has(h.id) })));
+    }
+    case 'remember_user_goal': {
+      await supabase.from('user_ai_memory').insert({
+        user_id: userId,
+        household_id: householdId,
+        memory_type: args.memory_type,
+        content: args.content,
+      });
+      return `Remembered: '${args.content}'`;
+    }
+    default:
+      return `Tool '${fn}' not yet implemented`;
+  }
+}
 
 Deno.serve(async (req) => {
   const log = new Logger("ai-chat");
@@ -203,7 +490,8 @@ Deno.serve(async (req) => {
     // Cap conversation history at the most recent 20 messages.
     const trimmedMessages = messages.length > 20 ? messages.slice(-20) : messages;
 
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    // First pass: non-streaming to detect tool calls
+    const firstResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${LOVABLE_API_KEY}`,
@@ -217,32 +505,91 @@ Deno.serve(async (req) => {
         ],
         tools,
         tool_choice: 'auto',
-        stream: true,
+        stream: false,
       }),
     });
 
-    if (!response.ok) {
-      if (response.status === 429) {
+    if (!firstResponse.ok) {
+      if (firstResponse.status === 429) {
         return new Response(JSON.stringify({ error: "Rate limits exceeded. Please try again in a moment." }), {
           status: 429,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
-      if (response.status === 402) {
+      if (firstResponse.status === 402) {
         return new Response(JSON.stringify({ error: "AI credits depleted. Please contact support." }), {
           status: 402,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
-      throw new Error(`AI gateway error: ${response.status}`);
+      throw new Error(`AI gateway error: ${firstResponse.status}`);
     }
 
-    return new Response(response.body, {
+    const firstData = await firstResponse.json();
+    const firstChoice = firstData.choices?.[0];
+    const toolCalls = firstChoice?.message?.tool_calls;
+
+    // If Gemini called tools, execute them and build tool results
+    const toolResultMessages: any[] = [];
+    if (toolCalls?.length) {
+      for (const tc of toolCalls) {
+        const fn = tc.function.name;
+        let args: any = {};
+        try { args = JSON.parse(tc.function.arguments || '{}'); } catch { /* ignore */ }
+        let result = '';
+        try {
+          result = await executeToolCall(fn, args, supabase, householdId, userId);
+        } catch (e: any) {
+          result = `Error: ${e.message}`;
+        }
+        toolResultMessages.push({ role: 'tool', tool_call_id: tc.id, content: result });
+      }
+    }
+
+    // Second pass: stream the final response (with tool results if any)
+    const finalMessages = toolCalls?.length
+      ? [{ role: 'system', content: systemPrompt }, ...trimmedMessages,
+         { role: 'assistant', content: null, tool_calls: toolCalls },
+         ...toolResultMessages]
+      : [{ role: 'system', content: systemPrompt }, ...trimmedMessages];
+
+    const streamResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'google/gemini-2.5-flash',
+        messages: finalMessages,
+        stream: true,
+      }),
+    });
+
+    if (!streamResponse.ok) {
+      if (streamResponse.status === 429) {
+        return new Response(JSON.stringify({ error: "Rate limits exceeded. Please try again in a moment." }), {
+          status: 429,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      if (streamResponse.status === 402) {
+        return new Response(JSON.stringify({ error: "AI credits depleted. Please contact support." }), {
+          status: 402,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      throw new Error(`AI gateway error: ${streamResponse.status}`);
+    }
+
+    const toolsExecuted = toolCalls?.map((tc: any) => tc.function.name).join(',') || '';
+    return new Response(streamResponse.body, {
       headers: {
         ...corsHeaders,
         'Content-Type': 'text/event-stream',
         'x-context-degraded': contextDegraded ? 'true' : 'false',
-        'Access-Control-Expose-Headers': 'x-context-degraded',
+        'x-tools-executed': toolsExecuted,
+        'Access-Control-Expose-Headers': 'x-context-degraded, x-tools-executed',
       },
     });
 

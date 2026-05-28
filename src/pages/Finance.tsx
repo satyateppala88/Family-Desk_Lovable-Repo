@@ -1,6 +1,5 @@
 import { Link } from "react-router-dom";
 import { Header } from "@/components/layout/Header";
-import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useHousehold } from "@/hooks/useHousehold";
 import { useFinanceMonthlySummary, useFinanceRealtime } from "@/hooks/finance";
@@ -18,20 +17,9 @@ import { useState } from "react";
 import { AIActionSheet } from "@/components/ai/AIActionSheet";
 import { Button } from "@/components/ui/button";
 import {
-  ArrowLeftRight,
-  Target,
-  PiggyBank,
-  Bot,
-  BarChart3,
-  RefreshCw,
-  CreditCard,
-  TrendingUp,
-  TrendingDown,
   Shield,
-  LineChart,
   ArrowUp,
   ArrowDown,
-  FileBarChart,
   Sparkles,
 } from "lucide-react";
 
@@ -73,15 +61,15 @@ const Finance = () => {
   };
 
   const financeModules = [
-    { path: "/finance/transactions", icon: ArrowLeftRight, label: "Transactions", description: "Track income & expenses", tintClass: "module-tint-finance", hintKey: "transactions" },
-    { path: "/finance/subscriptions", icon: RefreshCw, label: "Subscriptions", description: "Recurring & AMCs", tintClass: "module-tint-finance", hintKey: "subscriptions" },
-    { path: "/finance/budget", icon: Target, label: "Budget", description: "Plan your spending", tintClass: "module-tint-finance", hintKey: "" },
-    { path: "/finance/savings", icon: PiggyBank, label: "Savings", description: "Goals & progress", tintClass: "module-tint-finance", hintKey: "savings" },
-    { path: "/finance/cards", icon: CreditCard, label: "Cards", description: "Card optimizer", tintClass: "module-tint-finance", hintKey: "cards" },
-    { path: "/finance/chat", icon: Bot, label: "AI Advisor", description: "Ask about finances", tintClass: "module-tint-finance", hintKey: "" },
-    { path: "/finance/review", icon: BarChart3, label: "Review", description: "Insights & trends", tintClass: "module-tint-finance", hintKey: "" },
-    { path: "/finance/trends", icon: LineChart, label: "Trends", description: "6-month comparison", tintClass: "module-tint-finance", hintKey: "" },
-    { path: "/finance/report", icon: FileBarChart, label: "Monthly Report", description: "Shareable recap", tintClass: "module-tint-finance", hintKey: "" },
+    { path: "/finance/transactions", emoji: "🔄", label: "Transactions", description: "Track income & expenses", hintKey: "transactions" },
+    { path: "/finance/subscriptions", emoji: "🔁", label: "Subscriptions", description: "Recurring & AMCs", hintKey: "subscriptions" },
+    { path: "/finance/budget",        emoji: "🎯", label: "Budget",       description: "Plan your spending", hintKey: "" },
+    { path: "/finance/savings",       emoji: "📈", label: "Savings",      description: "Goals & progress", hintKey: "savings" },
+    { path: "/finance/cards",         emoji: "💳", label: "Cards",        description: "Card optimizer", hintKey: "cards" },
+    { path: "/finance/chat",          emoji: "🤖", label: "AI Advisor",   description: "Ask about finances", hintKey: "" },
+    { path: "/finance/review",        emoji: "📊", label: "Review",       description: "Insights & trends", hintKey: "" },
+    { path: "/finance/trends",        emoji: "📉", label: "Trends",       description: "6-month comparison", hintKey: "" },
+    { path: "/finance/report",        emoji: "🧾", label: "Monthly Report", description: "Shareable recap", hintKey: "" },
   ];
 
   const renderDelta = (current: number, prev: number, invert = false) => {
@@ -100,6 +88,10 @@ const Finance = () => {
     );
   };
 
+  const income  = summary?.income   || 0;
+  const expenses = summary?.expenses || 0;
+  const saved   = income - expenses;
+
   return (
     <div className="page-container">
       <Header />
@@ -112,10 +104,9 @@ const Finance = () => {
         )}
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h1 className="page-heading">Finance</h1>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              {monthLabel}{!isCurrent && " · viewing past month"}
-            </p>
+            <div className="fd-eyebrow mb-0.5">FINANCE</div>
+            <h1 className="fd-display text-[24px] text-fd-ink">{monthLabel}</h1>
+            {!isCurrent && <p className="text-[11px] text-fd-slate-2 mt-1">Viewing past month</p>}
           </div>
           <Button
             variant="outline"
@@ -137,64 +128,62 @@ const Finance = () => {
           <span>Your financial data stays private to your household</span>
         </div>
 
-        {/* Quick summary row */}
-        <div className="grid gap-3 grid-cols-2">
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
-                <TrendingUp className="w-3.5 h-3.5" aria-hidden="true" /> Income
+        {/* Hero spend card */}
+        <div className="fd-icard p-5">
+          <div className="fd-icard-glow" />
+          <div className="text-[10px] uppercase tracking-[0.1em] fd-mono text-white/30">Total Spent</div>
+          {isLoading && !summary ? (
+            <Skeleton className="h-8 w-32 mt-2 mb-3 bg-white/10" />
+          ) : (
+            <div className="fd-display text-[36px] text-white mt-1 mb-3">
+              <PrivateValue value={expenses} />
+            </div>
+          )}
+          <div className="grid grid-cols-[1fr_1px_1fr_1px_1fr] items-center">
+            <div className="pr-3">
+              <div className="text-[9px] uppercase tracking-[0.09em] fd-mono text-white/30">Income</div>
+              <div className="fd-mono text-[13px] font-semibold text-fd-sage-glow mt-0.5">
+                <PrivateValue value={income} />
               </div>
-              {isLoading && !summary ? (
-                <Skeleton className="h-6 w-24" />
-              ) : (
-                <>
-                  <p className="text-lg font-bold"><PrivateValue value={summary?.income || 0} /></p>
-                  {prevSummary && renderDelta(summary?.income || 0, prevSummary.income, false)}
-                </>
-              )}
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
-                <TrendingDown className="w-3.5 h-3.5" aria-hidden="true" /> Spent
+              {prevSummary && <div className="mt-1">{renderDelta(income, prevSummary.income, false)}</div>}
+            </div>
+            <div className="h-8 bg-white/10" />
+            <div className="px-3">
+              <div className="text-[9px] uppercase tracking-[0.09em] fd-mono text-white/30">Saved</div>
+              <div className={`fd-mono text-[13px] font-semibold mt-0.5 ${saved >= 0 ? "text-white" : "text-[hsl(var(--destructive))]"}`}>
+                <PrivateValue value={saved} />
               </div>
-              {isLoading && !summary ? (
-                <Skeleton className="h-6 w-24" />
-              ) : (
-                <>
-                  <p className="text-lg font-bold"><PrivateValue value={summary?.expenses || 0} /></p>
-                  {prevSummary && renderDelta(summary?.expenses || 0, prevSummary.expenses, true)}
-                </>
-              )}
-            </CardContent>
-          </Card>
+            </div>
+            <div className="h-8 bg-white/10" />
+            <div className="pl-3">
+              <div className="text-[9px] uppercase tracking-[0.09em] fd-mono text-white/30">Spend Δ</div>
+              <div className="mt-1">
+                {prevSummary
+                  ? renderDelta(expenses, prevSummary.expenses, true)
+                  : <span className="text-[10px] text-white/40">—</span>}
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Member contributions (hidden for single-member households) */}
         <MemberContributions householdId={householdId} month={month} />
 
         {/* Module grid */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          {financeModules.map(({ path, icon: Icon, label, description, tintClass, hintKey }) => {
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+          {financeModules.map(({ path, emoji, label, description, hintKey }) => {
             const hint = getHint(hintKey);
             return (
-              <Link key={path} to={path} className="block group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-xl">
-                <Card className="h-full transition-all duration-200 hover:shadow-md group-hover:scale-[1.02] group-active:scale-[0.98]" style={{ minHeight: "var(--module-card-min-h)" }}>
-                  <CardContent className="flex flex-col items-center justify-center text-center p-4 gap-2 h-full">
-                    <div className={`rounded-xl p-3 ${tintClass}`}>
-                      <Icon style={{ width: "var(--module-icon-size)", height: "var(--module-icon-size)" }} aria-hidden="true" />
-                    </div>
-                    <span className="text-sm font-medium text-foreground">{label}</span>
-                    {hint ? (
-                      <span className="text-[10px] font-medium text-primary bg-primary/8 rounded-full px-2 py-0.5">{hint}</span>
-                    ) : (
-                      <span className="text-[11px] text-muted-foreground leading-tight hidden sm:block">
-                        {description}
-                      </span>
-                    )}
-                  </CardContent>
-                </Card>
+              <Link key={path} to={path} className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-[14px]">
+                <div className="fd-mc h-full flex flex-col gap-1">
+                  <span className="text-[18px] leading-none" aria-hidden="true">{emoji}</span>
+                  <div className="text-[13px] font-semibold text-fd-ink mt-1">{label}</div>
+                  {hint ? (
+                    <div className="text-[11px] font-semibold text-fd-sage">{hint}</div>
+                  ) : (
+                    <div className="text-[11px] text-fd-slate-2">{description}</div>
+                  )}
+                </div>
               </Link>
             );
           })}

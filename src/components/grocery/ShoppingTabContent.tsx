@@ -1,43 +1,64 @@
+import { useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ShoppingCart } from "lucide-react";
 import { ShoppingListCard } from "./ShoppingListCard";
 import { ShoppingListDetailView } from "./ShoppingListDetailView";
 import { ShareOnWhatsAppButton } from "./ShareOnWhatsAppButton";
-import type { ShoppingList } from "@/hooks/useShoppingLists";
+import { useShoppingLists } from "@/hooks/useShoppingLists";
 
 interface ShoppingTabContentProps {
-  shoppingLists: ShoppingList[];
-  selectedList: ShoppingList | undefined;
+  householdId: string | null;
   userId: string;
-  onBackToLists: () => void;
-  onToggleItem: (itemId: string, isChecked: boolean) => void;
-  onDeleteItem: (itemId: string) => void;
   onShowCreateList: () => void;
-  onCompleteList: (listId: string) => void;
   onDeleteList: (listId: string) => void;
   onGenerateFromMealPlan: () => void;
 }
 
 export const ShoppingTabContent = ({
-  shoppingLists,
-  selectedList,
+  householdId,
   userId,
-  onBackToLists,
-  onToggleItem,
-  onDeleteItem,
   onShowCreateList,
-  onCompleteList,
   onDeleteList,
   onGenerateFromMealPlan,
 }: ShoppingTabContentProps) => {
+  const {
+    shoppingLists,
+    toggleItemChecked,
+    completeShoppingList,
+    deleteItem,
+  } = useShoppingLists(householdId);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const selectedListId = searchParams.get("list");
+  const selectedList = shoppingLists.find((list) => list.id === selectedListId);
+
+  const handleBackToLists = useCallback(() => {
+    const next = new URLSearchParams(searchParams);
+    next.delete("list");
+    setSearchParams(next);
+  }, [searchParams, setSearchParams]);
+
+  const handleToggleItem = useCallback(
+    (itemId: string, isChecked: boolean) => {
+      if (!userId) return;
+      toggleItemChecked.mutate({ id: itemId, is_checked: isChecked, user_id: userId });
+    },
+    [userId, toggleItemChecked],
+  );
+
+  const handleCompleteList = useCallback(
+    (listId: string) => completeShoppingList.mutate(listId),
+    [completeShoppingList],
+  );
+
   if (selectedList) {
     return (
       <ShoppingListDetailView
         list={selectedList}
-        onBack={onBackToLists}
-        onToggleItem={onToggleItem}
-        onDeleteItem={onDeleteItem}
+        onBack={handleBackToLists}
+        onToggleItem={handleToggleItem}
+        onDeleteItem={(itemId) => deleteItem.mutate(itemId)}
         userId={userId}
       />
     );
@@ -79,7 +100,7 @@ export const ShoppingTabContent = ({
               key={list.id}
               list={list}
               onDelete={onDeleteList}
-              onComplete={onCompleteList}
+              onComplete={handleCompleteList}
             />
           ))}
         </div>

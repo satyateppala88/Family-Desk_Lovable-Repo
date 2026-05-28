@@ -57,7 +57,8 @@ const FinanceMonthlyReview = () => {
       <Header />
       <main className="page-content space-y-4 animate-fade-in">
         <div>
-          <h1 className="page-heading">Monthly Review</h1>
+          <div className="fd-eyebrow mb-0.5">FINANCE</div>
+          <h1 className="fd-display text-[24px] text-fd-ink">Monthly Review</h1>
           <p className="text-sm text-muted-foreground mt-1">{monthLabel} — your household's financial health</p>
         </div>
 
@@ -80,31 +81,45 @@ const FinanceMonthlyReview = () => {
         ) : (
           <>
             {/* Summary Cards */}
-            <div className="grid grid-cols-3 gap-3">
-              <Card>
-                <CardContent className="p-4 text-center">
-                  <p className="text-label mb-1">Earned</p>
-                  <p className="text-lg font-bold text-foreground"><PrivateValue value={summary?.income || 0} /></p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-4 text-center">
-                  <p className="text-label mb-1">Spent</p>
-                  <p className="text-lg font-bold text-foreground"><PrivateValue value={summary?.expenses || 0} /></p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-4 text-center">
-                  <p className="text-label mb-1">Saved</p>
-                  <p className={cn(
-                    "text-lg font-bold",
-                    savingsRate >= 20 ? "text-[hsl(var(--success))]" : savingsRate >= 0 ? "text-warning" : "text-destructive"
-                  )}>
-                    {savingsRate}%
-                  </p>
-                </CardContent>
-              </Card>
-            </div>
+            {(() => {
+              const income = summary?.income || 0;
+              const expenses = summary?.expenses || 0;
+              const saved = summary?.saved || 0;
+              const balanceLeft = income - expenses - saved;
+              return (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <Card>
+                    <CardContent className="p-4 text-center">
+                      <p className="text-label mb-1">Earned</p>
+                      <p className="text-lg font-bold text-foreground"><PrivateValue value={income} /></p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="p-4 text-center">
+                      <p className="text-label mb-1">Spent</p>
+                      <p className="text-lg font-bold text-foreground"><PrivateValue value={expenses} /></p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="p-4 text-center">
+                      <p className="text-label mb-1">Saved</p>
+                      <p className="text-lg font-bold text-[hsl(var(--success))]"><PrivateValue value={saved} /></p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardContent className="p-4 text-center">
+                      <p className="text-label mb-1">Balance left</p>
+                      <p className={cn(
+                        "text-lg font-bold",
+                        balanceLeft >= 0 ? "text-foreground" : "text-destructive"
+                      )}>
+                        <PrivateValue value={balanceLeft} />
+                      </p>
+                    </CardContent>
+                  </Card>
+                </div>
+              );
+            })()}
 
             {/* Daily spending pattern */}
             <DailySpendChart householdId={householdId} month={currentMonth} />

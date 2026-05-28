@@ -39,6 +39,7 @@ import { BudgetSubNav } from "@/components/finance/BudgetSubNav";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { BudgetHealthCard } from "@/components/finance/BudgetHealthCard";
 
 const FinanceBudget = () => {
   const { householdId } = useHousehold();
@@ -47,6 +48,13 @@ const FinanceBudget = () => {
   const { month: currentMonth, label: monthLabel } = useSelectedMonth();
   const { data: budgets, isLoading } = useFinanceBudgets(householdId, currentMonth);
   const { data: summary } = useFinanceMonthlySummary(householdId, currentMonth);
+  const prevMonth = useMemo(() => {
+    const [y, m] = currentMonth.split("-").map(Number);
+    const py = m === 1 ? y - 1 : y;
+    const pm = m === 1 ? 12 : m - 1;
+    return `${py}-${String(pm).padStart(2, "0")}`;
+  }, [currentMonth]);
+  const { data: prevSummary } = useFinanceMonthlySummary(householdId, prevMonth);
   const { data: members } = useHouseholdMembers(householdId);
   const hasMultipleMembers = (members?.length ?? 0) >= 2;
   const [selectedPaidBy, setSelectedPaidBy] = useState<string>("household");
@@ -147,6 +155,20 @@ const FinanceBudget = () => {
     return { ...b, actual, pct, over };
   }).sort((a, b) => b.pct - a.pct);
 
+  // Health-score buckets (household view only — member toggles re-use the same thresholds against household limits).
+  const healthCounts = useMemo(() => {
+    let onTrack = 0, atRisk = 0, over = 0;
+    for (const r of budgetRows) {
+      const planned = Number(r.planned_amount);
+      if (planned <= 0) continue;
+      const ratio = r.actual / planned;
+      if (ratio > 1) over++;
+      else if (ratio >= 0.8) atRisk++;
+      else onTrack++;
+    }
+    return { onTrack, atRisk, over };
+  }, [budgetRows]);
+
   // All available expense categories (built-in minus income + custom)
   const incomeKeys = new Set(["salary", "freelance", "investment_returns"]);
   const selectableCategories = useMemo(() => {
@@ -208,8 +230,11 @@ const FinanceBudget = () => {
     <div className="page-container">
       <Header />
       <main className="page-content space-y-4">
-        <div className="flex items-center justify-between">
-          <h1 className="page-heading">Budget</h1>
+        <div className="flex items-end justify-between">
+          <div>
+            <div className="fd-eyebrow mb-0.5">FINANCE</div>
+            <h1 className="fd-display text-[24px] text-fd-ink">Budget</h1>
+          </div>
           <div className="hidden sm:flex items-center gap-2">
             <Button size="sm" variant="outline" asChild>
               <Link to="/finance/budget/categories">
@@ -265,6 +290,17 @@ const FinanceBudget = () => {
         )}
 
         {/* Overall progress */}
+        {!isMemberView && budgetRows.length > 0 && totalPlanned > 0 && (
+          <BudgetHealthCard
+            monthLabel={monthLabel}
+            totalPlanned={totalPlanned}
+            totalActual={totalActual}
+            onTrack={healthCounts.onTrack}
+            atRisk={healthCounts.atRisk}
+            overBudget={healthCounts.over}
+          />
+        )}
+
         <Card>
           <CardContent className="p-4 space-y-2">
             <div className="flex justify-between text-sm">
@@ -426,6 +462,22 @@ const FinanceBudget = () => {
                       </button>
                     )}
                   </div>
+                  {!isMemberView && (() => {
+                    const prev = prevSummary?.categoryBreakdown?.[row.category];
+                    if (prev === undefined || prev === 0) return null;
+                    const delta = row.actual - prev;
+                    if (delta === 0) return null;
+                    const up = delta > 0;
+                    return (
+                      <p className={cn(
+                        "text-[11px]",
+                        up ? "text-warning" : "text-success",
+                      )}>
+                        vs last month: {up ? "+" : "−"}
+                        <PrivateValue value={Math.abs(delta)} /> {up ? "↑" : "↓"}
+                      </p>
+                    );
+                  })()}
                   {!isMemberView && hasMultipleMembers && (categoryTotal[row.category] || 0) > 0 && (() => {
                     const expanded = !!expandedBreakdown[row.id];
                     const total = categoryTotal[row.category] || 0;

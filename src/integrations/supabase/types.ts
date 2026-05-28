@@ -94,6 +94,33 @@ export type Database = {
           },
         ]
       }
+      ai_feedback: {
+        Row: {
+          created_at: string | null
+          household_id: string
+          id: string
+          module: string
+          user_id: string
+          vote: string
+        }
+        Insert: {
+          created_at?: string | null
+          household_id: string
+          id?: string
+          module: string
+          user_id: string
+          vote: string
+        }
+        Update: {
+          created_at?: string | null
+          household_id?: string
+          id?: string
+          module?: string
+          user_id?: string
+          vote?: string
+        }
+        Relationships: []
+      }
       ai_messages: {
         Row: {
           content: string
@@ -1395,6 +1422,38 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "habits_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      household_ai_insights: {
+        Row: {
+          generated_at: string
+          household_id: string
+          id: string
+          insight_text: string
+          week_start: string
+        }
+        Insert: {
+          generated_at?: string
+          household_id: string
+          id?: string
+          insight_text: string
+          week_start: string
+        }
+        Update: {
+          generated_at?: string
+          household_id?: string
+          id?: string
+          insight_text?: string
+          week_start?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "household_ai_insights_household_id_fkey"
             columns: ["household_id"]
             isOneToOne: false
             referencedRelation: "households"
@@ -2923,6 +2982,44 @@ export type Database = {
           },
         ]
       }
+      user_ai_memory: {
+        Row: {
+          content: string
+          created_at: string
+          expires_at: string | null
+          household_id: string
+          id: string
+          memory_type: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          expires_at?: string | null
+          household_id: string
+          id?: string
+          memory_type: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          expires_at?: string | null
+          household_id?: string
+          id?: string
+          memory_type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_ai_memory_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_email_preferences: {
         Row: {
           access_updates: boolean | null
@@ -2980,6 +3077,30 @@ export type Database = {
           user_id?: string
           weekly_digest?: boolean | null
           weekly_digest_whatsapp?: boolean | null
+        }
+        Relationships: []
+      }
+      user_finance_pin: {
+        Row: {
+          created_at: string
+          pin_hash: string
+          pin_salt: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          pin_hash: string
+          pin_salt: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          pin_hash?: string
+          pin_salt?: string
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -3248,6 +3369,10 @@ export type Database = {
           _key: string
           _refresh_token: string
         }
+        Returns: undefined
+      }
+      vault_upsert_cron_secret: {
+        Args: { _secret: string }
         Returns: undefined
       }
       vault_upsert_push_key: { Args: { _key: string }; Returns: undefined }

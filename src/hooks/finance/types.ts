@@ -81,6 +81,8 @@ export interface AnnualBudgetRow {
   monthlyActual: number[];
   annualPlanned: number;
   annualActual: number;
+  /** True if the household explicitly set a yearly (annual) budget for this category. */
+  isAnnual?: boolean;
 }
 
 export interface AnnualBudgetData {
@@ -90,6 +92,8 @@ export interface AnnualBudgetData {
   monthlyPlanned: number[]; // length 12
   monthlyActual: number[];
   rows: AnnualBudgetRow[];
+  /** Category keys that have a true annual (budget_type='annual') budget set for this year. */
+  annualCategoryKeys: string[];
 }
 
 // ─── Category constants ──────────────────────────────────────
@@ -245,17 +249,25 @@ export const CATEGORY_ALIASES: Record<string, string> = {
 export const SAVINGS_CATEGORIES = [
   "sip",
   "mutual_fund",
-  "fixed_deposit",
+  "sip_stock",
   "stocks",
+  "fixed_deposit",
   "bank_deposit",
+  "nps",
+  "ppf",
+  "life_insurance",
   "other",
 ] as const;
 
 export const SAVINGS_CATEGORY_LABELS: Record<string, string> = {
-  sip: "SIP",
-  mutual_fund: "Mutual Fund",
+  sip: "SIP in Mutual Fund",
+  mutual_fund: "One Time Mutual Fund",
+  sip_stock: "SIP in Stock",
+  stocks: "One Time Stock",
   fixed_deposit: "Fixed Deposit",
-  stocks: "Stocks",
   bank_deposit: "Bank Deposit",
+  nps: "National Pension Scheme",
+  ppf: "Public Provident Fund",
+  life_insurance: "Life Insurance Premium",
   other: "Other",
 };

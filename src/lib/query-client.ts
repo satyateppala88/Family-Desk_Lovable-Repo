@@ -120,3 +120,16 @@ export function createPersistedQueryClient(): QueryClient {
 
   return client;
 }
+
+/**
+ * Hard-clear the persisted React Query IndexedDB store. Used by the
+ * "Hard reload" maintenance action in Settings so the next boot starts
+ * with a fresh cache from the network.
+ */
+export async function clearPersistedQueryCache(): Promise<void> {
+  try {
+    await del(CACHE_KEY, getStore());
+  } catch {
+    /* ignore */
+  }
+}

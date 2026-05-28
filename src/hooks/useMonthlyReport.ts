@@ -118,7 +118,10 @@ export const useMonthlyReport = (month: string) => {
         month,
         monthLabel,
         spent: summary?.expenses || 0,
-        saved: (summary?.income || 0) - (summary?.expenses || 0),
+        // "Saved" reflects money the household actively moved into savings
+        // (transactions tagged type='savings'). Mirrors the UI-02 fix so the
+        // Monthly Report agrees with the Savings page.
+        saved: summary?.saved || 0,
         topCategories: cats,
         habits: { completed: completedCount, total: scheduledCount, percent, bestStreak },
         mealsCooked,

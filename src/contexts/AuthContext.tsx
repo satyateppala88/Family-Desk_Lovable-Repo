@@ -3,6 +3,7 @@ import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
+import { syncFinancePinFromServer } from "@/lib/financePin";
 
 interface AuthContextType {
   user: User | null;
@@ -44,6 +45,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
+        if (session?.user) {
+          // Pull the authoritative PIN record for this account.
+          setTimeout(() => { syncFinancePinFromServer().catch(() => {}); }, 0);
+        }
       }
     );
     return () => subscription.unsubscribe();

@@ -1,116 +1,124 @@
 @import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Serif+Display:ital@0;1&display=swap");
+@import './styles/tokens.css';
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 /* Family Desk — Warm, calm, premium design system */
 
+/* Disable pinch-zoom, double-tap zoom, and rubber-band overscroll across the app. */
+html,
+body {
+  touch-action: pan-x pan-y;
+  overscroll-behavior: none;
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
+
 @layer base {
   :root {
     /* ─── FamilyDesk raw palette (hex) ─── */
-    --fd-green: #0F6E56;
-    --fd-green-mid: #1D9E75;
-    --fd-green-light: #E1F5EE;
-    --fd-green-dark: #085041;
-    --fd-ink: #1A1A1A;
-    --fd-ink-2: #4A4A4A;
-    --fd-ink-3: #8A8A8A;
-    --fd-surface: #F7F6F2;
+    /* Quiet Precision palette — see ./styles/tokens.css for fd-* tokens.
+       Legacy aliases preserved for any component that still reads them. */
+    --fd-green: var(--fd-sage);
+    --fd-green-mid: var(--fd-sage-2);
+    --fd-green-light: var(--fd-sage-3);
+    --fd-green-dark: #0F4A35;
+    --fd-surface: var(--fd-mist);
     --fd-white: #FFFFFF;
-    --fd-border: rgba(15,110,86,0.15);
-    --fd-border-strong: rgba(15,110,86,0.30);
-    --fd-amber: #BA7517;
-    --fd-amber-light: #FAEEDA;
-    --fd-coral: #993C1D;
-    --fd-coral-light: #FAECE7;
+    --fd-border: var(--fd-mist-3);
+    --fd-border-strong: var(--fd-slate-2);
+    --fd-amber-light: var(--fd-amber-bg);
+    --fd-coral: var(--fd-crimson);
+    --fd-coral-light: var(--fd-crimson-bg);
     --fd-blue: #185FA5;
     --fd-blue-light: #E6F1FB;
     --fd-pink: #993556;
     --fd-pink-light: #FBEAF0;
-    --fd-shadow-sm: 0 1px 3px rgba(15,110,86,0.08), 0 4px 12px rgba(15,110,86,0.06);
-    --fd-shadow-lg: 0 4px 16px rgba(15,110,86,0.12), 0 12px 32px rgba(15,110,86,0.08);
+    --fd-shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+    --fd-shadow-lg: 0 2px 8px rgba(0,0,0,0.07);
     --fd-radius-sm: 8px;
     --fd-radius-md: 12px;
     --fd-radius-lg: 16px;
     --fd-radius-xl: 24px;
 
     /* ─── shadcn semantic tokens (HSL — re-pointed at fd palette) ─── */
-    --background: 40 25% 97%;          /* #F7F6F2 fd-surface */
-    --foreground: 0 0% 10%;            /* #1A1A1A fd-ink */
+    --background: 46 23% 94%;          /* #F4F2ED fd-mist */
+    --foreground: 60 9% 5%;            /* #0D0D0B fd-ink */
 
     --card: 0 0% 100%;
-    --card-foreground: 0 0% 10%;
+    --card-foreground: 60 9% 5%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 10%;
+    --popover-foreground: 60 9% 5%;
 
-    /* Primary accent: FamilyDesk green #0F6E56 */
-    --primary: 165 76% 24%;
+    /* Primary accent: Quiet Precision sage #1B6B4E */
+    --primary: 158 60% 26%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 158 53% 92%;          /* #E1F5EE green-light */
-    --secondary-foreground: 165 84% 15%; /* #085041 green-dark */
+    --secondary: 152 32% 88%;          /* #D6EDE4 sage-3 */
+    --secondary-foreground: 158 60% 20%;
 
-    --muted: 40 25% 97%;               /* surface */
-    --muted-foreground: 0 0% 54%;      /* #8A8A8A */
+    --muted: 45 17% 91%;               /* #ECEAE4 mist-2 */
+    --muted-foreground: 41 4% 39%;     /* #6B6860 slate */
 
-    --accent: 158 53% 92%;
-    --accent-foreground: 165 84% 15%;
+    --accent: 152 32% 88%;
+    --accent-foreground: 158 60% 20%;
 
     /* Status colors */
-    --success: 165 76% 24%;
+    --success: 158 60% 26%;
     --success-foreground: 0 0% 100%;
 
-    --warning: 30 78% 41%;             /* #BA7517 */
+    --warning: 37 80% 43%;             /* #C47F17 amber */
     --warning-foreground: 0 0% 100%;
 
-    --destructive: 13 68% 35%;          /* #993C1D coral */
+    --destructive: 7 62% 44%;          /* #B53B2A crimson */
     --destructive-foreground: 0 0% 100%;
 
-    /* Borders & inputs — green-tinted */
-    --border: 158 30% 88%;
-    --input: 158 30% 88%;
-    --ring: 165 76% 24%;
+    /* Borders & inputs — mist neutral */
+    --border: 42 19% 87%;              /* #E2DFD8 mist-3 */
+    --input: 42 19% 87%;
+    --ring: 158 60% 26%;
 
     /* ─── Brand & ink scale (raw hex tokens) ─── */
-    --brand: #0F6E56;
-    --brand-dark: #085041;
-    --brand-mid: #1D9E75;
-    --brand-light: #5DCAA5;
-    --brand-muted: #E1F5EE;
+    --brand: #1B6B4E;
+    --brand-dark: #0F4A35;
+    --brand-mid: #2E8B62;
+    --brand-light: #3DB87A;
+    --brand-muted: #D6EDE4;
 
-    --ink: #1A1A1A;
-    --ink-secondary: #4A4A4A;
-    --ink-muted: #8A8A8A;
-    --ink-border: #D3D1C7;
-    --ink-surface: #F7F6F2;
+    --ink: #0D0D0B;
+    --ink-secondary: #1C1C19;
+    --ink-muted: #6B6860;
+    --ink-border: #E2DFD8;
+    --ink-surface: #F4F2ED;
 
     --color-primary: var(--brand);
     --color-primary-hover: var(--brand-dark);
-    --color-background: #F7F6F2;
+    --color-background: #F4F2ED;
     --color-surface: #FFFFFF;
     --color-surface-raised: #FFFFFF;
-    --color-border: rgba(15,110,86,0.15);
+    --color-border: #E2DFD8;
     --color-text: var(--ink);
     --color-text-muted: var(--ink-muted);
     /* Mobile design-system semantic tokens */
-    --color-text-primary: #1A1A1A;
-    --color-text-secondary: #4A4A4A;
-    --color-text-disabled: #8A8A8A;
-    --color-brand: #0F6E56;
-    --color-error: #993C1D;
-    --color-warning: #BA7517;
-    --color-success: #0F6E56;
+    --color-text-primary: #0D0D0B;
+    --color-text-secondary: #1C1C19;
+    --color-text-disabled: #9B9890;
+    --color-brand: #1B6B4E;
+    --color-error: #B53B2A;
+    --color-warning: #C47F17;
+    --color-success: #1B6B4E;
 
     --radius: 0.75rem; /* 12px → fd-radius-md */
 
     /* ─── Module tints (for icon backgrounds, subtle accents) ─── */
-    --module-tasks: 165 76% 24%;
-    --module-meals: 24 70% 50%;
-    --module-grocery: 152 40% 42%;
-    --module-calendar: 220 50% 52%;
-    --module-habits: 280 35% 52%;
-    --module-finance: 38 75% 52%;
+    --module-tasks: 158 60% 26%;
+    --module-meals: 37 80% 43%;
+    --module-grocery: 158 60% 26%;
+    --module-calendar: 254 45% 45%;
+    --module-habits: 254 45% 45%;
+    --module-finance: 7 62% 44%;
 
     /* Sidebar */
     --sidebar-background: 43 19% 93%;
@@ -260,7 +268,7 @@
 
   body {
     @apply bg-background text-foreground antialiased;
-    font-family: 'DM Sans', ui-sans-serif, system-ui, -apple-system, sans-serif;
+    font-family: var(--font-body);
     font-feature-settings: "cv11", "ss01";
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -364,20 +372,29 @@
 
 /* ─── Typography helpers ─── */
 .text-label {
-  @apply text-xs font-medium uppercase tracking-wider text-muted-foreground;
+  @apply text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground;
 }
 
 .text-helper {
-  @apply text-xs text-muted-foreground;
+  @apply text-[12px] leading-[1.5] text-muted-foreground;
 }
 
 .text-metric {
-  @apply text-2xl font-bold tracking-tight text-foreground;
+  @apply text-[26px] font-bold tracking-[-0.02em] leading-[1.1] text-foreground tabular-nums;
 }
 
 .text-section-title {
   font-size: var(--subheading-size);
-  @apply font-semibold text-foreground;
+  @apply font-semibold tracking-[-0.01em] text-foreground;
+}
+
+/* Body / supporting copy helper */
+.text-body {
+  @apply text-[14px] leading-[1.55] text-foreground;
+}
+
+.text-body-muted {
+  @apply text-[14px] leading-[1.55] text-muted-foreground;
 }
 
 /* ─── Module tint utility classes ─── */
@@ -482,3 +499,93 @@ body[data-notif-primer-open] .ai-chat-fab {
   font-family: 'DM Serif Display', ui-serif, Georgia, serif;
   letter-spacing: -0.02em;
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   QUIET PRECISION — Shared component primitives
+   Use these classes across all FamilyDesk screens so the design
+   system stays consistent. See familydesk-all-screens.html ref.
+═══════════════════════════════════════════════════════════════ */
+
+/* Typography helpers */
+.fd-display       { font-family: var(--font-display); font-style: italic; letter-spacing: -0.02em; line-height: 1.1; }
+.fd-mono          { font-family: var(--font-mono); font-feature-settings: 'tnum'; }
+.fd-section-label { font-family: var(--font-body); font-size: 10px; font-weight: 500; letter-spacing: 0.18em; text-transform: uppercase; color: var(--fd-slate-2); }
+.fd-eyebrow       { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.09em; color: var(--fd-slate-2); text-transform: uppercase; }
+
+/* Dark / hero "ink" card */
+.fd-icard {
+  position: relative;
+  background: var(--fd-ink-2);
+  border-radius: 18px;
+  color: #fff;
+  overflow: hidden;
+}
+.fd-icard-glow {
+  position: absolute; top: -40px; right: -40px;
+  width: 140px; height: 140px;
+  background: radial-gradient(circle, rgba(61,184,122,.10) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+/* Sage "nudge" banner (left rule) */
+.fd-nudge {
+  background: var(--fd-sage-3);
+  border-left: 3px solid var(--fd-sage);
+  border-radius: 10px;
+  padding: 9px 12px;
+  color: var(--fd-sage);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+/* Quick-action white card */
+.fd-qa {
+  background: #fff;
+  border: 1px solid var(--fd-mist-3);
+  border-radius: 10px;
+  box-shadow: 0 1px 2px rgba(0,0,0,.05);
+  padding: 10px 6px;
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  cursor: pointer;
+}
+.fd-qa-i { font-size: 16px; line-height: 1; }
+.fd-qa-l { font-size: 9px; font-weight: 600; letter-spacing: 0.03em; text-transform: uppercase; color: var(--fd-slate); }
+
+/* Module / white card */
+.fd-mc {
+  background: #fff;
+  border: 1px solid var(--fd-mist-3);
+  border-radius: 14px;
+  box-shadow: 0 1px 2px rgba(0,0,0,.05);
+  padding: 14px;
+  cursor: pointer;
+}
+
+/* Chips */
+.fd-chip       { display: inline-flex; align-items: center; gap: 4px; border-radius: 4px; padding: 3px 8px; font-family: var(--font-body); font-size: 10px; font-weight: 600; line-height: 1.2; }
+.fd-chip-sage    { background: var(--fd-sage-3);    color: var(--fd-sage); }
+.fd-chip-amber   { background: var(--fd-amber-bg);  color: var(--fd-amber); }
+.fd-chip-crimson { background: var(--fd-crimson-bg);color: var(--fd-crimson); }
+.fd-chip-violet  { background: var(--fd-violet-bg); color: var(--fd-violet); }
+.fd-chip-muted   { background: var(--fd-mist-2);    color: var(--fd-slate); border: 1px solid var(--fd-mist-3); }
+
+/* Primary CTA */
+.fd-btn-primary {
+  background: var(--fd-sage); color: #fff;
+  border-radius: 10px; padding: 12px 16px;
+  font-family: var(--font-body); font-weight: 600; font-size: 13px;
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  border: none; cursor: pointer;
+}
+.fd-btn-primary:hover { background: var(--fd-sage-2); }
+
+/* Progress rail */
+.fd-progress      { width: 100%; height: 3px; background: var(--fd-mist-3); border-radius: 1.5px; overflow: hidden; }
+.fd-progress > i  { display: block; height: 100%; background: var(--fd-sage); }
+
+/* Underline tab — matches reference .tab/.tab.on */
+.fd-tab           { display: inline-flex; align-items: center; gap: 4px; padding: 8px 0; font-family: var(--font-body); font-size: 12px; font-weight: 500; color: var(--fd-slate); border-bottom: 2px solid transparent; cursor: pointer; }
+.fd-tab.is-active { color: var(--fd-sage); border-bottom-color: var(--fd-sage); font-weight: 600; }
+
+/* Divider */
+.fd-divider { height: 1px; background: var(--fd-mist-3); width: 100%; }

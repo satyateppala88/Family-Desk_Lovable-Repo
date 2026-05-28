@@ -105,7 +105,7 @@ const TaskmasterToday = () => {
       case 1: return { label: "P1", color: "bg-red-500 text-white" };
       case 2: return { label: "P2", color: "bg-orange-500 text-white" };
       case 3: return { label: "P3", color: "bg-yellow-500 text-black" };
-      case 4: return { label: "P4", color: "bg-blue-500 text-white" };
+      case 4: return { label: "P4", color: "bg-muted text-muted-foreground" };
       default: return { label: "P3", color: "bg-yellow-500 text-black" };
     }
   };
@@ -146,11 +146,12 @@ const TaskmasterToday = () => {
       <main className="container px-4 sm:px-6 py-6 pb-24">
         <TaskmasterSubNav />
 
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-end justify-between mb-6">
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold mt-4">Today's Plan</h1>
-            <p className="text-sm text-muted-foreground">
-              {format(new Date(), "EEEE, MMMM d, yyyy")}
+            <div className="fd-eyebrow mb-0.5 mt-4">TASKS</div>
+            <h1 className="fd-display text-[24px] text-fd-ink">Today's Plan</h1>
+            <p className="text-xs fd-mono text-fd-slate uppercase tracking-[0.08em] mt-1">
+              {format(new Date(), "EEEE · MMM d")}
             </p>
             <p className="text-xs text-muted-foreground mt-1">
               {backlogCount > 0 ? (

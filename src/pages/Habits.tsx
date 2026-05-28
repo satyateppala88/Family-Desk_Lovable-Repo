@@ -181,12 +181,13 @@ const Habits = () => {
         />
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
           <div>
-            <h1 className="page-heading">Habits</h1>
+            <div className="fd-eyebrow mb-0.5">DAILY</div>
+            <h1 className="fd-display text-[24px] text-fd-ink">Habits</h1>
             <div className="flex items-center gap-2 flex-wrap">
               <p className="text-muted-foreground text-sm">{format(today, "EEEE, MMMM d")}</p>
               <span className={cn(
                 "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs",
-                freezesRemaining > 0 ? "border-sky-200 bg-sky-50 text-sky-700" : "border-muted text-muted-foreground"
+                freezesRemaining > 0 ? "border-primary/30 bg-primary/10 text-primary" : "border-muted text-muted-foreground"
               )}>
                 <Snowflake className="h-3 w-3" aria-hidden="true" />
                 {freezesRemaining} freeze{freezesRemaining === 1 ? "" : "s"} left
@@ -215,37 +216,6 @@ const Habits = () => {
 
         {view === "personal" ? (
           <div className="space-y-3">
-            {/* Pinned active challenges */}
-            {userActiveChallenges.length > 0 && (
-              <div className="space-y-2">
-                <p className="text-label flex items-center gap-1.5">
-                  <Trophy className="h-3.5 w-3.5" /> Family Challenges
-                </p>
-                {userActiveChallenges.map((c) => (
-                  <ChallengeCard
-                    key={c.id}
-                    challenge={c}
-                    members={householdMembers || []}
-                    currentUserId={currentUserId}
-                    compact
-                    onMarkDone={(id) => markDone.mutate(id)}
-                    isMutating={markDone.isPending}
-                  />
-                ))}
-              </div>
-            )}
-
-            {/* Streak recovery banner */}
-            {!bannerDismissed && (
-              <StreakRecoveryBanner
-                missed={missed}
-                freezesRemaining={freezesRemaining}
-                onUseFreeze={handleUseFreeze}
-                onDismiss={handleDismissBanner}
-                isApplying={applyFreeze.isPending}
-              />
-            )}
-
             {/* Progress summary */}
             <Card data-tour="progress-summary" className={cn(allDone && "border-[hsl(var(--success))]/20 bg-[hsl(var(--success))]/3")}>
               <CardContent className="p-4">
@@ -334,6 +304,37 @@ const Habits = () => {
                 onControlledOpenChange={setCreateDialogOpen}
               />
             </div>
+
+            {/* Family challenges (moved below habits list, compact) */}
+            {userActiveChallenges.length > 0 && (
+              <div className="space-y-2 pt-2">
+                <p className="text-label flex items-center gap-1.5">
+                  <Trophy className="h-3.5 w-3.5" /> Family Challenges
+                </p>
+                {userActiveChallenges.map((c) => (
+                  <ChallengeCard
+                    key={c.id}
+                    challenge={c}
+                    members={householdMembers || []}
+                    currentUserId={currentUserId}
+                    compact
+                    onMarkDone={(id) => markDone.mutate(id)}
+                    isMutating={markDone.isPending}
+                  />
+                ))}
+              </div>
+            )}
+
+            {/* Streak recovery banner (moved below challenges) */}
+            {!bannerDismissed && (
+              <StreakRecoveryBanner
+                missed={missed}
+                freezesRemaining={freezesRemaining}
+                onUseFreeze={handleUseFreeze}
+                onDismiss={handleDismissBanner}
+                isApplying={applyFreeze.isPending}
+              />
+            )}
 
             {stackSuggestionFor && (
               <HabitStackSuggestion
