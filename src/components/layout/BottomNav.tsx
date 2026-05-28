@@ -1,20 +1,48 @@
 import { useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
-import {
-  Home,
-  CheckSquare,
-  Sparkles,
-  Wallet,
-  MoreHorizontal,
-} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MoreSheet } from "@/components/layout/MoreSheet";
 
+/* Quiet Precision icon set — inline SVG, stroke-width 2, currentColor */
+const IconHome = (p: React.SVGProps<SVGSVGElement>) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" {...p}>
+    <path d="M2 10L12 3l10 7v10a1 1 0 01-1 1H3a1 1 0 01-1-1V10z" />
+    <polyline points="9,21 9,12 15,12 15,21" />
+  </svg>
+);
+const IconTasks = (p: React.SVGProps<SVGSVGElement>) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" {...p}>
+    <rect x="3" y="3" width="18" height="18" rx="3" />
+    <polyline points="7.5,12 10.5,15 16.5,9" />
+  </svg>
+);
+const IconAI = (p: React.SVGProps<SVGSVGElement>) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" {...p}>
+    <path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.93 4.93l2.12 2.12M16.95 16.95l2.12 2.12M4.93 19.07l2.12-2.12M16.95 7.05l2.12-2.12" />
+    <circle cx="12" cy="12" r="4" />
+  </svg>
+);
+const IconFinance = (p: React.SVGProps<SVGSVGElement>) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" {...p}>
+    <rect x="2" y="6" width="20" height="14" rx="2" />
+    <path d="M2 10h20" />
+    <circle cx="17" cy="15" r="1.5" fill="currentColor" stroke="none" />
+    <path d="M6 6V4a2 2 0 012-2h8a2 2 0 012 2v2" />
+  </svg>
+);
+const IconMore = (p: React.SVGProps<SVGSVGElement>) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" {...p}>
+    <line x1="4" y1="8" x2="20" y2="8" />
+    <line x1="4" y1="12" x2="20" y2="12" />
+    <line x1="4" y1="16" x2="20" y2="16" />
+  </svg>
+);
+
 const PRIMARY = [
-  { to: "/dashboard", label: "Home", icon: Home, match: ["/dashboard"], primary: false },
-  { to: "/taskmaster/today", label: "Tasks", icon: CheckSquare, match: ["/taskmaster", "/tasks"], primary: false },
-  { to: "/ai", label: "Ask AI", icon: Sparkles, match: ["/ai"], primary: true },
-  { to: "/finance", label: "Finance", icon: Wallet, match: ["/finance"], primary: false },
+  { to: "/dashboard", label: "Home", icon: IconHome, match: ["/dashboard"] },
+  { to: "/taskmaster/today", label: "Tasks", icon: IconTasks, match: ["/taskmaster", "/tasks"] },
+  { to: "/ai", label: "Ask AI", icon: IconAI, match: ["/ai"] },
+  { to: "/finance", label: "Finance", icon: IconFinance, match: ["/finance"] },
 ];
 
 const MORE_MATCH = ["/meals", "/grocery", "/habits", "/calendar"];
@@ -45,6 +73,11 @@ export const BottomNav = () => {
 
   const moreActive = matches(location.pathname, MORE_MATCH);
 
+  const NAV_BG = "#0D0D0B";
+  const ACTIVE = "#3DB87A";
+  const INACTIVE = "rgba(255,255,255,0.35)";
+  const INACTIVE_LABEL = "rgba(255,255,255,0.28)";
+
   return (
     <>
       {/* Mobile: floating pill */}
@@ -54,10 +87,10 @@ export const BottomNav = () => {
         style={{ marginBottom: "env(safe-area-inset-bottom)" }}
       >
         <ul
-          className="mx-auto flex items-stretch justify-around max-w-[600px] h-[60px] rounded-[20px] px-1"
+          className="mx-auto flex items-stretch justify-around max-w-[600px] h-[60px] rounded-[40px] px-1 pt-2 pb-[20px]"
           style={{
-            backgroundColor: "#0F6E56",
-            boxShadow: "0 4px 20px rgba(15,110,86,0.30)",
+            backgroundColor: NAV_BG,
+            boxShadow: "0 4px 20px rgba(0,0,0,0.30)",
           }}
         >
           {PRIMARY.map((item) => {
@@ -67,15 +100,14 @@ export const BottomNav = () => {
               <li key={item.to} className="flex-1">
                 <NavLink
                   to={item.to}
-                  className={cn(
-                    "relative h-full min-h-touch flex flex-col items-center justify-center gap-[3px] rounded-[16px] py-2 transition-transform duration-150 ease-out active:scale-[0.92]",
-                    active ? "text-white" : "text-white/45"
-                  )}
+                  className="relative h-full min-h-touch flex flex-col items-center justify-center gap-[3px] rounded-[16px] py-2"
+                  style={{ color: active ? ACTIVE : INACTIVE }}
                 >
-                  <Icon
-                    className={cn(item.primary ? "h-6 w-6" : "h-5 w-5")}
-                  />
-                  <span className="text-[10px] font-medium tracking-[0.01em] leading-none">
+                  <Icon width={20} height={20} />
+                  <span
+                    className="text-[9px] font-medium tracking-[0.01em] leading-none uppercase"
+                    style={{ color: active ? ACTIVE : INACTIVE_LABEL }}
+                  >
                     {item.label}
                   </span>
                 </NavLink>
@@ -86,13 +118,14 @@ export const BottomNav = () => {
             <button
               type="button"
               onClick={() => setMoreOpen(true)}
-              className={cn(
-                "relative w-full h-full min-h-touch flex flex-col items-center justify-center gap-[3px] rounded-[16px] py-2 transition-transform duration-150 ease-out active:scale-[0.92]",
-                moreActive ? "text-white" : "text-white/45"
-              )}
+              className="relative w-full h-full min-h-touch flex flex-col items-center justify-center gap-[3px] rounded-[16px] py-2"
+              style={{ color: moreActive ? ACTIVE : INACTIVE }}
             >
-              <MoreHorizontal className="h-5 w-5" />
-              <span className="text-[10px] font-medium tracking-[0.01em] leading-none">
+              <IconMore width={20} height={20} />
+              <span
+                className="text-[9px] font-medium tracking-[0.01em] leading-none uppercase"
+                style={{ color: moreActive ? ACTIVE : INACTIVE_LABEL }}
+              >
                 More
               </span>
             </button>
@@ -105,7 +138,7 @@ export const BottomNav = () => {
         aria-label="Primary"
         className="hidden md:flex lg:hidden fixed bottom-0 left-0 right-0 z-40 h-[60px]"
         style={{
-          backgroundColor: "#0F6E56",
+          backgroundColor: NAV_BG,
           paddingBottom: "env(safe-area-inset-bottom)",
         }}
       >
@@ -117,13 +150,14 @@ export const BottomNav = () => {
               <li key={item.to} className="flex-1">
                 <NavLink
                   to={item.to}
-                  className={cn(
-                    "h-full min-h-touch flex flex-col items-center justify-center gap-1 py-2",
-                    active ? "text-white" : "text-white/55"
-                  )}
+                  className="h-full min-h-touch flex flex-col items-center justify-center gap-1 py-2"
+                  style={{ color: active ? ACTIVE : INACTIVE }}
                 >
-                  <Icon className="h-5 w-5" />
-                  <span className="text-[11px] font-medium tracking-[0.01em] leading-none">
+                  <Icon width={20} height={20} />
+                  <span
+                    className="text-[9px] font-medium tracking-[0.01em] leading-none uppercase"
+                    style={{ color: active ? ACTIVE : INACTIVE_LABEL }}
+                  >
                     {item.label}
                   </span>
                 </NavLink>
@@ -134,13 +168,14 @@ export const BottomNav = () => {
             <button
               type="button"
               onClick={() => setMoreOpen(true)}
-              className={cn(
-                "w-full h-full min-h-touch flex flex-col items-center justify-center gap-1 py-2",
-                moreActive ? "text-white" : "text-white/55"
-              )}
+              className="w-full h-full min-h-touch flex flex-col items-center justify-center gap-1 py-2"
+              style={{ color: moreActive ? ACTIVE : INACTIVE }}
             >
-              <MoreHorizontal className="h-5 w-5" />
-              <span className="text-[11px] font-medium tracking-[0.01em] leading-none">
+              <IconMore width={20} height={20} />
+              <span
+                className="text-[9px] font-medium tracking-[0.01em] leading-none uppercase"
+                style={{ color: moreActive ? ACTIVE : INACTIVE_LABEL }}
+              >
                 More
               </span>
             </button>
