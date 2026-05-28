@@ -1,7 +1,5 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Wallet, Leaf, ShoppingCart } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { TaskmasterTaskDialog } from "@/components/taskmaster/TaskmasterTaskDialog";
 import { TransactionDialog } from "@/components/finance/TransactionDialog";
 import { HabitCreateDialog } from "@/components/habits/HabitCreateDialog";
@@ -38,31 +36,31 @@ export const QuickActionsRow = ({ householdId }: Props) => {
   const actions = [
     showTasks && {
       key: "task",
-      icon: Plus,
+      emoji: "✅",
       label: "Task",
       onClick: () => setTaskOpen(true),
     },
     showFinance && {
       key: "expense",
-      icon: Wallet,
+      emoji: "₹",
       label: "Expense",
       onClick: () => setTxOpen(true),
     },
     showHabits && {
       key: "habit",
-      icon: Leaf,
+      emoji: "🌿",
       label: "Habit",
       onClick: () => setHabitOpen(true),
     },
     showGrocery && {
       key: "grocery",
-      icon: ShoppingCart,
+      emoji: "🛒",
       label: "Grocery",
       onClick: () => navigate("/grocery?add=1"),
     },
   ].filter(Boolean) as Array<{
     key: string;
-    icon: any;
+    emoji: string;
     label: string;
     onClick: () => void;
   }>;
@@ -76,17 +74,17 @@ export const QuickActionsRow = ({ householdId }: Props) => {
 
   return (
     <>
-      <div className="grid grid-cols-4 gap-2 mb-5">
-        {actions.map(({ key, icon: Icon, label, onClick }) => (
-          <Button
+      <div className="grid grid-cols-4 gap-1.5 mb-4">
+        {actions.map(({ key, emoji, label, onClick }) => (
+          <button
             key={key}
-            variant="outline"
+            type="button"
             onClick={onClick}
-            className="h-16 flex-col gap-1 px-1 text-[11px] font-medium"
+            className="fd-qa min-h-touch"
           >
-            <Icon className="h-4 w-4" aria-hidden="true" />
-            <span>{label}</span>
-          </Button>
+            <span className="fd-qa-i" aria-hidden="true">{emoji}</span>
+            <span className="fd-qa-l">{label}</span>
+          </button>
         ))}
       </div>
 

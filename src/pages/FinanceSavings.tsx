@@ -230,8 +230,11 @@ const FinanceSavings = () => {
     <div className="page-container">
       <Header />
       <main className="page-content space-y-4">
-        <div className="flex items-center justify-between">
-          <h1 className="page-heading">Savings</h1>
+        <div className="flex items-end justify-between">
+          <div>
+            <div className="fd-eyebrow mb-0.5">FINANCE</div>
+            <h1 className="fd-display text-[24px] text-fd-ink">Savings</h1>
+          </div>
           <Button size="sm" onClick={() => setShowAdd(true)} className="hidden sm:flex">
             <Plus className="w-4 h-4 mr-1" /> New Goal
           </Button>
@@ -251,28 +254,31 @@ const FinanceSavings = () => {
         )}
 
         {!isLoading && (activeGoals.length > 0 || completedGoals.length > 0) && (
-          <div className="rounded-xl p-4 bg-[hsl(165_42%_92%)]">
-            <p className="text-[11px] text-muted-foreground">Total saved across all goals</p>
-            <p className="text-2xl font-semibold tabular-nums mt-0.5">
+          <div className="fd-icard p-5">
+            <div className="fd-icard-glow" />
+            <div className="text-[10px] uppercase tracking-[0.1em] fd-mono text-white/30">Portfolio</div>
+            <div className="fd-display text-[30px] text-white mt-1 mb-3">
               <PrivateValue value={totalSavedCapped} />
-            </p>
-            <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[11px]">
-              <span className="text-muted-foreground">
-                Goals on track: <span className="font-semibold text-foreground">{onTrackCount}</span>
-              </span>
-              <span className="text-muted-foreground">
-                Behind: <span className="font-semibold text-foreground">{behindCount}</span>
-              </span>
-              <span className="text-muted-foreground">
-                Done: <span className="font-semibold text-foreground">{doneCount}</span>
-              </span>
             </div>
-            <p className="text-[11px] mt-2 text-muted-foreground">
-              This month's contributions:{" "}
-              <span className="font-semibold text-foreground tabular-nums">
-                <PrivateValue value={thisMonthContribTotal} />
-              </span>
-            </p>
+            <div className="grid grid-cols-3">
+              <div className="pr-3 border-r border-white/10">
+                <div className="text-[9px] uppercase tracking-[0.1em] fd-mono text-white/30">On track</div>
+                <div className="fd-mono text-[15px] font-bold text-fd-sage-glow mt-1">{onTrackCount}</div>
+              </div>
+              <div className="px-3 border-r border-white/10">
+                <div className="text-[9px] uppercase tracking-[0.1em] fd-mono text-white/30">Behind</div>
+                <div className="fd-mono text-[15px] font-bold text-fd-amber mt-1">{behindCount}</div>
+              </div>
+              <div className="pl-3">
+                <div className="text-[9px] uppercase tracking-[0.1em] fd-mono text-white/30">This month</div>
+                <div className="fd-mono text-[15px] font-bold text-white mt-1">
+                  <PrivateValue value={thisMonthContribTotal} />
+                </div>
+              </div>
+            </div>
+            {doneCount > 0 && (
+              <p className="text-[10px] text-white/40 mt-3 fd-mono">{doneCount} completed</p>
+            )}
           </div>
         )}
 

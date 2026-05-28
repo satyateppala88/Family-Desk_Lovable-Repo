@@ -170,6 +170,8 @@ const Index = () => {
 
   const firstName = user?.user_metadata?.display_name?.split(" ")[0] || "";
   const greetingPrefix = getGreetingPrefix();
+  const now = new Date();
+  const eyebrowStamp = format(now, "EEE · d MMM · HH:mm").toUpperCase();
 
   return (
     <div className="page-container">
@@ -207,19 +209,20 @@ const Index = () => {
           </Card>
         )}
 
-        <div className="mb-5">
-          <h1 className="font-display text-[26px] leading-tight text-fd-ink">
+        <div className="mb-5 px-1">
+          <div className="fd-eyebrow mb-0.5">{eyebrowStamp}</div>
+          <h1 className="fd-display text-[26px] text-fd-ink">
             {greetingPrefix}
             {firstName && (
               <>
                 ,{" "}
-                <span className="italic text-fd-green">{firstName}</span>
+                <span className="text-fd-sage">{firstName}</span>
               </>
             )}
           </h1>
-          <p className="text-[12px] text-fd-ink-3 mt-1">
-            {householdName ?? ""} · {format(new Date(), "EEEE, d MMM")}
-          </p>
+          {householdName && (
+            <p className="text-[11px] text-fd-slate-2 mt-1">{householdName}</p>
+          )}
         </div>
 
         {/* Zone 2 — single contextual nudge (festival / overdue / budget / tip) */}
@@ -241,26 +244,20 @@ const Index = () => {
         {householdId && <QuickActionsRow householdId={householdId} />}
 
         {/* Module grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4 module-grid">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-3 module-grid">
           {visibleModules.map(({ product, icon: Icon, label, description, path, tintClass }) => {
             const hint = getModuleHint(product);
             return (
-              <Link key={product} to={path} className="block group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-xl">
-                <Card className="h-full transition-all duration-200 hover:shadow-md group-hover:scale-[1.02] group-active:scale-[0.98]" style={{ minHeight: "var(--module-card-min-h)" }}>
-                  <CardContent className="flex flex-col items-center justify-center text-center p-4 gap-2 h-full relative">
-                    <div className={`rounded-xl p-3 ${tintClass}`}>
-                      <Icon style={{ width: "var(--module-icon-size)", height: "var(--module-icon-size)" }} aria-hidden="true" />
-                    </div>
-                    <span className="text-sm font-medium text-foreground">{label}</span>
-                    {hint ? (
-                      <span className="text-[10px] font-medium text-primary bg-primary/8 rounded-full px-2 py-0.5">{hint}</span>
-                    ) : (
-                      <span className="text-[11px] text-muted-foreground leading-tight hidden sm:block">
-                        {description}
-                      </span>
-                    )}
-                  </CardContent>
-                </Card>
+              <Link key={product} to={path} className="block group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-[14px]">
+                <div className="fd-mc h-full flex flex-col gap-1.5" style={{ minHeight: "var(--module-card-min-h)" }}>
+                  <Icon className={`${tintClass} rounded-md p-1`} style={{ width: 26, height: 26 }} aria-hidden="true" />
+                  <span className="text-[13px] font-semibold text-fd-ink leading-tight">{label}</span>
+                  {hint ? (
+                    <span className="text-[11px] font-semibold text-fd-sage">{hint}</span>
+                  ) : (
+                    <span className="text-[11px] text-fd-slate-2 leading-tight">{description}</span>
+                  )}
+                </div>
               </Link>
             );
           })}
