@@ -1,6 +1,7 @@
 import { ReactNode } from "react";
 import { usePrivacyMode } from "@/contexts/PrivacyModeContext";
 import { formatINR, formatINRCompact } from "@/lib/formatINR";
+import { cn } from "@/lib/utils";
 
 interface PrivateValueProps {
   value: number | string;
@@ -29,9 +30,12 @@ export const PrivateValue = ({
 }: PrivateValueProps) => {
   const { isPrivate } = usePrivacyMode();
 
+  // Money values (number-typed) render in DM Serif Display italic by default.
+  const moneyClass = typeof value === "number" ? "fd-display" : undefined;
+
   if (isPrivate) {
     const masked = prefix ? `${prefix} ${mask}` : mask;
-    return <span className={className} aria-label="hidden">{masked}</span>;
+    return <span className={cn(moneyClass, className)} aria-label="hidden">{masked}</span>;
   }
 
   let formatted: string;
@@ -43,8 +47,8 @@ export const PrivateValue = ({
     formatted = prefix && prefix !== "₹" ? `${prefix}${value}` : String(value);
   }
 
-  if (children) return <span className={className}>{children(formatted)}</span>;
-  return <span className={className}>{formatted}</span>;
+  if (children) return <span className={cn(moneyClass, className)}>{children(formatted)}</span>;
+  return <span className={cn(moneyClass, className)}>{formatted}</span>;
 };
 
 /** Renders sensitive free-text (e.g. transaction descriptions, goal names). */
