@@ -42,10 +42,13 @@ export const CalendarHeader = ({
     <div className="pb-3 space-y-3">
       {/* Top row: month + nav */}
       <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2 min-w-0">
-          <h2 className="text-lg font-semibold tracking-tight truncate">
-            {format(currentDate, "MMMM yyyy")}
-          </h2>
+        <div className="flex items-end gap-2 min-w-0">
+          <div className="min-w-0">
+            <div className="fd-eyebrow mb-0.5">CALENDAR</div>
+            <h2 className="fd-display text-[22px] text-fd-ink truncate">
+              {format(currentDate, "MMMM yyyy")}
+            </h2>
+          </div>
           <div className="flex items-center gap-0.5">
             <Button variant="ghost" size="icon" onClick={goToPreviousMonth} className="h-8 w-8" style={{ minHeight: "32px" }}>
               <ChevronLeft className="h-4 w-4" />

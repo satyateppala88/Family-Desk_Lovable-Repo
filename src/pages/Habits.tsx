@@ -181,7 +181,8 @@ const Habits = () => {
         />
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
           <div>
-            <h1 className="page-heading">Habits</h1>
+            <div className="fd-eyebrow mb-0.5">DAILY</div>
+            <h1 className="fd-display text-[24px] text-fd-ink">Habits</h1>
             <div className="flex items-center gap-2 flex-wrap">
               <p className="text-muted-foreground text-sm">{format(today, "EEEE, MMMM d")}</p>
               <span className={cn(
