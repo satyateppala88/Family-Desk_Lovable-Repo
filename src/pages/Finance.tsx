@@ -1,6 +1,5 @@
 import { Link } from "react-router-dom";
 import { Header } from "@/components/layout/Header";
-import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useHousehold } from "@/hooks/useHousehold";
 import { useFinanceMonthlySummary, useFinanceRealtime } from "@/hooks/finance";
@@ -18,20 +17,9 @@ import { useState } from "react";
 import { AIActionSheet } from "@/components/ai/AIActionSheet";
 import { Button } from "@/components/ui/button";
 import {
-  ArrowLeftRight,
-  Target,
-  PiggyBank,
-  Bot,
-  BarChart3,
-  RefreshCw,
-  CreditCard,
-  TrendingUp,
-  TrendingDown,
   Shield,
-  LineChart,
   ArrowUp,
   ArrowDown,
-  FileBarChart,
   Sparkles,
 } from "lucide-react";
 
