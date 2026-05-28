@@ -324,7 +324,8 @@ const Meals = () => {
         />
         <div className="mb-4 flex items-start justify-between gap-2">
           <div>
-            <h1 className="page-heading">Meals</h1>
+            <div className="fd-eyebrow mb-0.5">KITCHEN</div>
+            <h1 className="fd-display text-[24px] text-fd-ink">Meals</h1>
             <p className="text-sm text-muted-foreground mt-0.5">
               {recipes.length > 0 ? `${recipes.length} recipes in your collection` : "Plan tonight's dinner in seconds"}
             </p>
