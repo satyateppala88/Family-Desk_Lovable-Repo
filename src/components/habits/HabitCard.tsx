@@ -128,11 +128,11 @@ export const HabitCard = ({ habit, onToggle, onUpdateValue, isPending = false }:
             {streakCount > 0 && (
               <span className="flex items-center gap-0.5 text-primary font-medium">
                 <Flame className="h-3 w-3" />
-                {streakCount}d streak
+                <span className="fd-mono">{streakCount}</span>d streak
               </span>
             )}
             {longestStreak > streakCount && longestStreak > 0 && (
-              <span>Best: {longestStreak}d</span>
+              <span>Best: <span className="fd-mono">{longestStreak}</span>d</span>
             )}
             {habit.reminder_time && !hasTarget && (
               <span>{habit.reminder_time.slice(0, 5)}</span>

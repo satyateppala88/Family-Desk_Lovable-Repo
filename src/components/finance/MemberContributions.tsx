@@ -68,11 +68,11 @@ export const MemberContributions = ({ householdId, month }: Props) => {
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{r.displayName}</p>
                   <p className="text-[11px] text-muted-foreground tabular-nums flex flex-wrap gap-x-2">
-                    <span>Income {fmt(r.income)}</span>
+                    <span>Income <span className="fd-mono">{fmt(r.income)}</span></span>
                     <span>·</span>
-                    <span>Spent {fmt(r.spent)}</span>
+                    <span>Spent <span className="fd-mono">{fmt(r.spent)}</span></span>
                     <span>·</span>
-                    <span>Saved {fmt(r.saved)}</span>
+                    <span>Saved <span className="fd-mono">{fmt(r.saved)}</span></span>
                   </p>
                 </div>
               </li>

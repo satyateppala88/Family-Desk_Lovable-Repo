@@ -22,13 +22,13 @@ export const MemberProgressCard = ({ member }: MemberProgressCardProps) => {
         </AvatarFallback>
       </Avatar>
       <p className="font-medium text-sm truncate">{member.displayName}</p>
-      <p className="text-lg font-bold text-primary">
+      <p className="text-lg font-bold text-primary fd-mono">
         {member.completedToday}/{member.plannedToday}
       </p>
       {member.currentStreak >= 3 && (
         <div className="flex items-center justify-center gap-1 text-primary text-xs mt-1">
           <Flame className="h-3 w-3" />
-          <span>{member.currentStreak}</span>
+          <span className="fd-mono">{member.currentStreak}</span>
         </div>
       )}
       <p className="text-xs text-muted-foreground mt-1">

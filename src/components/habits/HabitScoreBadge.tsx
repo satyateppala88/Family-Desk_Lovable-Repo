@@ -28,7 +28,7 @@ export const HabitScoreBadge = ({
           )}
         >
           <Star className={size === "sm" ? "h-3 w-3" : "h-4 w-4"} />
-          +{points}
+          <span className="fd-mono">+{points}</span>
         </Badge>
       )}
       {streakBonus && streakBonus > 0 && (
@@ -40,7 +40,7 @@ export const HabitScoreBadge = ({
           )}
         >
           <Flame className={size === "sm" ? "h-3 w-3" : "h-4 w-4"} />
-          +{streakBonus}
+          <span className="fd-mono">+{streakBonus}</span>
         </Badge>
       )}
     </div>

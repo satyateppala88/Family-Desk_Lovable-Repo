@@ -87,7 +87,7 @@ export const PantryCategoryGrid = ({
               <div>
                 <h3 className="font-medium text-[13px] leading-tight">{category.name}</h3>
                 <p className="text-[12px] text-muted-foreground mt-0.5">
-                  {stats.count} item{stats.count !== 1 ? 's' : ''}
+                  <span className="fd-mono">{stats.count}</span> item{stats.count !== 1 ? 's' : ''}
                 </p>
               </div>
               
@@ -95,17 +95,17 @@ export const PantryCategoryGrid = ({
                 <div className="flex flex-wrap gap-1 justify-center">
                   {stats.expired > 0 && (
                     <Badge variant="destructive" className="text-xs">
-                      {stats.expired} expired
+                      <span className="fd-mono">{stats.expired}</span>&nbsp;expired
                     </Badge>
                   )}
                   {stats.expiring > 0 && (
                     <Badge className="text-xs bg-orange-500 hover:bg-orange-600">
-                      {stats.expiring} expiring
+                      <span className="fd-mono">{stats.expiring}</span>&nbsp;expiring
                     </Badge>
                   )}
                   {stats.lowStock > 0 && (
                     <Badge className="text-xs bg-yellow-500 hover:bg-yellow-600">
-                      {stats.lowStock} low
+                      <span className="fd-mono">{stats.lowStock}</span>&nbsp;low
                     </Badge>
                   )}
                 </div>
