@@ -99,7 +99,7 @@ const TaskmasterMyTasks = () => {
       case 1: return { label: "P1", color: "bg-red-500 text-white" };
       case 2: return { label: "P2", color: "bg-orange-500 text-white" };
       case 3: return { label: "P3", color: "bg-yellow-500 text-black" };
-      case 4: return { label: "P4", color: "bg-blue-500 text-white" };
+      case 4: return { label: "P4", color: "bg-muted text-muted-foreground" };
       default: return { label: "P3", color: "bg-yellow-500 text-black" };
     }
   };

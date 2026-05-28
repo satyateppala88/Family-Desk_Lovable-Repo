@@ -187,7 +187,7 @@ const Habits = () => {
               <p className="text-muted-foreground text-sm">{format(today, "EEEE, MMMM d")}</p>
               <span className={cn(
                 "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs",
-                freezesRemaining > 0 ? "border-sky-200 bg-sky-50 text-sky-700" : "border-muted text-muted-foreground"
+                freezesRemaining > 0 ? "border-primary/30 bg-primary/10 text-primary" : "border-muted text-muted-foreground"
               )}>
                 <Snowflake className="h-3 w-3" aria-hidden="true" />
                 {freezesRemaining} freeze{freezesRemaining === 1 ? "" : "s"} left
