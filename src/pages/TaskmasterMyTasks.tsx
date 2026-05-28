@@ -145,10 +145,8 @@ const TaskmasterMyTasks = () => {
 
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2 mt-4">
-              <ListTodo className="w-6 h-6" />
-              My Tasks
-            </h1>
+            <div className="fd-eyebrow mb-0.5 mt-4">TASKS</div>
+            <h1 className="fd-display text-[24px] text-fd-ink">My Tasks</h1>
             <p className="text-sm text-muted-foreground">
               {totalTasks} open {totalTasks === 1 ? "task" : "tasks"} assigned to you
             </p>
