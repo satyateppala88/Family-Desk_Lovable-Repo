@@ -107,7 +107,8 @@ const FinanceTrends = () => {
       <Header />
       <main className="page-content space-y-4 animate-fade-in">
         <div>
-          <h1 className="page-heading">Trends</h1>
+          <div className="fd-eyebrow mb-0.5">FINANCE</div>
+          <h1 className="fd-display text-[24px] text-fd-ink">Trends</h1>
           <p className="text-sm text-muted-foreground mt-0.5">Last 6 months at a glance</p>
         </div>
 

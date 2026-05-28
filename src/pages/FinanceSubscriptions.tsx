@@ -96,7 +96,8 @@ const FinanceSubscriptions = () => {
       <Header />
       <main className="page-content space-y-4">
         <div className="flex items-center justify-between">
-          <h1 className="page-heading">Subscriptions</h1>
+          <div className="fd-eyebrow mb-0.5">FINANCE</div>
+          <h1 className="fd-display text-[24px] text-fd-ink">Subscriptions</h1>
           <Button size="sm" onClick={() => setShowAdd(true)} className="hidden sm:flex">
             <Plus className="w-4 h-4 mr-1" /> Add
           </Button>
