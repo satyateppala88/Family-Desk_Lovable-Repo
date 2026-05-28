@@ -252,7 +252,8 @@ const TaskmasterTasks = () => {
 
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold mt-4">All Tasks</h1>
+            <div className="fd-eyebrow mb-0.5 mt-4">TASKS</div>
+            <h1 className="fd-display text-[24px] text-fd-ink">All Tasks</h1>
             <p className="text-xs text-muted-foreground mt-1">Visible to everyone in your household</p>
           </div>
           <Button onClick={handleCreateTask} size="sm">

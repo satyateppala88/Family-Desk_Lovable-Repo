@@ -139,7 +139,8 @@ const Grocery = () => {
         />
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
           <div>
-            <h1 className="page-heading">Grocery</h1>
+            <div className="fd-eyebrow mb-0.5">KITCHEN</div>
+            <h1 className="fd-display text-[24px] text-fd-ink">Grocery</h1>
             <p className="text-sm text-muted-foreground mt-0.5">
               {pantryItems.length > 0
                 ? `${pantryItems.length} items in your pantry`

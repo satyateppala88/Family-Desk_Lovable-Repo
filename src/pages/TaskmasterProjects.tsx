@@ -171,7 +171,10 @@ const TaskmasterProjects = () => {
         <TaskmasterSubNav />
 
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-xl sm:text-2xl font-bold mt-4">Projects</h1>
+          <div>
+            <div className="fd-eyebrow mb-0.5 mt-4">TASKS</div>
+            <h1 className="fd-display text-[24px] text-fd-ink">Projects</h1>
+          </div>
           <Button onClick={handleCreateProject} size="sm">
             <Plus className="w-4 h-4 sm:mr-2" />
             <span className="hidden sm:inline">New Project</span>
