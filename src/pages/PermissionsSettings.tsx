@@ -176,7 +176,8 @@ const PermissionsSettings = () => {
                 <ArrowLeft className="h-5 w-5" />
               </Button>
               <div>
-                <h1 className="page-heading flex items-center gap-2">
+                <div className="fd-eyebrow mb-0.5">SETTINGS</div>
+                <h1 className="fd-display text-[24px] text-fd-ink flex items-center gap-2">
                   <ShieldCheck className="h-5 w-5 text-primary" />
                   Permissions
                 </h1>

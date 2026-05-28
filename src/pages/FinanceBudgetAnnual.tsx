@@ -71,7 +71,8 @@ export default function FinanceBudgetAnnual() {
       <Header />
       <main className="page-content space-y-4">
         <div>
-          <h1 className="page-heading">Budget</h1>
+          <div className="fd-eyebrow mb-0.5">FINANCE</div>
+          <h1 className="fd-display text-[24px] text-fd-ink">Annual Budget</h1>
           <p className="text-xs text-muted-foreground">Annual rollup across all categories.</p>
         </div>
 

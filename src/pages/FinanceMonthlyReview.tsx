@@ -57,7 +57,8 @@ const FinanceMonthlyReview = () => {
       <Header />
       <main className="page-content space-y-4 animate-fade-in">
         <div>
-          <h1 className="page-heading">Monthly Review</h1>
+          <div className="fd-eyebrow mb-0.5">FINANCE</div>
+          <h1 className="fd-display text-[24px] text-fd-ink">Monthly Review</h1>
           <p className="text-sm text-muted-foreground mt-1">{monthLabel} — your household's financial health</p>
         </div>
 
