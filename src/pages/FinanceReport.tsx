@@ -42,7 +42,8 @@ const FinanceReport = () => {
         </div>
 
         <div>
-          <h1 className="page-heading">Monthly Report</h1>
+          <div className="fd-eyebrow mb-0.5">FINANCE</div>
+          <h1 className="fd-display text-[24px] text-fd-ink">Monthly Report</h1>
           <p className="text-sm text-muted-foreground mt-0.5">A shareable recap of your household's month.</p>
         </div>
 
