@@ -499,3 +499,93 @@ body[data-notif-primer-open] .ai-chat-fab {
   font-family: 'DM Serif Display', ui-serif, Georgia, serif;
   letter-spacing: -0.02em;
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   QUIET PRECISION — Shared component primitives
+   Use these classes across all FamilyDesk screens so the design
+   system stays consistent. See familydesk-all-screens.html ref.
+═══════════════════════════════════════════════════════════════ */
+
+/* Typography helpers */
+.fd-display       { font-family: var(--font-display); font-style: italic; letter-spacing: -0.02em; line-height: 1.1; }
+.fd-mono          { font-family: var(--font-mono); font-feature-settings: 'tnum'; }
+.fd-section-label { font-family: var(--font-body); font-size: 10px; font-weight: 500; letter-spacing: 0.18em; text-transform: uppercase; color: var(--fd-slate-2); }
+.fd-eyebrow       { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.09em; color: var(--fd-slate-2); text-transform: uppercase; }
+
+/* Dark / hero "ink" card */
+.fd-icard {
+  position: relative;
+  background: var(--fd-ink-2);
+  border-radius: 18px;
+  color: #fff;
+  overflow: hidden;
+}
+.fd-icard-glow {
+  position: absolute; top: -40px; right: -40px;
+  width: 140px; height: 140px;
+  background: radial-gradient(circle, rgba(61,184,122,.10) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+/* Sage "nudge" banner (left rule) */
+.fd-nudge {
+  background: var(--fd-sage-3);
+  border-left: 3px solid var(--fd-sage);
+  border-radius: 10px;
+  padding: 9px 12px;
+  color: var(--fd-sage);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+/* Quick-action white card */
+.fd-qa {
+  background: #fff;
+  border: 1px solid var(--fd-mist-3);
+  border-radius: 10px;
+  box-shadow: 0 1px 2px rgba(0,0,0,.05);
+  padding: 10px 6px;
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  cursor: pointer;
+}
+.fd-qa-i { font-size: 16px; line-height: 1; }
+.fd-qa-l { font-size: 9px; font-weight: 600; letter-spacing: 0.03em; text-transform: uppercase; color: var(--fd-slate); }
+
+/* Module / white card */
+.fd-mc {
+  background: #fff;
+  border: 1px solid var(--fd-mist-3);
+  border-radius: 14px;
+  box-shadow: 0 1px 2px rgba(0,0,0,.05);
+  padding: 14px;
+  cursor: pointer;
+}
+
+/* Chips */
+.fd-chip       { display: inline-flex; align-items: center; gap: 4px; border-radius: 4px; padding: 3px 8px; font-family: var(--font-body); font-size: 10px; font-weight: 600; line-height: 1.2; }
+.fd-chip-sage    { background: var(--fd-sage-3);    color: var(--fd-sage); }
+.fd-chip-amber   { background: var(--fd-amber-bg);  color: var(--fd-amber); }
+.fd-chip-crimson { background: var(--fd-crimson-bg);color: var(--fd-crimson); }
+.fd-chip-violet  { background: var(--fd-violet-bg); color: var(--fd-violet); }
+.fd-chip-muted   { background: var(--fd-mist-2);    color: var(--fd-slate); border: 1px solid var(--fd-mist-3); }
+
+/* Primary CTA */
+.fd-btn-primary {
+  background: var(--fd-sage); color: #fff;
+  border-radius: 10px; padding: 12px 16px;
+  font-family: var(--font-body); font-weight: 600; font-size: 13px;
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  border: none; cursor: pointer;
+}
+.fd-btn-primary:hover { background: var(--fd-sage-2); }
+
+/* Progress rail */
+.fd-progress      { width: 100%; height: 3px; background: var(--fd-mist-3); border-radius: 1.5px; overflow: hidden; }
+.fd-progress > i  { display: block; height: 100%; background: var(--fd-sage); }
+
+/* Underline tab — matches reference .tab/.tab.on */
+.fd-tab           { display: inline-flex; align-items: center; gap: 4px; padding: 8px 0; font-family: var(--font-body); font-size: 12px; font-weight: 500; color: var(--fd-slate); border-bottom: 2px solid transparent; cursor: pointer; }
+.fd-tab.is-active { color: var(--fd-sage); border-bottom-color: var(--fd-sage); font-weight: 600; }
+
+/* Divider */
+.fd-divider { height: 1px; background: var(--fd-mist-3); width: 100%; }
