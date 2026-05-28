@@ -146,11 +146,12 @@ const TaskmasterToday = () => {
       <main className="container px-4 sm:px-6 py-6 pb-24">
         <TaskmasterSubNav />
 
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-end justify-between mb-6">
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold mt-4">Today's Plan</h1>
-            <p className="text-sm text-muted-foreground">
-              {format(new Date(), "EEEE, MMMM d, yyyy")}
+            <div className="fd-eyebrow mb-0.5 mt-4">TASKS</div>
+            <h1 className="fd-display text-[24px] text-fd-ink">Today's Plan</h1>
+            <p className="text-xs fd-mono text-fd-slate uppercase tracking-[0.08em] mt-1">
+              {format(new Date(), "EEEE · MMM d")}
             </p>
             <p className="text-xs text-muted-foreground mt-1">
               {backlogCount > 0 ? (

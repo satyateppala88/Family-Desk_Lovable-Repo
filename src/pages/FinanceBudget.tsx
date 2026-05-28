@@ -230,8 +230,11 @@ const FinanceBudget = () => {
     <div className="page-container">
       <Header />
       <main className="page-content space-y-4">
-        <div className="flex items-center justify-between">
-          <h1 className="page-heading">Budget</h1>
+        <div className="flex items-end justify-between">
+          <div>
+            <div className="fd-eyebrow mb-0.5">FINANCE</div>
+            <h1 className="fd-display text-[24px] text-fd-ink">Budget</h1>
+          </div>
           <div className="hidden sm:flex items-center gap-2">
             <Button size="sm" variant="outline" asChild>
               <Link to="/finance/budget/categories">
